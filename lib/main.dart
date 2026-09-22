@@ -235,6 +235,858 @@ _AchievementGroup
   );
 }
 
+Future<void> _checkMovieAchievementUnlock(
+  BuildContext context, {
+  required int previousCount,
+  required int currentCount,
+}) async {
+  // Only care when the movie count
+  // actually increased.
+  if (currentCount <= previousCount) {
+    return;
+  }
+
+  final group =
+      _movieAchievementGroupFor(
+    currentCount,
+  );
+
+  // Find every threshold crossed by
+  // this change.
+  final newlyReached =
+      group.tiers.where(
+    (achievement) {
+      return previousCount <
+              achievement.target &&
+          currentCount >=
+              achievement.target;
+    },
+  ).toList();
+
+  if (newlyReached.isEmpty) {
+    return;
+  }
+
+  for (final achievement
+      in newlyReached) {
+    if (!context.mounted) {
+      return;
+    }
+
+    // Let the completion animation
+    // happen before showing the medal.
+    await Future<void>.delayed(
+      const Duration(
+        milliseconds: 550,
+      ),
+    );
+
+    if (!context.mounted) {
+      return;
+    }
+
+    await _showAchievementUnlocked(
+      context,
+      achievement,
+    );
+  }
+}
+
+Future<void> _showAchievementUnlocked(
+  BuildContext context,
+  _Achievement achievement,
+) async {
+  await showGeneralDialog<void>(
+    context: context,
+
+    barrierDismissible: false,
+
+    barrierLabel:
+        'Achievement unlocked',
+
+    barrierColor:
+        Colors.black.withValues(
+      alpha: 0.78,
+    ),
+
+    transitionDuration:
+        const Duration(
+      milliseconds: 320,
+    ),
+
+    transitionBuilder: (
+      context,
+      animation,
+      secondaryAnimation,
+      child,
+    ) {
+      final curved =
+          CurvedAnimation(
+        parent: animation,
+        curve:
+            Curves.easeOutBack,
+      );
+
+      return FadeTransition(
+        opacity:
+            animation,
+        child:
+            ScaleTransition(
+          scale:
+              Tween<double>(
+            begin: 0.82,
+            end: 1.0,
+          ).animate(
+            curved,
+          ),
+          child:
+              child,
+        ),
+      );
+    },
+
+    pageBuilder: (
+      context,
+      animation,
+      secondaryAnimation,
+    ) {
+      return _AchievementUnlockDialog(
+        achievement:
+            achievement,
+      );
+    },
+  );
+}
+
+class _AchievementUnlockDialog
+    extends StatefulWidget {
+  final _Achievement
+      achievement;
+
+  const _AchievementUnlockDialog({
+    required this.achievement,
+  });
+
+  @override
+  State<_AchievementUnlockDialog>
+      createState() =>
+          _AchievementUnlockDialogState();
+}
+
+class _AchievementUnlockDialogState
+    extends State<
+        _AchievementUnlockDialog>
+    with
+        SingleTickerProviderStateMixin {
+  late final AnimationController
+      _fireworksController;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _fireworksController =
+        AnimationController(
+      vsync: this,
+      duration:
+          const Duration(
+        milliseconds: 1800,
+      ),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _fireworksController
+        .dispose();
+
+    super.dispose();
+  }
+
+  @override
+Widget build(
+  BuildContext context,
+) {
+  final achievement =
+      widget.achievement;
+
+  final colors =
+      _achievementPopupColors(
+    achievement,
+  );
+
+  return Material(
+    color:
+        Colors.transparent,
+
+    child: SafeArea(
+      child: Center(
+        child: SingleChildScrollView(
+          padding:
+              const EdgeInsets
+                  .symmetric(
+            horizontal: 20,
+            vertical: 20,
+          ),
+
+          child: SizedBox(
+            width: 340,
+            height: 470,
+
+            child: Stack(
+              alignment:
+                  Alignment.topCenter,
+
+              clipBehavior:
+                  Clip.none,
+
+              children: [
+                // =========================
+                // FIREWORKS
+                // =========================
+
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+
+                  child: SizedBox(
+                    height: 155,
+
+                    child:
+                        AnimatedBuilder(
+                      animation:
+                          _fireworksController,
+
+                      builder: (
+                        context,
+                        _,
+                      ) {
+                        return CustomPaint(
+                          painter:
+                              _AchievementFireworksPainter(
+                            progress:
+                                _fireworksController
+                                    .value,
+
+                            colors:
+                                colors,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+
+                // =========================
+                // LARGE TRANSPARENT MEDAL
+                // =========================
+
+                Positioned(
+                  top: 78,
+
+                  child: IgnorePointer(
+                    child: Opacity(
+                      opacity: 0.10,
+
+                      child:
+                          Transform.scale(
+                        scale: 3.2,
+
+                        child:
+                            _AchievementMedal(
+                          achievement:
+                              achievement,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+                // =========================
+                // ACHIEVEMENT CARD
+                // =========================
+
+                Positioned(
+                  top: 120,
+                  left: 0,
+                  right: 0,
+
+                  child: Container(
+                    padding:
+                        const EdgeInsets
+                            .all(
+                      1.4,
+                    ),
+
+                    decoration:
+                        BoxDecoration(
+                      borderRadius:
+                          BorderRadius
+                              .circular(
+                        26,
+                      ),
+
+                      gradient:
+                          LinearGradient(
+                        begin:
+                            Alignment
+                                .topLeft,
+                        end:
+                            Alignment
+                                .bottomRight,
+                        colors:
+                            colors,
+                      ),
+
+                      boxShadow: [
+                        BoxShadow(
+                          color:
+                              _achievementAccent(
+                            achievement
+                                .rarity,
+                          ).withValues(
+                            alpha:
+                                0.24,
+                          ),
+
+                          blurRadius:
+                              28,
+
+                          spreadRadius:
+                              2,
+                        ),
+                      ],
+                    ),
+
+                    child: Container(
+                      padding:
+                          const EdgeInsets
+                              .fromLTRB(
+                        24,
+                        28,
+                        24,
+                        22,
+                      ),
+
+                      decoration:
+                          BoxDecoration(
+                        borderRadius:
+                            BorderRadius
+                                .circular(
+                          25,
+                        ),
+
+                        color:
+                            Color.alphaBlend(
+                          chipluxViolet
+                              .withValues(
+                            alpha:
+                                0.035,
+                          ),
+
+                          chipluxSurface,
+                        ),
+                      ),
+
+                      child: Column(
+                        mainAxisSize:
+                            MainAxisSize
+                                .min,
+
+                        children: [
+                          // =========================
+                          // LABEL
+                          // =========================
+
+                          const GradientText(
+                            'ACHIEVEMENT UNLOCKED',
+
+                            style:
+                                TextStyle(
+                              fontSize:
+                                  12,
+
+                              fontWeight:
+                                  FontWeight
+                                      .w800,
+
+                              letterSpacing:
+                                  1.7,
+                            ),
+                          ),
+
+                          const SizedBox(
+                            height: 24,
+                          ),
+
+                          // =========================
+                          // NORMAL MEDAL
+                          // =========================
+
+                          Transform.scale(
+                            scale: 1.35,
+
+                            child:
+                                _AchievementMedal(
+                              achievement:
+                                  achievement,
+                            ),
+                          ),
+
+                          const SizedBox(
+                            height: 27,
+                          ),
+
+                          // =========================
+                          // TITLE
+                          // =========================
+
+                          Text(
+                            achievement
+                                .title,
+
+                            textAlign:
+                                TextAlign
+                                    .center,
+
+                            style:
+                                const TextStyle(
+                              color:
+                                  Colors.white,
+
+                              fontSize:
+                                  23,
+
+                              fontWeight:
+                                  FontWeight
+                                      .bold,
+                            ),
+                          ),
+
+                          const SizedBox(
+                            height: 7,
+                          ),
+
+                          // =========================
+                          // DESCRIPTION
+                          // =========================
+
+                          Text(
+                            achievement
+                                .description,
+
+                            textAlign:
+                                TextAlign
+                                    .center,
+
+                            style:
+                                const TextStyle(
+                              color:
+                                  Colors
+                                      .white60,
+
+                              fontSize:
+                                  14,
+                            ),
+                          ),
+
+                          const SizedBox(
+                            height: 25,
+                          ),
+
+                          // =========================
+                          // GREAT BUTTON
+                          // =========================
+
+                          SizedBox(
+                            width:
+                                double
+                                    .infinity,
+
+                            height: 48,
+
+                            child:
+                                ElevatedButton(
+                              onPressed:
+                                  () {
+                                Navigator.pop(
+                                  context,
+                                );
+                              },
+
+                              style:
+                                  ElevatedButton
+                                      .styleFrom(
+                                backgroundColor:
+                                    chipluxSurfaceLight,
+
+                                foregroundColor:
+                                    Colors.white,
+
+                                shape:
+                                    RoundedRectangleBorder(
+                                  borderRadius:
+                                      BorderRadius
+                                          .circular(
+                                    15,
+                                  ),
+                                ),
+                              ),
+
+                              child:
+                                  const Text(
+                                'Great!',
+
+                                style:
+                                    TextStyle(
+                                  fontSize:
+                                      15,
+
+                                  fontWeight:
+                                      FontWeight
+                                          .bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+}
+
+class _AchievementFireworksPainter
+    extends CustomPainter {
+  final double progress;
+  final List<Color> colors;
+
+  const _AchievementFireworksPainter({
+    required this.progress,
+    required this.colors,
+  });
+
+  @override
+  void paint(
+    Canvas canvas,
+    Size size,
+  ) {
+    _drawFirework(
+      canvas,
+      size,
+      const Offset(
+        0.22,
+        0.62,
+      ),
+      delay: 0.00,
+      particleCount: 14,
+    );
+
+    _drawFirework(
+      canvas,
+      size,
+      const Offset(
+        0.50,
+        0.30,
+      ),
+      delay: 0.28,
+      particleCount: 17,
+    );
+
+    _drawFirework(
+      canvas,
+      size,
+      const Offset(
+        0.78,
+        0.58,
+      ),
+      delay: 0.56,
+      particleCount: 14,
+    );
+
+    _drawFirework(
+      canvas,
+      size,
+      const Offset(
+        0.38,
+        0.70,
+      ),
+      delay: 0.78,
+      particleCount: 11,
+    );
+  }
+
+  void _drawFirework(
+    Canvas canvas,
+    Size size,
+    Offset normalizedCenter, {
+    required double delay,
+    required int particleCount,
+  }) {
+    final double local =
+        (progress +
+                1.0 -
+                delay) %
+            1.0;
+
+    // Each firework appears only
+    // during part of the loop.
+    if (local > 0.72) {
+      return;
+    }
+
+    final double normalized =
+        (local / 0.72)
+            .clamp(
+              0.0,
+              1.0,
+            );
+
+    final double expansion =
+        Curves.easeOutCubic
+            .transform(
+      normalized,
+    );
+
+    final double fade =
+        (1.0 -
+                normalized)
+            .clamp(
+              0.0,
+              1.0,
+            );
+
+    final center =
+        Offset(
+      size.width *
+          normalizedCenter.dx,
+      size.height *
+          normalizedCenter.dy,
+    );
+
+    final maxRadius =
+        28 +
+            size.width *
+                0.11;
+
+    for (int i = 0;
+        i < particleCount;
+        i++) {
+      final angle =
+          (math.pi *
+                  2 /
+                  particleCount) *
+              i +
+          delay *
+              math.pi;
+
+      final variation =
+          0.78 +
+              (i % 4) *
+                  0.08;
+
+      final distance =
+          maxRadius *
+              expansion *
+              variation;
+
+      final position =
+          center +
+              Offset(
+                math.cos(
+                      angle,
+                    ) *
+                    distance,
+                math.sin(
+                      angle,
+                    ) *
+                    distance,
+              );
+
+      final color =
+          colors[
+              i %
+                  colors.length];
+
+      final particlePaint =
+          Paint()
+            ..color =
+                color.withValues(
+              alpha:
+                  fade *
+                      0.95,
+            );
+
+      final trailPaint =
+          Paint()
+            ..color =
+                color.withValues(
+              alpha:
+                  fade *
+                      0.30,
+            )
+            ..strokeWidth =
+                1.4
+            ..strokeCap =
+                StrokeCap.round;
+
+      final trailLength =
+          7.0 +
+              (i % 3) *
+                  2.5;
+
+      final trailEnd =
+          position -
+              Offset(
+                math.cos(
+                      angle,
+                    ) *
+                    trailLength,
+                math.sin(
+                      angle,
+                    ) *
+                    trailLength,
+              );
+
+      canvas.drawLine(
+        trailEnd,
+        position,
+        trailPaint,
+      );
+
+      canvas.drawCircle(
+        position,
+        1.8 +
+            (i % 3) *
+                0.45,
+        particlePaint,
+      );
+    }
+
+    // Small flash at explosion center.
+    final flashFade =
+        (1.0 -
+                normalized *
+                    4.0)
+            .clamp(
+              0.0,
+              1.0,
+            );
+
+    if (flashFade > 0) {
+      canvas.drawCircle(
+        center,
+        4 +
+            normalized *
+                5,
+        Paint()
+          ..color =
+              Colors.white
+                  .withValues(
+            alpha:
+                flashFade *
+                    0.85,
+          ),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(
+    covariant
+        _AchievementFireworksPainter
+        oldDelegate,
+  ) {
+    return oldDelegate.progress !=
+            progress ||
+        oldDelegate.colors !=
+            colors;
+  }
+}
+
+List<Color> _achievementPopupColors(
+  _Achievement achievement,
+) {
+  switch (
+      achievement.target) {
+    case 2:
+      return const [
+        Colors.white,
+        Color(
+          0xFF9DAAB7,
+        ),
+      ];
+
+    case 8:
+      return const [
+        chipluxCyan,
+        Color(
+          0xFF64BFFF,
+        ),
+      ];
+
+    case 16:
+      return const [
+        chipluxCyan,
+        chipluxViolet,
+      ];
+
+    case 32:
+      return const [
+        Color(
+          0xFFFFE49A,
+        ),
+        Color(
+          0xFFFFC857,
+        ),
+      ];
+
+    case 64:
+      return const [
+        Color(
+          0xFFFFC857,
+        ),
+        Color(
+          0xFFFF5C72,
+        ),
+      ];
+
+    case 128:
+      return const [
+        Color(
+          0xFFFF5C72,
+        ),
+        chipluxPurple,
+      ];
+
+    case 512:
+    case 1024:
+      return const [
+        chipluxCyan,
+        chipluxViolet,
+        chipluxPurple,
+        Color(
+          0xFFFFC857,
+        ),
+      ];
+
+    default:
+      return const [
+        chipluxCyan,
+        chipluxViolet,
+      ];
+  }
+}
+
 class ChipluxBackground
     extends StatelessWidget {
   final ChipluxBackgroundStyle style;
@@ -6311,19 +7163,59 @@ Widget _buildAnimatedFilterBar() {
       leading: Icon(icon),
       title: Text(label),
       onTap: () async {
-        await LibraryService
-            .instance
-            .updateStatus(
-          item.id,
-          item.mediaType,
-          status,
-        );
+  final library =
+      LibraryService.instance;
 
-        if (context.mounted) {
-          Navigator.pop(
-              context);
-        }
-      },
+  final pageContext =
+      this.context;
+
+  final bool wasCompleted =
+      item.status ==
+          'completed';
+
+  final int previousMovieCount =
+      library.moviesWatchedCount;
+
+  await library.updateStatus(
+    item.id,
+    item.mediaType,
+    status,
+  );
+
+  if (context.mounted) {
+    Navigator.pop(
+      context,
+    );
+  }
+
+  if (status ==
+          'completed' &&
+      !wasCompleted &&
+      item.mediaType ==
+          'movie') {
+    await Future<void>.delayed(
+      const Duration(
+        milliseconds: 200,
+      ),
+    );
+
+    if (!pageContext.mounted) {
+      return;
+    }
+
+    showCompletionBurst(
+      pageContext,
+    );
+
+    await _checkMovieAchievementUnlock(
+      pageContext,
+      previousCount:
+          previousMovieCount,
+      currentCount:
+          library.moviesWatchedCount,
+    );
+  }
+},
     );
   }
 }
@@ -16033,6 +16925,9 @@ const SizedBox(
       item?.status ==
           'completed';
 
+          final int previousMovieCount =
+    library.moviesWatchedCount;
+
   final newItem =
       LibraryItem(
     id: widget.id,
@@ -16073,6 +16968,17 @@ if (status == 'completed' &&
   showCompletionBurst(
     context,
   );
+
+  if (widget.mediaType ==
+      'movie') {
+    await _checkMovieAchievementUnlock(
+      context,
+      previousCount:
+          previousMovieCount,
+      currentCount:
+          library.moviesWatchedCount,
+    );
+  }
 }
 }
 
