@@ -74,82 +74,159 @@ _AchievementGroup
 ) {
   return _AchievementGroup(
     id: 'movies_watched',
-    title: 'Movies Watched',
+
+    title:
+        'Movies Watched',
+
     description:
         'Keep watching movies to upgrade this medal.',
-    icon: Icons.movie_rounded,
-    current: moviesWatched,
+
+    icon:
+        Icons.movie_rounded,
+
+    current:
+        moviesWatched,
+
     tiers: [
       _Achievement(
-        id: 'movies_10',
-        title: 'Movie Starter',
+        id:
+            'movies_2',
+        title:
+            'First Screening',
         description:
-            'Watch 10 movies',
+            'Watch 2 movies',
         icon:
             Icons.movie_rounded,
         current:
             moviesWatched,
-        target: 10,
+        target:
+            2,
         rarity:
             _AchievementRarity
                 .common,
       ),
 
       _Achievement(
-        id: 'movies_25',
-        title: 'Film Hunter',
+        id:
+            'movies_8',
+        title:
+            'Weekend Watcher',
         description:
-            'Watch 25 movies',
+            'Watch 8 movies',
         icon:
             Icons.movie_rounded,
         current:
             moviesWatched,
-        target: 25,
+        target:
+            8,
         rarity:
             _AchievementRarity
                 .uncommon,
       ),
 
       _Achievement(
-        id: 'movies_50',
-        title: 'Film Buff',
+        id:
+            'movies_16',
+        title:
+            'Film Explorer',
         description:
-            'Watch 50 movies',
+            'Watch 16 movies',
         icon:
-            Icons.movie_rounded,
+            Icons.local_movies_rounded,
         current:
             moviesWatched,
-        target: 50,
+        target:
+            16,
+        rarity:
+            _AchievementRarity
+                .uncommon,
+      ),
+
+      _Achievement(
+        id:
+            'movies_32',
+        title:
+            'Film Collector',
+        description:
+            'Watch 32 movies',
+        icon:
+            Icons.video_library_rounded,
+        current:
+            moviesWatched,
+        target:
+            32,
         rarity:
             _AchievementRarity
                 .rare,
       ),
 
       _Achievement(
-        id: 'movies_100',
-        title: 'Cinephile',
+        id:
+            'movies_64',
+        title:
+            'Film Buff',
         description:
-            'Watch 100 movies',
+            'Watch 64 movies',
         icon:
-            Icons.movie_rounded,
+            Icons.theaters_rounded,
         current:
             moviesWatched,
-        target: 100,
+        target:
+            64,
+        rarity:
+            _AchievementRarity
+                .rare,
+      ),
+
+      _Achievement(
+        id:
+            'movies_128',
+        title:
+            'Cinephile',
+        description:
+            'Watch 128 movies',
+        icon:
+            Icons.auto_awesome_rounded,
+        current:
+            moviesWatched,
+        target:
+            128,
         rarity:
             _AchievementRarity
                 .epic,
       ),
 
       _Achievement(
-        id: 'movies_500',
-        title: 'Screen Legend',
+        id:
+            'movies_512',
+        title:
+            'Cinema Master',
         description:
-            'Watch 500 movies',
+            'Watch 512 movies',
         icon:
-            Icons.movie_rounded,
+            Icons.workspace_premium_rounded,
         current:
             moviesWatched,
-        target: 500,
+        target:
+            512,
+        rarity:
+            _AchievementRarity
+                .legendary,
+      ),
+
+      _Achievement(
+        id:
+            'movies_1024',
+        title:
+            'Screen Legend',
+        description:
+            'Watch 1024 movies',
+        icon:
+            Icons.diamond_rounded,
+        current:
+            moviesWatched,
+        target:
+            1024,
         rarity:
             _AchievementRarity
                 .legendary,
@@ -4725,6 +4802,120 @@ final ScrollController
       final Map<String, String>
     _sortModeByList = {};
 
+    static const String
+    _watchingRecencyKey =
+    'chiplux_watching_recency_v1';
+
+final Map<int, int>
+    _watchingRecency = {};
+
+Future<void>
+    _loadWatchingRecency()
+    async {
+  try {
+    final prefs =
+        await SharedPreferences
+            .getInstance();
+
+    final raw =
+        prefs.getString(
+      _watchingRecencyKey,
+    );
+
+    if (raw == null ||
+        raw.isEmpty) {
+      return;
+    }
+
+    final decoded =
+        jsonDecode(raw);
+
+    if (decoded is! Map) {
+      return;
+    }
+
+    final loaded =
+        <int, int>{};
+
+    for (final entry
+        in decoded.entries) {
+      final showId =
+          int.tryParse(
+        entry.key.toString(),
+      );
+
+      final value =
+          entry.value;
+
+      if (showId == null ||
+          value is! num) {
+        continue;
+      }
+
+      loaded[showId] =
+          value.toInt();
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _watchingRecency
+        ..clear()
+        ..addAll(
+          loaded,
+        );
+    });
+  } catch (e) {
+    debugPrint(
+      'Could not load Watching recency: $e',
+    );
+  }
+}
+
+Future<void>
+    _markWatchingShowRecent(
+  int showId,
+) async {
+  final now =
+      DateTime.now()
+          .millisecondsSinceEpoch;
+
+  _watchingRecency[showId] =
+      now;
+
+  if (mounted) {
+    setState(() {});
+  }
+
+  try {
+    final prefs =
+        await SharedPreferences
+            .getInstance();
+
+    final data =
+        <String, int>{};
+
+    for (final entry
+        in _watchingRecency
+            .entries) {
+      data[
+          entry.key.toString()] =
+          entry.value;
+    }
+
+    await prefs.setString(
+      _watchingRecencyKey,
+      jsonEncode(data),
+    );
+  } catch (e) {
+    debugPrint(
+      'Could not save Watching recency: $e',
+    );
+  }
+}
+
 String get _currentSortKey {
   final usesMediaType =
       filter == 'favorites' ||
@@ -5054,6 +5245,10 @@ Widget _buildSortButton() {
 @override
 void initState() {
   super.initState();
+
+  unawaited(
+    _loadWatchingRecency(),
+  );
 
   filter =
       widget.initialFilter;
@@ -5522,6 +5717,24 @@ if (showMediaTypeSelector) {
             )
             .toList();
 
+            tvItems.sort(
+  (a, b) {
+    final aTime =
+        _watchingRecency[
+                a.id] ??
+            a.addedAt;
+
+    final bTime =
+        _watchingRecency[
+                b.id] ??
+            b.addedAt;
+
+    return bTime.compareTo(
+      aTime,
+    );
+  },
+);
+
     final movieItems =
         items
             .where(
@@ -5549,12 +5762,19 @@ if (showMediaTypeSelector) {
               bottom: 12,
             ),
             child:
-                _WatchingTvCard(
-              key: ValueKey(
-  'watching-${item.id}',
+    _WatchingTvCard(
+  key: ValueKey(
+    'watching-${item.id}',
+  ),
+  item: item,
+  onMarkedWatched: () {
+    unawaited(
+      _markWatchingShowRecent(
+        item.id,
+      ),
+    );
+  },
 ),
-              item: item,
-            ),
           ),
         ),
 
@@ -6114,10 +6334,14 @@ class _WatchingTvCard
     extends StatefulWidget {
   final LibraryItem item;
 
+  final VoidCallback?
+      onMarkedWatched;
+
   const _WatchingTvCard({
-  super.key,
-  required this.item,
-});
+    super.key,
+    required this.item,
+    this.onMarkedWatched,
+  });
 
   @override
   State<_WatchingTvCard> createState() =>
@@ -6141,8 +6365,10 @@ static Future<void>? _cacheLoadFuture;
 
   bool loading = true;
 
-  int? seasonNumber;
-  int? episodeNumber;
+double _swipeProgress = 0.0;
+
+int? seasonNumber;
+int? episodeNumber;
 
   String episodeName = '';
   int? runtime;
@@ -6689,7 +6915,24 @@ unawaited(
   forceRefresh: true,
 );
 
-    return false;
+final onMarkedWatched =
+    widget.onMarkedWatched;
+
+// Let the Dismissible finish returning
+// to its normal position first, then
+// move the show to the top.
+unawaited(
+  Future<void>.delayed(
+    const Duration(
+      milliseconds: 220,
+    ),
+    () {
+      onMarkedWatched?.call();
+    },
+  ),
+);
+
+return false;
   }
 
   @override
@@ -6726,61 +6969,181 @@ unawaited(
             : '';
 
     return Dismissible(
-      key: ValueKey(
-        'watching-${widget.item.id}',
-      ),
-      direction:
-          DismissDirection.startToEnd,
+  key: ValueKey(
+    'watching-${widget.item.id}',
+  ),
 
-      confirmDismiss: (_) =>
-          _markWatched(),
+  direction:
+      DismissDirection.startToEnd,
+
+  // Only about 22% of the card needs
+  // to be swiped before it triggers.
+  dismissThresholds: const {
+    DismissDirection.startToEnd:
+        0.22,
+  },
+
+  // Faster snap / return animation.
+  movementDuration:
+      const Duration(
+    milliseconds: 140,
+  ),
+
+  onUpdate: (details) {
+    setState(() {
+      _swipeProgress =
+          details.progress
+              .clamp(
+                0.0,
+                1.0,
+              )
+              .toDouble();
+    });
+  },
+
+  confirmDismiss: (_) =>
+      _markWatched(),
 
       background: Container(
-        alignment: Alignment.centerLeft,
-        padding:
-            const EdgeInsets.symmetric(
-          horizontal: 26,
+  padding:
+      const EdgeInsets.all(
+    1.2,
+  ),
+
+  decoration:
+      BoxDecoration(
+    borderRadius:
+        BorderRadius.circular(
+      18,
+    ),
+
+    // Chiplux gradient FRAME only.
+    gradient:
+        const LinearGradient(
+      begin:
+          Alignment.centerLeft,
+      end:
+          Alignment.centerRight,
+      colors: [
+        chipluxCyan,
+        chipluxViolet,
+        chipluxPurple,
+      ],
+    ),
+
+    boxShadow: [
+      BoxShadow(
+        color:
+            chipluxViolet
+                .withValues(
+          alpha:
+              0.04 +
+              (_swipeProgress *
+                  0.12),
         ),
-        decoration: BoxDecoration(
-          borderRadius:
-              BorderRadius.circular(18),
-          gradient:
-              const LinearGradient(
-            colors: [
-              Color(0xFF27CFFF),
-              Color(0xFF675CFF),
-              Color(0xFFD65CFF),
-            ],
-          ),
+        blurRadius:
+            8 +
+            (_swipeProgress *
+                10),
+      ),
+    ],
+  ),
+
+  child: Container(
+    alignment:
+        Alignment.centerLeft,
+
+    padding:
+        const EdgeInsets.symmetric(
+      horizontal: 22,
+    ),
+
+    decoration:
+        BoxDecoration(
+      borderRadius:
+          BorderRadius.circular(
+        17,
+      ),
+
+      // Dark / restrained swipe area.
+      color:
+          Color.alphaBlend(
+        chipluxViolet.withValues(
+          alpha:
+              0.025 +
+              (_swipeProgress *
+                  0.035),
         ),
-        child: const Row(
+        chipluxBackground,
+      ),
+    ),
+
+    child: Transform.scale(
+      alignment:
+          Alignment.centerLeft,
+
+      scale:
+          0.86 +
+          (_swipeProgress *
+              0.14),
+
+      child: Opacity(
+        opacity:
+            0.55 +
+            (_swipeProgress *
+                0.45),
+
+        child: Row(
           mainAxisSize:
               MainAxisSize.min,
           children: [
-            CircleAvatar(
-              radius: 23,
-              backgroundColor:
-                  Colors.white,
-              child: Icon(
-                Icons.check,
+            ShaderMask(
+              shaderCallback:
+                  (bounds) {
+                return const LinearGradient(
+                  begin:
+                      Alignment.topLeft,
+                  end:
+                      Alignment.bottomRight,
+                  colors: [
+                    chipluxCyan,
+                    chipluxViolet,
+                    chipluxPurple,
+                  ],
+                ).createShader(
+                  bounds,
+                );
+              },
+
+              child:
+                  const Icon(
+                Icons
+                    .check_circle_outline_rounded,
                 color:
-                    Color(0xFF675CFF),
-                size: 28,
+                    Colors.white,
+                size: 27,
               ),
             ),
-            SizedBox(width: 13),
-            Text(
-              'Mark watched',
-              style: TextStyle(
+
+            const SizedBox(
+              width: 11,
+            ),
+
+            const GradientText(
+              'Mark as watched',
+              style:
+                  TextStyle(
+                fontSize: 15,
                 fontWeight:
-                    FontWeight.bold,
-                fontSize: 17,
-                color: Colors.white,
+                    FontWeight.w700,
               ),
             ),
           ],
         ),
       ),
+    ),
+  ),
+),
 
       child: InkWell(
         borderRadius:
@@ -9753,13 +10116,12 @@ class _AchievementMedalState
     );
 
     if (widget.achievement
-            .unlocked &&
-        widget.achievement
-                .rarity ==
-            _AchievementRarity
-                .legendary) {
-      _controller.repeat();
-    }
+        .unlocked &&
+    widget.achievement
+            .target >=
+        512) {
+  _controller.repeat();
+}
   }
 
   @override
@@ -9772,12 +10134,11 @@ class _AchievementMedalState
     );
 
     final shouldAnimate =
+    widget.achievement
+            .unlocked &&
         widget.achievement
-                .unlocked &&
-            widget.achievement
-                    .rarity ==
-                _AchievementRarity
-                    .legendary;
+                .target >=
+            512;
 
     if (shouldAnimate &&
         !_controller.isAnimating) {
@@ -9796,70 +10157,105 @@ class _AchievementMedalState
   }
 
   List<Color> _colors() {
-    if (!widget.achievement
-        .unlocked) {
-      return [
-        Colors.white24,
-        Colors.white12,
-      ];
-    }
-
-    switch (
-        widget.achievement.rarity) {
-      case _AchievementRarity
-            .common:
-        return [
-          Colors.white,
-          Colors.white54,
-        ];
-
-      case _AchievementRarity
-            .uncommon:
-        return const [
-          chipluxCyan,
-          chipluxViolet,
-        ];
-
-      case _AchievementRarity
-            .rare:
-        return const [
-          Color(
-            0xFFFFE49A,
-          ),
-          Color(
-            0xFFFFC857,
-          ),
-          Color(
-            0xFFFF8A4C,
-          ),
-        ];
-
-      case _AchievementRarity
-            .epic:
-        return const [
-          Color(
-            0xFFFF8A4C,
-          ),
-          Color(
-            0xFFFF5C72,
-          ),
-          chipluxPurple,
-        ];
-
-      case _AchievementRarity
-            .legendary:
-        return const [
-          chipluxCyan,
-          Colors.white,
-          chipluxViolet,
-          chipluxPurple,
-          Color(
-            0xFFFFC857,
-          ),
-          chipluxCyan,
-        ];
-    }
+  if (!widget.achievement
+      .unlocked) {
+    return [
+      Colors.white24,
+      Colors.white12,
+    ];
   }
+
+  switch (
+      widget.achievement.target) {
+    case 2:
+      return const [
+        Colors.white,
+        Color(
+          0xFFBFC9D4,
+        ),
+      ];
+
+    case 8:
+      return const [
+        Color(
+          0xFF43E8FF,
+        ),
+        Color(
+          0xFF64BFFF,
+        ),
+      ];
+
+    case 16:
+      return const [
+        chipluxCyan,
+        chipluxViolet,
+      ];
+
+    case 32:
+      return const [
+        Color(
+          0xFFFFF1A8,
+        ),
+        Color(
+          0xFFFFC857,
+        ),
+      ];
+
+    case 64:
+      return const [
+        Color(
+          0xFFFFC857,
+        ),
+        Color(
+          0xFFFF8A4C,
+        ),
+        Color(
+          0xFFFF5C72,
+        ),
+      ];
+
+    case 128:
+      return const [
+        Color(
+          0xFFFF5C72,
+        ),
+        chipluxPurple,
+        chipluxViolet,
+      ];
+
+    case 512:
+      return const [
+        chipluxCyan,
+        chipluxViolet,
+        chipluxPurple,
+        Color(
+          0xFFFFC857,
+        ),
+        chipluxCyan,
+      ];
+
+    case 1024:
+      return const [
+        chipluxCyan,
+        Colors.white,
+        chipluxViolet,
+        chipluxPurple,
+        Color(
+          0xFFFF5C72,
+        ),
+        Color(
+          0xFFFFC857,
+        ),
+        chipluxCyan,
+      ];
+
+    default:
+      return const [
+        chipluxCyan,
+        chipluxViolet,
+      ];
+  }
+}
 
   @override
   Widget build(
@@ -9876,117 +10272,119 @@ class _AchievementMedalState
         context,
         _,
       ) {
-        final rotation =
-            widget.achievement
-                        .rarity ==
-                    _AchievementRarity
-                        .legendary
-                ? _controller.value *
-                    math.pi *
-                    2
-                : 0.0;
+        final bool rotating =
+    widget.achievement
+            .target >=
+        512;
 
-        return Container(
-          width: 62,
-          height: 62,
-          padding:
-              const EdgeInsets.all(
-            2,
-          ),
-          decoration:
-              BoxDecoration(
-            shape:
-                BoxShape.circle,
-            gradient:
-                LinearGradient(
-              transform:
-                  GradientRotation(
-                rotation,
-              ),
-              colors:
-                  _colors(),
+final bool finalTier =
+    widget.achievement
+            .target >=
+        1024;
+
+final rotation =
+    rotating
+        ? _controller.value *
+            math.pi *
+            2
+        : 0.0;
+
+final pulse =
+    finalTier
+        ? 1.0 +
+            math.sin(
+                  _controller.value *
+                      math.pi *
+                      2,
+                ) *
+                0.045
+        : 1.0;
+
+return Transform.scale(
+  scale: pulse,
+  child: Container(
+    width: 62,
+    height: 62,
+    padding: const EdgeInsets.all(
+      2,
+    ),
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      gradient: LinearGradient(
+        transform: GradientRotation(
+          rotation,
+        ),
+        colors: _colors(),
+      ),
+      boxShadow: [
+        if (unlocked)
+          BoxShadow(
+            color: _achievementAccent(
+              widget
+                  .achievement
+                  .rarity,
+            ).withValues(
+              alpha: 0.18,
             ),
-            boxShadow: [
-              if (unlocked)
-                BoxShadow(
+            blurRadius: 10,
+          ),
+      ],
+    ),
+    child: Container(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: unlocked
+            ? chipluxSurfaceLight
+            : const Color(
+                0xFF18202A,
+              ),
+        border: Border.all(
+          color: Colors.black
+              .withValues(
+            alpha: 0.25,
+          ),
+        ),
+      ),
+      child: Center(
+        child: unlocked
+            ? ShaderMask(
+                shaderCallback:
+                    (bounds) {
+                  return LinearGradient(
+                    transform:
+                        GradientRotation(
+                      rotation,
+                    ),
+                    colors:
+                        _colors(),
+                  ).createShader(
+                    bounds,
+                  );
+                },
+                child: Icon(
+                  widget
+                      .achievement
+                      .icon,
                   color:
-                      _achievementAccent(
-                    widget
-                        .achievement
-                        .rarity,
-                  ).withValues(
-                    alpha: 0.18,
-                  ),
-                  blurRadius:
-                      10,
+                      Colors.white,
+                  size: 31,
                 ),
-            ],
-          ),
-          child: Container(
-            decoration:
-                BoxDecoration(
-              shape:
-                  BoxShape.circle,
-              color:
-                  unlocked
-                      ? chipluxSurfaceLight
-                      : const Color(
-                          0xFF18202A,
-                        ),
-              border:
-                  Border.all(
+              )
+            : Icon(
+                widget
+                    .achievement
+                    .icon,
                 color:
-                    Colors.black
-                        .withValues(
-                  alpha: 0.25,
-                ),
+                    Colors.white24,
+                size: 31,
               ),
-            ),
-            child: Center(
-              child:
-                  unlocked
-                      ? ShaderMask(
-                          shaderCallback:
-                              (
-                            bounds,
-                          ) {
-                            return LinearGradient(
-                              transform:
-                                  GradientRotation(
-                                rotation,
-                              ),
-                              colors:
-                                  _colors(),
-                            ).createShader(
-                              bounds,
-                            );
-                          },
-                          child:
-                              Icon(
-                            widget
-                                .achievement
-                                .icon,
-                            color:
-                                Colors.white,
-                            size:
-                                31,
-                          ),
-                        )
-                      : Icon(
-                          widget
-                              .achievement
-                              .icon,
-                          color:
-                              Colors.white24,
-                          size:
-                              31,
-                        ),
-            ),
-          ),
-        );
-      },
-    );
-  }
+      ),
+    ),
+  ),
+); // Transform.scale
+}, // builder
+); // AnimatedBuilder
+}
 }
 
 class MedalPinService

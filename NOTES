@@ -1,0 +1,10 @@
+#Za povlačenje projekta
+git pull
+
+#Za guranje projekta
+git add .
+git commit -m "Describe your changes"
+git push
+
+#RUN
+flutter run --dart-define-from-file=config.json
