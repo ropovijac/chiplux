@@ -417,6 +417,33 @@ Widget build(
     achievement,
   );
 
+  final screenSize =
+    MediaQuery.sizeOf(
+  context,
+);
+
+final textScale =
+    MediaQuery.textScalerOf(
+  context,
+).scale(1.0);
+
+final dialogWidth =
+    math.min(
+  340.0,
+  screenSize.width - 40,
+);
+
+final extraHeight =
+    ((textScale - 1.0)
+            .clamp(
+      0.0,
+      0.5,
+    )) *
+        140;
+
+final dialogHeight =
+    470.0 + extraHeight;
+
   return Material(
     color:
         Colors.transparent,
@@ -432,8 +459,8 @@ Widget build(
           ),
 
           child: SizedBox(
-            width: 340,
-            height: 470,
+  width: dialogWidth,
+  height: dialogHeight,
 
             child: Stack(
               alignment:
@@ -1748,9 +1775,20 @@ Container(
                             ? Colors.white
                             : Colors.white38,
                       ),
-                      child: const Text(
-                        'Sign In',
-                      ),
+                      child: const Padding(
+  padding:
+      EdgeInsets.symmetric(
+    horizontal: 8,
+  ),
+  child: FittedBox(
+    fit:
+        BoxFit.scaleDown,
+    child: Text(
+      'Sign In',
+      maxLines: 1,
+    ),
+  ),
+),
                     ),
                   ),
                 ),
@@ -1783,9 +1821,20 @@ Container(
                             ? Colors.white
                             : Colors.white38,
                       ),
-                      child: const Text(
-                        'Create Account',
-                      ),
+                      child: const Padding(
+  padding:
+      EdgeInsets.symmetric(
+    horizontal: 8,
+  ),
+  child: FittedBox(
+    fit:
+        BoxFit.scaleDown,
+    child: Text(
+      'Create Account',
+      maxLines: 1,
+    ),
+  ),
+),
                     ),
                   ),
                 ),
@@ -8544,6 +8593,22 @@ if (showMediaTypeSelector) {
                     constraints) {
               int columns = 2;
 
+              final textScale =
+    MediaQuery.textScalerOf(
+  context,
+).scale(1.0);
+
+final scaleExtra =
+    (textScale - 1.0)
+        .clamp(
+  0.0,
+  0.5,
+);
+
+final cardAspectRatio =
+    0.58 -
+        (scaleExtra * 0.08);
+
               if (constraints
                       .maxWidth >
                   900) {
@@ -8572,7 +8637,7 @@ if (showMediaTypeSelector) {
                   mainAxisSpacing:
                       18,
                   childAspectRatio:
-                      0.58,
+    cardAspectRatio,
                 ),
                 itemCount:
                     movieItems
@@ -11507,41 +11572,66 @@ class _BannerPickerSheet
                             ),
                           ),
                         )
-                      : GridView.builder(
-                          padding:
-                              const EdgeInsets
-                                  .fromLTRB(
-                            20,
-                            0,
-                            20,
-                            24,
-                          ),
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount:
-                                2,
-                            crossAxisSpacing:
-                                12,
-                            mainAxisSpacing:
-                                12,
-                            childAspectRatio:
-                                1.65,
-                          ),
-                          itemCount:
-                              completed
-                                  .length,
-                          itemBuilder:
-                              (
-                            context,
-                            index,
-                          ) {
-                            return _BannerOptionTile(
-                              item:
-                                  completed[
-                                      index],
-                            );
-                          },
-                        ),
+                      : LayoutBuilder(
+    builder:
+        (
+      context,
+      constraints,
+    ) {
+      final int columns;
+
+      if (constraints.maxWidth <
+          360) {
+        columns = 1;
+      } else if (
+          constraints.maxWidth >=
+              750) {
+        columns = 3;
+      } else {
+        columns = 2;
+      }
+
+      return GridView.builder(
+        padding:
+            const EdgeInsets
+                .fromLTRB(
+          20,
+          0,
+          20,
+          24,
+        ),
+
+        gridDelegate:
+            SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount:
+              columns,
+
+          crossAxisSpacing:
+              12,
+
+          mainAxisSpacing:
+              12,
+
+          childAspectRatio:
+              1.65,
+        ),
+
+        itemCount:
+            completed.length,
+
+        itemBuilder:
+            (
+          context,
+          index,
+        ) {
+          return _BannerOptionTile(
+            item:
+                completed[index],
+          );
+        },
+      );
+    },
+  ),
             ),
           ],
         ),
@@ -12580,12 +12670,18 @@ class AchievementsPage
                     context,
                     constraints,
                   ) {
-                    final int columns =
-                        constraints
-                                    .maxWidth >=
-                                520
-                            ? 4
-                            : 3;
+                    final int columns;
+
+if (constraints.maxWidth <
+    360) {
+  columns = 2;
+} else if (
+    constraints.maxWidth <
+        520) {
+  columns = 3;
+} else {
+  columns = 4;
+}
 
                     return GridView.builder(
                       shrinkWrap: true,
@@ -12608,9 +12704,11 @@ class AchievementsPage
                             13,
 
                         childAspectRatio:
-                            columns == 3
-                                ? 0.72
-                                : 0.80,
+    columns == 2
+        ? 0.82
+        : columns == 3
+            ? 0.72
+            : 0.80,
                       ),
 
                       itemBuilder: (
@@ -20473,12 +20571,14 @@ class FullCastPage
       );
     },
     child: Container(
-      height: 92,
-              padding:
-                  const EdgeInsets
-                      .all(
-                8,
-              ),
+  constraints:
+      const BoxConstraints(
+    minHeight: 92,
+  ),
+  padding:
+      const EdgeInsets.all(
+    8,
+  ),
               decoration:
                   BoxDecoration(
                 color:
@@ -20532,10 +20632,11 @@ class FullCastPage
                   ),
 
                   Expanded(
-                    child: Column(
-                      mainAxisAlignment:
-                          MainAxisAlignment
-                              .center,
+  child: Column(
+    mainAxisSize:
+        MainAxisSize.min,
+    mainAxisAlignment:
+        MainAxisAlignment.center,
                       crossAxisAlignment:
                           CrossAxisAlignment
                               .start,
@@ -20699,10 +20800,13 @@ class _CreatorChip
             ],
           ),
           child: Container(
-            height: 68,
-            padding:
-                const EdgeInsets
-                    .symmetric(
+  constraints:
+      const BoxConstraints(
+    minHeight: 68,
+  ),
+  padding:
+      const EdgeInsets
+          .symmetric(
               horizontal: 10,
               vertical: 8,
             ),
@@ -20827,9 +20931,10 @@ class _CreatorChip
 
                 Expanded(
                   child: Column(
-                    mainAxisAlignment:
-                        MainAxisAlignment
-                            .center,
+  mainAxisSize:
+      MainAxisSize.min,
+  mainAxisAlignment:
+      MainAxisAlignment.center,
                     crossAxisAlignment:
                         CrossAxisAlignment
                             .start,
