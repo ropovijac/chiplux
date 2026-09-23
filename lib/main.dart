@@ -4113,34 +4113,41 @@ class _BottomNavItem
               height: 5,
             ),
 
-            if (selected)
-  GradientText(
-    label,
-    style:
-        TextStyle(
-      fontSize:
-          label == 'Community'
-              ? 11.5
-              : 13,
-      fontWeight:
-          FontWeight.w700,
+            SizedBox(
+  height: 18,
+  width: double.infinity,
+  child: Padding(
+    padding:
+        const EdgeInsets.symmetric(
+      horizontal: 4,
     ),
-  )
-else
-  Text(
-    label,
-    style:
-        TextStyle(
-      color:
-          Colors.white70,
-      fontSize:
-          label == 'Community'
-              ? 11.5
-              : 13,
-      fontWeight:
-          FontWeight.w500,
+    child: FittedBox(
+      fit: BoxFit.scaleDown,
+      child: selected
+          ? GradientText(
+              label,
+              style:
+                  const TextStyle(
+                fontSize: 13,
+                fontWeight:
+                    FontWeight.w700,
+              ),
+            )
+          : Text(
+              label,
+              maxLines: 1,
+              style:
+                  const TextStyle(
+                color:
+                    Colors.white70,
+                fontSize: 13,
+                fontWeight:
+                    FontWeight.w500,
+              ),
+            ),
     ),
   ),
+),
           ],
         ),
       ),
@@ -6925,11 +6932,25 @@ class _TrendingRow
   });
 
   @override
-  Widget build(
-    BuildContext context,
-  ) {
-    return SizedBox(
-      height: 260,
+Widget build(
+  BuildContext context,
+) {
+  final textScale =
+      MediaQuery.textScalerOf(
+    context,
+  ).scale(1.0);
+
+  final extraHeight =
+      ((textScale - 1.0)
+                  .clamp(
+            0.0,
+            0.5,
+          )) *
+          32;
+
+  return SizedBox(
+    height:
+        266 + extraHeight,
       child: ListView.separated(
         padding:
             const EdgeInsets.symmetric(
@@ -14442,22 +14463,24 @@ class _ProfilePageState
                       ),
 
                       SizedBox(
-                        width: 58,
-                        child: Text(
-                          '${percentage.toStringAsFixed(1)}%',
-                          textAlign:
-                              TextAlign
-                                  .right,
-                          style:
-                              const TextStyle(
-                            fontSize:
-                                13,
-                            fontWeight:
-                                FontWeight
-                                    .bold,
-                          ),
-                        ),
-                      ),
+  width: 64,
+  height: 20,
+  child: FittedBox(
+    fit: BoxFit.scaleDown,
+    alignment:
+        Alignment.centerRight,
+    child: Text(
+      '${percentage.toStringAsFixed(1)}%',
+      maxLines: 1,
+      style:
+          const TextStyle(
+        fontSize: 13,
+        fontWeight:
+            FontWeight.bold,
+      ),
+    ),
+  ),
+),
                     ],
                   ),
                 );
@@ -16404,9 +16427,12 @@ class _WatchStatCard
         borderRadius:
             BorderRadius.circular(18),
         child: Container(
-          height: 100,
-          padding:
-              const EdgeInsets.all(14),
+  constraints:
+      const BoxConstraints(
+    minHeight: 100,
+  ),
+  padding:
+      const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: chipluxSurface,
             borderRadius:
@@ -16419,9 +16445,13 @@ class _WatchStatCard
             ),
           ),
           child: Column(
-            crossAxisAlignment:
-                CrossAxisAlignment.start,
-            children: [
+  mainAxisSize:
+      MainAxisSize.min,
+  mainAxisAlignment:
+      MainAxisAlignment.spaceBetween,
+  crossAxisAlignment:
+      CrossAxisAlignment.start,
+  children: [
               Row(
                 children: [
                   ShaderMask(
@@ -16443,7 +16473,9 @@ class _WatchStatCard
                     ),
                   ),
 
-                  const Spacer(),
+                  const SizedBox(
+  height: 14,
+),
 
                   Text(
                     '$value',
@@ -16457,11 +16489,16 @@ class _WatchStatCard
                 ],
               ),
 
-              const Spacer(),
+              const SizedBox(
+  height: 14,
+),
 
               Text(
-                label,
-                style:
+  label,
+  maxLines: 2,
+  overflow:
+      TextOverflow.ellipsis,
+  style:
                     const TextStyle(
                   color: Colors.white60,
                   fontSize: 12,
@@ -19511,9 +19548,26 @@ if (cast.isNotEmpty) ...[
     height: 14,
   ),
 
-  SizedBox(
-    height: 205,
-    child: ListView.separated(
+  Builder(
+  builder: (context) {
+    final textScale =
+        MediaQuery.textScalerOf(
+      context,
+    ).scale(1.0);
+
+    final extraHeight =
+        ((textScale - 1.0)
+                    .clamp(
+              0.0,
+              0.5,
+            )) *
+            30;
+
+    return SizedBox(
+      height:
+          212 + extraHeight,
+      child:
+          ListView.separated(
       scrollDirection:
           Axis.horizontal,
       physics:
@@ -19563,8 +19617,10 @@ if (cast.isNotEmpty) ...[
               cast[index],
         );
       },
-    ),
-  ),
+          ),
+    );
+  },
+),
 ],
 
                   if (widget.mediaType ==
