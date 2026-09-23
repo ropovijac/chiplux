@@ -8634,7 +8634,7 @@ if (showMediaTypeSelector) {
 }
 
 
-  static const double _filterTabWidth = 128;
+  static const double _filterTabWidth = 140;
 static const double _filterTabHeight = 46;
 static const double _filterGap = 4;
 
@@ -8892,11 +8892,17 @@ Widget _buildAnimatedFilterBar() {
   );
 },
                       child: Center(
-                        child: Row(
-                          mainAxisSize:
-                              MainAxisSize
-                                  .min,
-                          children: [
+  child: Padding(
+    padding:
+        const EdgeInsets.symmetric(
+      horizontal: 6,
+    ),
+    child: FittedBox(
+    fit: BoxFit.scaleDown,
+    child: Row(
+      mainAxisSize:
+          MainAxisSize.min,
+      children: [
                             Icon(
                               _filterIcon(
                                 filters[
@@ -8948,9 +8954,11 @@ Widget _buildAnimatedFilterBar() {
                                             .white70,
                               ),
                             ),
-                          ],
-                        ),
-                      ),
+                                ],
+      ),
+    ),
+  ),
+),
                     ),
                   ),
 
@@ -9964,9 +9972,12 @@ return false;
 },
 
         child: Container(
-          height: 138,
-          padding:
-              const EdgeInsets.all(8),
+  constraints:
+      const BoxConstraints(
+    minHeight: 138,
+  ),
+  padding:
+      const EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: chipluxSurface,
             borderRadius:
@@ -10021,14 +10032,12 @@ return false;
                         width: 10),
 
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment:
-                            CrossAxisAlignment
-                                .start,
-                        mainAxisAlignment:
-                            MainAxisAlignment
-                                .center,
-                        children: [
+  child: Column(
+    mainAxisSize:
+        MainAxisSize.min,
+    crossAxisAlignment:
+        CrossAxisAlignment.start,
+    children: [
                           Row(
                             children: [
                               Expanded(
@@ -10140,7 +10149,9 @@ return false;
                             ],
                           ),
 
-                          const Spacer(),
+                          const SizedBox(
+  height: 10,
+),
 
                           Row(
                             children: [
@@ -10172,12 +10183,25 @@ return false;
                               const SizedBox(
                                   width: 12),
 
-                              Text(
-  '$completionPercent%',
-  style: const TextStyle(
-    fontSize: 15,
-    fontWeight: FontWeight.bold,
-    color: Colors.white,
+                              SizedBox(
+  width: 46,
+  height: 22,
+  child: FittedBox(
+    fit: BoxFit.scaleDown,
+    alignment:
+        Alignment.centerRight,
+    child: Text(
+      '$completionPercent%',
+      maxLines: 1,
+      style:
+          const TextStyle(
+        fontSize: 15,
+        fontWeight:
+            FontWeight.bold,
+        color:
+            Colors.white,
+      ),
+    ),
   ),
 ),
                             ],
@@ -10586,12 +10610,14 @@ class _LibraryListCard
                   );
                 },
                 child: Container(
-                  height: 96,
-                  padding:
-                      const EdgeInsets
-                          .all(
-                    8,
-                  ),
+  constraints:
+      const BoxConstraints(
+    minHeight: 96,
+  ),
+  padding:
+      const EdgeInsets.all(
+    8,
+  ),
                   decoration:
                       BoxDecoration(
                     color:
@@ -10652,14 +10678,12 @@ class _LibraryListCard
                       // =========================
 
                       Expanded(
-                        child: Column(
-                          mainAxisAlignment:
-                              MainAxisAlignment
-                                  .center,
-                          crossAxisAlignment:
-                              CrossAxisAlignment
-                                  .start,
-                          children: [
+  child: Column(
+    mainAxisSize:
+        MainAxisSize.min,
+    crossAxisAlignment:
+        CrossAxisAlignment.start,
+    children: [
                             Text(
                               item.title,
                               maxLines:
@@ -10709,8 +10733,13 @@ class _LibraryListCard
                               height: 7,
                             ),
 
-                            Row(
-                              children: [
+                            Wrap(
+  spacing: 8,
+  runSpacing: 6,
+  crossAxisAlignment:
+      WrapCrossAlignment.center,
+  children: [
+    // STATUS
                                 // =================
                                 // STATUS
                                 // =================
@@ -10760,9 +10789,6 @@ class _LibraryListCard
                                 ),
 
                                 if (showRatingInfo) ...[
-  const SizedBox(
-    width: 8,
-  ),
 
   // =========================
   // RATED / NOT RATED
@@ -14049,36 +14075,33 @@ class _ProfilePageState
                         ),
 
                         SizedBox(
-                          width: 62,
-                          child: Text(
-                            '${stat.percentage.toStringAsFixed(1)}%',
-                            textAlign:
-                                TextAlign
-                                    .right,
-                            maxLines:
-                                1,
-                            softWrap:
-                                false,
-                            style:
-                                const TextStyle(
-                              fontSize:
-                                  15,
-                              fontWeight:
-                                  FontWeight
-                                      .bold,
-                              color:
-                                  Colors
-                                      .white,
-                            ),
-                          ),
-                        ),
+  width: 72,
+  height: 22,
+  child: FittedBox(
+    fit: BoxFit.scaleDown,
+    alignment:
+        Alignment.centerRight,
+    child: Text(
+      '${stat.percentage.toStringAsFixed(1)}%',
+      maxLines: 1,
+      style:
+          const TextStyle(
+        fontSize: 15,
+        fontWeight:
+            FontWeight.bold,
+        color:
+            Colors.white,
+      ),
+    ),
+  ),
+),
 
                         const SizedBox(
                           width: 12,
                         ),
 
                         SizedBox(
-                          width: 72,
+                          width: 78,
                           child: Text(
                             formatRuntime(
                               stat.watchedMinutes,
@@ -16544,11 +16567,14 @@ class _RatingStatCard
           18,
         ),
         child: Container(
-          height: 100,
-          padding:
-              const EdgeInsets.all(
-            14,
-          ),
+  constraints:
+      const BoxConstraints(
+    minHeight: 100,
+  ),
+  padding:
+      const EdgeInsets.all(
+    14,
+  ),
           decoration:
               BoxDecoration(
             color:
@@ -16568,10 +16594,13 @@ class _RatingStatCard
             ),
           ),
           child: Column(
-            crossAxisAlignment:
-                CrossAxisAlignment
-                    .start,
-            children: [
+  mainAxisSize:
+      MainAxisSize.min,
+  mainAxisAlignment:
+      MainAxisAlignment.spaceBetween,
+  crossAxisAlignment:
+      CrossAxisAlignment.start,
+  children: [
               Row(
                 children: [
                   ShaderMask(
@@ -16599,7 +16628,9 @@ class _RatingStatCard
                     ),
                   ),
 
-                  const Spacer(),
+                  const SizedBox(
+  height: 14,
+),
 
                   Text(
                     '$value',
@@ -16613,11 +16644,16 @@ class _RatingStatCard
                 ],
               ),
 
-              const Spacer(),
+              const SizedBox(
+  height: 14,
+),
 
               Text(
-                label,
-                style:
+  label,
+  maxLines: 2,
+  overflow:
+      TextOverflow.ellipsis,
+  style:
                     const TextStyle(
                   color:
                       Colors.white60,
@@ -21603,7 +21639,9 @@ class _EpisodeTile
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(
+    BuildContext context,
+  ) {
     final library =
         LibraryService.instance;
 
@@ -21636,13 +21674,12 @@ class _EpisodeTile
                 14,
               ),
 
-              // OPEN EPISODE INFO
               onTap: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (_) =>
-    SwipeableEpisodePage(
+                        SwipeableEpisodePage(
                       showId:
                           showId,
                       seasonNumber:
@@ -21678,197 +21715,212 @@ class _EpisodeTile
                           0xFF173A29,
                         )
                       : chipluxSurfaceLight,
+
                   borderRadius:
-                      BorderRadius
-                          .circular(14),
+                      BorderRadius.circular(
+                    14,
+                  ),
+
                   border: watched
                       ? Border.all(
-                          color: const Color(
-  0xFF7BE8A8,
-).withValues(
-  alpha: .22,
-),
+                          color:
+                              const Color(
+                            0xFF7BE8A8,
+                          ).withValues(
+                            alpha: .22,
+                          ),
                         )
                       : null,
                 ),
+
                 child: Row(
                   children: [
                     ClipRRect(
                       borderRadius:
-                          BorderRadius
-                              .circular(10),
-                      child:
-                          stillUrl !=
-                                  null
-                              ? Image.network(
-                                  stillUrl,
-                                  width:
-                                      96,
-                                  height:
-                                      58,
-                                  fit: BoxFit
-                                      .cover,
-                                  errorBuilder:
-                                      (
-                                    context,
-                                    error,
-                                    stackTrace,
-                                  ) {
-                                    return _episodeFallback();
-                                  },
-                                )
-                              : _episodeFallback(),
+                          BorderRadius.circular(
+                        10,
+                      ),
+
+                      child: stillUrl !=
+                              null
+                          ? Image.network(
+                              stillUrl,
+                              width: 88,
+                              height: 58,
+                              fit:
+                                  BoxFit.cover,
+
+                              errorBuilder:
+                                  (
+                                context,
+                                error,
+                                stackTrace,
+                              ) {
+                                return _episodeFallback();
+                              },
+                            )
+                          : _episodeFallback(),
                     ),
 
                     const SizedBox(
-                        width: 10),
+                      width: 8,
+                    ),
 
                     Expanded(
                       child: Column(
+                        mainAxisSize:
+                            MainAxisSize.min,
+
                         crossAxisAlignment:
-                            CrossAxisAlignment
-                                .start,
-                        mainAxisAlignment:
-                            MainAxisAlignment
-                                .center,
+                            CrossAxisAlignment.start,
+
                         children: [
                           Text(
                             title,
                             maxLines: 2,
                             overflow:
-                                TextOverflow
-                                    .ellipsis,
+                                TextOverflow.ellipsis,
+
                             style:
                                 TextStyle(
                               fontSize: 15,
                               fontWeight:
-                                  FontWeight
-                                      .w600,
+                                  FontWeight.w600,
+
                               color: watched
-    ? const Color(
-        0xFF7BE8A8,
-      )
-    : Colors.white,
+                                  ? const Color(
+                                      0xFF7BE8A8,
+                                    )
+                                  : Colors.white,
                             ),
                           ),
 
                           const SizedBox(
-                              height: 7),
+                            height: 7,
+                          ),
 
-                          Row(
-                            children: [
-                              if (runtime !=
-                                  null) ...[
-                                const Icon(
-                                  Icons
-                                      .access_time_rounded,
-                                  size: 15,
-                                  color: Colors
-                                      .white54,
-                                ),
+                          FittedBox(
+                            fit:
+                                BoxFit.scaleDown,
 
-                                const SizedBox(
-                                    width:
-                                        4),
+                            alignment:
+                                Alignment.centerLeft,
 
-                                Text(
-                                  '${runtime}m',
-                                  style:
-                                      const TextStyle(
-                                    fontSize:
-                                        12,
-                                    color: Colors
-                                        .white54,
+                            child: Row(
+                              mainAxisSize:
+                                  MainAxisSize.min,
+
+                              children: [
+                                if (runtime !=
+                                    null) ...[
+                                  const Icon(
+                                    Icons
+                                        .access_time_rounded,
+                                    size: 15,
+                                    color:
+                                        Colors.white54,
                                   ),
-                                ),
-                              ],
 
-                              if (runtime !=
-                                      null &&
-                                  rating !=
-                                      null)
-                                const Padding(
-                                  padding:
-                                      EdgeInsets
-                                          .symmetric(
-                                    horizontal:
-                                        8,
+                                  const SizedBox(
+                                    width: 4,
                                   ),
-                                  child:
-                                      Text(
-                                    '•',
+
+                                  Text(
+                                    '${runtime}m',
                                     style:
-                                        TextStyle(
-                                      color: Colors
-                                          .white38,
+                                        const TextStyle(
+                                      fontSize: 12,
+                                      color:
+                                          Colors.white54,
                                     ),
                                   ),
-                                ),
+                                ],
 
-                              if (rating !=
-                                  null) ...[
-                                const Icon(
-                                  Icons.star,
-                                  size: 16,
-                                  color: Colors
-                                      .amber,
-                                ),
-
-                                const SizedBox(
-                                    width:
-                                        4),
-
-                                Text(
-                                  '${rating!.toStringAsFixed(1)}/10',
-                                  style:
-                                      const TextStyle(
-                                    fontSize:
-                                        12,
-                                    color: Colors
-                                        .white60,
+                                if (runtime !=
+                                        null &&
+                                    rating !=
+                                        null)
+                                  const Padding(
+                                    padding:
+                                        EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                    ),
+                                    child: Text(
+                                      '•',
+                                      style:
+                                          TextStyle(
+                                        color:
+                                            Colors.white38,
+                                      ),
+                                    ),
                                   ),
-                                ),
+
+                                if (rating !=
+                                    null) ...[
+                                  const Icon(
+                                    Icons.star,
+                                    size: 16,
+                                    color:
+                                        Colors.amber,
+                                  ),
+
+                                  const SizedBox(
+                                    width: 4,
+                                  ),
+
+                                  Text(
+                                    '${rating!.toStringAsFixed(1)}/10',
+                                    style:
+                                        const TextStyle(
+                                      fontSize: 12,
+                                      color:
+                                          Colors.white60,
+                                    ),
+                                  ),
+                                ],
                               ],
-                            ],
+                            ),
                           ),
                         ],
                       ),
                     ),
 
                     const SizedBox(
-                        width: 6),
+                      width: 4,
+                    ),
 
-                    // WATCHED CIRCLE
                     IconButton(
                       constraints:
                           const BoxConstraints(
-                        minWidth: 38,
+                        minWidth: 34,
                         minHeight: 38,
                       ),
+
                       padding:
                           EdgeInsets.zero,
+
                       onPressed: () {
-                        library
-                            .toggleEpisode(
+                        library.toggleEpisode(
                           showId,
                           seasonNumber,
                           episodeNumber,
                           runtimeMinutes:
-                              runtime ??
-                                  0,
+                              runtime ?? 0,
                         );
                       },
+
                       icon: Icon(
                         watched
                             ? Icons
                                 .check_circle
                             : Icons
                                 .radio_button_unchecked,
+
                         color: watched
-    ? const Color(
-        0xFF7BE8A8,
-      )
-    : Colors.white38,
+                            ? const Color(
+                                0xFF7BE8A8,
+                              )
+                            : Colors.white38,
                       ),
                     ),
                   ],
@@ -21883,20 +21935,27 @@ class _EpisodeTile
 
   Widget _episodeFallback() {
     return Container(
-      width: 96,
+      width: 88,
       height: 58,
+
       alignment:
           Alignment.center,
-      color: chipluxBackground,
+
+      color:
+          chipluxBackground,
+
       child: Text(
         'S${seasonNumber.toString().padLeft(2, '0')}\n'
         'E${episodeNumber.toString().padLeft(2, '0')}',
+
         textAlign:
             TextAlign.center,
+
         style:
             const TextStyle(
           fontSize: 10,
-          color: chipluxCyan,
+          color:
+              chipluxCyan,
           fontWeight:
               FontWeight.bold,
         ),
