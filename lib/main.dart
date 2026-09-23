@@ -16,6 +16,7 @@ import 'services/critic_service.dart';
 import 'dart:math' as math;
 import 'package:flutter/rendering.dart'
     show ScrollCacheExtent;
+    import 'services/community_service.dart';
 
 const Color chipluxBackground =
     Color(0xFF07111C);
@@ -65,6 +66,7 @@ enum ChipluxBackgroundStyle {
   discover,
   search,
   watch,
+  community,
   profile,
 }
 
@@ -483,11 +485,11 @@ Widget build(
                 // =========================
 
                 Positioned(
-                  top: 78,
+                  top: 100,
 
                   child: IgnorePointer(
                     child: Opacity(
-                      opacity: 0.10,
+                      opacity: 0.05,
 
                       child:
                           Transform.scale(
@@ -1154,6 +1156,12 @@ class _ChipluxBackgroundPainter
         secondColor = chipluxPurple;
         thirdColor = chipluxViolet;
         break;
+
+        case ChipluxBackgroundStyle.community:
+  firstColor = chipluxCyan;
+  secondColor = chipluxViolet;
+  thirdColor = chipluxPurple;
+  break;
 
       case ChipluxBackgroundStyle.profile:
         firstColor = chipluxPurple;
@@ -1860,22 +1868,24 @@ Widget _currentPage() {
   return IndexedStack(
     index: currentIndex,
     children: [
-      const HomePage(),
+  const HomePage(),
 
-      const SearchPage(),
+  const SearchPage(),
 
-      LibraryPage(
-  initialFilter:
-      libraryInitialFilter,
-  initialMediaType:
-      libraryInitialMediaType,
-  initialSortMode:
-      libraryInitialSortMode,
-  openRequest:
-      libraryOpenRequest,
-),
+  LibraryPage(
+    initialFilter:
+        libraryInitialFilter,
+    initialMediaType:
+        libraryInitialMediaType,
+    initialSortMode:
+        libraryInitialSortMode,
+    openRequest:
+        libraryOpenRequest,
+  ),
 
-      ProfilePage(
+  const CommunityPage(),
+
+  ProfilePage(
   onEpisodesWatchedTap: () {
     _openCompleted(
       'tv',
@@ -1969,14 +1979,1873 @@ void initState() {
           .watch;
 
     case 3:
-      return ChipluxBackgroundStyle
-          .profile;
+  return ChipluxBackgroundStyle
+      .community;
+
+case 4:
+  return ChipluxBackgroundStyle
+      .profile;
 
     default:
       return ChipluxBackgroundStyle
           .discover;
   }
 }
+}
+
+class CommunityPage
+    extends StatefulWidget {
+  const CommunityPage({
+    super.key,
+  });
+
+  @override
+  State<CommunityPage> createState() =>
+      _CommunityPageState();
+}
+
+class _CommunityPageState
+    extends State<CommunityPage>
+    with
+        SingleTickerProviderStateMixin {
+  late final TabController
+      _tabController;
+
+  final CommunityService community =
+      CommunityService.instance;
+
+  bool loadingFriendsWatch = true;
+bool loadingFollowers = true;
+bool loadingFollowing = true;
+
+List<Map<String, dynamic>>
+    friendsWatch = [];
+
+List<Map<String, dynamic>>
+    followers = [];
+
+List<Map<String, dynamic>>
+    following = [];
+
+  @override
+void initState() {
+  super.initState();
+
+  _tabController =
+      TabController(
+    length: 3,
+    vsync: this,
+  );
+
+  _loadFriendsWatch();
+_loadFollowers();
+_loadFollowing();
+}
+
+Future<void> _loadFriendsWatch() async {
+  try {
+    final data =
+        await community
+            .getFriendsWatch();
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      friendsWatch = data;
+      loadingFriendsWatch = false;
+    });
+  } catch (e) {
+    debugPrint(
+      'Could not load Friends Watch: $e',
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      loadingFriendsWatch = false;
+    });
+  }
+}
+
+Future<void> _openCommunityProfile(
+  String userId,
+) async {
+  await Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) =>
+          PublicProfilePage(
+        userId: userId,
+      ),
+    ),
+  );
+
+  if (!mounted) {
+    return;
+  }
+
+  await _loadFriendsWatch();
+  await _loadFollowers();
+  await _loadFollowing();
+}
+
+void _openCommunityMedia(
+  Map<String, dynamic> activity,
+) {
+  final rawId =
+      activity['tmdb_id'];
+
+  final mediaType =
+      activity['media_type']
+          ?.toString();
+
+  if (rawId is! num ||
+      mediaType == null) {
+    return;
+  }
+
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) =>
+          MediaDetailsPage(
+        id: rawId.toInt(),
+        mediaType: mediaType,
+      ),
+    ),
+  );
+}
+
+Future<void> _openCommunityEpisode(
+  Map<String, dynamic> activity,
+) async {
+  final rawShowId =
+      activity['tmdb_id'];
+
+  final rawSeason =
+      activity['season_number'];
+
+  final rawEpisode =
+      activity['episode_number'];
+
+  if (rawShowId is! num ||
+      rawSeason is! num ||
+      rawEpisode is! num) {
+    return;
+  }
+
+  final showId =
+      rawShowId.toInt();
+
+  final seasonNumber =
+      rawSeason.toInt();
+
+  final episodeNumber =
+      rawEpisode.toInt();
+
+  try {
+    final episodes =
+        await TmdbService()
+            .getSeasonEpisodes(
+      showId,
+      seasonNumber,
+    );
+
+    Map<String, dynamic>?
+        foundEpisode;
+
+    for (final raw
+        in episodes) {
+      final episode =
+          Map<String, dynamic>.from(
+        raw,
+      );
+
+      final number =
+          episode[
+              'episode_number'];
+
+      if (number is num &&
+          number.toInt() ==
+              episodeNumber) {
+        foundEpisode =
+            episode;
+
+        break;
+      }
+    }
+
+    if (!mounted ||
+        foundEpisode == null) {
+      return;
+    }
+
+    final episode =
+        foundEpisode;
+
+    final rawRuntime =
+        episode['runtime'];
+
+    final rawRating =
+        episode['vote_average'];
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            SwipeableEpisodePage(
+          showId:
+              showId,
+
+          seasonNumber:
+              seasonNumber,
+
+          episodeNumber:
+              episodeNumber,
+
+          title:
+              episode['name']
+                      ?.toString() ??
+                  activity[
+                          'episode_title']
+                      ?.toString() ??
+                  'Episode',
+
+          stillPath:
+              episode['still_path']
+                  ?.toString(),
+
+          runtime:
+              rawRuntime is num
+                  ? rawRuntime
+                      .toInt()
+                  : null,
+
+          rating:
+              rawRating is num
+                  ? rawRating
+                      .toDouble()
+                  : null,
+
+          overview:
+              episode['overview']
+                      ?.toString() ??
+                  '',
+
+          airDate:
+              episode['air_date']
+                  ?.toString(),
+        ),
+      ),
+    );
+  } catch (e) {
+    debugPrint(
+      'Could not open community episode: $e',
+    );
+  }
+}
+
+Future<void> _openActivity(
+  Map<String, dynamic> activity,
+) async {
+  final type =
+      activity['activity_type']
+          ?.toString();
+
+  if (type ==
+      'episode_watched') {
+    await _openCommunityEpisode(
+      activity,
+    );
+
+    return;
+  }
+
+  _openCommunityMedia(
+    activity,
+  );
+}
+
+Future<void> _loadFollowers() async {
+  try {
+    final data =
+        await community
+            .getFollowers();
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      followers = data;
+      loadingFollowers = false;
+    });
+  } catch (e) {
+    debugPrint(
+      'Could not load followers: $e',
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      loadingFollowers = false;
+    });
+  }
+}
+
+Future<void> _loadFollowing() async {
+  try {
+    final data =
+        await community
+            .getFollowing();
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      following = data;
+      loadingFollowing = false;
+    });
+  } catch (e) {
+    debugPrint(
+      'Could not load following: $e',
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      loadingFollowing = false;
+    });
+  }
+}
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+
+    super.dispose();
+  }
+
+  @override
+  Widget build(
+    BuildContext context,
+  ) {
+    return SafeArea(
+      child: Column(
+        children: [
+          Padding(
+            padding:
+                const EdgeInsets
+                    .fromLTRB(
+              20,
+              20,
+              20,
+              12,
+            ),
+            child: Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Community',
+                    style:
+                        TextStyle(
+                      fontSize: 28,
+                      fontWeight:
+                          FontWeight
+                              .bold,
+                    ),
+                  ),
+                ),
+
+                Icon(
+                  Icons.people_rounded,
+                  color:
+                      chipluxCyan
+                          .withValues(
+                    alpha: 0.9,
+                  ),
+                  size: 28,
+                ),
+              ],
+            ),
+          ),
+
+          Padding(
+  padding:
+      const EdgeInsets
+          .symmetric(
+    horizontal: 16,
+  ),
+  child: Container(
+    height: 64,
+    padding:
+        const EdgeInsets
+            .all(
+      4,
+    ),
+    decoration:
+        BoxDecoration(
+      color:
+          chipluxSurface
+              .withValues(
+        alpha: 0.45,
+      ),
+      borderRadius:
+          BorderRadius
+              .circular(
+        22,
+      ),
+    ),
+    child: TabBar(
+      controller:
+          _tabController,
+
+      isScrollable: true,
+
+      tabAlignment:
+          TabAlignment.start,
+
+      indicator:
+          BoxDecoration(
+        color:
+            Colors.transparent,
+        borderRadius:
+            BorderRadius
+                .circular(
+          18,
+        ),
+        border: Border.all(
+          color: chipluxCyan,
+          width: 2,
+        ),
+      ),
+
+      indicatorSize:
+          TabBarIndicatorSize
+              .tab,
+
+      dividerColor:
+          Colors.transparent,
+
+      overlayColor:
+          WidgetStateProperty.all(
+        Colors.transparent,
+      ),
+
+      splashFactory:
+          NoSplash.splashFactory,
+
+      labelColor:
+          chipluxCyan,
+
+      unselectedLabelColor:
+          Colors.white70,
+
+      labelStyle:
+          const TextStyle(
+        fontWeight:
+            FontWeight.bold,
+        fontSize: 14,
+      ),
+
+      unselectedLabelStyle:
+          const TextStyle(
+        fontWeight:
+            FontWeight.w600,
+        fontSize: 14,
+      ),
+
+      labelPadding:
+          const EdgeInsets
+              .symmetric(
+        horizontal: 20,
+      ),
+
+      tabs: const [
+        Tab(
+          text:
+              'Friends Watch',
+        ),
+        Tab(
+          text:
+              'Followers',
+        ),
+        Tab(
+          text:
+              'Following',
+        ),
+      ],
+    ),
+  ),
+),
+
+          const SizedBox(
+            height: 12,
+          ),
+
+          Expanded(
+  child: TabBarView(
+    controller:
+        _tabController,
+    children: [
+      _FriendsWatchList(
+  loading:
+      loadingFriendsWatch,
+
+  activities:
+      friendsWatch,
+
+  onRefresh:
+      _loadFriendsWatch,
+
+  onProfileTap:
+      _openCommunityProfile,
+
+  onActivityTap:
+      _openActivity,
+),
+
+      _CommunityUsersList(
+        loading:
+            loadingFollowers,
+        users:
+            followers,
+        emptyText:
+            'No followers yet.',
+      ),
+
+      _CommunityUsersList(
+        loading:
+            loadingFollowing,
+        users:
+            following,
+        emptyText:
+            'You are not following anyone yet.',
+      ),
+    ],
+  ),
+),
+        ],
+      ),
+    );
+  }
+}
+
+class _CommunityUsersList
+    extends StatelessWidget {
+  final bool loading;
+
+  final List<Map<String, dynamic>>
+      users;
+
+  final String emptyText;
+
+  const _CommunityUsersList({
+    required this.loading,
+    required this.users,
+    required this.emptyText,
+  });
+
+  @override
+  Widget build(
+    BuildContext context,
+  ) {
+    if (loading) {
+      return const Center(
+        child:
+            CircularProgressIndicator(),
+      );
+    }
+
+    if (users.isEmpty) {
+      return Center(
+        child: Text(
+          emptyText,
+          style:
+              const TextStyle(
+            color:
+                Colors.white54,
+          ),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        // Temporary.
+        // We'll wire refresh into the parent
+        // in the next pass.
+      },
+      child: ListView.separated(
+        padding:
+            const EdgeInsets
+                .fromLTRB(
+          16,
+          4,
+          16,
+          25,
+        ),
+
+        itemCount:
+            users.length,
+
+        separatorBuilder:
+            (
+          context,
+          index,
+        ) =>
+                const SizedBox(
+          height: 10,
+        ),
+
+        itemBuilder:
+            (
+          context,
+          index,
+        ) {
+          final user =
+              users[index];
+
+          final displayName =
+              user['display_name']
+                      ?.toString()
+                      .trim() ??
+                  '';
+
+          final username =
+              user['username']
+                      ?.toString()
+                      .trim() ??
+                  '';
+
+          final avatarUrl =
+              user['avatar_url']
+                  ?.toString();
+
+          final name =
+              displayName.isNotEmpty
+                  ? displayName
+                  : username.isNotEmpty
+                      ? username
+                      : 'Chiplux User';
+
+          return InkWell(
+            borderRadius:
+                BorderRadius
+                    .circular(
+              16,
+            ),
+
+            onTap: () async {
+  final userId =
+      user['id']
+          ?.toString();
+
+  if (userId == null ||
+      userId.isEmpty) {
+    return;
+  }
+
+  await Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) =>
+          PublicProfilePage(
+        userId: userId,
+      ),
+    ),
+  );
+},
+
+            child: Container(
+              padding:
+                  const EdgeInsets
+                      .all(
+                14,
+              ),
+
+              decoration:
+                  BoxDecoration(
+                color:
+                    chipluxSurface,
+                borderRadius:
+                    BorderRadius
+                        .circular(
+                  16,
+                ),
+
+                border:
+                    Border.all(
+                  color:
+                      Colors.white
+                          .withValues(
+                    alpha: 0.05,
+                  ),
+                ),
+              ),
+
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 24,
+
+                    backgroundColor:
+                        chipluxSurfaceLight,
+
+                    backgroundImage:
+                        avatarUrl !=
+                                    null &&
+                                avatarUrl
+                                    .isNotEmpty
+                            ? NetworkImage(
+                                avatarUrl,
+                              )
+                            : null,
+
+                    child:
+                        avatarUrl ==
+                                    null ||
+                                avatarUrl
+                                    .isEmpty
+                            ? const Icon(
+                                Icons
+                                    .person,
+                                color:
+                                    Colors
+                                        .white54,
+                              )
+                            : null,
+                  ),
+
+                  const SizedBox(
+                    width: 13,
+                  ),
+
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment:
+                          CrossAxisAlignment
+                              .start,
+
+                      children: [
+                        Text(
+                          name,
+                          style:
+                              const TextStyle(
+                            fontSize:
+                                16,
+                            fontWeight:
+                                FontWeight
+                                    .bold,
+                          ),
+                        ),
+
+                        if (username
+                            .isNotEmpty) ...[
+                          const SizedBox(
+                            height:
+                                3,
+                          ),
+
+                          Text(
+                            '@$username',
+                            style:
+                                const TextStyle(
+                              color:
+                                  Colors
+                                      .white54,
+                              fontSize:
+                                  13,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+
+                  const Icon(
+                    Icons
+                        .chevron_right_rounded,
+                    color:
+                        Colors.white38,
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _FriendsWatchList
+    extends StatelessWidget {
+  final bool loading;
+
+  final List<Map<String, dynamic>>
+      activities;
+
+  final Future<void> Function()
+      onRefresh;
+
+  final Future<void> Function(
+    String userId,
+  ) onProfileTap;
+
+  final Future<void> Function(
+    Map<String, dynamic> activity,
+  ) onActivityTap;
+
+  const _FriendsWatchList({
+    required this.loading,
+    required this.activities,
+    required this.onRefresh,
+    required this.onProfileTap,
+    required this.onActivityTap,
+  });
+
+  @override
+  Widget build(
+    BuildContext context,
+  ) {
+    if (loading) {
+      return const Center(
+        child:
+            CircularProgressIndicator(),
+      );
+    }
+
+    if (activities.isEmpty) {
+      return RefreshIndicator(
+        onRefresh:
+            onRefresh,
+        child: ListView(
+          physics:
+              const AlwaysScrollableScrollPhysics(),
+          children: const [
+            SizedBox(
+              height: 220,
+            ),
+            Center(
+              child: Column(
+                children: [
+                  Icon(
+                    Icons
+                        .people_outline_rounded,
+                    color:
+                        Colors.white24,
+                    size: 48,
+                  ),
+
+                  SizedBox(
+                    height: 12,
+                  ),
+
+                  Text(
+                    'Nothing here yet.',
+                    style:
+                        TextStyle(
+                      color:
+                          Colors.white70,
+                      fontSize: 16,
+                      fontWeight:
+                          FontWeight.w600,
+                    ),
+                  ),
+
+                  SizedBox(
+                    height: 5,
+                  ),
+
+                  Text(
+                    'Activity from you and people you follow will appear here.',
+                    textAlign:
+                        TextAlign.center,
+                    style:
+                        TextStyle(
+                      color:
+                          Colors.white38,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh:
+          onRefresh,
+
+      child: ListView.separated(
+        physics:
+            const AlwaysScrollableScrollPhysics(),
+
+        padding:
+            const EdgeInsets
+                .fromLTRB(
+          16,
+          4,
+          16,
+          30,
+        ),
+
+        itemCount:
+            activities.length,
+
+        separatorBuilder:
+            (
+          context,
+          index,
+        ) =>
+                const SizedBox(
+          height: 10,
+        ),
+
+        itemBuilder:
+            (
+          context,
+          index,
+        ) {
+          final activity =
+              activities[index];
+
+          return _FriendsWatchRow(
+            activity:
+                activity,
+
+            onProfileTap:
+                onProfileTap,
+
+            onActivityTap:
+                onActivityTap,
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _FriendsWatchRow
+    extends StatelessWidget {
+  final Map<String, dynamic>
+      activity;
+
+  final Future<void> Function(
+    String userId,
+  ) onProfileTap;
+
+  final Future<void> Function(
+    Map<String, dynamic> activity,
+  ) onActivityTap;
+
+  const _FriendsWatchRow({
+    required this.activity,
+    required this.onProfileTap,
+    required this.onActivityTap,
+  });
+
+  String _userName() {
+    final profile =
+        activity['profile'];
+
+    if (profile is! Map) {
+      return 'Chiplux User';
+    }
+
+    final displayName =
+        profile['display_name']
+                ?.toString()
+                .trim() ??
+            '';
+
+    if (displayName.isNotEmpty) {
+      return displayName;
+    }
+
+    final username =
+        profile['username']
+                ?.toString()
+                .trim() ??
+            '';
+
+    if (username.isNotEmpty) {
+      return username;
+    }
+
+    return 'Chiplux User';
+  }
+
+  String? _avatarUrl() {
+    final profile =
+        activity['profile'];
+
+    if (profile is! Map) {
+      return null;
+    }
+
+    return profile['avatar_url']
+        ?.toString();
+  }
+
+  String _prefixText() {
+    final type =
+        activity['activity_type']
+            ?.toString();
+
+    switch (type) {
+      case 'episode_watched':
+        final season =
+            activity[
+                'season_number'];
+
+        final episode =
+            activity[
+                'episode_number'];
+
+        if (season is num &&
+            episode is num) {
+          final code =
+              'S${season.toInt().toString().padLeft(2, '0')}'
+              'E${episode.toInt().toString().padLeft(2, '0')}';
+
+          return 'watched $code of';
+        }
+
+        return 'watched an episode of';
+
+      case 'season_watched':
+        final season =
+            activity[
+                'season_number'];
+
+        return season is num
+            ? 'watched Season ${season.toInt()} of'
+            : 'watched a season of';
+
+      case 'movie_watched':
+        return 'watched';
+
+      case 'tv_watched':
+        return 'watched';
+
+      case 'rated':
+        final stars =
+            activity[
+                'rating_stars'];
+
+        if (stars is num) {
+          return 'rated';
+        }
+
+        return 'rated';
+
+      case 'plan_to_watch':
+        return 'plans to watch';
+
+      case 'dropped':
+        return 'dropped';
+
+      case 'favorite':
+        return 'added to favorites';
+
+      case 'achievement_unlocked':
+        return 'unlocked';
+
+      default:
+        return '';
+    }
+  }
+
+  String _targetText() {
+    final type =
+        activity['activity_type']
+            ?.toString();
+
+    if (type ==
+        'achievement_unlocked') {
+      return activity[
+                  'achievement_title']
+              ?.toString() ??
+          'an achievement';
+    }
+
+    return activity[
+                'media_title']
+            ?.toString() ??
+        'Unknown title';
+  }
+
+  String? _ratingText() {
+    if (activity[
+            'activity_type'] !=
+        'rated') {
+      return null;
+    }
+
+    final stars =
+        activity['rating_stars'];
+
+    if (stars is! num) {
+      return null;
+    }
+
+    return '★' *
+        stars
+            .toInt()
+            .clamp(
+              1,
+              5,
+            );
+  }
+
+  String _timeAgo() {
+    final raw =
+        activity['created_at']
+            ?.toString();
+
+    if (raw == null) {
+      return '';
+    }
+
+    final date =
+        DateTime.tryParse(
+      raw,
+    );
+
+    if (date == null) {
+      return '';
+    }
+
+    final difference =
+        DateTime.now()
+            .difference(
+      date.toLocal(),
+    );
+
+    if (difference.inSeconds <
+        60) {
+      return 'just now';
+    }
+
+    if (difference.inMinutes <
+        60) {
+      return '${difference.inMinutes}m ago';
+    }
+
+    if (difference.inHours <
+        24) {
+      return '${difference.inHours}h ago';
+    }
+
+    if (difference.inDays <
+        7) {
+      return '${difference.inDays}d ago';
+    }
+
+    return '${date.day}/${date.month}/${date.year}';
+  }
+
+  @override
+  Widget build(
+    BuildContext context,
+  ) {
+    final userId =
+        activity['user_id']
+            ?.toString();
+
+    final avatarUrl =
+        _avatarUrl();
+
+    final name =
+        _userName();
+
+    final prefix =
+        _prefixText();
+
+    final target =
+        _targetText();
+
+    final rating =
+        _ratingText();
+
+    final type =
+        activity['activity_type']
+            ?.toString();
+
+    final canOpenTarget =
+        type !=
+            'achievement_unlocked';
+
+    return Container(
+      padding:
+          const EdgeInsets
+              .all(
+        14,
+      ),
+
+      decoration:
+          BoxDecoration(
+        color:
+            chipluxSurface
+                .withValues(
+          alpha: 0.88,
+        ),
+
+        borderRadius:
+            BorderRadius
+                .circular(
+          18,
+        ),
+
+        border:
+            Border.all(
+          color:
+              Colors.white
+                  .withValues(
+            alpha: 0.05,
+          ),
+        ),
+      ),
+
+      child: Row(
+        crossAxisAlignment:
+            CrossAxisAlignment
+                .start,
+
+        children: [
+          InkWell(
+            onTap:
+                userId == null
+                    ? null
+                    : () {
+                        onProfileTap(
+                          userId,
+                        );
+                      },
+
+            borderRadius:
+                BorderRadius
+                    .circular(
+              30,
+            ),
+
+            child: CircleAvatar(
+              radius: 23,
+
+              backgroundColor:
+                  chipluxSurfaceLight,
+
+              backgroundImage:
+                  avatarUrl !=
+                              null &&
+                          avatarUrl
+                              .isNotEmpty
+                      ? NetworkImage(
+                          avatarUrl,
+                        )
+                      : null,
+
+              child:
+                  avatarUrl ==
+                              null ||
+                          avatarUrl
+                              .isEmpty
+                      ? const Icon(
+                          Icons.person,
+                          color:
+                              Colors.white54,
+                        )
+                      : null,
+            ),
+          ),
+
+          const SizedBox(
+            width: 12,
+          ),
+
+          Expanded(
+            child: Column(
+              crossAxisAlignment:
+                  CrossAxisAlignment
+                      .start,
+
+              children: [
+                Wrap(
+                  spacing: 4,
+                  runSpacing: 4,
+                  crossAxisAlignment:
+                      WrapCrossAlignment
+                          .center,
+
+                  children: [
+                    InkWell(
+                      onTap:
+                          userId ==
+                                  null
+                              ? null
+                              : () {
+                                  onProfileTap(
+                                    userId,
+                                  );
+                                },
+
+                      child: Text(
+                        name,
+                        style:
+                            const TextStyle(
+                          fontSize:
+                              15,
+                          fontWeight:
+                              FontWeight
+                                  .bold,
+                          color:
+                              Colors.white,
+                        ),
+                      ),
+                    ),
+
+                    Text(
+                      prefix,
+                      style:
+                          const TextStyle(
+                        color:
+                            Colors.white60,
+                        fontSize:
+                            14,
+                      ),
+                    ),
+
+                    InkWell(
+                      onTap:
+                          canOpenTarget
+                              ? () {
+                                  onActivityTap(
+                                    activity,
+                                  );
+                                }
+                              : null,
+
+                      child: Text(
+                        target,
+                        style:
+                            TextStyle(
+                          color:
+                              canOpenTarget
+                                  ? chipluxCyan
+                                  : chipluxViolet,
+
+                          fontSize:
+                              14,
+
+                          fontWeight:
+                              FontWeight
+                                  .w700,
+
+                          decoration:
+                              canOpenTarget
+                                  ? TextDecoration
+                                      .underline
+                                  : TextDecoration
+                                      .none,
+
+                          decorationColor:
+                              chipluxCyan,
+                        ),
+                      ),
+                    ),
+
+                    if (rating !=
+                        null)
+                      Text(
+                        rating,
+                        style:
+                            const TextStyle(
+                          color:
+                              Colors.amber,
+                          fontSize:
+                              15,
+                          fontWeight:
+                              FontWeight
+                                  .bold,
+                        ),
+                      ),
+                  ],
+                ),
+
+                const SizedBox(
+                  height: 7,
+                ),
+
+                Text(
+                  _timeAgo(),
+                  style:
+                      const TextStyle(
+                    color:
+                        Colors.white30,
+                    fontSize:
+                        12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class PublicProfilePage
+    extends StatefulWidget {
+  final String userId;
+
+  const PublicProfilePage({
+    super.key,
+    required this.userId,
+  });
+
+  @override
+  State<PublicProfilePage>
+      createState() =>
+          _PublicProfilePageState();
+}
+
+class _PublicProfilePageState
+    extends State<PublicProfilePage> {
+  final CommunityService community =
+      CommunityService.instance;
+
+  Map<String, dynamic>? profile;
+
+  bool loading = true;
+  bool following = false;
+  bool changingFollow = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final results =
+          await Future.wait([
+        community.getProfile(
+          widget.userId,
+        ),
+        community.isFollowing(
+          widget.userId,
+        ),
+      ]);
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        profile =
+            results[0]
+                as Map<String, dynamic>?;
+
+        following =
+            results[1] as bool;
+
+        loading = false;
+      });
+    } catch (e) {
+      debugPrint(
+        'Could not load public profile: $e',
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        loading = false;
+      });
+    }
+  }
+
+  Future<void>
+      _toggleFollow() async {
+    if (changingFollow) {
+      return;
+    }
+
+    setState(() {
+      changingFollow = true;
+    });
+
+    try {
+      if (following) {
+        await community
+            .unfollowUser(
+          widget.userId,
+        );
+      } else {
+        await community
+            .followUser(
+          widget.userId,
+        );
+      }
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        following =
+            !following;
+      });
+    } catch (e) {
+      debugPrint(
+        'Could not change follow state: $e',
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          changingFollow = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(
+    BuildContext context,
+  ) {
+    if (loading) {
+      return const Scaffold(
+        backgroundColor:
+            chipluxBackground,
+        body: Center(
+          child:
+              CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    if (profile == null) {
+      return Scaffold(
+        backgroundColor:
+            chipluxBackground,
+        appBar: AppBar(
+          backgroundColor:
+              Colors.transparent,
+          elevation: 0,
+        ),
+        body: const Center(
+          child: Text(
+            'Profile not found.',
+          ),
+        ),
+      );
+    }
+
+    final displayName =
+        profile!['display_name']
+                ?.toString()
+                .trim() ??
+            '';
+
+    final username =
+        profile!['username']
+                ?.toString()
+                .trim() ??
+            '';
+
+    final avatarUrl =
+        profile!['avatar_url']
+            ?.toString();
+
+    final bannerPath =
+        profile!['banner_path']
+            ?.toString();
+
+    final name =
+        displayName.isNotEmpty
+            ? displayName
+            : username.isNotEmpty
+                ? username
+                : 'Chiplux User';
+
+    final bannerUrl =
+        bannerPath != null &&
+                bannerPath.isNotEmpty
+            ? 'https://image.tmdb.org/t/p/w1280$bannerPath'
+            : null;
+
+    final ownUserId =
+        Supabase.instance.client
+            .auth.currentUser?.id;
+
+    final isOwnProfile =
+        ownUserId ==
+            widget.userId;
+
+    return Scaffold(
+      backgroundColor:
+          chipluxBackground,
+
+      body: ChipluxBackground(
+        style:
+            ChipluxBackgroundStyle
+                .profile,
+
+        child: SafeArea(
+          child: ListView(
+            padding:
+                const EdgeInsets
+                    .fromLTRB(
+              18,
+              12,
+              18,
+              35,
+            ),
+
+            children: [
+              Row(
+                children: [
+                  IconButton(
+                    onPressed: () {
+                      Navigator.pop(
+                        context,
+                      );
+                    },
+                    icon:
+                        const Icon(
+                      Icons
+                          .arrow_back_rounded,
+                    ),
+                  ),
+
+                  const Spacer(),
+
+                  const Text(
+                    'Profile',
+                    style:
+                        TextStyle(
+                      fontSize: 20,
+                      fontWeight:
+                          FontWeight.bold,
+                    ),
+                  ),
+
+                  const Spacer(),
+
+                  const SizedBox(
+                    width: 48,
+                  ),
+                ],
+              ),
+
+              const SizedBox(
+                height: 8,
+              ),
+
+              Container(
+                height: 150,
+                decoration:
+                    BoxDecoration(
+                  color:
+                      chipluxSurface,
+                  borderRadius:
+                      BorderRadius
+                          .circular(
+                    22,
+                  ),
+                  image:
+                      bannerUrl != null
+                          ? DecorationImage(
+                              image:
+                                  NetworkImage(
+                                bannerUrl,
+                              ),
+                              fit:
+                                  BoxFit.cover,
+                            )
+                          : null,
+                ),
+              ),
+
+              Transform.translate(
+                offset:
+                    const Offset(
+                  0,
+                  -42,
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 92,
+                      height: 92,
+                      padding:
+                          const EdgeInsets
+                              .all(
+                        3,
+                      ),
+                      decoration:
+                          const BoxDecoration(
+                        shape:
+                            BoxShape.circle,
+                        gradient:
+                            LinearGradient(
+                          colors: [
+                            chipluxCyan,
+                            chipluxViolet,
+                            chipluxPurple,
+                          ],
+                        ),
+                      ),
+                      child:
+                          CircleAvatar(
+                        backgroundColor:
+                            chipluxSurface,
+
+                        backgroundImage:
+                            avatarUrl !=
+                                        null &&
+                                    avatarUrl
+                                        .isNotEmpty
+                                ? NetworkImage(
+                                    avatarUrl,
+                                  )
+                                : null,
+
+                        child:
+                            avatarUrl ==
+                                        null ||
+                                    avatarUrl
+                                        .isEmpty
+                                ? const Icon(
+                                    Icons.person,
+                                    size: 42,
+                                  )
+                                : null,
+                      ),
+                    ),
+
+                    const SizedBox(
+                      height: 12,
+                    ),
+
+                    Text(
+                      name,
+                      textAlign:
+                          TextAlign.center,
+                      style:
+                          const TextStyle(
+                        fontSize: 24,
+                        fontWeight:
+                            FontWeight.bold,
+                      ),
+                    ),
+
+                    if (username
+                        .isNotEmpty) ...[
+                      const SizedBox(
+                        height: 4,
+                      ),
+
+                      Text(
+                        '@$username',
+                        style:
+                            const TextStyle(
+                          color:
+                              Colors.white54,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+
+                    if (!isOwnProfile) ...[
+                      const SizedBox(
+                        height: 18,
+                      ),
+
+                      SizedBox(
+                        width: 180,
+                        height: 46,
+                        child:
+                            ElevatedButton.icon(
+                          onPressed:
+                              changingFollow
+                                  ? null
+                                  : _toggleFollow,
+
+                          icon: changingFollow
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child:
+                                      CircularProgressIndicator(
+                                    strokeWidth:
+                                        2,
+                                  ),
+                                )
+                              : Icon(
+                                  following
+                                      ? Icons
+                                          .check_rounded
+                                      : Icons
+                                          .person_add_alt_1_rounded,
+                                ),
+
+                          label: Text(
+                            following
+                                ? 'Following'
+                                : 'Follow',
+                          ),
+
+                          style:
+                              ElevatedButton
+                                  .styleFrom(
+                            backgroundColor:
+                                following
+                                    ? chipluxSurfaceLight
+                                    : chipluxViolet,
+
+                            foregroundColor:
+                                Colors.white,
+
+                            shape:
+                                RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius
+                                      .circular(
+                                14,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _ChipluxBottomNav
@@ -1994,29 +3863,36 @@ class _ChipluxBottomNav
   @override
   Widget build(BuildContext context) {
     const items = [
-      (
-        label: 'Discover',
-        icon: Icons.home_outlined,
-        selectedIcon: Icons.home,
-      ),
-      (
-        label: 'Search',
-        icon: Icons.search,
-        selectedIcon: Icons.search,
-      ),
-      (
-        label: 'Watch',
-        icon:
-            Icons.video_library_outlined,
-        selectedIcon:
-            Icons.video_library,
-      ),
-      (
-        label: 'Profile',
-        icon: Icons.person_outline,
-        selectedIcon: Icons.person,
-      ),
-    ];
+  (
+    label: 'Discover',
+    icon: Icons.home_outlined,
+    selectedIcon: Icons.home,
+  ),
+  (
+    label: 'Search',
+    icon: Icons.search,
+    selectedIcon: Icons.search,
+  ),
+  (
+    label: 'Watch',
+    icon:
+        Icons.video_library_outlined,
+    selectedIcon:
+        Icons.video_library,
+  ),
+  (
+    label: 'Community',
+    icon:
+        Icons.people_outline,
+    selectedIcon:
+        Icons.people,
+  ),
+  (
+    label: 'Profile',
+    icon: Icons.person_outline,
+    selectedIcon: Icons.person,
+  ),
+];
 
     return SafeArea(
       top: false,
@@ -2137,9 +4013,9 @@ class _ChipluxBottomNav
                               currentIndex ==
                                   i,
                           avatarUrl:
-                              i == 3
-                                  ? avatarUrl
-                                  : null,
+    i == 4
+        ? avatarUrl
+        : null,
                           onTap:
                               () =>
                                   onTap(
@@ -2238,27 +4114,33 @@ class _BottomNavItem
             ),
 
             if (selected)
-              GradientText(
-                label,
-                style:
-                    const TextStyle(
-                  fontSize: 13,
-                  fontWeight:
-                      FontWeight.w700,
-                ),
-              )
-            else
-              Text(
-                label,
-                style:
-                    const TextStyle(
-                  color:
-                      Colors.white70,
-                  fontSize: 13,
-                  fontWeight:
-                      FontWeight.w500,
-                ),
-              ),
+  GradientText(
+    label,
+    style:
+        TextStyle(
+      fontSize:
+          label == 'Community'
+              ? 11.5
+              : 13,
+      fontWeight:
+          FontWeight.w700,
+    ),
+  )
+else
+  Text(
+    label,
+    style:
+        TextStyle(
+      color:
+          Colors.white70,
+      fontSize:
+          label == 'Community'
+              ? 11.5
+              : 13,
+      fontWeight:
+          FontWeight.w500,
+    ),
+  ),
           ],
         ),
       ),
@@ -10077,170 +11959,293 @@ class AchievementsPage
   });
 
   void _showAchievementGroup(
-    BuildContext context,
-    _AchievementGroup group,
-  ) {
-    final pinService =
-        MedalPinService.instance;
+  BuildContext context,
+  _AchievementGroup group,
+) {
+  final pinService =
+      MedalPinService.instance;
 
-    final bool canPin =
-        group.hasUnlockedTier;
+  final bool canPin =
+      group.hasUnlockedTier;
 
-    final bool isPinned =
-        pinService.isPinned(
-      group.id,
-    );
+  final bool isPinned =
+      pinService.isPinned(
+    group.id,
+  );
 
-    showModalBottomSheet(
-      context: context,
-      backgroundColor:
-          chipluxSurface,
-      isScrollControlled: true,
-      shape:
-          const RoundedRectangleBorder(
-        borderRadius:
-            BorderRadius.vertical(
-          top: Radius.circular(
+  final currentTier =
+      group.highestUnlockedTier;
+
+  final Color accent =
+      currentTier != null
+          ? _achievementAccent(
+              currentTier.rarity,
+            )
+          : Colors.white38;
+
+  final IconData achievementIcon =
+      currentTier?.icon ??
+          group.icon;
+
+  showModalBottomSheet(
+    context: context,
+
+    // Transparent so our custom
+    // bordered container is visible.
+    backgroundColor:
+        Colors.transparent,
+
+    isScrollControlled: true,
+
+    builder: (
+      sheetContext,
+    ) {
+      return SafeArea(
+        child: Container(
+          margin:
+              const EdgeInsets.only(
+            left: 10,
+            right: 10,
+            bottom: 6,
+          ),
+          padding:
+              const EdgeInsets
+                  .fromLTRB(
+            20,
+            20,
+            20,
             24,
           ),
-        ),
-      ),
-      builder: (
-        sheetContext,
-      ) {
-        return SafeArea(
-          child: Padding(
-            padding:
-                const EdgeInsets
-                    .fromLTRB(
-              20,
-              20,
-              20,
-              24,
+          decoration:
+              BoxDecoration(
+            color:
+                chipluxSurface,
+
+            borderRadius:
+                const BorderRadius
+                    .vertical(
+              top: Radius.circular(
+                24,
+              ),
+              bottom:
+                  Radius.circular(
+                24,
+              ),
             ),
-            child: Column(
-              mainAxisSize:
-                  MainAxisSize.min,
-              children: [
-                // =========================
-                // TITLE
-                // =========================
 
-                Text(
-                  group.title,
-                  style:
-                      const TextStyle(
-                    color:
-                        Colors.white,
-                    fontSize: 21,
-                    fontWeight:
-                        FontWeight.bold,
-                  ),
-                ),
-
-                const SizedBox(
-                  height: 4,
-                ),
-
-                Text(
-                  '${group.current} watched',
-                  style:
-                      const TextStyle(
-                    color:
-                        Colors.white54,
-                    fontSize: 12,
-                  ),
-                ),
-
-                const SizedBox(
-                  height: 20,
-                ),
-
-                // =========================
-                // TIERS
-                // =========================
-
-                for (int i = 0;
-                    i <
-                        group
-                            .tiers.length;
-                    i++) ...[
-                  _AchievementTierRow(
-                    tier:
-                        group.tiers[i],
-                    isCurrent:
-                        group
-                                .highestUnlockedTier
-                                ?.id ==
-                            group
-                                .tiers[i]
-                                .id,
-                  ),
-
-                  if (i <
-                      group.tiers.length -
-                          1)
-                    const SizedBox(
-                      height: 9,
-                    ),
-                ],
-
-                const SizedBox(
-                  height: 20,
-                ),
-
-                // =========================
-                // PIN BUTTON
-                // =========================
-
-                SizedBox(
-                  width:
-                      double.infinity,
-                  child:
-                      ElevatedButton.icon(
-                    onPressed:
-                        !canPin
-                            ? null
-                            : () async {
-                                Navigator.pop(
-                                  sheetContext,
-                                );
-
-                                if (isPinned) {
-                                  await pinService
-                                      .unpin();
-                                } else {
-                                  await pinService
-                                      .pin(
-                                    group.id,
-                                  );
-                                }
-                              },
-                    icon:
-                        Icon(
-                      isPinned
-                          ? Icons
-                              .push_pin_outlined
-                          : Icons
-                              .push_pin_rounded,
-                    ),
-                    label:
-                        Text(
-                      !canPin
-                          ? 'Unlock a tier first'
-                          : isPinned
-                              ? 'Remove from Display Name'
-                              : 'Pin to Display Name',
-                    ),
-                  ),
-                ),
-              ],
+            // SAME COLOR AS
+            // CURRENT MILESTONE
+            border:
+                Border.all(
+              color:
+                  accent.withValues(
+                alpha: 0.75,
+              ),
+              width: 1.5,
             ),
+
+            boxShadow: [
+              BoxShadow(
+                color:
+                    accent.withValues(
+                  alpha: 0.15,
+                ),
+                blurRadius: 22,
+                spreadRadius: 1,
+              ),
+            ],
           ),
-        );
-      },
-    );
-  }
+          child: Column(
+            mainAxisSize:
+                MainAxisSize.min,
+            children: [
+              // =========================
+              // ACHIEVEMENT ICON
+              // =========================
+
+              Icon(
+                achievementIcon,
+                color: accent,
+                size: 34,
+              ),
+
+              const SizedBox(
+                height: 8,
+              ),
+
+              // =========================
+              // TITLE
+              // =========================
+
+              Text(
+                group.title,
+                textAlign:
+                    TextAlign.center,
+                style:
+                    TextStyle(
+                  color: accent,
+                  fontSize: 21,
+                  fontWeight:
+                      FontWeight.bold,
+                ),
+              ),
+
+              const SizedBox(
+                height: 4,
+              ),
+
+              Text(
+                '${group.current} watched',
+                style:
+                    TextStyle(
+                  color:
+                      accent.withValues(
+                    alpha: 0.65,
+                  ),
+                  fontSize: 12,
+                  fontWeight:
+                      FontWeight.w500,
+                ),
+              ),
+
+              const SizedBox(
+                height: 20,
+              ),
+
+              // =========================
+              // TIERS
+              // =========================
+
+              for (int i = 0;
+                  i <
+                      group.tiers
+                          .length;
+                  i++) ...[
+                _AchievementTierRow(
+                  tier:
+                      group.tiers[i],
+                  isCurrent:
+                      group
+                              .highestUnlockedTier
+                              ?.id ==
+                          group
+                              .tiers[i]
+                              .id,
+                ),
+
+                if (i <
+                    group.tiers.length -
+                        1)
+                  const SizedBox(
+                    height: 9,
+                  ),
+              ],
+
+              const SizedBox(
+                height: 20,
+              ),
+
+              // =========================
+              // PIN BUTTON
+              // =========================
+
+              SizedBox(
+                width:
+                    double.infinity,
+                child:
+                    ElevatedButton.icon(
+                  style:
+                      ElevatedButton
+                          .styleFrom(
+                    foregroundColor:
+                        accent,
+
+                    backgroundColor:
+                        accent
+                            .withValues(
+                      alpha: 0.10,
+                    ),
+
+                    side:
+                        BorderSide(
+                      color:
+                          accent
+                              .withValues(
+                        alpha: 0.45,
+                      ),
+                    ),
+
+                    padding:
+                        const EdgeInsets
+                            .symmetric(
+                      vertical: 13,
+                    ),
+
+                    shape:
+                        RoundedRectangleBorder(
+                      borderRadius:
+                          BorderRadius
+                              .circular(
+                        14,
+                      ),
+                    ),
+                  ),
+
+                  onPressed:
+                      !canPin
+                          ? null
+                          : () async {
+                              Navigator.pop(
+                                sheetContext,
+                              );
+
+                              if (isPinned) {
+                                await pinService
+                                    .unpin();
+                              } else {
+                                await pinService
+                                    .pin(
+                                  group.id,
+                                );
+                              }
+                            },
+
+                  icon:
+                      Icon(
+                    isPinned
+                        ? Icons
+                            .push_pin_outlined
+                        : Icons
+                            .push_pin_rounded,
+
+                    // SAME COLOR
+                    color: accent,
+                  ),
+
+                  label:
+                      Text(
+                    !canPin
+                        ? 'Unlock a tier first'
+                        : isPinned
+                            ? 'Remove from Display Name'
+                            : 'Pin to Display Name',
+
+                    style:
+                        TextStyle(
+                      color: accent,
+                      fontWeight:
+                          FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
 
   @override
   Widget build(

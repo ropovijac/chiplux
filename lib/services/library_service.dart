@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'cloud_sync_service.dart';
 import 'tmdb_service.dart';
+import 'community_service.dart';
 
 class LibraryItem {
   final int id;
@@ -809,6 +810,11 @@ class LibraryService
           newItem.uniqueKey,
     );
 
+    final String? previousStatus =
+    index == -1
+        ? null
+        : _items[index].status;
+
     if (index == -1) {
       _items.add(
         newItem,
@@ -864,8 +870,68 @@ class LibraryService
 
     await _saveLibrary();
 
-    // Debounced cloud sync.
-    _scheduleCloudSync();
+// =====================================
+// COMMUNITY ACTIVITY
+// =====================================
+
+// =====================================
+// COMMUNITY ACTIVITY
+// =====================================
+
+// MOVIE WATCHED
+if (newItem.mediaType == 'movie' &&
+    newItem.status == 'completed' &&
+    previousStatus != 'completed') {
+  await CommunityService
+      .instance
+      .tryCreateActivity(
+    activityType:
+        'movie_watched',
+    mediaType:
+        'movie',
+    tmdbId:
+        newItem.id,
+    mediaTitle:
+        newItem.title,
+  );
+}
+
+// PLAN TO WATCH
+if (newItem.status == 'plan' &&
+    previousStatus != 'plan') {
+  await CommunityService
+      .instance
+      .tryCreateActivity(
+    activityType:
+        'plan_to_watch',
+    mediaType:
+        newItem.mediaType,
+    tmdbId:
+        newItem.id,
+    mediaTitle:
+        newItem.title,
+  );
+}
+
+// DROPPED
+if (newItem.status == 'dropped' &&
+    previousStatus != 'dropped') {
+  await CommunityService
+      .instance
+      .tryCreateActivity(
+    activityType:
+        'dropped',
+    mediaType:
+        newItem.mediaType,
+    tmdbId:
+        newItem.id,
+    mediaTitle:
+        newItem.title,
+  );
+}
+
+// Debounced cloud sync.
+_scheduleCloudSync();
 
     if (completeTvShow) {
       // Do not block the UI while
@@ -900,12 +966,17 @@ class LibraryService
       return;
     }
 
-    _items[index] =
-        _items[index]
-            .copyWith(
-      status:
-          status,
-    );
+    final oldItem =
+    _items[index];
+
+final oldStatus =
+    oldItem.status;
+
+_items[index] =
+    oldItem.copyWith(
+  status:
+      status,
+);
 
     // Status changes visually
     // immediately.
@@ -915,9 +986,93 @@ class LibraryService
 
     _scheduleCloudSync();
 
-    if (mediaType == 'tv' &&
-        status ==
-            'completed') {
+    // =====================================
+// COMMUNITY ACTIVITY
+// =====================================
+
+if (mediaType == 'movie') {
+  if (status == 'completed' &&
+      oldStatus != 'completed') {
+    await CommunityService
+        .instance
+        .tryCreateActivity(
+      activityType:
+          'movie_watched',
+      mediaType:
+          'movie',
+      tmdbId:
+          id,
+      mediaTitle:
+          _items[index]
+              .title,
+    );
+  } else if (
+      oldStatus == 'completed' &&
+      status != 'completed') {
+    try {
+      await CommunityService
+          .instance
+          .deleteActivity(
+        activityType:
+            'movie_watched',
+        mediaType:
+            'movie',
+        tmdbId:
+            id,
+      );
+    } catch (e) {
+      debugPrint(
+        'Could not remove movie activity: $e',
+      );
+    }
+  }
+}
+
+_scheduleCloudSync();
+
+// =====================================
+// PLAN TO WATCH
+// =====================================
+
+if (status == 'plan' &&
+    oldStatus != 'plan') {
+  await CommunityService
+      .instance
+      .tryCreateActivity(
+    activityType:
+        'plan_to_watch',
+    mediaType:
+        mediaType,
+    tmdbId:
+        id,
+    mediaTitle:
+        _items[index].title,
+  );
+}
+
+// =====================================
+// DROPPED
+// =====================================
+
+if (status == 'dropped' &&
+    oldStatus != 'dropped') {
+  await CommunityService
+      .instance
+      .tryCreateActivity(
+    activityType:
+        'dropped',
+    mediaType:
+        mediaType,
+    tmdbId:
+        id,
+    mediaTitle:
+        _items[index].title,
+  );
+}
+
+if (mediaType == 'tv' &&
+    status ==
+        'completed') {
       unawaited(
         _finishCompletedTvShow(
           id,
@@ -1296,10 +1451,64 @@ Future<void> toggleEpisode(
   }
 
   if (libraryChanged) {
-    await _saveLibrary();
-  }
+  await _saveLibrary();
+}
 
-  _scheduleCloudSync();
+// =====================================
+// COMMUNITY ACTIVITY
+// =====================================
+
+final show =
+    getItem(
+  showId,
+  'tv',
+);
+
+if (wasWatched) {
+  // Episode was just UNWATCHED.
+  // Remove its previous feed activity.
+  try {
+    await CommunityService
+        .instance
+        .deleteActivity(
+      activityType:
+          'episode_watched',
+      mediaType:
+          'tv',
+      tmdbId:
+          showId,
+      seasonNumber:
+          seasonNumber,
+      episodeNumber:
+          episodeNumber,
+    );
+  } catch (e) {
+    debugPrint(
+      'Could not remove episode activity: $e',
+    );
+  }
+} else {
+  // Episode was just WATCHED.
+  await CommunityService
+      .instance
+      .tryCreateActivity(
+    activityType:
+        'episode_watched',
+    mediaType:
+        'tv',
+    tmdbId:
+        showId,
+    mediaTitle:
+        show?.title ??
+            'Unknown TV Show',
+    seasonNumber:
+        seasonNumber,
+    episodeNumber:
+        episodeNumber,
+  );
+}
+
+_scheduleCloudSync();
 }
 
 // =====================================================
@@ -1312,6 +1521,8 @@ Future<void> markSeason(
   List<dynamic> episodes,
   bool watched,
 ) async {
+  bool seasonChanged = false;
+
   for (final episode
       in episodes) {
     final rawEpisodeNumber =
@@ -1335,9 +1546,16 @@ Future<void> markSeason(
     );
 
     if (watched) {
-      _watchedEpisodes.add(
-        key,
-      );
+  if (!_watchedEpisodes
+      .contains(
+    key,
+  )) {
+    seasonChanged = true;
+  }
+
+  _watchedEpisodes.add(
+    key,
+  );
 
       final runtime =
           episode[
@@ -1351,9 +1569,16 @@ Future<void> markSeason(
             runtime.toInt();
       }
     } else {
-      _watchedEpisodes.remove(
-        key,
-      );
+  if (_watchedEpisodes
+      .contains(
+    key,
+  )) {
+    seasonChanged = true;
+  }
+
+  _watchedEpisodes.remove(
+    key,
+  );
 
       // Keep runtime cached unless
       // the entire show reaches zero
@@ -1403,10 +1628,59 @@ Future<void> markSeason(
   }
 
   if (libraryChanged) {
-    await _saveLibrary();
-  }
+  await _saveLibrary();
+}
 
-  _scheduleCloudSync();
+// =====================================
+// COMMUNITY ACTIVITY
+// =====================================
+
+if (seasonChanged) {
+  final show =
+      getItem(
+    showId,
+    'tv',
+  );
+
+  if (watched) {
+    await CommunityService
+        .instance
+        .tryCreateActivity(
+      activityType:
+          'season_watched',
+      mediaType:
+          'tv',
+      tmdbId:
+          showId,
+      mediaTitle:
+          show?.title ??
+              'Unknown TV Show',
+      seasonNumber:
+          seasonNumber,
+    );
+  } else {
+    try {
+      await CommunityService
+          .instance
+          .deleteActivity(
+        activityType:
+            'season_watched',
+        mediaType:
+            'tv',
+        tmdbId:
+            showId,
+        seasonNumber:
+            seasonNumber,
+      );
+    } catch (e) {
+      debugPrint(
+        'Could not remove season activity: $e',
+      );
+    }
+  }
+}
+
+_scheduleCloudSync();
 }
 
   // =====================================================
