@@ -287,10 +287,38 @@ Future<void> _checkMovieAchievementUnlock(
       return;
     }
 
-    await _showAchievementUnlocked(
-      context,
-      achievement,
-    );
+    try {
+  await CommunityService.instance
+      .deleteActivity(
+    activityType:
+        'achievement_unlocked',
+    achievementId:
+        achievement.id,
+  );
+
+  await CommunityService.instance
+      .tryCreateActivity(
+    activityType:
+        'achievement_unlocked',
+    achievementId:
+        achievement.id,
+    achievementTitle:
+        achievement.title,
+  );
+} catch (e) {
+  debugPrint(
+    'Could not create achievement activity: $e',
+  );
+}
+
+if (!context.mounted) {
+  return;
+}
+
+await _showAchievementUnlocked(
+  context,
+  achievement,
+);
   }
 }
 
@@ -2063,6 +2091,15 @@ class _CommunityPageState
   final CommunityService community =
       CommunityService.instance;
 
+      RealtimeChannel?
+    _activityChannel;
+
+RealtimeChannel?
+    _followsChannel;
+
+Timer? _activityRefreshTimer;
+Timer? _followsRefreshTimer;
+
   bool loadingFriendsWatch = true;
 bool loadingFollowers = true;
 bool loadingFollowing = true;
@@ -2076,19 +2113,122 @@ List<Map<String, dynamic>>
 List<Map<String, dynamic>>
     following = [];
 
+    void _startCommunityRealtime() {
+  final client =
+      Supabase.instance.client;
+
+  final userId =
+      client.auth.currentUser?.id ??
+          'anonymous';
+
+  // =====================================
+  // COMMUNITY ACTIVITY
+  // =====================================
+
+  _activityChannel =
+      client.channel(
+    'community_activity_$userId',
+  );
+
+  _activityChannel!
+      .onPostgresChanges(
+    event:
+        PostgresChangeEvent.all,
+    schema:
+        'public',
+    table:
+        'community_activity',
+    callback: (payload) {
+      // Ratings use delete + insert,
+      // so debounce rapid changes into
+      // one refresh.
+      _activityRefreshTimer
+          ?.cancel();
+
+      _activityRefreshTimer =
+          Timer(
+        const Duration(
+          milliseconds: 250,
+        ),
+        () {
+          if (!mounted) {
+            return;
+          }
+
+          unawaited(
+            _loadFriendsWatch(),
+          );
+        },
+      );
+    },
+  ).subscribe();
+
+  // =====================================
+  // FOLLOWERS / FOLLOWING
+  // =====================================
+
+  _followsChannel =
+      client.channel(
+    'community_follows_$userId',
+  );
+
+  _followsChannel!
+      .onPostgresChanges(
+    event:
+        PostgresChangeEvent.all,
+    schema:
+        'public',
+    table:
+        'follows',
+    callback: (payload) {
+      _followsRefreshTimer
+          ?.cancel();
+
+      _followsRefreshTimer =
+          Timer(
+        const Duration(
+          milliseconds: 250,
+        ),
+        () {
+          if (!mounted) {
+            return;
+          }
+
+          unawaited(
+            _loadFollowers(),
+          );
+
+          unawaited(
+            _loadFollowing(),
+          );
+
+          // Following/unfollowing somebody
+          // also changes whose activity
+          // belongs in Friends Watch.
+          unawaited(
+            _loadFriendsWatch(),
+          );
+        },
+      );
+    },
+  ).subscribe();
+}
+
   @override
 void initState() {
   super.initState();
 
   _tabController =
-      TabController(
-    length: 3,
-    vsync: this,
-  );
+    TabController(
+  length: 4,
+  vsync: this,
+);
 
   _loadFriendsWatch();
 _loadFollowers();
 _loadFollowing();
+
+_startCommunityRealtime();
 }
 
 Future<void> _loadFriendsWatch() async {
@@ -2306,7 +2446,28 @@ Future<void> _openActivity(
           ?.toString();
 
   if (type ==
-      'episode_watched') {
+      'achievement_unlocked') {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            const AchievementsPage(),
+      ),
+    );
+
+    return;
+  }
+
+  final bool isEpisodeRating =
+      type == 'rated' &&
+          activity['season_number']
+              is num &&
+          activity['episode_number']
+              is num;
+
+  if (type ==
+          'episode_watched' ||
+      isEpisodeRating) {
     await _openCommunityEpisode(
       activity,
     );
@@ -2378,8 +2539,588 @@ Future<void> _loadFollowing() async {
 }
 
   @override
+void dispose() {
+  _activityRefreshTimer
+      ?.cancel();
+
+  _followsRefreshTimer
+      ?.cancel();
+
+  if (_activityChannel !=
+      null) {
+    unawaited(
+      _activityChannel!
+          .unsubscribe(),
+    );
+  }
+
+  if (_followsChannel !=
+      null) {
+    unawaited(
+      _followsChannel!
+          .unsubscribe(),
+    );
+  }
+
+  _tabController.dispose();
+
+  super.dispose();
+}
+
+  @override
+Widget build(
+  BuildContext context,
+) {
+  return SafeArea(
+    child: Column(
+      children: [
+        Padding(
+          padding:
+              const EdgeInsets
+                  .fromLTRB(
+            20,
+            20,
+            20,
+            12,
+          ),
+          child: Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Community',
+                  style:
+                      TextStyle(
+                    fontSize: 28,
+                    fontWeight:
+                        FontWeight.bold,
+                  ),
+                ),
+              ),
+
+              Icon(
+                Icons.people_rounded,
+                color:
+                    chipluxCyan
+                        .withValues(
+                  alpha: 0.9,
+                ),
+                size: 28,
+              ),
+            ],
+          ),
+        ),
+
+        Padding(
+          padding:
+              const EdgeInsets
+                  .symmetric(
+            horizontal: 16,
+          ),
+          child: Container(
+            height: 64,
+            padding:
+                const EdgeInsets.all(
+              4,
+            ),
+            decoration:
+                BoxDecoration(
+              color:
+                  chipluxSurface
+                      .withValues(
+                alpha: 0.45,
+              ),
+              borderRadius:
+                  BorderRadius.circular(
+                22,
+              ),
+            ),
+            child: TabBar(
+              controller:
+                  _tabController,
+
+              isScrollable: true,
+
+              tabAlignment:
+                  TabAlignment.start,
+
+              indicator:
+                  BoxDecoration(
+                color:
+                    Colors.transparent,
+
+                borderRadius:
+                    BorderRadius
+                        .circular(
+                  18,
+                ),
+
+                border:
+                    Border.all(
+                  color:
+                      chipluxCyan,
+                  width: 2,
+                ),
+              ),
+
+              indicatorSize:
+                  TabBarIndicatorSize
+                      .tab,
+
+              dividerColor:
+                  Colors.transparent,
+
+              overlayColor:
+                  WidgetStateProperty
+                      .all(
+                Colors.transparent,
+              ),
+
+              splashFactory:
+                  NoSplash
+                      .splashFactory,
+
+              labelColor:
+                  chipluxCyan,
+
+              unselectedLabelColor:
+                  Colors.white70,
+
+              labelStyle:
+                  const TextStyle(
+                fontWeight:
+                    FontWeight.bold,
+                fontSize: 14,
+              ),
+
+              unselectedLabelStyle:
+                  const TextStyle(
+                fontWeight:
+                    FontWeight.w600,
+                fontSize: 14,
+              ),
+
+              labelPadding:
+                  const EdgeInsets
+                      .symmetric(
+                horizontal: 20,
+              ),
+
+              tabs: const [
+                Tab(
+                  text:
+                      'Friends Watch',
+                ),
+
+                Tab(
+                  text:
+                      'Find Friends',
+                ),
+
+                Tab(
+                  text:
+                      'Followers',
+                ),
+
+                Tab(
+                  text:
+                      'Following',
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        const SizedBox(
+          height: 12,
+        ),
+
+        Expanded(
+          child: TabBarView(
+            controller:
+                _tabController,
+
+            children: [
+              // =========================
+              // FRIENDS WATCH
+              // =========================
+
+              _FriendsWatchList(
+                loading:
+                    loadingFriendsWatch,
+
+                activities:
+                    friendsWatch,
+
+                onRefresh:
+                    _loadFriendsWatch,
+
+                onProfileTap:
+                    _openCommunityProfile,
+
+                onActivityTap:
+                    _openActivity,
+              ),
+
+              // =========================
+              // FIND FRIENDS
+              // =========================
+
+              const _FindFriendsTab(),
+
+              // =========================
+              // FOLLOWERS
+              // =========================
+
+              _CommunityUsersList(
+                loading:
+                    loadingFollowers,
+
+                users:
+                    followers,
+
+                emptyText:
+                    'No followers yet.',
+
+                onRefresh:
+                    _loadFollowers,
+              ),
+
+              // =========================
+              // FOLLOWING
+              // =========================
+
+              _CommunityUsersList(
+                loading:
+                    loadingFollowing,
+
+                users:
+                    following,
+
+                emptyText:
+                    'You are not following anyone yet.',
+
+                onRefresh:
+                    _loadFollowing,
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+}
+
+class _FindFriendsTab
+    extends StatefulWidget {
+  const _FindFriendsTab();
+
+  @override
+  State<_FindFriendsTab>
+      createState() =>
+          _FindFriendsTabState();
+}
+
+class _FindFriendsTabState
+    extends State<_FindFriendsTab> {
+  final TextEditingController
+      _searchController =
+      TextEditingController();
+
+  Timer? _debounce;
+
+  List<Map<String, dynamic>>
+      _results = [];
+
+  bool _searching = false;
+
+  String _query = '';
+
+  int _searchGeneration = 0;
+
+  void _onSearchChanged(
+    String value,
+  ) {
+    _debounce?.cancel();
+
+    final query =
+        value.trim();
+
+    _searchGeneration++;
+
+    if (query.isEmpty) {
+      setState(() {
+        _query = '';
+        _results = [];
+        _searching = false;
+      });
+
+      return;
+    }
+
+    setState(() {
+      _query = query;
+      _searching = true;
+    });
+
+    final generation =
+        _searchGeneration;
+
+    _debounce =
+        Timer(
+      const Duration(
+        milliseconds: 350,
+      ),
+      () {
+        _search(
+          query,
+          generation,
+        );
+      },
+    );
+  }
+
+  Future<void> _search(
+    String query,
+    int generation,
+  ) async {
+    try {
+      final client =
+          Supabase.instance.client;
+
+      final ownUserId =
+          client.auth.currentUser?.id;
+
+      // Search display name.
+      final displayResults =
+          await client
+              .from('profiles')
+              .select(
+                'id, display_name, username, avatar_url',
+              )
+              .ilike(
+                'display_name',
+                '%$query%',
+              )
+              .limit(20);
+
+      // Search username.
+      final usernameResults =
+          await client
+              .from('profiles')
+              .select(
+                'id, display_name, username, avatar_url',
+              )
+              .ilike(
+                'username',
+                '%$query%',
+              )
+              .limit(20);
+
+      if (!mounted ||
+          generation !=
+              _searchGeneration) {
+        return;
+      }
+
+      // Merge both searches without
+      // showing the same user twice.
+      final Map<
+          String,
+          Map<String, dynamic>>
+          usersById = {};
+
+      for (final raw
+          in displayResults) {
+        final user =
+            Map<String, dynamic>.from(
+          raw,
+        );
+
+        final id =
+            user['id']
+                ?.toString();
+
+        if (id == null ||
+            id.isEmpty ||
+            id == ownUserId) {
+          continue;
+        }
+
+        usersById[id] =
+            user;
+      }
+
+      for (final raw
+          in usernameResults) {
+        final user =
+            Map<String, dynamic>.from(
+          raw,
+        );
+
+        final id =
+            user['id']
+                ?.toString();
+
+        if (id == null ||
+            id.isEmpty ||
+            id == ownUserId) {
+          continue;
+        }
+
+        usersById[id] =
+            user;
+      }
+
+      final results =
+          usersById.values
+              .toList();
+
+      final lowerQuery =
+          query.toLowerCase();
+
+      int rank(
+        Map<String, dynamic> user,
+      ) {
+        final displayName =
+            user['display_name']
+                    ?.toString()
+                    .toLowerCase() ??
+                '';
+
+        final username =
+            user['username']
+                    ?.toString()
+                    .toLowerCase() ??
+                '';
+
+        // Exact matches first.
+        if (username ==
+                lowerQuery ||
+            displayName ==
+                lowerQuery) {
+          return 0;
+        }
+
+        // Then usernames beginning
+        // with the query.
+        if (username.startsWith(
+          lowerQuery,
+        )) {
+          return 1;
+        }
+
+        // Then display names beginning
+        // with the query.
+        if (displayName.startsWith(
+          lowerQuery,
+        )) {
+          return 2;
+        }
+
+        return 3;
+      }
+
+      results.sort(
+        (a, b) {
+          final rankCompare =
+              rank(a).compareTo(
+            rank(b),
+          );
+
+          if (rankCompare != 0) {
+            return rankCompare;
+          }
+
+          final aName =
+              (
+                a['display_name'] ??
+                a['username'] ??
+                ''
+              )
+                  .toString()
+                  .toLowerCase();
+
+          final bName =
+              (
+                b['display_name'] ??
+                b['username'] ??
+                ''
+              )
+                  .toString()
+                  .toLowerCase();
+
+          return aName.compareTo(
+            bName,
+          );
+        },
+      );
+
+      setState(() {
+        _results = results;
+        _searching = false;
+      });
+    } catch (e) {
+      debugPrint(
+        'Could not search users: $e',
+      );
+
+      if (!mounted ||
+          generation !=
+              _searchGeneration) {
+        return;
+      }
+
+      setState(() {
+        _results = [];
+        _searching = false;
+      });
+    }
+  }
+
+  Future<void> _refresh() async {
+    final query =
+        _searchController.text
+            .trim();
+
+    if (query.isEmpty) {
+      return;
+    }
+
+    _searchGeneration++;
+
+    final generation =
+        _searchGeneration;
+
+    setState(() {
+      _searching = true;
+    });
+
+    await _search(
+      query,
+      generation,
+    );
+  }
+
+  void _clearSearch() {
+    _debounce?.cancel();
+
+    _searchController.clear();
+
+    _searchGeneration++;
+
+    setState(() {
+      _query = '';
+      _results = [];
+      _searching = false;
+    });
+  }
+
+  @override
   void dispose() {
-    _tabController.dispose();
+    _debounce?.cancel();
+
+    _searchController.dispose();
 
     super.dispose();
   }
@@ -2388,203 +3129,123 @@ Future<void> _loadFollowing() async {
   Widget build(
     BuildContext context,
   ) {
-    return SafeArea(
-      child: Column(
-        children: [
-          Padding(
-            padding:
-                const EdgeInsets
-                    .fromLTRB(
-              20,
-              20,
-              20,
-              12,
-            ),
-            child: Row(
-              children: [
-                const Expanded(
-                  child: Text(
-                    'Community',
-                    style:
-                        TextStyle(
-                      fontSize: 28,
-                      fontWeight:
-                          FontWeight
-                              .bold,
-                    ),
-                  ),
-                ),
+    return Column(
+      children: [
+        Padding(
+          padding:
+              const EdgeInsets
+                  .fromLTRB(
+            16,
+            4,
+            16,
+            12,
+          ),
+          child: TextField(
+            controller:
+                _searchController,
 
-                Icon(
-                  Icons.people_rounded,
-                  color:
-                      chipluxCyan
-                          .withValues(
-                    alpha: 0.9,
-                  ),
-                  size: 28,
+            onChanged:
+                _onSearchChanged,
+
+            textInputAction:
+                TextInputAction.search,
+
+            decoration:
+                InputDecoration(
+              hintText:
+                  'Search name or username',
+
+              prefixIcon:
+                  const Icon(
+                Icons.search_rounded,
+              ),
+
+              suffixIcon:
+                  _query.isNotEmpty
+                      ? IconButton(
+                          onPressed:
+                              _clearSearch,
+                          icon:
+                              const Icon(
+                            Icons
+                                .close_rounded,
+                          ),
+                        )
+                      : null,
+
+              filled: true,
+
+              fillColor:
+                  chipluxSurface
+                      .withValues(
+                alpha: 0.88,
+              ),
+
+              border:
+                  OutlineInputBorder(
+                borderRadius:
+                    BorderRadius
+                        .circular(
+                  16,
                 ),
-              ],
+                borderSide:
+                    BorderSide.none,
+              ),
+
+              enabledBorder:
+                  OutlineInputBorder(
+                borderRadius:
+                    BorderRadius
+                        .circular(
+                  16,
+                ),
+                borderSide:
+                    BorderSide(
+                  color:
+                      Colors.white
+                          .withValues(
+                    alpha: 0.05,
+                  ),
+                ),
+              ),
+
+              focusedBorder:
+                  OutlineInputBorder(
+                borderRadius:
+                    BorderRadius
+                        .circular(
+                  16,
+                ),
+                borderSide:
+                    const BorderSide(
+                  color:
+                      chipluxCyan,
+                  width: 1.5,
+                ),
+              ),
             ),
           ),
-
-          Padding(
-  padding:
-      const EdgeInsets
-          .symmetric(
-    horizontal: 16,
-  ),
-  child: Container(
-    height: 64,
-    padding:
-        const EdgeInsets
-            .all(
-      4,
-    ),
-    decoration:
-        BoxDecoration(
-      color:
-          chipluxSurface
-              .withValues(
-        alpha: 0.45,
-      ),
-      borderRadius:
-          BorderRadius
-              .circular(
-        22,
-      ),
-    ),
-    child: TabBar(
-      controller:
-          _tabController,
-
-      isScrollable: true,
-
-      tabAlignment:
-          TabAlignment.start,
-
-      indicator:
-          BoxDecoration(
-        color:
-            Colors.transparent,
-        borderRadius:
-            BorderRadius
-                .circular(
-          18,
         ),
-        border: Border.all(
-          color: chipluxCyan,
-          width: 2,
-        ),
-      ),
 
-      indicatorSize:
-          TabBarIndicatorSize
-              .tab,
+        Expanded(
+          child:
+              _CommunityUsersList(
+            loading:
+                _searching,
 
-      dividerColor:
-          Colors.transparent,
+            users:
+                _results,
 
-      overlayColor:
-          WidgetStateProperty.all(
-        Colors.transparent,
-      ),
+            emptyText:
+                _query.isEmpty
+                    ? 'Search for friends by display name or username.'
+                    : 'No users found.',
 
-      splashFactory:
-          NoSplash.splashFactory,
-
-      labelColor:
-          chipluxCyan,
-
-      unselectedLabelColor:
-          Colors.white70,
-
-      labelStyle:
-          const TextStyle(
-        fontWeight:
-            FontWeight.bold,
-        fontSize: 14,
-      ),
-
-      unselectedLabelStyle:
-          const TextStyle(
-        fontWeight:
-            FontWeight.w600,
-        fontSize: 14,
-      ),
-
-      labelPadding:
-          const EdgeInsets
-              .symmetric(
-        horizontal: 20,
-      ),
-
-      tabs: const [
-        Tab(
-          text:
-              'Friends Watch',
-        ),
-        Tab(
-          text:
-              'Followers',
-        ),
-        Tab(
-          text:
-              'Following',
+            onRefresh:
+                _refresh,
+          ),
         ),
       ],
-    ),
-  ),
-),
-
-          const SizedBox(
-            height: 12,
-          ),
-
-          Expanded(
-  child: TabBarView(
-    controller:
-        _tabController,
-    children: [
-      _FriendsWatchList(
-  loading:
-      loadingFriendsWatch,
-
-  activities:
-      friendsWatch,
-
-  onRefresh:
-      _loadFriendsWatch,
-
-  onProfileTap:
-      _openCommunityProfile,
-
-  onActivityTap:
-      _openActivity,
-),
-
-      _CommunityUsersList(
-        loading:
-            loadingFollowers,
-        users:
-            followers,
-        emptyText:
-            'No followers yet.',
-      ),
-
-      _CommunityUsersList(
-        loading:
-            loadingFollowing,
-        users:
-            following,
-        emptyText:
-            'You are not following anyone yet.',
-      ),
-    ],
-  ),
-),
-        ],
-      ),
     );
   }
 }
@@ -2598,11 +3259,15 @@ class _CommunityUsersList
 
   final String emptyText;
 
+  final Future<void> Function()
+    onRefresh;
+
   const _CommunityUsersList({
-    required this.loading,
-    required this.users,
-    required this.emptyText,
-  });
+  required this.loading,
+  required this.users,
+  required this.emptyText,
+  required this.onRefresh,
+});
 
   @override
   Widget build(
@@ -2629,11 +3294,8 @@ class _CommunityUsersList
     }
 
     return RefreshIndicator(
-      onRefresh: () async {
-        // Temporary.
-        // We'll wire refresh into the parent
-        // in the next pass.
-      },
+  onRefresh:
+      onRefresh,
       child: ListView.separated(
         padding:
             const EdgeInsets
@@ -3089,18 +3751,30 @@ class _FriendsWatchRow
         return 'watched';
 
       case 'tv_watched':
-        return 'watched';
+  return 'has completed';
 
-      case 'rated':
-        final stars =
-            activity[
-                'rating_stars'];
+case 'started_watching':
+  return 'started watching';
 
-        if (stars is num) {
-          return 'rated';
-        }
+case 'rated':
+  final season =
+      activity[
+          'season_number'];
 
-        return 'rated';
+  final episode =
+      activity[
+          'episode_number'];
+
+  if (season is num &&
+      episode is num) {
+    final code =
+        'S${season.toInt().toString().padLeft(2, '0')}'
+        'E${episode.toInt().toString().padLeft(2, '0')}';
+
+    return 'rated $code of';
+  }
+
+  return 'rated';
 
       case 'plan_to_watch':
         return 'plans to watch';
@@ -3477,6 +4151,8 @@ class _PublicProfilePageState
     extends State<PublicProfilePage> {
   final CommunityService community =
       CommunityService.instance;
+      
+      
 
   Map<String, dynamic>? profile;
 
@@ -8187,200 +8863,214 @@ void didUpdateWidget(
 }
 
   Widget _mediaTypeSelector() {
-    return Container(
-      height: 54,
-      margin:
-          const EdgeInsets.fromLTRB(
-        20,
-        8,
-        20,
-        6,
-      ),
-      padding:
-          const EdgeInsets.all(5),
-      decoration: BoxDecoration(
-  color: chipluxSurface,
-  borderRadius:
-      BorderRadius.circular(18),
-),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final tabWidth =
-              (constraints.maxWidth -
-                      10) /
-                  2;
+  return Container(
+    height: 54,
+    margin: const EdgeInsets.fromLTRB(
+      20,
+      8,
+      20,
+      6,
+    ),
+    padding: const EdgeInsets.all(5),
+    decoration: BoxDecoration(
+      color: chipluxSurface,
+      borderRadius: BorderRadius.circular(18),
+    ),
+    child: LayoutBuilder(
+      builder: (context, constraints) {
+        final tabWidth =
+            (constraints.maxWidth - 10) / 2;
 
-          final movieSelected =
-              selectedMediaType ==
-                  'movie';
+        final movieSelected =
+            selectedMediaType == 'movie';
 
-          return Stack(
-            children: [
-              AnimatedPositioned(
-                duration:
-                    const Duration(
-                  milliseconds: 250,
-                ),
-                curve:
-                    Curves
-                        .easeInOutCubic,
-                left: movieSelected
-                    ? tabWidth
-                    : 0,
-                top: 0,
-                bottom: 0,
-                width: tabWidth,
-                child: Container(
-                  decoration:
-                      BoxDecoration(
+        return Stack(
+          children: [
+            AnimatedPositioned(
+              duration:
+                  const Duration(
+                milliseconds: 250,
+              ),
+              curve:
+                  Curves.easeInOutCubic,
+              left: movieSelected
+                  ? tabWidth
+                  : 0,
+              top: 0,
+              bottom: 0,
+              width: tabWidth,
+              child: Container(
+                decoration: BoxDecoration(
+                  color:
+                      chipluxSurfaceLight,
+                  borderRadius:
+                      BorderRadius.circular(
+                    14,
+                  ),
+                  border: Border.all(
                     color:
-                        chipluxSurfaceLight,
-                    borderRadius:
-                        BorderRadius
-                            .circular(
-                                14),
-                    border:
-                        Border.all(
-                      color:
-                          chipluxViolet
-                              .withValues(
-                        alpha:
-                            0.35,
-                      ),
+                        chipluxViolet
+                            .withValues(
+                      alpha: 0.35,
                     ),
                   ),
                 ),
               ),
+            ),
 
-              Row(
-                children: [
-                  Expanded(
-                    child: InkWell(
-                      borderRadius:
-                          BorderRadius
-                              .circular(
-                                  14),
-                      onTap: () {
-                        setState(() {
-                          selectedMediaType =
-                              'tv';
-                        });
-                      },
-                      child: Center(
-                        child: Row(
-                          mainAxisSize:
-                              MainAxisSize
-                                  .min,
-                          children: [
-                            Icon(
-                              Icons
-                                  .tv_outlined,
-                              size: 19,
-                              color:
-                                  selectedMediaType ==
-                                          'tv'
-                                      ? chipluxCyan
-                                      : Colors
-                                          .white38,
-                            ),
-                            const SizedBox(
-                                width:
-                                    7),
-                            Text(
-                              'TV Shows',
-                              style:
-                                  TextStyle(
-                                fontSize:
-                                    15,
-                                fontWeight:
-                                    selectedMediaType ==
-                                            'tv'
-                                        ? FontWeight
-                                            .bold
-                                        : FontWeight
-                                            .w500,
+            Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    borderRadius:
+                        BorderRadius.circular(
+                      14,
+                    ),
+                    onTap: () {
+                      setState(() {
+                        selectedMediaType =
+                            'tv';
+                      });
+                    },
+                    child: Center(
+                      child: Padding(
+                        padding:
+                            const EdgeInsets
+                                .symmetric(
+                          horizontal: 6,
+                        ),
+                        child: FittedBox(
+                          fit:
+                              BoxFit.scaleDown,
+                          child: Row(
+                            mainAxisSize:
+                                MainAxisSize
+                                    .min,
+                            children: [
+                              Icon(
+                                Icons
+                                    .tv_outlined,
+                                size: 19,
                                 color:
                                     selectedMediaType ==
                                             'tv'
-                                        ? Colors
-                                            .white
+                                        ? chipluxCyan
                                         : Colors
                                             .white38,
                               ),
-                            ),
-                          ],
+                              const SizedBox(
+                                width: 7,
+                              ),
+                              Text(
+                                'TV Shows',
+                                maxLines: 1,
+                                style:
+                                    TextStyle(
+                                  fontSize:
+                                      15,
+                                  fontWeight:
+                                      selectedMediaType ==
+                                              'tv'
+                                          ? FontWeight
+                                              .bold
+                                          : FontWeight
+                                              .w500,
+                                  color:
+                                      selectedMediaType ==
+                                              'tv'
+                                          ? Colors
+                                              .white
+                                          : Colors
+                                              .white38,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
+                ),
 
-                  Expanded(
-                    child: InkWell(
-                      borderRadius:
-                          BorderRadius
-                              .circular(
-                                  14),
-                      onTap: () {
-                        setState(() {
-                          selectedMediaType =
-                              'movie';
-                        });
-                      },
-                      child: Center(
-                        child: Row(
-                          mainAxisSize:
-                              MainAxisSize
-                                  .min,
-                          children: [
-                            Icon(
-                              Icons
-                                  .movie_outlined,
-                              size: 19,
-                              color:
-                                  selectedMediaType ==
-                                          'movie'
-                                      ? chipluxPurple
-                                      : Colors
-                                          .white38,
-                            ),
-                            const SizedBox(
-                                width:
-                                    7),
-                            Text(
-                              'Movies',
-                              style:
-                                  TextStyle(
-                                fontSize:
-                                    15,
-                                fontWeight:
-                                    selectedMediaType ==
-                                            'movie'
-                                        ? FontWeight
-                                            .bold
-                                        : FontWeight
-                                            .w500,
+                Expanded(
+                  child: InkWell(
+                    borderRadius:
+                        BorderRadius.circular(
+                      14,
+                    ),
+                    onTap: () {
+                      setState(() {
+                        selectedMediaType =
+                            'movie';
+                      });
+                    },
+                    child: Center(
+                      child: Padding(
+                        padding:
+                            const EdgeInsets
+                                .symmetric(
+                          horizontal: 6,
+                        ),
+                        child: FittedBox(
+                          fit:
+                              BoxFit.scaleDown,
+                          child: Row(
+                            mainAxisSize:
+                                MainAxisSize
+                                    .min,
+                            children: [
+                              Icon(
+                                Icons
+                                    .movie_outlined,
+                                size: 19,
                                 color:
                                     selectedMediaType ==
                                             'movie'
-                                        ? Colors
-                                            .white
+                                        ? chipluxPurple
                                         : Colors
                                             .white38,
                               ),
-                            ),
-                          ],
+                              const SizedBox(
+                                width: 7,
+                              ),
+                              Text(
+                                'Movies',
+                                maxLines: 1,
+                                style:
+                                    TextStyle(
+                                  fontSize:
+                                      15,
+                                  fontWeight:
+                                      selectedMediaType ==
+                                              'movie'
+                                          ? FontWeight
+                                              .bold
+                                          : FontWeight
+                                              .w500,
+                                  color:
+                                      selectedMediaType ==
+                                              'movie'
+                                          ? Colors
+                                              .white
+                                          : Colors
+                                              .white38,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ],
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
+                ),
+              ],
+            ),
+          ],
+        );
+      },
+    ),
+  );
+}
 
   @override
   Widget build(
@@ -9110,15 +9800,39 @@ Widget _buildAnimatedFilterBar() {
                         .redAccent,
                   ),
                 ),
-                onTap: () {
-  Navigator.pop(context);
-
-  unawaited(
-    library.remove(
-      item.id,
-      item.mediaType,
-    ),
+                onTap: () async {
+  Navigator.pop(
+    context,
   );
+
+  await library.remove(
+    item.id,
+    item.mediaType,
+  );
+
+  await CriticService.instance
+      .clearAllRatingsForRemovedMedia(
+    tmdbId:
+        item.id,
+    mediaType:
+        item.mediaType,
+  );
+
+  try {
+    await CommunityService.instance
+        .deleteActivity(
+      activityType:
+          'rated',
+      mediaType:
+          item.mediaType,
+      tmdbId:
+          item.id,
+    );
+  } catch (e) {
+    debugPrint(
+      'Could not remove rating activities: $e',
+    );
+  }
 },
               ),
             ],
@@ -9157,6 +9871,36 @@ Widget _buildAnimatedFilterBar() {
     item.mediaType,
     status,
   );
+
+  if (item.mediaType == 'movie' &&
+    wasCompleted &&
+    status != 'completed') {
+  await CriticService.instance
+      .clearAllRatingsForRemovedMedia(
+    tmdbId:
+        item.id,
+    mediaType:
+        'movie',
+  );
+
+  try {
+    await CommunityService.instance
+        .deleteActivity(
+      activityType:
+          'rated',
+      mediaType:
+          'movie',
+      tmdbId:
+          item.id,
+      titleLevelOnly:
+          true,
+    );
+  } catch (e) {
+    debugPrint(
+      'Could not remove movie rating activity: $e',
+    );
+  }
+}
 
   if (context.mounted) {
     Navigator.pop(
@@ -9803,6 +10547,137 @@ unawaited(
 return false;
   }
 
+  Future<void>
+    _openNextEpisode() async {
+  final int? nextSeason =
+      seasonNumber;
+
+  final int? nextEpisode =
+      episodeNumber;
+
+  // Nothing left to watch.
+  if (nextSeason == null ||
+      nextEpisode == null) {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            MediaDetailsPage(
+          id:
+              widget.item.id,
+          mediaType:
+              'tv',
+        ),
+      ),
+    );
+
+    return;
+  }
+
+  try {
+    final episodes =
+        await tmdbService
+            .getSeasonEpisodes(
+      widget.item.id,
+      nextSeason,
+    );
+
+    Map<String, dynamic>?
+        episode;
+
+    for (final raw
+        in episodes) {
+      if (raw is! Map) {
+        continue;
+      }
+
+      final map =
+          Map<String, dynamic>.from(
+        raw,
+      );
+
+      final number =
+          map['episode_number'];
+
+      if (number is num &&
+          number.toInt() ==
+              nextEpisode) {
+        episode =
+            map;
+
+        break;
+      }
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    if (episode == null) {
+      return;
+    }
+
+    final rawRuntime =
+        episode['runtime'];
+
+    final rawRating =
+        episode[
+            'vote_average'];
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            SwipeableEpisodePage(
+          showId:
+              widget.item.id,
+          seasonNumber:
+              nextSeason,
+          episodeNumber:
+              nextEpisode,
+          title:
+              episode?['name']
+                      ?.toString() ??
+                  episodeName,
+          stillPath:
+              episode?['still_path']
+                  ?.toString(),
+          runtime:
+              rawRuntime is num
+                  ? rawRuntime
+                      .toInt()
+                  : runtime,
+          rating:
+              rawRating is num
+                  ? rawRating
+                      .toDouble()
+                  : episodeRating,
+          overview:
+              episode?['overview']
+                      ?.toString() ??
+                  '',
+          airDate:
+              episode?['air_date']
+                  ?.toString(),
+        ),
+      ),
+    );
+  } catch (e) {
+    debugPrint(
+      'Could not open next episode: $e',
+    );
+  }
+
+  if (!mounted) {
+    return;
+  }
+
+  await _loadNextEpisode(
+    forceRefresh:
+        true,
+  );
+}
+
   @override
   Widget build(BuildContext context) {
     final posterUrl =
@@ -10018,22 +10893,7 @@ return false;
             BorderRadius.circular(18),
 
         onTap: () async {
-  await Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (_) =>
-          MediaDetailsPage(
-        id: widget.item.id,
-        mediaType: 'tv',
-      ),
-    ),
-  );
-
-  if (!mounted) return;
-
-  await _loadNextEpisode(
-  forceRefresh: true,
-);
+  await _openNextEpisode();
 },
 
         child: Container(
@@ -16594,9 +17454,7 @@ class _WatchStatCard
                     ),
                   ),
 
-                  const SizedBox(
-  height: 14,
-),
+                  const Spacer(),
 
                   Text(
                     '$value',
@@ -16726,9 +17584,7 @@ class _RatingStatCard
                     ),
                   ),
 
-                  const SizedBox(
-  height: 14,
-),
+                  const Spacer(),
 
                   Text(
                     '$value',
@@ -17406,40 +18262,101 @@ int _episodeRatingPulse = 0;
 }
 
   Future<void> _save() async {
-    final currentRating =
-        rating;
+  final currentRating =
+      rating;
 
-    if (currentRating ==
-        null) {
-      return;
-    }
+  if (currentRating == null) {
+    return;
+  }
 
+  final int stars =
+      ((currentRating / 2)
+              .round()
+              .clamp(
+                1,
+                5,
+              ))
+          .toInt();
+
+  final show =
+      LibraryService.instance
+          .getItem(
+    widget.showId,
+    'tv',
+  );
+
+  final String showTitle =
+      show?.title ??
+          'Unknown TV Show';
+
+  try {
+    await critic
+        .saveEpisodeRating(
+      showId:
+          widget.showId,
+      seasonNumber:
+          widget.seasonNumber,
+      episodeNumber:
+          widget.episodeNumber,
+      rating:
+          currentRating,
+    );
+
+    // Keep only the newest rating
+    // activity for this episode.
     try {
-      await critic
-          .saveEpisodeRating(
-        showId:
+      await CommunityService.instance
+          .deleteActivity(
+        activityType:
+            'rated',
+        mediaType:
+            'tv',
+        tmdbId:
             widget.showId,
         seasonNumber:
             widget.seasonNumber,
         episodeNumber:
             widget.episodeNumber,
-        rating:
-            currentRating,
+      );
+
+      await CommunityService.instance
+          .tryCreateActivity(
+        activityType:
+            'rated',
+        mediaType:
+            'tv',
+        tmdbId:
+            widget.showId,
+        mediaTitle:
+            showTitle,
+        seasonNumber:
+            widget.seasonNumber,
+        episodeNumber:
+            widget.episodeNumber,
+        ratingStars:
+            stars,
       );
     } catch (e) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Could not save rating: $e',
-          ),
-        ),
+      debugPrint(
+        'Could not update episode rating activity: $e',
       );
     }
+  } catch (e) {
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Could not save rating: $e',
+        ),
+      ),
+    );
   }
+}
 
   Future<void> _removeRating() async {
   final oldRating =
@@ -17464,6 +18381,25 @@ int _episodeRatingPulse = 0;
       episodeNumber:
           widget.episodeNumber,
     );
+    try {
+  await CommunityService.instance
+      .deleteActivity(
+    activityType:
+        'rated',
+    mediaType:
+        'tv',
+    tmdbId:
+        widget.showId,
+    seasonNumber:
+        widget.seasonNumber,
+    episodeNumber:
+        widget.episodeNumber,
+  );
+} catch (e) {
+  debugPrint(
+    'Could not remove episode rating activity: $e',
+  );
+}
   } catch (e) {
     if (!mounted) {
       return;
@@ -18012,42 +18948,111 @@ Future<void> toggleFavorite() async {
   final newValue =
       !mediaUserData.isFavorite;
 
+  final String mediaTitle =
+      (
+        details?['title'] ??
+        details?['name'] ??
+        library
+            .getItem(
+              widget.id,
+              widget.mediaType,
+            )
+            ?.title ??
+        'Unknown'
+      ).toString();
+
   setState(() {
-    mediaUserData = MediaUserData(
-      isFavorite: newValue,
-      rating: mediaUserData.rating,
-      review: mediaUserData.review,
+    mediaUserData =
+        MediaUserData(
+      isFavorite:
+          newValue,
+      rating:
+          mediaUserData.rating,
+      review:
+          mediaUserData.review,
     );
   });
 
   try {
     await mediaUserDataService.save(
-      tmdbId: widget.id,
-      mediaType: widget.mediaType,
-      isFavorite: newValue,
-      rating: mediaUserData.rating,
-      review: reviewController.text,
+      tmdbId:
+          widget.id,
+      mediaType:
+          widget.mediaType,
+      isFavorite:
+          newValue,
+      rating:
+          mediaUserData.rating,
+      review:
+          reviewController.text,
     );
-    if (newValue &&
-    mounted) {
-  showFavoriteBurst(
-    context,
-  );
-}
-  } catch (e) {
-    
-    if (!mounted) return;
 
+    // =====================================
+    // COMMUNITY FAVORITE ACTIVITY
+    // =====================================
+
+    try {
+      // Remove any old favorite event
+      // for this title first.
+      await CommunityService.instance
+          .deleteActivity(
+        activityType:
+            'favorite',
+        mediaType:
+            widget.mediaType,
+        tmdbId:
+            widget.id,
+        titleLevelOnly:
+            true,
+      );
+
+      if (newValue) {
+        await CommunityService.instance
+            .tryCreateActivity(
+          activityType:
+              'favorite',
+          mediaType:
+              widget.mediaType,
+          tmdbId:
+              widget.id,
+          mediaTitle:
+              mediaTitle,
+        );
+      }
+    } catch (e) {
+      debugPrint(
+        'Could not update favorite activity: $e',
+      );
+    }
+
+    if (newValue &&
+        mounted) {
+      showFavoriteBurst(
+        context,
+      );
+    }
+  } catch (e) {
+    if (!mounted) {
+      return;
+    }
+
+    // Restore previous state if
+    // saving the favorite failed.
     setState(() {
-      mediaUserData = MediaUserData(
-        isFavorite: !newValue,
-        rating: mediaUserData.rating,
-        review: mediaUserData.review,
+      mediaUserData =
+          MediaUserData(
+        isFavorite:
+            !newValue,
+        rating:
+            mediaUserData.rating,
+        review:
+            mediaUserData.review,
       );
     });
 
-    ScaffoldMessenger.of(context)
-        .showSnackBar(
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(
       SnackBar(
         content: Text(
           'Could not update favorite: $e',
@@ -18099,6 +19104,19 @@ Future<void>
     // Rated state, sorting, etc.
     await CriticService.instance
         .refresh();
+        try {
+  await CommunityService.instance
+    .deleteActivity(
+  activityType: 'rated',
+  mediaType: widget.mediaType,
+  tmdbId: widget.id,
+  titleLevelOnly: true,
+);
+} catch (e) {
+  debugPrint(
+    'Could not remove rating activity: $e',
+  );
+}
   } catch (e) {
     if (!mounted) {
       return;
@@ -18337,18 +19355,73 @@ Future<void> saveRatingNow() async {
     return;
   }
 
+  final int stars =
+      (rating / 2)
+          .round()
+          .clamp(
+            1,
+            5,
+          );
+
+  final String mediaTitle =
+      (
+        details?['title'] ??
+        details?['name'] ??
+        library
+            .getItem(
+              widget.id,
+              widget.mediaType,
+            )
+            ?.title ??
+        'Unknown'
+      ).toString();
+
   try {
     await mediaUserDataService.save(
-      tmdbId: widget.id,
+      tmdbId:
+          widget.id,
       mediaType:
           widget.mediaType,
       isFavorite:
           mediaUserData.isFavorite,
-      rating: rating,
+      rating:
+          rating,
       review:
           mediaUserData.review,
     );
-    await CriticService.instance.refresh();
+
+    await CriticService.instance
+        .refresh();
+
+    // Keep only the newest rating
+    // activity for this title.
+    try {
+      await CommunityService.instance
+    .deleteActivity(
+  activityType: 'rated',
+  mediaType: widget.mediaType,
+  tmdbId: widget.id,
+  titleLevelOnly: true,
+);
+
+      await CommunityService.instance
+          .tryCreateActivity(
+        activityType:
+            'rated',
+        mediaType:
+            widget.mediaType,
+        tmdbId:
+            widget.id,
+        mediaTitle:
+            mediaTitle,
+        ratingStars:
+            stars,
+      );
+    } catch (e) {
+      debugPrint(
+        'Could not update rating activity: $e',
+      );
+    }
   } catch (e) {
     debugPrint(
       'Could not save rating: $e',
@@ -20018,6 +21091,51 @@ final showSeasonGreen =
                   episodes,
                   !allWatched,
                 );
+                if (allWatched) {
+  await CriticService.instance
+      .clearSeasonAfterUnwatch(
+    showId:
+        widget.id,
+    seasonNumber:
+        seasonNumber,
+  );
+
+  try {
+    await CommunityService.instance
+        .deleteActivity(
+      activityType:
+          'rated',
+      mediaType:
+          'tv',
+      tmdbId:
+          widget.id,
+      seasonNumber:
+          seasonNumber,
+    );
+
+    if (library
+            .watchedCountForShow(
+          widget.id,
+        ) ==
+        0) {
+      await CommunityService.instance
+          .deleteActivity(
+        activityType:
+            'rated',
+        mediaType:
+            'tv',
+        tmdbId:
+            widget.id,
+        titleLevelOnly:
+            true,
+      );
+    }
+  } catch (e) {
+    debugPrint(
+      'Could not remove season rating activities: $e',
+    );
+  }
+}
               },
               icon: Icon(
                 allWatched
@@ -22004,15 +23122,68 @@ class _EpisodeTile
                       padding:
                           EdgeInsets.zero,
 
-                      onPressed: () {
-                        library.toggleEpisode(
-                          showId,
-                          seasonNumber,
-                          episodeNumber,
-                          runtimeMinutes:
-                              runtime ?? 0,
-                        );
-                      },
+                      onPressed: () async {
+  final bool wasWatched =
+      watched;
+
+  await library.toggleEpisode(
+    showId,
+    seasonNumber,
+    episodeNumber,
+    runtimeMinutes:
+        runtime ?? 0,
+  );
+
+  if (wasWatched) {
+    await CriticService.instance
+        .clearEpisodeAfterUnwatch(
+      showId:
+          showId,
+      seasonNumber:
+          seasonNumber,
+      episodeNumber:
+          episodeNumber,
+    );
+
+    try {
+      await CommunityService.instance
+          .deleteActivity(
+        activityType:
+            'rated',
+        mediaType:
+            'tv',
+        tmdbId:
+            showId,
+        seasonNumber:
+            seasonNumber,
+        episodeNumber:
+            episodeNumber,
+      );
+
+      if (library
+              .watchedCountForShow(
+            showId,
+          ) ==
+          0) {
+        await CommunityService.instance
+            .deleteActivity(
+          activityType:
+              'rated',
+          mediaType:
+              'tv',
+          tmdbId:
+              showId,
+          titleLevelOnly:
+              true,
+        );
+      }
+    } catch (e) {
+      debugPrint(
+        'Could not remove rating activity: $e',
+      );
+    }
+  }
+},
 
                       icon: Icon(
                         watched
@@ -23107,16 +24278,68 @@ const SizedBox(
                     double.infinity,
                 child:
                     ElevatedButton.icon(
-                  onPressed: () {
-                    library
-                        .toggleEpisode(
-                      showId,
-                      seasonNumber,
-                      episodeNumber,
-                      runtimeMinutes:
-                          runtime ?? 0,
-                    );
-                  },
+                  onPressed: () async {
+  final bool wasWatched =
+      watched;
+
+  await library.toggleEpisode(
+    showId,
+    seasonNumber,
+    episodeNumber,
+    runtimeMinutes:
+        runtime ?? 0,
+  );
+
+  if (wasWatched) {
+    await CriticService.instance
+        .clearEpisodeAfterUnwatch(
+      showId:
+          showId,
+      seasonNumber:
+          seasonNumber,
+      episodeNumber:
+          episodeNumber,
+    );
+
+    try {
+      await CommunityService.instance
+          .deleteActivity(
+        activityType:
+            'rated',
+        mediaType:
+            'tv',
+        tmdbId:
+            showId,
+        seasonNumber:
+            seasonNumber,
+        episodeNumber:
+            episodeNumber,
+      );
+
+      if (library
+              .watchedCountForShow(
+            showId,
+          ) ==
+          0) {
+        await CommunityService.instance
+            .deleteActivity(
+          activityType:
+              'rated',
+          mediaType:
+              'tv',
+          tmdbId:
+              showId,
+          titleLevelOnly:
+              true,
+        );
+      }
+    } catch (e) {
+      debugPrint(
+        'Could not remove rating activity: $e',
+      );
+    }
+  }
+},
                   icon: Icon(
                     watched
                         ? Icons

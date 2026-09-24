@@ -481,13 +481,14 @@ class CommunityService {
   // =====================================================
 
   Future<void> deleteActivity({
-    required String activityType,
-    String? mediaType,
-    int? tmdbId,
-    int? seasonNumber,
-    int? episodeNumber,
-    String? achievementId,
-  }) async {
+  required String activityType,
+  String? mediaType,
+  int? tmdbId,
+  int? seasonNumber,
+  int? episodeNumber,
+  String? achievementId,
+  bool titleLevelOnly = false,
+}) async {
     final user = currentUser;
 
     if (user == null) {
@@ -533,6 +534,18 @@ class CommunityService {
         episodeNumber,
       );
     }
+
+    if (titleLevelOnly) {
+  query = query
+      .isFilter(
+        'season_number',
+        null,
+      )
+      .isFilter(
+        'episode_number',
+        null,
+      );
+}
 
     if (achievementId != null) {
       query = query.eq(

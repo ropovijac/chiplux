@@ -51,6 +51,170 @@ int? titleRatingStars(
   );
 }
 
+Future<void> clearEpisodeAfterUnwatch({
+  required int showId,
+  required int seasonNumber,
+  required int episodeNumber,
+}) async {
+  final user =
+      client.auth.currentUser;
+
+  if (user == null) {
+    return;
+  }
+
+  await client
+      .from('episode_ratings')
+      .delete()
+      .eq(
+        'user_id',
+        user.id,
+      )
+      .eq(
+        'show_id',
+        showId,
+      )
+      .eq(
+        'season_number',
+        seasonNumber,
+      )
+      .eq(
+        'episode_number',
+        episodeNumber,
+      );
+
+  // If this was the last watched
+  // episode, the show itself is no
+  // longer considered watched either.
+  if (LibraryService.instance
+          .watchedCountForShow(
+        showId,
+      ) ==
+      0) {
+    await client
+        .from('media_user_data')
+        .update({
+          'rating': null,
+        })
+        .eq(
+          'user_id',
+          user.id,
+        )
+        .eq(
+          'tmdb_id',
+          showId,
+        )
+        .eq(
+          'media_type',
+          'tv',
+        );
+  }
+
+  await refresh();
+}
+
+Future<void> clearSeasonAfterUnwatch({
+  required int showId,
+  required int seasonNumber,
+}) async {
+  final user =
+      client.auth.currentUser;
+
+  if (user == null) {
+    return;
+  }
+
+  await client
+      .from('episode_ratings')
+      .delete()
+      .eq(
+        'user_id',
+        user.id,
+      )
+      .eq(
+        'show_id',
+        showId,
+      )
+      .eq(
+        'season_number',
+        seasonNumber,
+      );
+
+  if (LibraryService.instance
+          .watchedCountForShow(
+        showId,
+      ) ==
+      0) {
+    await client
+        .from('media_user_data')
+        .update({
+          'rating': null,
+        })
+        .eq(
+          'user_id',
+          user.id,
+        )
+        .eq(
+          'tmdb_id',
+          showId,
+        )
+        .eq(
+          'media_type',
+          'tv',
+        );
+  }
+
+  await refresh();
+}
+
+Future<void> clearAllRatingsForRemovedMedia({
+  required int tmdbId,
+  required String mediaType,
+}) async {
+  final user =
+      client.auth.currentUser;
+
+  if (user == null) {
+    return;
+  }
+
+  // Keep favorites/review.
+  // Only reset the rating column.
+  await client
+      .from('media_user_data')
+      .update({
+        'rating': null,
+      })
+      .eq(
+        'user_id',
+        user.id,
+      )
+      .eq(
+        'tmdb_id',
+        tmdbId,
+      )
+      .eq(
+        'media_type',
+        mediaType,
+      );
+
+  if (mediaType == 'tv') {
+    await client
+        .from('episode_ratings')
+        .delete()
+        .eq(
+          'user_id',
+          user.id,
+        )
+        .eq(
+          'show_id',
+          tmdbId,
+        );
+  }
+
+  await refresh();
+}
+
 int ratedEpisodeCountForShow(
   int showId,
 ) {
@@ -704,3 +868,4 @@ episodeRatingCoverage = 0;
     notifyListeners();
   }
 }
+

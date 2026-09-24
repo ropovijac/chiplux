@@ -878,6 +878,32 @@ class LibraryService
 // COMMUNITY ACTIVITY
 // =====================================
 
+// STARTED WATCHING
+if (newItem.mediaType == 'tv' &&
+    newItem.status == 'watching' &&
+    previousStatus != 'watching') {
+  await CommunityService.instance
+      .tryCreateActivity(
+    activityType: 'started_watching',
+    mediaType: 'tv',
+    tmdbId: newItem.id,
+    mediaTitle: newItem.title,
+  );
+}
+
+// TV SHOW WATCHED
+if (newItem.mediaType == 'tv' &&
+    newItem.status == 'completed' &&
+    previousStatus != 'completed') {
+  await CommunityService.instance
+      .tryCreateActivity(
+    activityType: 'tv_watched',
+    mediaType: 'tv',
+    tmdbId: newItem.id,
+    mediaTitle: newItem.title,
+  );
+}
+
 // MOVIE WATCHED
 if (newItem.mediaType == 'movie' &&
     newItem.status == 'completed' &&
@@ -1031,6 +1057,61 @@ if (mediaType == 'movie') {
 _scheduleCloudSync();
 
 // =====================================
+// STARTED WATCHING
+// =====================================
+
+if (mediaType == 'tv' &&
+    status == 'watching' &&
+    oldStatus != 'watching') {
+  await CommunityService.instance
+      .tryCreateActivity(
+    activityType: 'started_watching',
+    mediaType: 'tv',
+    tmdbId: id,
+    mediaTitle: _items[index].title,
+  );
+}
+
+// =====================================
+// TV SHOW WATCHED
+// =====================================
+
+if (mediaType == 'tv') {
+  if (status == 'completed' &&
+      oldStatus != 'completed') {
+    await CommunityService.instance
+        .tryCreateActivity(
+      activityType:
+          'tv_watched',
+      mediaType:
+          'tv',
+      tmdbId:
+          id,
+      mediaTitle:
+          _items[index].title,
+    );
+  } else if (
+      oldStatus == 'completed' &&
+      status != 'completed') {
+    try {
+      await CommunityService.instance
+          .deleteActivity(
+        activityType:
+            'tv_watched',
+        mediaType:
+            'tv',
+        tmdbId:
+            id,
+      );
+    } catch (e) {
+      debugPrint(
+        'Could not remove TV watched activity: $e',
+      );
+    }
+  }
+}
+
+// =====================================
 // PLAN TO WATCH
 // =====================================
 
@@ -1124,6 +1205,24 @@ if (mediaType == 'tv' &&
       }
     }
 
+    if (mediaType == 'tv') {
+  try {
+    await CommunityService.instance
+        .deleteActivity(
+      activityType:
+          'tv_watched',
+      mediaType:
+          'tv',
+      tmdbId:
+          id,
+    );
+  } catch (e) {
+    debugPrint(
+      'Could not remove TV watched activity: $e',
+    );
+  }
+}
+
     // UI updates immediately.
     notifyListeners();
 
@@ -1136,6 +1235,8 @@ if (mediaType == 'tv' &&
 
     _scheduleCloudSync();
   }
+
+  
 
   // =====================================================
   // EPISODE HELPERS
@@ -1202,11 +1303,19 @@ Future<bool> _ensureTvShowIsWatching(
 
     // Plan / Dropped -> Watching
     _items[index] =
-        item.copyWith(
-      status: 'watching',
-    );
+    item.copyWith(
+  status: 'watching',
+);
 
-    return true;
+await CommunityService.instance
+    .tryCreateActivity(
+  activityType: 'started_watching',
+  mediaType: 'tv',
+  tmdbId: showId,
+  mediaTitle: item.title,
+);
+
+return true;
   }
 
   // =========================================
@@ -1276,28 +1385,32 @@ Future<bool> _ensureTvShowIsWatching(
     }
 
     _items.add(
-      LibraryItem(
-        id: showId,
-        mediaType: 'tv',
-        title: title,
-        posterPath:
-            posterPath,
-        year: year,
-        status:
-            'watching',
-        totalEpisodes:
-            totalEpisodes,
-        runtimeMinutes:
-            0,
-        genreIds:
-            genreIds,
-        addedAt:
-            DateTime.now()
-                .millisecondsSinceEpoch,
-      ),
-    );
+  LibraryItem(
+    id: showId,
+    mediaType: 'tv',
+    title: title,
+    posterPath: posterPath,
+    year: year,
+    status: 'watching',
+    totalEpisodes:
+        totalEpisodes,
+    runtimeMinutes: 0,
+    genreIds: genreIds,
+    addedAt:
+        DateTime.now()
+            .millisecondsSinceEpoch,
+  ),
+);
 
-    return true;
+await CommunityService.instance
+    .tryCreateActivity(
+  activityType: 'started_watching',
+  mediaType: 'tv',
+  tmdbId: showId,
+  mediaTitle: title,
+);
+
+return true;
   } catch (e) {
     debugPrint(
       'Could not auto-add TV show to Watching: $e',
