@@ -57,6 +57,12 @@ await Supabase.initialize(
 await MedalPinService.instance
     .init();
 
+await CriticService.instance
+    .refresh();
+
+PublicStatsSyncService.instance
+    .start();
+
 runApp(
   const ChipluxApp(),
 );
@@ -4132,6 +4138,372 @@ case 'rated':
   }
 }
 
+class PublicStatsSyncService {
+  PublicStatsSyncService._();
+
+  static final PublicStatsSyncService
+      instance =
+      PublicStatsSyncService._();
+
+  Timer? _debounce;
+
+  bool _started = false;
+
+  void start() {
+    if (_started) {
+      return;
+    }
+
+    _started = true;
+
+    LibraryService.instance
+        .addListener(
+      _scheduleSync,
+    );
+
+    CriticService.instance
+        .addListener(
+      _scheduleSync,
+    );
+
+    MedalPinService.instance
+        .addListener(
+      _scheduleSync,
+    );
+
+    _scheduleSync();
+  }
+
+  void _scheduleSync() {
+    _debounce?.cancel();
+
+    _debounce =
+        Timer(
+      const Duration(
+        milliseconds: 600,
+      ),
+      () {
+        unawaited(
+          syncNow(),
+        );
+      },
+    );
+  }
+
+  Future<void> syncNow() async {
+    final client =
+        Supabase.instance.client;
+
+    final user =
+        client.auth.currentUser;
+
+    if (user == null) {
+      return;
+    }
+
+    final library =
+        LibraryService.instance;
+
+    final critic =
+        CriticService.instance;
+
+    final achievementGroup =
+        _movieAchievementGroupFor(
+      library.moviesWatchedCount,
+    );
+
+    final unlockedIds =
+        achievementGroup.tiers
+            .where(
+              (achievement) =>
+                  achievement.unlocked,
+            )
+            .map(
+              (achievement) =>
+                  achievement.id,
+            )
+            .toList();
+
+    final genreRuntime =
+        _buildGenreRuntime(
+      library,
+    );
+
+    final distribution =
+        <String, int>{};
+
+    for (int rating = 1;
+        rating <= 5;
+        rating++) {
+      distribution[
+          '$rating'] =
+          critic.ratingDistribution[
+                  rating] ??
+              0;
+    }
+
+    try {
+      await client
+          .from('profiles')
+          .update({
+        'public_stats': {
+          'total_watched_minutes':
+              library
+                  .totalWatchedMinutes,
+
+          'viewer_title':
+              library.viewerTitle,
+
+          'movies_watched':
+              library
+                  .moviesWatchedCount,
+
+          'episodes_watched':
+              library
+                  .watchedEpisodeCount,
+
+          'critic_level':
+              critic.level,
+
+          'critic_title':
+              critic.title,
+
+          'critic_xp':
+              critic.xpInLevel,
+
+          'critic_required_xp':
+              critic.requiredXp,
+
+          'total_ratings':
+              critic.totalRatings,
+
+          'episode_ratings':
+              critic
+                  .episodeRatingCount,
+
+          'title_ratings':
+              critic
+                      .movieRatingCount +
+                  critic
+                      .tvRatingCount,
+
+          'average_stars':
+              critic.averageStars,
+
+          'title_coverage':
+              critic
+                  .titleRatingCoverage,
+
+          'episode_coverage':
+              critic
+                  .episodeRatingCoverage,
+
+          'rating_distribution':
+              distribution,
+
+          'genre_runtime':
+              genreRuntime,
+
+          'unlocked_achievement_ids':
+              unlockedIds,
+        },
+
+        'pinned_achievement_id':
+            MedalPinService
+                .instance
+                .pinnedAchievementId,
+      }).eq(
+        'id',
+        user.id,
+      );
+    } catch (e) {
+      debugPrint(
+        'Could not sync public profile stats: $e',
+      );
+    }
+  }
+
+  List<Map<String, dynamic>>
+      _buildGenreRuntime(
+    LibraryService library,
+  ) {
+    final titleCounts =
+        <int, int>{};
+
+    final watchedMinutes =
+        <int, int>{};
+
+    for (final item
+        in library.items) {
+      final genres =
+          item.genreIds
+              .toSet();
+
+      if (genres.isEmpty) {
+        continue;
+      }
+
+      final itemMinutes =
+          library
+              .watchedMinutesForItem(
+        item,
+      );
+
+      for (final genreId
+          in genres) {
+        titleCounts[
+            genreId] =
+            (titleCounts[
+                        genreId] ??
+                    0) +
+                1;
+
+        watchedMinutes[
+            genreId] =
+            (watchedMinutes[
+                        genreId] ??
+                    0) +
+                itemMinutes;
+      }
+    }
+
+    final total =
+        watchedMinutes.values.fold<int>(
+      0,
+      (
+        sum,
+        minutes,
+      ) =>
+          sum + minutes,
+    );
+
+    final result =
+        <Map<String, dynamic>>[];
+
+    for (final entry
+        in titleCounts.entries) {
+      final genreId =
+          entry.key;
+
+      final minutes =
+          watchedMinutes[
+                  genreId] ??
+              0;
+
+      final percentage =
+          total > 0
+              ? (minutes /
+                      total) *
+                  100
+              : 0.0;
+
+      result.add({
+        'genre_id':
+            genreId,
+        'genre':
+            _genreName(
+          genreId,
+        ),
+        'minutes':
+            minutes,
+        'percentage':
+            percentage,
+        'title_count':
+            entry.value,
+      });
+    }
+
+    result.sort(
+      (
+        a,
+        b,
+      ) {
+        final aMinutes =
+            (a['minutes']
+                    as num)
+                .toInt();
+
+        final bMinutes =
+            (b['minutes']
+                    as num)
+                .toInt();
+
+        return bMinutes
+            .compareTo(
+          aMinutes,
+        );
+      },
+    );
+
+    return result;
+  }
+
+  String _genreName(
+    int genreId,
+  ) {
+    switch (genreId) {
+      case 28:
+        return 'Action';
+      case 12:
+        return 'Adventure';
+      case 16:
+        return 'Animation';
+      case 35:
+        return 'Comedy';
+      case 80:
+        return 'Crime';
+      case 99:
+        return 'Documentary';
+      case 18:
+        return 'Drama';
+      case 10751:
+        return 'Family';
+      case 14:
+        return 'Fantasy';
+      case 36:
+        return 'History';
+      case 27:
+        return 'Horror';
+      case 10402:
+        return 'Music';
+      case 9648:
+        return 'Mystery';
+      case 10749:
+        return 'Romance';
+      case 878:
+        return 'Science Fiction';
+      case 10770:
+        return 'TV Movie';
+      case 53:
+        return 'Thriller';
+      case 10752:
+        return 'War';
+      case 37:
+        return 'Western';
+
+      case 10759:
+        return 'Action & Adventure';
+      case 10762:
+        return 'Kids';
+      case 10763:
+        return 'News';
+      case 10764:
+        return 'Reality';
+      case 10765:
+        return 'Sci-Fi & Fantasy';
+      case 10766:
+        return 'Soap';
+      case 10767:
+        return 'Talk';
+      case 10768:
+        return 'War & Politics';
+
+      default:
+        return 'Other';
+    }
+  }
+}
+
 class PublicProfilePage
     extends StatefulWidget {
   final String userId;
@@ -4151,8 +4523,6 @@ class _PublicProfilePageState
     extends State<PublicProfilePage> {
   final CommunityService community =
       CommunityService.instance;
-      
-      
 
   Map<String, dynamic>? profile;
 
@@ -4169,30 +4539,49 @@ class _PublicProfilePageState
 
   Future<void> _load() async {
     try {
-      final results =
-          await Future.wait([
-        community.getProfile(
+      final client =
+          Supabase.instance.client;
+
+      final rawProfile =
+    await client
+        .from('profiles')
+        .select(
+          'id, '
+          'display_name, '
+          'username, '
+          'avatar_url, '
+          'banner_path, '
+          'public_stats, '
+          'pinned_achievement_id',
+        )
+        .eq(
+          'id',
           widget.userId,
-        ),
-        community.isFollowing(
-          widget.userId,
-        ),
-      ]);
+        )
+        .maybeSingle();
 
-      if (!mounted) {
-        return;
-      }
+final isFollowing =
+    await community.isFollowing(
+  widget.userId,
+);
 
-      setState(() {
-        profile =
-            results[0]
-                as Map<String, dynamic>?;
+if (!mounted) {
+  return;
+}
 
-        following =
-            results[1] as bool;
+setState(() {
+  profile =
+      rawProfile != null
+          ? Map<String, dynamic>.from(
+              rawProfile,
+            )
+          : null;
 
-        loading = false;
-      });
+  following =
+      isFollowing;
+
+  loading = false;
+});
     } catch (e) {
       debugPrint(
         'Could not load public profile: $e',
@@ -4284,6 +4673,10 @@ class _PublicProfilePageState
       );
     }
 
+    // =========================
+    // BASIC PROFILE
+    // =========================
+
     final displayName =
         profile!['display_name']
                 ?.toString()
@@ -4325,6 +4718,213 @@ class _PublicProfilePageState
         ownUserId ==
             widget.userId;
 
+    // =========================
+    // PUBLIC STATS
+    // =========================
+
+    final rawStats =
+        profile!['public_stats'];
+
+    final publicStats =
+        rawStats is Map
+            ? Map<String, dynamic>.from(
+                rawStats,
+              )
+            : <String, dynamic>{};
+
+    int intStat(
+      String key,
+    ) {
+      final value =
+          publicStats[key];
+
+      if (value is num) {
+        return value.toInt();
+      }
+
+      return 0;
+    }
+
+    double doubleStat(
+      String key,
+    ) {
+      final value =
+          publicStats[key];
+
+      if (value is num) {
+        return value.toDouble();
+      }
+
+      return 0.0;
+    }
+
+    final totalWatchedMinutes =
+        intStat(
+      'total_watched_minutes',
+    );
+
+    final moviesWatched =
+        intStat(
+      'movies_watched',
+    );
+
+    final episodesWatched =
+        intStat(
+      'episodes_watched',
+    );
+
+    final episodeRatings =
+        intStat(
+      'episode_ratings',
+    );
+
+    final titleRatings =
+        intStat(
+      'title_ratings',
+    );
+
+    final criticLevel =
+        intStat(
+      'critic_level',
+    );
+
+    final criticXp =
+        intStat(
+      'critic_xp',
+    );
+
+    final criticRequiredXp =
+        intStat(
+      'critic_required_xp',
+    );
+
+    final totalRatings =
+        intStat(
+      'total_ratings',
+    );
+
+    final averageStars =
+        doubleStat(
+      'average_stars',
+    );
+
+    final titleCoverage =
+        doubleStat(
+      'title_coverage',
+    );
+
+    final episodeCoverage =
+        doubleStat(
+      'episode_coverage',
+    );
+
+    final rawViewerTitle =
+        publicStats[
+                'viewer_title']
+            ?.toString()
+            .trim();
+
+    final viewerTitle =
+        rawViewerTitle != null &&
+                rawViewerTitle
+                    .isNotEmpty
+            ? rawViewerTitle
+            : 'VIEWER';
+
+    final rawCriticTitle =
+        publicStats[
+                'critic_title']
+            ?.toString()
+            .trim();
+
+    final criticTitle =
+        rawCriticTitle != null &&
+                rawCriticTitle
+                    .isNotEmpty
+            ? rawCriticTitle
+            : 'NEW CRITIC';
+
+    // =========================
+    // GENRE RUNTIME
+    // =========================
+
+    final genreRuntime =
+        <Map<String, dynamic>>[];
+
+    final rawGenreRuntime =
+        publicStats[
+            'genre_runtime'];
+
+    if (rawGenreRuntime
+        is List) {
+      for (final item
+          in rawGenreRuntime) {
+        if (item is Map) {
+          genreRuntime.add(
+            Map<String, dynamic>.from(
+              item,
+            ),
+          );
+        }
+      }
+    }
+
+    // =========================
+    // RATING DISTRIBUTION
+    // =========================
+
+    final ratingDistribution =
+        <int, int>{
+      1: 0,
+      2: 0,
+      3: 0,
+      4: 0,
+      5: 0,
+    };
+
+    final rawDistribution =
+        publicStats[
+            'rating_distribution'];
+
+    if (rawDistribution
+        is Map) {
+      for (int rating = 1;
+          rating <= 5;
+          rating++) {
+        final value =
+            rawDistribution[
+                '$rating'];
+
+        if (value is num) {
+          ratingDistribution[
+                  rating] =
+              value.toInt();
+        }
+      }
+    }
+
+    // =========================
+    // ACHIEVEMENTS + MEDAL
+    // =========================
+
+    final movieGroup =
+        _movieAchievementGroupFor(
+      moviesWatched,
+    );
+
+    final pinnedId =
+        profile![
+                'pinned_achievement_id']
+            ?.toString();
+
+    final _Achievement?
+        pinnedAchievement =
+        pinnedId ==
+                movieGroup.id
+            ? movieGroup
+                .highestUnlockedTier
+            : null;
+
     return Scaffold(
       backgroundColor:
           chipluxBackground,
@@ -4335,239 +4935,1453 @@ class _PublicProfilePageState
                 .profile,
 
         child: SafeArea(
-          child: ListView(
-            padding:
-                const EdgeInsets
-                    .fromLTRB(
-              18,
-              12,
-              18,
-              35,
-            ),
+          child: RefreshIndicator(
+            color:
+                chipluxCyan,
 
-            children: [
-              Row(
-                children: [
-                  IconButton(
-                    onPressed: () {
-                      Navigator.pop(
-                        context,
-                      );
-                    },
-                    icon:
-                        const Icon(
-                      Icons
-                          .arrow_back_rounded,
-                    ),
-                  ),
+            backgroundColor:
+                chipluxSurface,
 
-                  const Spacer(),
+            onRefresh:
+                _load,
 
-                  const Text(
-                    'Profile',
-                    style:
-                        TextStyle(
-                      fontSize: 20,
-                      fontWeight:
-                          FontWeight.bold,
-                    ),
-                  ),
+            child: ListView(
+              physics:
+                  const AlwaysScrollableScrollPhysics(),
 
-                  const Spacer(),
-
-                  const SizedBox(
-                    width: 48,
-                  ),
-                ],
+              padding:
+                  const EdgeInsets
+                      .fromLTRB(
+                18,
+                12,
+                18,
+                35,
               ),
 
-              const SizedBox(
-                height: 8,
-              ),
+              children: [
+                // =========================
+                // TOP BAR
+                // =========================
 
-              Container(
-                height: 150,
-                decoration:
-                    BoxDecoration(
-                  color:
-                      chipluxSurface,
-                  borderRadius:
-                      BorderRadius
-                          .circular(
-                    22,
-                  ),
-                  image:
-                      bannerUrl != null
-                          ? DecorationImage(
-                              image:
-                                  NetworkImage(
-                                bannerUrl,
-                              ),
-                              fit:
-                                  BoxFit.cover,
-                            )
-                          : null,
-                ),
-              ),
-
-              Transform.translate(
-                offset:
-                    const Offset(
-                  0,
-                  -42,
-                ),
-                child: Column(
+                Row(
                   children: [
-                    Container(
-                      width: 92,
-                      height: 92,
-                      padding:
-                          const EdgeInsets
-                              .all(
-                        3,
-                      ),
-                      decoration:
-                          const BoxDecoration(
-                        shape:
-                            BoxShape.circle,
-                        gradient:
-                            LinearGradient(
-                          colors: [
-                            chipluxCyan,
-                            chipluxViolet,
-                            chipluxPurple,
-                          ],
-                        ),
-                      ),
-                      child:
-                          CircleAvatar(
-                        backgroundColor:
-                            chipluxSurface,
-
-                        backgroundImage:
-                            avatarUrl !=
-                                        null &&
-                                    avatarUrl
-                                        .isNotEmpty
-                                ? NetworkImage(
-                                    avatarUrl,
-                                  )
-                                : null,
-
-                        child:
-                            avatarUrl ==
-                                        null ||
-                                    avatarUrl
-                                        .isEmpty
-                                ? const Icon(
-                                    Icons.person,
-                                    size: 42,
-                                  )
-                                : null,
+                    IconButton(
+                      onPressed: () {
+                        Navigator.pop(
+                          context,
+                        );
+                      },
+                      icon:
+                          const Icon(
+                        Icons
+                            .arrow_back_rounded,
                       ),
                     ),
 
-                    const SizedBox(
-                      height: 12,
-                    ),
+                    const Spacer(),
 
-                    Text(
-                      name,
-                      textAlign:
-                          TextAlign.center,
+                    const Text(
+                      'Profile',
                       style:
-                          const TextStyle(
-                        fontSize: 24,
+                          TextStyle(
+                        fontSize: 20,
                         fontWeight:
                             FontWeight.bold,
                       ),
                     ),
 
-                    if (username
-                        .isNotEmpty) ...[
-                      const SizedBox(
-                        height: 4,
-                      ),
+                    const Spacer(),
 
-                      Text(
-                        '@$username',
-                        style:
-                            const TextStyle(
-                          color:
-                              Colors.white54,
-                          fontSize: 14,
+                    const SizedBox(
+                      width: 48,
+                    ),
+                  ],
+                ),
+
+                const SizedBox(
+                  height: 8,
+                ),
+
+                // =========================
+                // BANNER
+                // =========================
+
+                SizedBox(
+                  height: 150,
+                  child:
+                      ClipRRect(
+                    borderRadius:
+                        BorderRadius
+                            .circular(
+                      22,
+                    ),
+                    child:
+                        _ProfileBanner(
+                      imageUrl:
+                          bannerUrl,
+                    ),
+                  ),
+                ),
+
+                // =========================
+                // AVATAR / NAME / FOLLOW
+                // =========================
+
+                Transform.translate(
+                  offset:
+                      const Offset(
+                    0,
+                    -42,
+                  ),
+
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 94,
+                        height: 94,
+                        padding:
+                            const EdgeInsets
+                                .all(
+                          3,
                         ),
-                      ),
-                    ],
+                        decoration:
+                            BoxDecoration(
+                          shape:
+                              BoxShape.circle,
 
-                    if (!isOwnProfile) ...[
-                      const SizedBox(
-                        height: 18,
-                      ),
-
-                      SizedBox(
-                        width: 180,
-                        height: 46,
-                        child:
-                            ElevatedButton.icon(
-                          onPressed:
-                              changingFollow
-                                  ? null
-                                  : _toggleFollow,
-
-                          icon: changingFollow
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child:
-                                      CircularProgressIndicator(
-                                    strokeWidth:
-                                        2,
-                                  ),
-                                )
-                              : Icon(
-                                  following
-                                      ? Icons
-                                          .check_rounded
-                                      : Icons
-                                          .person_add_alt_1_rounded,
-                                ),
-
-                          label: Text(
-                            following
-                                ? 'Following'
-                                : 'Follow',
+                          border:
+                              Border.all(
+                            color:
+                                Colors.white,
+                            width: 2,
                           ),
 
-                          style:
-                              ElevatedButton
-                                  .styleFrom(
-                            backgroundColor:
-                                following
-                                    ? chipluxSurfaceLight
-                                    : chipluxViolet,
+                          color:
+                              chipluxBackground,
 
-                            foregroundColor:
-                                Colors.white,
+                          boxShadow: [
+                            BoxShadow(
+                              color:
+                                  chipluxViolet
+                                      .withValues(
+                                alpha: 0.15,
+                              ),
+                              blurRadius:
+                                  20,
+                            ),
+                          ],
+                        ),
 
+                        child:
+                            Container(
+                          decoration:
+                              BoxDecoration(
                             shape:
-                                RoundedRectangleBorder(
+                                BoxShape.circle,
+
+                            gradient:
+                                avatarUrl ==
+                                            null ||
+                                        avatarUrl
+                                            .isEmpty
+                                    ? const LinearGradient(
+                                        colors: [
+                                          chipluxCyan,
+                                          chipluxViolet,
+                                          chipluxPurple,
+                                        ],
+                                      )
+                                    : null,
+
+                            image:
+                                avatarUrl !=
+                                            null &&
+                                        avatarUrl
+                                            .isNotEmpty
+                                    ? DecorationImage(
+                                        image:
+                                            NetworkImage(
+                                          avatarUrl,
+                                        ),
+                                        fit:
+                                            BoxFit.cover,
+                                      )
+                                    : null,
+                          ),
+
+                          child:
+                              avatarUrl ==
+                                          null ||
+                                      avatarUrl
+                                          .isEmpty
+                                  ? Center(
+                                      child:
+                                          Text(
+                                        name.isNotEmpty
+                                            ? name[0]
+                                                .toUpperCase()
+                                            : 'C',
+                                        style:
+                                            const TextStyle(
+                                          fontSize:
+                                              38,
+                                          fontWeight:
+                                              FontWeight.bold,
+                                        ),
+                                      ),
+                                    )
+                                  : null,
+                        ),
+                      ),
+
+                      const SizedBox(
+                        height: 10,
+                      ),
+
+                      // DISPLAY NAME + PINNED MEDAL
+
+                      Stack(
+                        clipBehavior:
+                            Clip.none,
+                        alignment:
+                            Alignment.center,
+                        children: [
+                          Container(
+                            padding:
+                                EdgeInsets
+                                    .fromLTRB(
+                              pinnedAchievement !=
+                                      null
+                                  ? 34
+                                  : 20,
+                              8,
+                              20,
+                              8,
+                            ),
+                            decoration:
+                                BoxDecoration(
+                              color:
+                                  chipluxSurface
+                                      .withValues(
+                                alpha:
+                                    0.94,
+                              ),
                               borderRadius:
                                   BorderRadius
                                       .circular(
+                                29,
+                              ),
+                              border:
+                                  Border.all(
+                                color:
+                                    Colors.white
+                                        .withValues(
+                                  alpha:
+                                      0.12,
+                                ),
+                              ),
+                            ),
+                            child:
+                                Text(
+                              name,
+                              maxLines: 1,
+                              overflow:
+                                  TextOverflow
+                                      .ellipsis,
+                              style:
+                                  const TextStyle(
+                                fontSize:
+                                    18,
+                                fontWeight:
+                                    FontWeight
+                                        .bold,
+                              ),
+                            ),
+                          ),
+
+                          if (pinnedAchievement !=
+                              null)
+                            Positioned(
+                              left: -12,
+                              top: 6,
+                              child:
+                                  _PinnedAchievementBadge(
+                                achievement:
+                                    pinnedAchievement,
+                              ),
+                            ),
+                        ],
+                      ),
+
+                      if (username
+                          .isNotEmpty) ...[
+                        const SizedBox(
+                          height: 6,
+                        ),
+
+                        Text(
+                          '@$username',
+                          style:
+                              const TextStyle(
+                            color:
+                                Colors.white54,
+                            fontSize:
                                 14,
+                          ),
+                        ),
+                      ],
+
+                      if (!isOwnProfile) ...[
+                        const SizedBox(
+                          height: 18,
+                        ),
+
+                        SizedBox(
+                          width: 180,
+                          height: 46,
+                          child:
+                              ElevatedButton
+                                  .icon(
+                            onPressed:
+                                changingFollow
+                                    ? null
+                                    : _toggleFollow,
+
+                            icon:
+                                changingFollow
+                                    ? const SizedBox(
+                                        width:
+                                            18,
+                                        height:
+                                            18,
+                                        child:
+                                            CircularProgressIndicator(
+                                          strokeWidth:
+                                              2,
+                                        ),
+                                      )
+                                    : Icon(
+                                        following
+                                            ? Icons
+                                                .check_rounded
+                                            : Icons
+                                                .person_add_alt_1_rounded,
+                                      ),
+
+                            label:
+                                Text(
+                              following
+                                  ? 'Following'
+                                  : 'Follow',
+                            ),
+
+                            style:
+                                ElevatedButton
+                                    .styleFrom(
+                              backgroundColor:
+                                  following
+                                      ? chipluxSurfaceLight
+                                      : chipluxViolet,
+
+                              foregroundColor:
+                                  Colors.white,
+
+                              shape:
+                                  RoundedRectangleBorder(
+                                borderRadius:
+                                    BorderRadius
+                                        .circular(
+                                  14,
+                                ),
                               ),
                             ),
                           ),
                         ),
+                      ],
+                    ],
+                  ),
+                ),
+
+                // Compensates for the upward
+                // profile-header translation.
+                const SizedBox(
+                  height: 2,
+                ),
+
+                if (publicStats
+                    .isEmpty)
+                  Container(
+                    padding:
+                        const EdgeInsets
+                            .all(
+                      20,
+                    ),
+                    decoration:
+                        BoxDecoration(
+                      color:
+                          chipluxSurface,
+                      borderRadius:
+                          BorderRadius
+                              .circular(
+                        20,
+                      ),
+                    ),
+                    child:
+                        const Column(
+                      children: [
+                        Icon(
+                          Icons
+                              .bar_chart_rounded,
+                          color:
+                              Colors.white38,
+                          size: 34,
+                        ),
+
+                        SizedBox(
+                          height: 10,
+                        ),
+
+                        Text(
+                          'No public stats yet.',
+                          style:
+                              TextStyle(
+                            fontWeight:
+                                FontWeight.bold,
+                          ),
+                        ),
+
+                        SizedBox(
+                          height: 5,
+                        ),
+
+                        Text(
+                          'Stats will appear after this user syncs their profile.',
+                          textAlign:
+                              TextAlign.center,
+                          style:
+                              TextStyle(
+                            color:
+                                Colors.white54,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else ...[
+                  // =========================
+                  // ACHIEVEMENTS
+                  // =========================
+
+                  _PublicAchievementsCard(
+                    group:
+                        movieGroup,
+                  ),
+
+                  const SizedBox(
+                    height: 20,
+                  ),
+
+                  // =========================
+                  // RUNTIME LEVEL
+                  // =========================
+
+                  _LevelCard(
+                    totalMinutes:
+                        totalWatchedMinutes,
+                    title:
+                        viewerTitle,
+                  ),
+
+                  const SizedBox(
+                    height: 12,
+                  ),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child:
+                            _WatchStatCard(
+                          value:
+                              episodesWatched,
+                          label:
+                              'Episodes\nWatched',
+                          icon:
+                              Icons
+                                  .playlist_add_check_rounded,
+                        ),
+                      ),
+
+                      const SizedBox(
+                        width: 12,
+                      ),
+
+                      Expanded(
+                        child:
+                            _WatchStatCard(
+                          value:
+                              moviesWatched,
+                          label:
+                              'Movies\nWatched',
+                          icon:
+                              Icons
+                                  .movie_outlined,
+                        ),
                       ),
                     ],
-                  ],
+                  ),
+
+                  const SizedBox(
+                    height: 16,
+                  ),
+
+                  // =========================
+                  // RATING LEVEL
+                  // =========================
+
+                  _CriticReputationCard(
+                    level:
+                        criticLevel <= 0
+                            ? 1
+                            : criticLevel,
+
+                    title:
+                        criticTitle,
+
+                    xp:
+                        criticXp,
+
+                    requiredXp:
+                        criticRequiredXp <=
+                                0
+                            ? 10
+                            : criticRequiredXp,
+
+                    totalRatings:
+                        totalRatings,
+
+                    titleCoverage:
+                        titleCoverage,
+
+                    episodeCoverage:
+                        episodeCoverage,
+
+                    averageStars:
+                        averageStars,
+                  ),
+
+                  const SizedBox(
+                    height: 12,
+                  ),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child:
+                            _RatingStatCard(
+                          value:
+                              episodeRatings,
+                          label:
+                              'Episodes\nRated',
+                          icon:
+                              Icons
+                                  .tv_outlined,
+                        ),
+                      ),
+
+                      const SizedBox(
+                        width: 12,
+                      ),
+
+                      Expanded(
+                        child:
+                            _RatingStatCard(
+                          value:
+                              titleRatings,
+                          label:
+                              'Titles\nRated',
+                          icon:
+                              Icons
+                                  .movie_filter_outlined,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(
+                    height: 24,
+                  ),
+
+                  // =========================
+                  // GENRE RUNTIME
+                  // =========================
+
+                  _PublicGenreRuntimeCard(
+                    stats:
+                        genreRuntime,
+                  ),
+
+                  const SizedBox(
+                    height: 24,
+                  ),
+
+                  // =========================
+                  // RATING DISTRIBUTION
+                  // =========================
+
+                  _PublicRatingDistributionCard(
+                    distribution:
+                        ratingDistribution,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PublicAchievementsCard
+    extends StatelessWidget {
+  final _AchievementGroup group;
+
+  const _PublicAchievementsCard({
+    required this.group,
+  });
+
+  @override
+  Widget build(
+    BuildContext context,
+  ) {
+    final unlocked =
+        group.tiers
+            .where(
+              (
+                achievement,
+              ) =>
+                  achievement
+                      .unlocked,
+            )
+            .toList();
+
+    return Container(
+      width:
+          double.infinity,
+      padding:
+          const EdgeInsets.all(
+        20,
+      ),
+      decoration:
+          BoxDecoration(
+        color:
+            chipluxSurface,
+        borderRadius:
+            BorderRadius.circular(
+          22,
+        ),
+        border:
+            Border.all(
+          color:
+              chipluxViolet
+                  .withValues(
+            alpha: 0.18,
+          ),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment:
+            CrossAxisAlignment
+                .start,
+        children: [
+          const Row(
+            children: [
+              Icon(
+                Icons
+                    .workspace_premium_rounded,
+                color:
+                    chipluxViolet,
+                size: 27,
+              ),
+
+              SizedBox(
+                width: 10,
+              ),
+
+              Text(
+                'Achievements',
+                style:
+                    TextStyle(
+                  fontSize: 22,
+                  fontWeight:
+                      FontWeight.bold,
                 ),
               ),
             ],
           ),
+
+          const SizedBox(
+            height: 18,
+          ),
+
+          if (unlocked
+              .isEmpty)
+            const Text(
+              'No achievements unlocked yet.',
+              style:
+                  TextStyle(
+                color:
+                    Colors.white54,
+              ),
+            )
+          else
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children:
+                  unlocked.map(
+                (
+                  achievement,
+                ) {
+                  return Container(
+                    width: 155,
+                    padding:
+                        const EdgeInsets
+                            .all(
+                      11,
+                    ),
+                    decoration:
+                        BoxDecoration(
+                      color:
+                          chipluxSurfaceLight
+                              .withValues(
+                        alpha: 0.65,
+                      ),
+                      borderRadius:
+                          BorderRadius
+                              .circular(
+                        15,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 42,
+                          height: 42,
+                          child:
+                              _AchievementMedal(
+                            achievement:
+                                achievement,
+                          ),
+                        ),
+
+                        const SizedBox(
+                          width: 9,
+                        ),
+
+                        Expanded(
+                          child:
+                              Text(
+                            achievement
+                                .title,
+                            maxLines: 2,
+                            overflow:
+                                TextOverflow
+                                    .ellipsis,
+                            style:
+                                const TextStyle(
+                              fontSize:
+                                  12,
+                              fontWeight:
+                                  FontWeight
+                                      .w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ).toList(),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PublicGenreRuntimeCard
+    extends StatefulWidget {
+  final List<
+      Map<String, dynamic>>
+      stats;
+
+  const _PublicGenreRuntimeCard({
+    required this.stats,
+  });
+
+  @override
+  State<_PublicGenreRuntimeCard>
+      createState() =>
+          _PublicGenreRuntimeCardState();
+}
+
+class _PublicGenreRuntimeCardState
+    extends State<
+        _PublicGenreRuntimeCard> {
+  bool expanded = false;
+
+  String _formatRuntime(
+    int totalMinutes,
+  ) {
+    final hours =
+        totalMinutes ~/ 60;
+
+    final minutes =
+        totalMinutes % 60;
+
+    if (hours > 0 &&
+        minutes > 0) {
+      return '${hours}h ${minutes}m';
+    }
+
+    if (hours > 0) {
+      return '${hours}h';
+    }
+
+    return '${minutes}m';
+  }
+
+  @override
+  Widget build(
+    BuildContext context,
+  ) {
+    final stats =
+        widget.stats;
+
+    final visible =
+        expanded
+            ? stats
+            : stats
+                .take(4)
+                .toList();
+
+    const colors =
+        <Color>[
+      chipluxCyan,
+      Color(0xFF55C7FF),
+      chipluxViolet,
+      chipluxPurple,
+      Color(0xFF6F7CFF),
+      Color(0xFF43B8FF),
+      Color(0xFFB56DFF),
+      Color(0xFF5363B8),
+    ];
+
+    Color statColor(
+      int index,
+    ) {
+      return colors[
+          index %
+              colors.length];
+    }
+
+    return Container(
+      width:
+          double.infinity,
+      padding:
+          const EdgeInsets.all(
+        20,
+      ),
+      decoration:
+          BoxDecoration(
+        color:
+            chipluxSurface,
+        borderRadius:
+            BorderRadius.circular(
+          22,
         ),
+        border:
+            Border.all(
+          color:
+              chipluxCyan
+                  .withValues(
+            alpha: 0.14,
+          ),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment:
+            CrossAxisAlignment
+                .start,
+        children: [
+          const Row(
+            children: [
+              Icon(
+                Icons
+                    .bar_chart_rounded,
+                color:
+                    chipluxCyan,
+                size: 27,
+              ),
+
+              SizedBox(
+                width: 10,
+              ),
+
+              Text(
+                'Genre Runtime',
+                style:
+                    TextStyle(
+                  fontSize: 22,
+                  fontWeight:
+                      FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(
+            height: 20,
+          ),
+
+          if (stats.isEmpty)
+            const Text(
+              'No genre runtime yet.',
+              style:
+                  TextStyle(
+                color:
+                    Colors.white54,
+              ),
+            )
+          else ...[
+            ClipRRect(
+              borderRadius:
+                  BorderRadius
+                      .circular(
+                30,
+              ),
+              child: SizedBox(
+                height: 20,
+                child: Row(
+                  children:
+                      stats
+                          .asMap()
+                          .entries
+                          .where(
+                    (entry) {
+                      final minutes =
+                          entry.value[
+                              'minutes'];
+
+                      return minutes
+                              is num &&
+                          minutes
+                                  .toInt() >
+                              0;
+                    },
+                  ).map(
+                    (entry) {
+                      final minutes =
+                          (entry.value[
+                                      'minutes']
+                                  as num)
+                              .toInt();
+
+                      return Expanded(
+                        flex:
+                            minutes,
+                        child:
+                            Container(
+                          color:
+                              statColor(
+                            entry.key,
+                          ),
+                        ),
+                      );
+                    },
+                  ).toList(),
+                ),
+              ),
+            ),
+
+            const SizedBox(
+              height: 18,
+            ),
+
+            for (int i = 0;
+                i < visible.length;
+                i++) ...[
+              Builder(
+                builder:
+                    (
+                  context,
+                ) {
+                  final stat =
+                      visible[i];
+
+                  final genre =
+                      stat['genre']
+                              ?.toString() ??
+                          'Other';
+
+                  final minutes =
+                      stat['minutes']
+                              is num
+                          ? (stat[
+                                      'minutes']
+                                  as num)
+                              .toInt()
+                          : 0;
+
+                  final percentage =
+                      stat['percentage']
+                              is num
+                          ? (stat[
+                                      'percentage']
+                                  as num)
+                              .toDouble()
+                          : 0.0;
+
+                  return Padding(
+                    padding:
+                        const EdgeInsets
+                            .symmetric(
+                      vertical: 8,
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 10,
+                          height: 10,
+                          decoration:
+                              BoxDecoration(
+                            shape:
+                                BoxShape
+                                    .circle,
+                            color:
+                                statColor(
+                              i,
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(
+                          width: 10,
+                        ),
+
+                        Expanded(
+                          child:
+                              Text(
+                            genre,
+                            maxLines: 1,
+                            overflow:
+                                TextOverflow
+                                    .ellipsis,
+                            style:
+                                const TextStyle(
+                              fontWeight:
+                                  FontWeight
+                                      .w600,
+                            ),
+                          ),
+                        ),
+
+                        SizedBox(
+                          width: 62,
+                          child:
+                              Text(
+                            '${percentage.toStringAsFixed(1)}%',
+                            textAlign:
+                                TextAlign
+                                    .right,
+                            style:
+                                const TextStyle(
+                              fontWeight:
+                                  FontWeight
+                                      .bold,
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(
+                          width: 12,
+                        ),
+
+                        SizedBox(
+                          width: 75,
+                          child:
+                              Text(
+                            _formatRuntime(
+                              minutes,
+                            ),
+                            textAlign:
+                                TextAlign
+                                    .right,
+                            style:
+                                const TextStyle(
+                              color:
+                                  Colors
+                                      .white60,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ],
+
+            if (stats.length >
+                4) ...[
+              const SizedBox(
+                height: 10,
+              ),
+
+              InkWell(
+                borderRadius:
+                    BorderRadius
+                        .circular(
+                  14,
+                ),
+                onTap: () {
+                  setState(() {
+                    expanded =
+                        !expanded;
+                  });
+                },
+                child: Container(
+                  width:
+                      double.infinity,
+                  padding:
+                      const EdgeInsets
+                          .symmetric(
+                    vertical: 11,
+                  ),
+                  decoration:
+                      BoxDecoration(
+                    color:
+                        chipluxSurfaceLight
+                            .withValues(
+                      alpha: 0.55,
+                    ),
+                    borderRadius:
+                        BorderRadius
+                            .circular(
+                      14,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment:
+                        MainAxisAlignment
+                            .center,
+                    children: [
+                      Text(
+                        expanded
+                            ? 'Show less'
+                            : 'Show all ${stats.length} genres',
+                        style:
+                            const TextStyle(
+                          color:
+                              chipluxCyan,
+                          fontWeight:
+                              FontWeight
+                                  .w600,
+                        ),
+                      ),
+
+                      const SizedBox(
+                        width: 5,
+                      ),
+
+                      Icon(
+                        expanded
+                            ? Icons
+                                .keyboard_arrow_up_rounded
+                            : Icons
+                                .keyboard_arrow_down_rounded,
+                        color:
+                            chipluxCyan,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _PublicRatingDistributionCard
+    extends StatelessWidget {
+  final Map<int, int>
+      distribution;
+
+  const _PublicRatingDistributionCard({
+    required this.distribution,
+  });
+
+  @override
+  Widget build(
+    BuildContext context,
+  ) {
+    const criticGold =
+        Color(
+      0xFFFFC857,
+    );
+
+    const criticOrange =
+        Color(
+      0xFFFF8A4C,
+    );
+
+    final total =
+        distribution.values
+            .fold<int>(
+      0,
+      (
+        sum,
+        value,
+      ) =>
+          sum + value,
+    );
+
+    Color ratingColor(
+      int rating,
+    ) {
+      final t =
+          (rating - 1) / 4;
+
+      if (t < 0.5) {
+        return Color.lerp(
+          criticOrange,
+          criticGold,
+          t * 2,
+        )!;
+      }
+
+      return Color.lerp(
+        criticGold,
+        chipluxPurple,
+        (t - 0.5) * 2,
+      )!;
+    }
+
+    final active =
+        <int>[];
+
+    for (int rating = 1;
+        rating <= 5;
+        rating++) {
+      if ((distribution[
+                  rating] ??
+              0) >
+          0) {
+        active.add(
+          rating,
+        );
+      }
+    }
+
+    return Container(
+      width:
+          double.infinity,
+      padding:
+          const EdgeInsets.all(
+        20,
+      ),
+      decoration:
+          BoxDecoration(
+        color:
+            chipluxSurface,
+        borderRadius:
+            BorderRadius.circular(
+          22,
+        ),
+        border:
+            Border.all(
+          color:
+              criticGold
+                  .withValues(
+            alpha: 0.14,
+          ),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment:
+            CrossAxisAlignment
+                .start,
+        children: [
+          const Row(
+            children: [
+              Icon(
+                Icons
+                    .star_rate_rounded,
+                color:
+                    criticGold,
+                size: 27,
+              ),
+
+              SizedBox(
+                width: 10,
+              ),
+
+              Text(
+                'Rating Distribution',
+                style:
+                    TextStyle(
+                  fontSize: 22,
+                  fontWeight:
+                      FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(
+            height: 20,
+          ),
+
+          ClipRRect(
+            borderRadius:
+                BorderRadius.circular(
+              30,
+            ),
+            child: Container(
+              height: 20,
+              color:
+                  Colors.white10,
+              child:
+                  active.isEmpty
+                      ? const SizedBox
+                          .expand()
+                      : Row(
+                          children:
+                              active.map(
+                            (
+                              rating,
+                            ) {
+                              final count =
+                                  distribution[
+                                          rating] ??
+                                      0;
+
+                              return Expanded(
+                                flex:
+                                    count,
+                                child:
+                                    Container(
+                                  color:
+                                      ratingColor(
+                                    rating,
+                                  ),
+                                ),
+                              );
+                            },
+                          ).toList(),
+                        ),
+            ),
+          ),
+
+          const SizedBox(
+            height: 18,
+          ),
+
+          for (int rating = 1;
+              rating <= 5;
+              rating++) ...[
+            Builder(
+              builder:
+                  (
+                context,
+              ) {
+                final count =
+                    distribution[
+                            rating] ??
+                        0;
+
+                final percentage =
+                    total > 0
+                        ? (count /
+                                total) *
+                            100
+                        : 0.0;
+
+                return Padding(
+                  padding:
+                      const EdgeInsets
+                          .symmetric(
+                    vertical: 8,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons
+                            .star_rounded,
+                        color:
+                            ratingColor(
+                          rating,
+                        ),
+                        size: 18,
+                      ),
+
+                      const SizedBox(
+                        width: 8,
+                      ),
+
+                      SizedBox(
+                        width: 50,
+                        child:
+                            Text(
+                          '$rating ★',
+                          style:
+                              const TextStyle(
+                            fontWeight:
+                                FontWeight
+                                    .bold,
+                          ),
+                        ),
+                      ),
+
+                      Expanded(
+                        child:
+                            Text(
+                          '$count ${count == 1 ? 'rating' : 'ratings'}',
+                          style:
+                              const TextStyle(
+                            color:
+                                Colors
+                                    .white60,
+                          ),
+                        ),
+                      ),
+
+                      SizedBox(
+                        width: 64,
+                        child:
+                            Text(
+                          '${percentage.toStringAsFixed(1)}%',
+                          textAlign:
+                              TextAlign.right,
+                          style:
+                              const TextStyle(
+                            fontWeight:
+                                FontWeight
+                                    .bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ],
+        ],
       ),
     );
   }
