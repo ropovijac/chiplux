@@ -2110,6 +2110,10 @@ Timer? _followsRefreshTimer;
 bool loadingFollowers = true;
 bool loadingFollowing = true;
 
+int newFollowersToday = 0;
+
+int _lastCommunityTabIndex = 0;
+
 List<Map<String, dynamic>>
     friendsWatch = [];
 
@@ -2220,21 +2224,63 @@ List<Map<String, dynamic>>
   ).subscribe();
 }
 
+void _onCommunityTabChanged() {
+  if (_tabController
+      .indexIsChanging) {
+    return;
+  }
+
+  final index =
+      _tabController.index;
+
+  if (index ==
+      _lastCommunityTabIndex) {
+    return;
+  }
+
+  _lastCommunityTabIndex =
+      index;
+
+  switch (index) {
+    case 0:
+      unawaited(
+        _loadFriendsWatch(),
+      );
+      break;
+
+    case 2:
+      unawaited(
+        _openFollowersTab(),
+      );
+      break;
+
+    case 3:
+      unawaited(
+        _loadFollowing(),
+      );
+      break;
+  }
+}
+
   @override
 void initState() {
   super.initState();
 
   _tabController =
-    TabController(
-  length: 4,
-  vsync: this,
-);
+      TabController(
+    length: 4,
+    vsync: this,
+  );
+
+  _tabController.addListener(
+    _onCommunityTabChanged,
+  );
 
   _loadFriendsWatch();
-_loadFollowers();
-_loadFollowing();
+  _loadFollowers();
+  _loadFollowing();
 
-_startCommunityRealtime();
+  _startCommunityRealtime();
 }
 
 Future<void> _loadFriendsWatch() async {
@@ -2492,13 +2538,166 @@ Future<void> _loadFollowers() async {
         await community
             .getFollowers();
 
+    final client =
+        Supabase.instance.client;
+
+    final currentUserId =
+        client.auth.currentUser?.id;
+
+    if (currentUserId == null) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        followers = data;
+        newFollowersToday = 0;
+        loadingFollowers = false;
+      });
+
+      return;
+    }
+
+    // Get the actual follow timestamps.
+    final followRows =
+        await client
+            .from('follows')
+            .select(
+              'follower_id, created_at',
+            )
+            .eq(
+              'following_id',
+              currentUserId,
+            );
+
+    final followedAtByUser =
+        <String, String>{};
+
+    for (final raw
+        in followRows) {
+      final followerId =
+          raw['follower_id']
+              ?.toString();
+
+      final createdAt =
+          raw['created_at']
+              ?.toString();
+
+      if (followerId == null ||
+          createdAt == null) {
+        continue;
+      }
+
+      followedAtByUser[
+          followerId] =
+          createdAt;
+    }
+
+    // Add followed_at to each profile.
+    final enrichedFollowers =
+        data.map(
+      (rawUser) {
+        final user =
+            Map<String, dynamic>.from(
+          rawUser,
+        );
+
+        final id =
+            user['id']
+                ?.toString();
+
+        if (id != null) {
+          final followedAt =
+              followedAtByUser[id];
+
+          if (followedAt != null) {
+            user['followed_at'] =
+                followedAt;
+          }
+        }
+
+        return user;
+      },
+    ).toList();
+
+    final prefs =
+        await SharedPreferences
+            .getInstance();
+
+    final seenKey =
+        'community_followers_seen_at_$currentUserId';
+
+    final seenRaw =
+        prefs.getString(
+      seenKey,
+    );
+
+    final lastSeen =
+        seenRaw != null
+            ? DateTime.tryParse(
+                seenRaw,
+              )?.toLocal()
+            : null;
+
+    final now =
+        DateTime.now();
+
+    bool isToday(
+      DateTime date,
+    ) {
+      return date.year ==
+              now.year &&
+          date.month ==
+              now.month &&
+          date.day ==
+              now.day;
+    }
+
+    int unreadToday = 0;
+
+    for (final raw
+        in followRows) {
+      final createdRaw =
+          raw['created_at']
+              ?.toString();
+
+      if (createdRaw == null) {
+        continue;
+      }
+
+      final created =
+          DateTime.tryParse(
+            createdRaw,
+          )?.toLocal();
+
+      if (created == null ||
+          !isToday(
+            created,
+          )) {
+        continue;
+      }
+
+      if (lastSeen == null ||
+          created.isAfter(
+            lastSeen,
+          )) {
+        unreadToday++;
+      }
+    }
+
     if (!mounted) {
       return;
     }
 
     setState(() {
-      followers = data;
-      loadingFollowers = false;
+      followers =
+          enrichedFollowers;
+
+      newFollowersToday =
+          unreadToday;
+
+      loadingFollowers =
+          false;
     });
   } catch (e) {
     debugPrint(
@@ -2510,9 +2709,45 @@ Future<void> _loadFollowers() async {
     }
 
     setState(() {
-      loadingFollowers = false;
+      loadingFollowers =
+          false;
     });
   }
+}
+
+Future<void>
+    _markFollowersSeen() async {
+  final userId =
+      Supabase.instance.client
+          .auth.currentUser?.id;
+
+  if (userId == null) {
+    return;
+  }
+
+  if (mounted) {
+    setState(() {
+      newFollowersToday = 0;
+    });
+  }
+
+  final prefs =
+      await SharedPreferences
+          .getInstance();
+
+  await prefs.setString(
+    'community_followers_seen_at_$userId',
+    DateTime.now()
+        .toUtc()
+        .toIso8601String(),
+  );
+}
+
+Future<void>
+    _openFollowersTab() async {
+  await _markFollowersSeen();
+
+  await _loadFollowers();
 }
 
 Future<void> _loadFollowing() async {
@@ -2567,7 +2802,9 @@ void dispose() {
           .unsubscribe(),
     );
   }
-
+_tabController.removeListener(
+  _onCommunityTabChanged,
+);
   _tabController.dispose();
 
   super.dispose();
@@ -2711,27 +2948,79 @@ Widget build(
                 horizontal: 20,
               ),
 
-              tabs: const [
-                Tab(
-                  text:
-                      'Friends Watch',
-                ),
+              tabs: [
+  const Tab(
+    text:
+        'Friends Watch',
+  ),
 
-                Tab(
-                  text:
-                      'Find Friends',
-                ),
+  const Tab(
+    text:
+        'Find Friends',
+  ),
 
-                Tab(
-                  text:
-                      'Followers',
-                ),
+  Tab(
+    child: Row(
+      mainAxisSize:
+          MainAxisSize.min,
+      children: [
+        const Text(
+          'Followers',
+        ),
 
-                Tab(
-                  text:
-                      'Following',
+        if (newFollowersToday >
+            0) ...[
+          const SizedBox(
+            width: 6,
+          ),
+
+          Container(
+            width: 21,
+            height: 21,
+            alignment:
+                Alignment.center,
+            decoration:
+                const BoxDecoration(
+              color:
+                  Color(
+                0xFFFFC857,
+              ),
+              shape:
+                  BoxShape.circle,
+            ),
+            child: FittedBox(
+              fit:
+                  BoxFit.scaleDown,
+              child: Padding(
+                padding:
+                    const EdgeInsets
+                        .all(
+                  3,
                 ),
-              ],
+                child: Text(
+                  '$newFollowersToday',
+                  style:
+                      const TextStyle(
+                    color:
+                        Colors.black,
+                    fontSize: 11,
+                    fontWeight:
+                        FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    ),
+  ),
+
+  const Tab(
+    text:
+        'Following',
+  ),
+],
             ),
           ),
         ),
@@ -3348,6 +3637,29 @@ class _CommunityUsersList
               user['avatar_url']
                   ?.toString();
 
+                  final followedAtRaw =
+    user['followed_at']
+        ?.toString();
+
+final followedAt =
+    followedAtRaw != null
+        ? DateTime.tryParse(
+            followedAtRaw,
+          )?.toLocal()
+        : null;
+
+final now =
+    DateTime.now();
+
+final isNewToday =
+    followedAt != null &&
+        followedAt.year ==
+            now.year &&
+        followedAt.month ==
+            now.month &&
+        followedAt.day ==
+            now.day;
+
           final name =
               displayName.isNotEmpty
                   ? displayName
@@ -3489,12 +3801,40 @@ class _CommunityUsersList
                     ),
                   ),
 
-                  const Icon(
-                    Icons
-                        .chevron_right_rounded,
-                    color:
-                        Colors.white38,
-                  ),
+                  Column(
+  mainAxisSize:
+      MainAxisSize.min,
+  crossAxisAlignment:
+      CrossAxisAlignment.end,
+  children: [
+    if (isNewToday) ...[
+      const Text(
+        'New',
+        style:
+            TextStyle(
+          color:
+              Color(
+            0xFFFFC857,
+          ),
+          fontSize: 12,
+          fontWeight:
+              FontWeight.bold,
+        ),
+      ),
+
+      const SizedBox(
+        height: 3,
+      ),
+    ],
+
+    const Icon(
+      Icons
+          .chevron_right_rounded,
+      color:
+          Colors.white38,
+    ),
+  ],
+),
                 ],
               ),
             ),
@@ -4992,9 +5332,10 @@ setState(() {
 
                     const Spacer(),
 
-                    const SizedBox(
-                      width: 48,
-                    ),
+                    _FollowerCountBadge(
+  userId:
+      widget.userId,
+),
                   ],
                 ),
 
@@ -5214,27 +5555,28 @@ setState(() {
                       ),
 
                       if (username
-                          .isNotEmpty) ...[
-                        const SizedBox(
-                          height: 6,
-                        ),
+    .isNotEmpty) ...[
+  const SizedBox(
+    height: 6,
+  ),
 
-                        Text(
-                          '@$username',
-                          style:
-                              const TextStyle(
-                            color:
-                                Colors.white54,
-                            fontSize:
-                                14,
-                          ),
-                        ),
-                      ],
+  Text(
+    '@$username',
+    style:
+        const TextStyle(
+      color:
+          Colors.white54,
+      fontSize:
+          14,
+    ),
+  ),
+],
 
-                      if (!isOwnProfile) ...[
-                        const SizedBox(
-                          height: 18,
-                        ),
+
+if (!isOwnProfile) ...[
+  const SizedBox(
+    height: 18,
+  ),
 
                         SizedBox(
                           width: 180,
@@ -15709,6 +16051,7 @@ class _AchievementGroupCard
                 ),
               ),
 
+              
               const Spacer(),
 
               ClipRRect(
@@ -17489,10 +17832,24 @@ final _Achievement?
         ),
       ),
     ),
-  ),
+    ),
 ),
 
-    const Spacer(),
+const SizedBox(
+  width: 8,
+),
+
+if (Supabase.instance.client
+        .auth.currentUser !=
+    null)
+  _FollowerCountBadge(
+    userId:
+        Supabase.instance.client
+            .auth.currentUser!
+            .id,
+  ),
+
+const Spacer(),
 
     // =========================
     // PROFILE MENU
@@ -17987,6 +18344,191 @@ averageStars:
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _FollowerCountBadge
+    extends StatefulWidget {
+  final String userId;
+
+  const _FollowerCountBadge({
+    required this.userId,
+  });
+
+  @override
+  State<_FollowerCountBadge>
+      createState() =>
+          _FollowerCountBadgeState();
+}
+
+class _FollowerCountBadgeState
+    extends State<_FollowerCountBadge> {
+  int followerCount = 0;
+  bool loading = true;
+
+  RealtimeChannel? _channel;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _loadFollowerCount();
+    _startRealtime();
+  }
+
+  Future<void>
+      _loadFollowerCount() async {
+    try {
+      final rows =
+          await Supabase
+              .instance
+              .client
+              .from('follows')
+              .select(
+                'follower_id',
+              )
+              .eq(
+                'following_id',
+                widget.userId,
+              );
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        followerCount =
+            rows.length;
+
+        loading = false;
+      });
+    } catch (e) {
+      debugPrint(
+        'Could not load follower count: $e',
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        loading = false;
+      });
+    }
+  }
+
+  void _startRealtime() {
+    final client =
+        Supabase.instance.client;
+
+    _channel =
+        client.channel(
+      'followers_${widget.userId}_$hashCode',
+    );
+
+    _channel!
+        .onPostgresChanges(
+      event:
+          PostgresChangeEvent.all,
+      schema:
+          'public',
+      table:
+          'follows',
+      callback: (payload) {
+        if (!mounted) {
+          return;
+        }
+
+        unawaited(
+          _loadFollowerCount(),
+        );
+      },
+    ).subscribe();
+  }
+
+  @override
+  void dispose() {
+    if (_channel != null) {
+      unawaited(
+        _channel!.unsubscribe(),
+      );
+    }
+
+    super.dispose();
+  }
+
+  @override
+  Widget build(
+    BuildContext context,
+  ) {
+    return Container(
+      height: 43,
+      padding:
+          const EdgeInsets
+              .symmetric(
+        horizontal: 12,
+      ),
+      decoration:
+          BoxDecoration(
+        color:
+            chipluxSurface
+                .withValues(
+          alpha: 0.45,
+        ),
+        borderRadius:
+            BorderRadius.circular(
+          16,
+        ),
+        border:
+            Border.all(
+          color:
+              chipluxCyan
+                  .withValues(
+            alpha: 0.22,
+          ),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize:
+            MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons
+                .people_alt_rounded,
+            color:
+                chipluxCyan,
+            size: 22,
+          ),
+
+          const SizedBox(
+            width: 6,
+          ),
+
+          if (loading)
+            const SizedBox(
+              width: 13,
+              height: 13,
+              child:
+                  CircularProgressIndicator(
+                strokeWidth: 1.5,
+              ),
+            )
+          else
+            Text(
+              '$followerCount',
+              style:
+                  const TextStyle(
+                color:
+                    Colors.white,
+                fontSize: 14,
+                fontWeight:
+                    FontWeight.bold,
+              ),
+            ),
+        ],
       ),
     );
   }
