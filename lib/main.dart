@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'services/library_service.dart';
 import 'services/cloud_sync_service.dart';
+import 'comments_page.dart';
 import 'services/tmdb_service.dart';
 import 'services/auth_service.dart';
 import 'services/profile_service.dart';
@@ -22873,7 +22874,132 @@ if (status == 'completed' &&
   },
 ),
 
-                  const SizedBox(height: 22),
+                  AnimatedBuilder(
+  animation:
+      library,
+  builder:
+      (context, _) {
+    final item =
+        library.getItem(
+      widget.id,
+      widget.mediaType,
+    );
+
+    final canComment =
+        item?.status ==
+            'completed';
+
+    if (!canComment) {
+      return const SizedBox
+          .shrink();
+    }
+
+    return Column(
+      children: [
+        const SizedBox(
+          height: 14,
+        ),
+
+        SizedBox(
+          width:
+              double.infinity,
+
+          child:
+              OutlinedButton.icon(
+            onPressed:
+                () {
+              Navigator.push(
+                context,
+
+                MaterialPageRoute(
+                  builder:
+                      (_) =>
+                          CommentsPage(
+                    mediaType:
+                        widget
+                            .mediaType,
+
+                    tmdbId:
+                        widget.id,
+
+                    title:
+                        title
+                            .toString(),
+
+                    imagePath:
+                        backdropPath
+                            ?.toString(),
+                  ),
+                ),
+              );
+            },
+
+            icon:
+                const Icon(
+              Icons
+                  .forum_rounded,
+            ),
+
+            label:
+                const Text(
+              "Let's Comment",
+
+              style:
+                  TextStyle(
+                fontWeight:
+                    FontWeight.bold,
+              ),
+            ),
+
+            style:
+                OutlinedButton
+                    .styleFrom(
+              foregroundColor:
+                  chipluxCyan,
+
+              side:
+                  BorderSide(
+                color:
+                    chipluxCyan
+                        .withValues(
+                  alpha:
+                      0.65,
+                ),
+              ),
+
+              backgroundColor:
+                  chipluxCyan
+                      .withValues(
+                alpha:
+                    0.06,
+              ),
+
+              padding:
+                  const EdgeInsets
+                      .symmetric(
+                vertical:
+                    14,
+              ),
+
+              shape:
+                  RoundedRectangleBorder(
+                borderRadius:
+                    BorderRadius
+                        .circular(
+                  15,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  },
+),
+
+const SizedBox(
+  height: 22,
+),
 
 AnimatedBuilder(
   animation:
@@ -26733,7 +26859,121 @@ foregroundColor:
                 ),
               ),
 
-              const SizedBox(
+              if (watched) ...[
+  const SizedBox(
+    height: 14,
+  ),
+
+  SizedBox(
+    width:
+        double.infinity,
+
+    child:
+        OutlinedButton.icon(
+      onPressed:
+          () {
+        final showTitle =
+            library
+                    .getItem(
+              showId,
+              'tv',
+            )
+                    ?.title ??
+                'TV Show';
+
+        Navigator.push(
+          context,
+
+          MaterialPageRoute(
+            builder:
+                (_) =>
+                    CommentsPage(
+              mediaType:
+                  'episode',
+
+              tmdbId:
+                  showId,
+
+              seasonNumber:
+                  seasonNumber,
+
+              episodeNumber:
+                  episodeNumber,
+
+              title:
+                  title,
+
+              subtitle:
+                  '$showTitle • $episodeCode',
+
+              imagePath:
+                  stillPath,
+            ),
+          ),
+        );
+      },
+
+      icon:
+          const Icon(
+        Icons
+            .forum_rounded,
+      ),
+
+      label:
+          const Text(
+        "Let's Comment",
+
+        style:
+            TextStyle(
+          fontWeight:
+              FontWeight.bold,
+        ),
+      ),
+
+      style:
+          OutlinedButton
+              .styleFrom(
+        foregroundColor:
+            chipluxCyan,
+
+        side:
+            BorderSide(
+          color:
+              chipluxCyan
+                  .withValues(
+            alpha:
+                0.65,
+          ),
+        ),
+
+        backgroundColor:
+            chipluxCyan
+                .withValues(
+          alpha:
+              0.06,
+        ),
+
+        padding:
+            const EdgeInsets
+                .symmetric(
+          vertical:
+              14,
+        ),
+
+        shape:
+            RoundedRectangleBorder(
+          borderRadius:
+              BorderRadius
+                  .circular(
+            15,
+          ),
+        ),
+      ),
+    ),
+  ),
+],
+
+const SizedBox(
   height: 18,
 ),
 
