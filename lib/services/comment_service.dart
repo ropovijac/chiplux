@@ -549,36 +549,22 @@ class CommentService {
   // =====================================================
 
   Future<void> deleteComment({
-    required String commentId,
-  }) async {
-    final now =
-        DateTime.now()
-            .toUtc()
-            .toIso8601String();
-
-    // Soft delete:
-    // replies remain intact.
-    await client
-        .from(
-          'media_comments',
-        )
-        .update({
-          'body':
-              '',
-          'deleted_at':
-              now,
-          'updated_at':
-              now,
-        })
-        .eq(
-          'id',
-          commentId,
-        )
-        .eq(
-          'user_id',
-          _userId,
-        );
-  }
+  required String commentId,
+}) async {
+  await client
+      .from(
+        'media_comments',
+      )
+      .delete()
+      .eq(
+        'id',
+        commentId,
+      )
+      .eq(
+        'user_id',
+        _userId,
+      );
+}
 
   // =====================================================
   // LOVE / UNLOVE

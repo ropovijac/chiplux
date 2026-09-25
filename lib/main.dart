@@ -22915,6 +22915,20 @@ if (status == 'completed' &&
                   builder:
                       (_) =>
                           CommentsPage(
+
+                            onProfileTap:
+    (userId) async {
+  await Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder:
+          (_) =>
+              PublicProfilePage(
+        userId: userId,
+      ),
+    ),
+  );
+},
                     mediaType:
                         widget
                             .mediaType,
@@ -26888,6 +26902,20 @@ foregroundColor:
             builder:
                 (_) =>
                     CommentsPage(
+
+                      onProfileTap:
+    (userId) async {
+  await Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder:
+          (_) =>
+              PublicProfilePage(
+        userId: userId,
+      ),
+    ),
+  );
+},
               mediaType:
                   'episode',
 

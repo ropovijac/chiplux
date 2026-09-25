@@ -21,7 +21,9 @@ class CommentsPage
     extends StatefulWidget {
   final String mediaType;
   final int tmdbId;
-
+final Future<void> Function(
+  String userId,
+)? onProfileTap;
   final int? seasonNumber;
   final int? episodeNumber;
 
@@ -41,6 +43,7 @@ class CommentsPage
     this.imagePath,
     this.seasonNumber,
     this.episodeNumber,
+    this.onProfileTap,
   });
 
   @override
@@ -70,6 +73,32 @@ class _CommentsPageState
 
   Timer?
       _realtimeDebounce;
+
+      String _sortMode =
+    'mostLiked';
+
+    Future<void> _openProfile(
+  Map<String, dynamic> comment,
+) async {
+  final userId =
+      comment['user_id']
+          ?.toString();
+
+  if (userId == null ||
+      userId.isEmpty ||
+      widget.onProfileTap ==
+          null) {
+    return;
+  }
+
+  await widget.onProfileTap!(
+    userId,
+  );
+}
+
+final Set<String>
+    _expandedReplies =
+    <String>{};
 
   // =====================================================
   // INIT
@@ -254,6 +283,139 @@ class _CommentsPageState
       });
     }
   }
+
+  int _commentLikes(
+  Map<String, dynamic> comment,
+) {
+  final value =
+      comment['like_count'];
+
+  return value is num
+      ? value.toInt()
+      : 0;
+}
+
+int _commentReplyCount(
+  Map<String, dynamic> comment,
+) {
+  final replies =
+      comment['replies'];
+
+  return replies is List
+      ? replies.length
+      : 0;
+}
+
+DateTime _commentDate(
+  Map<String, dynamic> comment,
+) {
+  return DateTime.tryParse(
+        comment['created_at']
+                ?.toString() ??
+            '',
+      ) ??
+      DateTime(1970);
+}
+
+List<Map<String, dynamic>>
+    get _sortedComments {
+  final sorted =
+      List<Map<String, dynamic>>.from(
+    comments,
+  );
+
+  sorted.sort(
+    (a, b) {
+      switch (_sortMode) {
+        case 'newest':
+          return _commentDate(
+            b,
+          ).compareTo(
+            _commentDate(
+              a,
+            ),
+          );
+
+        case 'oldest':
+          return _commentDate(
+            a,
+          ).compareTo(
+            _commentDate(
+              b,
+            ),
+          );
+
+        case 'mostReplies':
+          final replyCompare =
+              _commentReplyCount(
+            b,
+          ).compareTo(
+            _commentReplyCount(
+              a,
+            ),
+          );
+
+          if (replyCompare !=
+              0) {
+            return replyCompare;
+          }
+
+          return _commentDate(
+            b,
+          ).compareTo(
+            _commentDate(
+              a,
+            ),
+          );
+
+        case 'mostLiked':
+        default:
+          final likeCompare =
+              _commentLikes(
+            b,
+          ).compareTo(
+            _commentLikes(
+              a,
+            ),
+          );
+
+          if (likeCompare !=
+              0) {
+            return likeCompare;
+          }
+
+          // Same number of likes:
+          // newest one first.
+          return _commentDate(
+            b,
+          ).compareTo(
+            _commentDate(
+              a,
+            ),
+          );
+      }
+    },
+  );
+
+  return sorted;
+}
+
+String get _sortLabel {
+  switch (_sortMode) {
+    case 'newest':
+      return 'Newest';
+
+    case 'oldest':
+      return 'Oldest';
+
+    case 'mostReplies':
+      return 'Most replies';
+
+    case 'mostLiked':
+    default:
+      return 'Most liked';
+  }
+}
 
   // =====================================================
   // COMPOSER
@@ -716,8 +878,24 @@ class _CommentsPageState
     controller.dispose();
 
     if (result == true) {
-      await _load();
+  if (isReply) {
+    final parentId =
+        parentComment['id']
+            ?.toString();
+
+    if (parentId != null &&
+        parentId.isNotEmpty &&
+        mounted) {
+      setState(() {
+        _expandedReplies.add(
+          parentId,
+        );
+      });
     }
+  }
+
+  await _load();
+}
   }
 
   // =====================================================
@@ -745,10 +923,11 @@ class _CommentsPageState
           ),
 
           content:
-              const Text(
-            'Your comment will be removed. '
-            'Existing replies will remain.',
-          ),
+    const Text(
+  'This will permanently delete '
+  'this comment, all of its replies, '
+  'and all likes.',
+),
 
           actions: [
             TextButton(
@@ -1073,202 +1252,242 @@ class _CommentsPageState
   // =====================================================
 
   Widget _buildComment(
-    Map<String, dynamic>
-        comment, {
-    bool isReply = false,
-  }) {
-    final isDeleted =
-        comment['deleted_at'] !=
-            null;
+  Map<String, dynamic> comment, {
+  bool isReply = false,
+}) {
+  final isOwn =
+      service.isOwnComment(
+    comment,
+  );
 
-    final isOwn =
-        service.isOwnComment(
-      comment,
+  final liked =
+      comment['liked_by_me'] ==
+          true;
+
+  final likeCount =
+      comment['like_count']
+              is num
+          ? (comment[
+                      'like_count']
+                  as num)
+              .toInt()
+          : 0;
+
+  final name =
+      _displayName(
+    comment,
+  );
+
+  final username =
+      _username(
+    comment,
+  );
+
+  final avatarUrl =
+      _avatarUrl(
+    comment,
+  );
+
+  final body =
+      comment['body']
+              ?.toString() ??
+          '';
+
+  final edited =
+      comment['edited_at'] !=
+          null;
+
+  final rawReplies =
+      comment['replies'];
+
+  final replies =
+      rawReplies is List
+          ? rawReplies
+              .whereType<
+                  Map<String,
+                      dynamic>>()
+              .toList()
+          : <Map<String,
+              dynamic>>[];
+
+  final commentId =
+      comment['id']
+              ?.toString() ??
+          '';
+
+  final repliesExpanded =
+      _expandedReplies
+          .contains(
+    commentId,
+  );
+
+  final canOpenProfile =
+      widget.onProfileTap !=
+          null;
+
+  Widget avatar;
+
+  if (avatarUrl != null) {
+    avatar =
+        CircleAvatar(
+      radius:
+          isReply
+              ? 17
+              : 20,
+
+      backgroundColor:
+          _commentsSurfaceLight,
+
+      backgroundImage:
+          NetworkImage(
+        avatarUrl,
+      ),
     );
+  } else {
+    avatar =
+        CircleAvatar(
+      radius:
+          isReply
+              ? 17
+              : 20,
 
-    final liked =
-        comment[
-                'liked_by_me'] ==
-            true;
+      backgroundColor:
+          _commentsSurfaceLight,
 
-    final likeCount =
-        comment['like_count']
-                is num
-            ? (comment[
-                        'like_count']
-                    as num)
-                .toInt()
-            : 0;
+      child:
+          Text(
+        name.isNotEmpty
+            ? name[0]
+                .toUpperCase()
+            : '?',
 
-    final name =
-        _displayName(
-      comment,
-    );
+        style:
+            const TextStyle(
+          color:
+              _commentsCyan,
 
-    final username =
-        _username(
-      comment,
-    );
-
-    final avatarUrl =
-        _avatarUrl(
-      comment,
-    );
-
-    final body =
-        comment['body']
-                ?.toString() ??
-            '';
-
-    final edited =
-        comment['edited_at'] !=
-            null;
-
-    final rawReplies =
-        comment['replies'];
-
-    final replies =
-        rawReplies is List
-            ? rawReplies
-                .whereType<
-                    Map<String,
-                        dynamic>>()
-                .toList()
-            : <Map<String,
-                dynamic>>[];
-
-    Widget avatar;
-
-    if (avatarUrl !=
-        null) {
-      avatar =
-          CircleAvatar(
-        radius:
-            isReply
-                ? 17
-                : 20,
-
-        backgroundColor:
-            _commentsSurfaceLight,
-
-        backgroundImage:
-            NetworkImage(
-          avatarUrl,
+          fontWeight:
+              FontWeight.bold,
         ),
-      );
-    } else {
-      avatar =
-          CircleAvatar(
-        radius:
+      ),
+    );
+  }
+
+  return Padding(
+    padding:
+        EdgeInsets.only(
+      left:
+          isReply
+              ? 30
+              : 0,
+
+      bottom:
+          isReply
+              ? 8
+              : 14,
+    ),
+
+    child:
+        Container(
+      padding:
+          EdgeInsets.all(
+        isReply
+            ? 12
+            : 15,
+      ),
+
+      decoration:
+          BoxDecoration(
+        color:
             isReply
-                ? 17
-                : 20,
+                ? _commentsSurfaceLight
+                    .withValues(
+                    alpha:
+                        0.55,
+                  )
+                : _commentsSurface,
 
-        backgroundColor:
-            _commentsSurfaceLight,
+        borderRadius:
+            BorderRadius.circular(
+          18,
+        ),
 
-        child:
-            Text(
-          name.isNotEmpty
-              ? name[0]
-                  .toUpperCase()
-              : '?',
-
-          style:
-              const TextStyle(
-            color:
-                _commentsCyan,
-
-            fontWeight:
-                FontWeight.bold,
+        border:
+            Border.all(
+          color:
+              Colors.white
+                  .withValues(
+            alpha:
+                0.06,
           ),
         ),
-      );
-    }
-
-    return Padding(
-      padding:
-          EdgeInsets.only(
-        left:
-            isReply
-                ? 30
-                : 0,
-
-        bottom:
-            isReply
-                ? 8
-                : 14,
       ),
 
       child:
-          Container(
-        padding:
-            EdgeInsets.all(
-          isReply
-              ? 12
-              : 15,
-        ),
+          Column(
+        crossAxisAlignment:
+            CrossAxisAlignment
+                .start,
 
-        decoration:
-            BoxDecoration(
-          color:
-              isReply
-                  ? _commentsSurfaceLight
-                      .withValues(
-                      alpha:
-                          0.55,
-                    )
-                  : _commentsSurface,
+        children: [
+          // =====================================
+          // USER
+          // =====================================
 
-          borderRadius:
-              BorderRadius.circular(
-            18,
-          ),
+          Row(
+            crossAxisAlignment:
+                CrossAxisAlignment
+                    .start,
 
-          border:
-              Border.all(
-            color:
-                Colors.white
-                    .withValues(
-              alpha:
-                  0.06,
-            ),
-          ),
-        ),
-
-        child:
-            Column(
-          crossAxisAlignment:
-              CrossAxisAlignment
-                  .start,
-
-          children: [
-            // =====================================
-            // USER
-            // =====================================
-
-            Row(
-              crossAxisAlignment:
-                  CrossAxisAlignment
-                      .start,
-
-              children: [
-                avatar,
-
-                const SizedBox(
-                  width:
-                      11,
+            children: [
+              InkWell(
+                borderRadius:
+                    BorderRadius.circular(
+                  30,
                 ),
 
-                Expanded(
-                  child:
-                      Column(
-                    crossAxisAlignment:
-                        CrossAxisAlignment
-                            .start,
+                onTap:
+                    canOpenProfile
+                        ? () {
+                            unawaited(
+                              _openProfile(
+                                comment,
+                              ),
+                            );
+                          }
+                        : null,
 
-                    children: [
-                      Text(
+                child:
+                    avatar,
+              ),
+
+              const SizedBox(
+                width:
+                    11,
+              ),
+
+              Expanded(
+                child:
+                    Column(
+                  crossAxisAlignment:
+                      CrossAxisAlignment
+                          .start,
+
+                  children: [
+                    InkWell(
+                      onTap:
+                          canOpenProfile
+                              ? () {
+                                  unawaited(
+                                    _openProfile(
+                                      comment,
+                                    ),
+                                  );
+                                }
+                              : null,
+
+                      child:
+                          Text(
                         name,
 
                         maxLines:
@@ -1295,17 +1514,31 @@ class _CommentsPageState
                                   .bold,
                         ),
                       ),
+                    ),
 
-                      const SizedBox(
-                        height:
-                            2,
-                      ),
+                    const SizedBox(
+                      height:
+                          2,
+                    ),
 
-                      Row(
-                        children: [
-                          if (username !=
-                              null) ...[
-                            Flexible(
+                    Row(
+                      children: [
+                        if (username !=
+                            null) ...[
+                          Flexible(
+                            child:
+                                InkWell(
+                              onTap:
+                                  canOpenProfile
+                                      ? () {
+                                          unawaited(
+                                            _openProfile(
+                                              comment,
+                                            ),
+                                          );
+                                        }
+                                      : null,
+
                               child:
                                   Text(
                                 '@$username',
@@ -1324,20 +1557,40 @@ class _CommentsPageState
                                 ),
                               ),
                             ),
+                          ),
 
-                            const SizedBox(
-                              width:
-                                  7,
-                            ),
-                          ],
+                          const SizedBox(
+                            width:
+                                7,
+                          ),
+                        ],
 
-                          Text(
-                            _timeAgo(
-                              comment,
-                            ),
+                        Text(
+                          _timeAgo(
+                            comment,
+                          ),
+
+                          style:
+                              const TextStyle(
+                            color:
+                                Colors.white30,
+
+                            fontSize:
+                                11,
+                          ),
+                        ),
+
+                        if (edited) ...[
+                          const SizedBox(
+                            width:
+                                6,
+                          ),
+
+                          const Text(
+                            '• edited',
 
                             style:
-                                const TextStyle(
+                                TextStyle(
                               color:
                                   Colors.white30,
 
@@ -1345,331 +1598,392 @@ class _CommentsPageState
                                   11,
                             ),
                           ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
 
-                          if (edited &&
-                              !isDeleted) ...[
-                            const SizedBox(
-                              width:
-                                  6,
+              // =================================
+              // OWN COMMENT MENU
+              // =================================
+
+              if (isOwn)
+                PopupMenuButton<
+                    String>(
+                  color:
+                      _commentsSurfaceLight,
+
+                  icon:
+                      const Icon(
+                    Icons
+                        .more_horiz_rounded,
+
+                    color:
+                        Colors.white54,
+                  ),
+
+                  onSelected:
+                      (value) async {
+                    if (value ==
+                        'edit') {
+                      await _openComposer(
+                        editingComment:
+                            comment,
+                      );
+                    }
+
+                    if (value ==
+                        'delete') {
+                      await _deleteComment(
+                        comment,
+                      );
+                    }
+                  },
+
+                  itemBuilder:
+                      (context) {
+                    return const [
+                      PopupMenuItem(
+                        value:
+                            'edit',
+
+                        child:
+                            Row(
+                          children: [
+                            Icon(
+                              Icons
+                                  .edit_outlined,
+
+                              size:
+                                  19,
                             ),
 
-                            const Text(
-                              '• edited',
+                            SizedBox(
+                              width:
+                                  10,
+                            ),
+
+                            Text(
+                              'Edit',
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      PopupMenuItem(
+                        value:
+                            'delete',
+
+                        child:
+                            Row(
+                          children: [
+                            Icon(
+                              Icons
+                                  .delete_outline_rounded,
+
+                              size:
+                                  19,
+
+                              color:
+                                  Colors.redAccent,
+                            ),
+
+                            SizedBox(
+                              width:
+                                  10,
+                            ),
+
+                            Text(
+                              'Delete',
 
                               style:
                                   TextStyle(
                                 color:
-                                    Colors.white30,
-
-                                fontSize:
-                                    11,
+                                    Colors.redAccent,
                               ),
                             ),
                           ],
-                        ],
+                        ),
+                      ),
+                    ];
+                  },
+                ),
+            ],
+          ),
+
+          const SizedBox(
+            height:
+                12,
+          ),
+
+          // =====================================
+          // COMMENT TEXT
+          // =====================================
+
+          _ExpandableCommentText(
+            text:
+                body,
+          ),
+
+          const SizedBox(
+            height:
+                10,
+          ),
+
+          // =====================================
+          // LOVE / REPLY
+          // =====================================
+
+          Row(
+            children: [
+              InkWell(
+                borderRadius:
+                    BorderRadius.circular(
+                  20,
+                ),
+
+                onTap:
+                    () {
+                  _toggleLove(
+                    comment,
+                  );
+                },
+
+                child:
+                    Padding(
+                  padding:
+                      const EdgeInsets
+                          .symmetric(
+                    horizontal:
+                        3,
+
+                    vertical:
+                        5,
+                  ),
+
+                  child:
+                      Row(
+                    children: [
+                      AnimatedSwitcher(
+                        duration:
+                            const Duration(
+                          milliseconds:
+                              180,
+                        ),
+
+                        child:
+                            Icon(
+                          liked
+                              ? Icons
+                                  .favorite_rounded
+                              : Icons
+                                  .favorite_border_rounded,
+
+                          key:
+                              ValueKey(
+                            liked,
+                          ),
+
+                          size:
+                              21,
+
+                          color:
+                              liked
+                                  ? Colors.pinkAccent
+                                  : Colors.white54,
+                        ),
+                      ),
+
+                      const SizedBox(
+                        width:
+                            6,
+                      ),
+
+                      Text(
+                        '$likeCount',
+
+                        style:
+                            TextStyle(
+                          color:
+                              liked
+                                  ? Colors.pinkAccent
+                                  : Colors.white54,
+
+                          fontSize:
+                              12,
+
+                          fontWeight:
+                              FontWeight.w600,
+                        ),
                       ),
                     ],
                   ),
                 ),
+              ),
 
-                if (isOwn &&
-                    !isDeleted)
-                  PopupMenuButton<
-                      String>(
-                    color:
-                        _commentsSurfaceLight,
+              if (!isReply) ...[
+                const SizedBox(
+                  width:
+                      15,
+                ),
 
-                    icon:
-                        const Icon(
-                      Icons
-                          .more_horiz_rounded,
-
-                      color:
-                          Colors.white54,
-                    ),
-
-                    onSelected:
-                        (value) async {
-                      if (value ==
-                          'edit') {
-                        await _openComposer(
-                          editingComment:
-                              comment,
-                        );
-                      }
-
-                      if (value ==
-                          'delete') {
-                        await _deleteComment(
+                TextButton.icon(
+                  onPressed:
+                      () {
+                    _openComposer(
+                      parentComment:
                           comment,
-                        );
-                      }
-                    },
+                    );
+                  },
 
-                    itemBuilder:
-                        (context) {
-                      return const [
-                        PopupMenuItem(
-                          value:
-                              'edit',
+                  style:
+                      TextButton.styleFrom(
+                    foregroundColor:
+                        Colors.white54,
 
-                          child:
-                              Row(
-                            children: [
-                              Icon(
-                                Icons
-                                    .edit_outlined,
-
-                                size:
-                                    19,
-                              ),
-
-                              SizedBox(
-                                width:
-                                    10,
-                              ),
-
-                              Text(
-                                'Edit',
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        PopupMenuItem(
-                          value:
-                              'delete',
-
-                          child:
-                              Row(
-                            children: [
-                              Icon(
-                                Icons
-                                    .delete_outline_rounded,
-
-                                size:
-                                    19,
-
-                                color:
-                                    Colors.redAccent,
-                              ),
-
-                              SizedBox(
-                                width:
-                                    10,
-                              ),
-
-                              Text(
-                                'Delete',
-
-                                style:
-                                    TextStyle(
-                                  color:
-                                      Colors.redAccent,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ];
-                    },
+                    padding:
+                        const EdgeInsets
+                            .symmetric(
+                      horizontal:
+                          4,
+                    ),
                   ),
-              ],
-            ),
 
+                  icon:
+                      const Icon(
+                    Icons
+                        .reply_rounded,
+
+                    size:
+                        18,
+                  ),
+
+                  label:
+                      const Text(
+                    'Reply',
+
+                    style:
+                        TextStyle(
+                      fontSize:
+                          12,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+
+          // =====================================
+          // COLLAPSIBLE REPLIES
+          // =====================================
+
+          if (!isReply &&
+              replies.isNotEmpty) ...[
             const SizedBox(
               height:
-                  12,
+                  5,
             ),
 
-            // =====================================
-            // BODY
-            // =====================================
+            InkWell(
+              borderRadius:
+                  BorderRadius.circular(
+                12,
+              ),
 
-            if (isDeleted)
-              const Text(
-                'Comment deleted',
+              onTap:
+                  () {
+                setState(() {
+                  if (repliesExpanded) {
+                    _expandedReplies
+                        .remove(
+                      commentId,
+                    );
+                  } else {
+                    _expandedReplies
+                        .add(
+                      commentId,
+                    );
+                  }
+                });
+              },
 
-                style:
-                    TextStyle(
-                  color:
-                      Colors.white38,
+              child:
+                  Padding(
+                padding:
+                    const EdgeInsets
+                        .symmetric(
+                  vertical:
+                      8,
 
-                  fontSize:
-                      14,
-
-                  fontStyle:
-                      FontStyle.italic,
+                  horizontal:
+                      3,
                 ),
-              )
-            else
-              _ExpandableCommentText(
-                text:
-                    body,
-              ),
 
-            // =====================================
-            // LOVE / REPLY
-            // =====================================
+                child:
+                    Row(
+                  children: [
+                    Icon(
+                      Icons
+                          .subdirectory_arrow_right_rounded,
 
-            if (!isDeleted) ...[
-              const SizedBox(
-                height:
-                    10,
-              ),
+                      size:
+                          18,
 
-              Row(
-                children: [
-                  InkWell(
-                    borderRadius:
-                        BorderRadius.circular(
-                      20,
-                    ),
-
-                    onTap:
-                        () {
-                      _toggleLove(
-                        comment,
-                      );
-                    },
-
-                    child:
-                        Padding(
-                      padding:
-                          const EdgeInsets
-                              .symmetric(
-                        horizontal:
-                            3,
-
-                        vertical:
-                            5,
-                      ),
-
-                      child:
-                          Row(
-                        children: [
-                          AnimatedSwitcher(
-                            duration:
-                                const Duration(
-                              milliseconds:
-                                  180,
-                            ),
-
-                            child:
-                                Icon(
-                              liked
-                                  ? Icons
-                                      .favorite_rounded
-                                  : Icons
-                                      .favorite_border_rounded,
-
-                              key:
-                                  ValueKey(
-                                liked,
-                              ),
-
-                              size:
-                                  21,
-
-                              color:
-                                  liked
-                                      ? Colors.pinkAccent
-                                      : Colors.white54,
-                            ),
-                          ),
-
-                          const SizedBox(
-                            width:
-                                6,
-                          ),
-
-                          Text(
-                            '$likeCount',
-
-                            style:
-                                TextStyle(
-                              color:
-                                  liked
-                                      ? Colors.pinkAccent
-                                      : Colors.white54,
-
-                              fontSize:
-                                  12,
-
-                              fontWeight:
-                                  FontWeight.w600,
-                            ),
-                          ),
-                        ],
+                      color:
+                          _commentsCyan
+                              .withValues(
+                        alpha:
+                            0.8,
                       ),
                     ),
-                  ),
 
-                  if (!isReply) ...[
                     const SizedBox(
                       width:
-                          15,
+                          7,
                     ),
 
-                    TextButton.icon(
-                      onPressed:
-                          () {
-                        _openComposer(
-                          parentComment:
-                              comment,
-                        );
-                      },
+                    Text(
+                      repliesExpanded
+                          ? 'Hide replies'
+                          : 'View ${replies.length} '
+                              '${replies.length == 1 ? 'reply' : 'replies'}',
 
                       style:
-                          TextButton.styleFrom(
-                        foregroundColor:
-                            Colors.white54,
+                          const TextStyle(
+                        color:
+                            _commentsCyan,
 
-                        padding:
-                            const EdgeInsets
-                                .symmetric(
-                          horizontal:
-                              4,
-                        ),
-                      ),
+                        fontSize:
+                            12,
 
-                      icon:
-                          const Icon(
-                        Icons
-                            .reply_rounded,
-
-                        size:
-                            18,
-                      ),
-
-                      label:
-                          const Text(
-                        'Reply',
-
-                        style:
-                            TextStyle(
-                          fontSize:
-                              12,
-                        ),
+                        fontWeight:
+                            FontWeight.w600,
                       ),
                     ),
+
+                    const Spacer(),
+
+                    Icon(
+                      repliesExpanded
+                          ? Icons
+                              .keyboard_arrow_up_rounded
+                          : Icons
+                              .keyboard_arrow_down_rounded,
+
+                      color:
+                          Colors.white38,
+
+                      size:
+                          19,
+                    ),
                   ],
-                ],
+                ),
               ),
-            ],
+            ),
 
-            // =====================================
-            // REPLIES
-            // =====================================
-
-            if (!isReply &&
-                replies
-                    .isNotEmpty) ...[
-              const SizedBox(
-                height:
-                    8,
-              ),
-
+            if (repliesExpanded) ...[
               Divider(
                 color:
                     Colors.white
@@ -1694,10 +2008,11 @@ class _CommentsPageState
               ),
             ],
           ],
-        ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   // =====================================================
   // HEADER
@@ -1819,43 +2134,181 @@ class _CommentsPageState
         ),
 
         Row(
+  children: [
+    Expanded(
+      child:
+          Column(
+        crossAxisAlignment:
+            CrossAxisAlignment
+                .start,
+
+        children: [
+          const Text(
+            'Discussion',
+
+            style:
+                TextStyle(
+              color:
+                  Colors.white,
+
+              fontSize:
+                  20,
+
+              fontWeight:
+                  FontWeight.bold,
+            ),
+          ),
+
+          const SizedBox(
+            height: 3,
+          ),
+
+          Text(
+            totalComments == 1
+                ? '1 comment'
+                : '$totalComments comments',
+
+            style:
+                const TextStyle(
+              color:
+                  Colors.white38,
+
+              fontSize:
+                  12,
+            ),
+          ),
+        ],
+      ),
+    ),
+
+    PopupMenuButton<String>(
+      initialValue:
+          _sortMode,
+
+      color:
+          _commentsSurfaceLight,
+
+      onSelected:
+          (value) {
+        setState(() {
+          _sortMode =
+              value;
+        });
+      },
+
+      itemBuilder:
+          (context) =>
+              const [
+        PopupMenuItem(
+          value:
+              'mostLiked',
+
+          child:
+              Text(
+            'Most liked',
+          ),
+        ),
+
+        PopupMenuItem(
+          value:
+              'newest',
+
+          child:
+              Text(
+            'Newest',
+          ),
+        ),
+
+        PopupMenuItem(
+          value:
+              'oldest',
+
+          child:
+              Text(
+            'Oldest',
+          ),
+        ),
+
+        PopupMenuItem(
+          value:
+              'mostReplies',
+
+          child:
+              Text(
+            'Most replies',
+          ),
+        ),
+      ],
+
+      child:
+          Container(
+        padding:
+            const EdgeInsets
+                .symmetric(
+          horizontal: 11,
+          vertical: 8,
+        ),
+
+        decoration:
+            BoxDecoration(
+          color:
+              _commentsSurface,
+
+          borderRadius:
+              BorderRadius.circular(
+            12,
+          ),
+
+          border:
+              Border.all(
+            color:
+                Colors.white
+                    .withValues(
+              alpha: 0.08,
+            ),
+          ),
+        ),
+
+        child:
+            Row(
+          mainAxisSize:
+              MainAxisSize.min,
+
           children: [
-            const Expanded(
-              child:
-                  Text(
-                'Discussion',
+            const Icon(
+              Icons.sort_rounded,
 
-                style:
-                    TextStyle(
-                  color:
-                      Colors.white,
+              color:
+                  Colors.white54,
 
-                  fontSize:
-                      20,
+              size: 18,
+            ),
 
-                  fontWeight:
-                      FontWeight.bold,
-                ),
-              ),
+            const SizedBox(
+              width: 6,
             ),
 
             Text(
-              totalComments ==
-                      1
-                  ? '1 comment'
-                  : '$totalComments comments',
+              _sortLabel,
 
               style:
                   const TextStyle(
                 color:
-                    Colors.white38,
+                    Colors.white70,
 
                 fontSize:
                     12,
+
+                fontWeight:
+                    FontWeight.w600,
               ),
             ),
           ],
         ),
+      ),
+    ),
+  ],
+),
 
         const SizedBox(
           height:
@@ -2145,7 +2598,7 @@ class _CommentsPageState
                               ),
                             )
                           else
-                            ...comments.map(
+                            ..._sortedComments.map(
                               (
                                 comment,
                               ) =>
