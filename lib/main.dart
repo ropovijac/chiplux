@@ -22955,15 +22955,13 @@ if (status == 'completed' &&
             ),
 
             label:
-                const Text(
-              "Let's Comment",
+    CommentCountLabel(
+  mediaType:
+      widget.mediaType,
 
-              style:
-                  TextStyle(
-                fontWeight:
-                    FontWeight.bold,
-              ),
-            ),
+  tmdbId:
+      widget.id,
+),
 
             style:
                 OutlinedButton
@@ -26948,15 +26946,19 @@ foregroundColor:
       ),
 
       label:
-          const Text(
-        "Let's Comment",
+    CommentCountLabel(
+  mediaType:
+      'episode',
 
-        style:
-            TextStyle(
-          fontWeight:
-              FontWeight.bold,
-        ),
-      ),
+  tmdbId:
+      showId,
+
+  seasonNumber:
+      seasonNumber,
+
+  episodeNumber:
+      episodeNumber,
+),
 
       style:
           OutlinedButton

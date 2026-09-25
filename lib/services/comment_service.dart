@@ -50,6 +50,66 @@ class CommentService {
     return result == true;
   }
 
+  Future<int> countComments({
+  required String mediaType,
+  required int tmdbId,
+  int? seasonNumber,
+  int? episodeNumber,
+}) async {
+  late final List<dynamic> rows;
+
+  if (mediaType == 'episode') {
+    if (seasonNumber == null ||
+        episodeNumber == null) {
+      return 0;
+    }
+
+    rows =
+        await client
+            .from(
+              'media_comments',
+            )
+            .select(
+              'id',
+            )
+            .eq(
+              'media_type',
+              'episode',
+            )
+            .eq(
+              'tmdb_id',
+              tmdbId,
+            )
+            .eq(
+              'season_number',
+              seasonNumber,
+            )
+            .eq(
+              'episode_number',
+              episodeNumber,
+            );
+  } else {
+    rows =
+        await client
+            .from(
+              'media_comments',
+            )
+            .select(
+              'id',
+            )
+            .eq(
+              'media_type',
+              mediaType,
+            )
+            .eq(
+              'tmdb_id',
+              tmdbId,
+            );
+  }
+
+  return rows.length;
+}
+
   // =====================================================
   // LOAD COMMENTS
   // =====================================================

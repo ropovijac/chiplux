@@ -52,6 +52,151 @@ final Future<void> Function(
           _CommentsPageState();
 }
 
+class CommentCountLabel
+    extends StatefulWidget {
+  final String mediaType;
+  final int tmdbId;
+  final int? seasonNumber;
+  final int? episodeNumber;
+
+  const CommentCountLabel({
+    super.key,
+    required this.mediaType,
+    required this.tmdbId,
+    this.seasonNumber,
+    this.episodeNumber,
+  });
+
+  @override
+  State<CommentCountLabel>
+      createState() =>
+          _CommentCountLabelState();
+}
+
+class _CommentCountLabelState
+    extends State<CommentCountLabel> {
+  int? _count;
+
+  RealtimeChannel? _channel;
+  Timer? _debounce;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _loadCount();
+    _startRealtime();
+  }
+
+  Future<void> _loadCount() async {
+    try {
+      final count =
+          await CommentService.instance
+              .countComments(
+        mediaType:
+            widget.mediaType,
+        tmdbId:
+            widget.tmdbId,
+        seasonNumber:
+            widget.seasonNumber,
+        episodeNumber:
+            widget.episodeNumber,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _count = count;
+      });
+    } catch (e) {
+      debugPrint(
+        'Could not load comment count: $e',
+      );
+    }
+  }
+
+  void _scheduleReload() {
+    _debounce?.cancel();
+
+    _debounce =
+        Timer(
+      const Duration(
+        milliseconds: 250,
+      ),
+      () {
+        if (!mounted) {
+          return;
+        }
+
+        unawaited(
+          _loadCount(),
+        );
+      },
+    );
+  }
+
+  void _startRealtime() {
+    final client =
+        Supabase.instance.client;
+
+    _channel =
+        client.channel(
+      'comment_count_'
+      '${widget.mediaType}_'
+      '${widget.tmdbId}_'
+      '${widget.seasonNumber ?? 0}_'
+      '${widget.episodeNumber ?? 0}_'
+      '$hashCode',
+    );
+
+    _channel!
+        .onPostgresChanges(
+      event:
+          PostgresChangeEvent.all,
+      schema:
+          'public',
+      table:
+          'media_comments',
+      callback:
+          (payload) {
+        _scheduleReload();
+      },
+    ).subscribe();
+  }
+
+  @override
+  Widget build(
+    BuildContext context,
+  ) {
+    return Text(
+      _count == null
+          ? "Let's Comment"
+          : "Let's Comment · $_count",
+      style:
+          const TextStyle(
+        fontWeight:
+            FontWeight.bold,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+
+    if (_channel != null) {
+      unawaited(
+        _channel!
+            .unsubscribe(),
+      );
+    }
+
+    super.dispose();
+  }
+}
+
 class _CommentsPageState
     extends State<CommentsPage> {
   final CommentService service =
@@ -1475,46 +1620,106 @@ String get _sortLabel {
 
                   children: [
                     InkWell(
-                      onTap:
-                          canOpenProfile
-                              ? () {
-                                  unawaited(
-                                    _openProfile(
-                                      comment,
-                                    ),
-                                  );
-                                }
-                              : null,
+  onTap:
+      canOpenProfile
+          ? () {
+              unawaited(
+                _openProfile(
+                  comment,
+                ),
+              );
+            }
+          : null,
 
-                      child:
-                          Text(
-                        name,
+  child:
+      Row(
+    children: [
+      Flexible(
+        child:
+            Text(
+          name,
 
-                        maxLines:
-                            1,
+          maxLines:
+              1,
 
-                        overflow:
-                            TextOverflow
-                                .ellipsis,
+          overflow:
+              TextOverflow.ellipsis,
 
-                        style:
-                            TextStyle(
-                          color:
-                              isReply
-                                  ? Colors.white70
-                                  : Colors.white,
+          style:
+              TextStyle(
+            color:
+                isReply
+                    ? Colors.white70
+                    : Colors.white,
 
-                          fontSize:
-                              isReply
-                                  ? 13
-                                  : 14,
+            fontSize:
+                isReply
+                    ? 13
+                    : 14,
 
-                          fontWeight:
-                              FontWeight
-                                  .bold,
-                        ),
-                      ),
-                    ),
+            fontWeight:
+                FontWeight.bold,
+          ),
+        ),
+      ),
+
+      if (isOwn) ...[
+        const SizedBox(
+          width: 7,
+        ),
+
+        Container(
+          padding:
+              const EdgeInsets
+                  .symmetric(
+            horizontal: 6,
+            vertical: 2,
+          ),
+
+          decoration:
+              BoxDecoration(
+            color:
+                _commentsCyan
+                    .withValues(
+              alpha: 0.10,
+            ),
+
+            borderRadius:
+                BorderRadius.circular(
+              6,
+            ),
+
+            border:
+                Border.all(
+              color:
+                  _commentsCyan
+                      .withValues(
+                alpha: 0.30,
+              ),
+            ),
+          ),
+
+          child:
+              const Text(
+            'You',
+
+            style:
+                TextStyle(
+              color:
+                  _commentsCyan,
+
+              fontSize:
+                  9,
+
+              fontWeight:
+                  FontWeight.bold,
+            ),
+          ),
+        ),
+      ],
+    ],
+  ),
+),
 
                     const SizedBox(
                       height:
@@ -2042,6 +2247,75 @@ String get _sortLabel {
       }
     }
 
+    PopupMenuItem<String>
+    buildSortMenuItem({
+  required String value,
+  required String label,
+  required IconData icon,
+}) {
+  final selected =
+      _sortMode == value;
+
+  return PopupMenuItem<String>(
+    value:
+        value,
+
+    child:
+        Row(
+      children: [
+        Icon(
+          icon,
+
+          size:
+              19,
+
+          color:
+              selected
+                  ? _commentsCyan
+                  : Colors.white54,
+        ),
+
+        const SizedBox(
+          width:
+              11,
+        ),
+
+        Expanded(
+          child:
+              Text(
+            label,
+
+            style:
+                TextStyle(
+              color:
+                  selected
+                      ? Colors.white
+                      : Colors.white70,
+
+              fontWeight:
+                  selected
+                      ? FontWeight.bold
+                      : FontWeight.normal,
+            ),
+          ),
+        ),
+
+        if (selected)
+          const Icon(
+            Icons
+                .check_rounded,
+
+            color:
+                _commentsCyan,
+
+            size:
+                19,
+          ),
+      ],
+    ),
+  );
+}
+
     return Column(
       children: [
         ClipRRect(
@@ -2197,48 +2471,43 @@ String get _sortLabel {
       },
 
       itemBuilder:
-          (context) =>
-              const [
-        PopupMenuItem(
-          value:
-              'mostLiked',
+    (context) => [
+  buildSortMenuItem(
+    value:
+        'mostLiked',
+    label:
+        'Most liked',
+    icon:
+        Icons.favorite_rounded,
+  ),
 
-          child:
-              Text(
-            'Most liked',
-          ),
-        ),
+  buildSortMenuItem(
+    value:
+        'newest',
+    label:
+        'Newest',
+    icon:
+        Icons.new_releases_outlined,
+  ),
 
-        PopupMenuItem(
-          value:
-              'newest',
+  buildSortMenuItem(
+    value:
+        'oldest',
+    label:
+        'Oldest',
+    icon:
+        Icons.history_rounded,
+  ),
 
-          child:
-              Text(
-            'Newest',
-          ),
-        ),
-
-        PopupMenuItem(
-          value:
-              'oldest',
-
-          child:
-              Text(
-            'Oldest',
-          ),
-        ),
-
-        PopupMenuItem(
-          value:
-              'mostReplies',
-
-          child:
-              Text(
-            'Most replies',
-          ),
-        ),
-      ],
+  buildSortMenuItem(
+    value:
+        'mostReplies',
+    label:
+        'Most replies',
+    icon:
+        Icons.forum_outlined,
+  ),
+],
 
       child:
           Container(
@@ -2640,6 +2909,7 @@ String get _sortLabel {
     super.dispose();
   }
 }
+
 
 // =======================================================
 // COLLAPSIBLE COMMENT TEXT
