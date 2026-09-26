@@ -1472,11 +1472,48 @@ class _LoginPageState
   final passwordController =
       TextEditingController();
 
-  bool loading = false;
-  bool signupMode = false;
-  bool showPassword = false;
+ bool loading = false;
+bool signupMode = false;
+bool showPassword = false;
+bool rememberMe = false;
 
-  String? message;
+String? message;
+
+static const String
+    _rememberedEmailKey =
+    'chiplux_remembered_email';
+
+    @override
+void initState() {
+  super.initState();
+
+  _loadRememberedEmail();
+}
+
+Future<void>
+    _loadRememberedEmail() async {
+  final prefs =
+      await SharedPreferences
+          .getInstance();
+
+  final rememberedEmail =
+      prefs.getString(
+    _rememberedEmailKey,
+  );
+
+  if (!mounted ||
+      rememberedEmail == null ||
+      rememberedEmail.isEmpty) {
+    return;
+  }
+
+  setState(() {
+    emailController.text =
+        rememberedEmail;
+
+    rememberMe = true;
+  });
+}
 
   Future<void> submit() async {
   final email = emailController.text.trim();
@@ -1511,6 +1548,7 @@ class _LoginPageState
       email: email,
       password: password,
     );
+    
 
     if (response.session !=
         null) {
@@ -1549,6 +1587,17 @@ class _LoginPageState
       email: email,
       password: password,
     );
+
+    if (rememberMe) {
+  await prefs.setString(
+    _rememberedEmailKey,
+    email,
+  );
+} else {
+  await prefs.remove(
+    _rememberedEmailKey,
+  );
+}
 
     final library =
         LibraryService.instance;
@@ -1629,7 +1678,17 @@ class _LoginPageState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
+  backgroundColor:
+      Colors.transparent,
+
+  body:
+      ChipluxBackground(
+    style:
+        ChipluxBackgroundStyle
+            .discover,
+
+    child:
+        SafeArea(
         child: Center(
           child: SingleChildScrollView(
             padding:
@@ -1710,9 +1769,54 @@ class _LoginPageState
 ),
 
                   const SizedBox(
-                      height: 25),
+  height: 10,
+),
 
-                  SizedBox(
+if (!signupMode)
+  Row(
+    children: [
+      Checkbox(
+        value:
+            rememberMe,
+
+        activeColor:
+            chipluxCyan,
+
+        checkColor:
+            Colors.black,
+
+        onChanged:
+            loading
+                ? null
+                : (value) {
+                    setState(() {
+                      rememberMe =
+                          value ??
+                              false;
+                    });
+                  },
+      ),
+
+      const Text(
+        'Remember Me',
+
+        style:
+            TextStyle(
+          color:
+              Colors.white70,
+
+          fontSize:
+              14,
+        ),
+      ),
+    ],
+  ),
+
+const SizedBox(
+  height: 10,
+),
+
+SizedBox(
                     width:
                         double.infinity,
                     child:
@@ -1900,9 +2004,10 @@ Container(
               ),
             ),
           ),
-        ),
+               ),
       ),
-    );
+    ),
+  );
   }
 }
 

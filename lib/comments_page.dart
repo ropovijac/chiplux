@@ -589,16 +589,25 @@ String get _sortLabel {
     String? composerError;
 
     final result =
-        await showModalBottomSheet<
-            bool>(
-      context:
-          context,
+    await showModalBottomSheet<
+        bool>(
+  context:
+      context,
 
-      isScrollControlled:
-          true,
+  isScrollControlled:
+      true,
 
-      backgroundColor:
-          _commentsSurface,
+  enableDrag:
+      false,
+
+  isDismissible:
+      false,
+
+  useSafeArea:
+      true,
+
+  backgroundColor:
+      _commentsSurface,
 
       shape:
           const RoundedRectangleBorder(
@@ -708,14 +717,18 @@ String get _sortLabel {
                 }
 
                 if (!sheetContext
-                    .mounted) {
-                  return;
-                }
+    .mounted) {
+  return;
+}
 
-                Navigator.pop(
-                  sheetContext,
-                  true,
-                );
+FocusScope.of(
+  sheetContext,
+).unfocus();
+
+Navigator.pop(
+  sheetContext,
+  true,
+);
               } catch (e) {
                 debugPrint(
                   'Could not save comment: $e',
@@ -795,13 +808,17 @@ String get _sortLabel {
 
                         IconButton(
                           onPressed:
-                              saving
-                                  ? null
-                                  : () {
-                                      Navigator.pop(
-                                        sheetContext,
-                                      );
-                                    },
+    saving
+        ? null
+        : () {
+            FocusScope.of(
+              sheetContext,
+            ).unfocus();
+
+            Navigator.pop(
+              sheetContext,
+            );
+          },
 
                           icon:
                               const Icon(
@@ -945,7 +962,7 @@ String get _sortLabel {
 
                     const SizedBox(
                       height:
-                          12,
+                          7,
                     ),
 
                     SizedBox(
@@ -1477,8 +1494,8 @@ String get _sortLabel {
         CircleAvatar(
       radius:
           isReply
-              ? 17
-              : 20,
+              ? 15
+              : 17,
 
       backgroundColor:
           _commentsSurfaceLight,
@@ -1493,8 +1510,8 @@ String get _sortLabel {
         CircleAvatar(
       radius:
           isReply
-              ? 17
-              : 20,
+              ? 15
+              : 17,
 
       backgroundColor:
           _commentsSurfaceLight,
@@ -1523,13 +1540,13 @@ String get _sortLabel {
         EdgeInsets.only(
       left:
           isReply
-              ? 30
+              ? 20
               : 0,
 
       bottom:
           isReply
-              ? 8
-              : 14,
+              ? 5
+              : 9,
     ),
 
     child:
@@ -1537,8 +1554,8 @@ String get _sortLabel {
       padding:
           EdgeInsets.all(
         isReply
-            ? 12
-            : 15,
+            ? 9
+            : 11,
       ),
 
       decoration:
@@ -1554,7 +1571,7 @@ String get _sortLabel {
 
         borderRadius:
             BorderRadius.circular(
-          18,
+          14,
         ),
 
         border:
@@ -1934,7 +1951,7 @@ String get _sortLabel {
 
           const SizedBox(
             height:
-                10,
+                6,
           ),
 
           // =====================================
@@ -1992,7 +2009,7 @@ String get _sortLabel {
                           ),
 
                           size:
-                              21,
+                              18,
 
                           color:
                               liked
@@ -2003,7 +2020,7 @@ String get _sortLabel {
 
                       const SizedBox(
                         width:
-                            6,
+                            4,
                       ),
 
                       Text(
@@ -2031,7 +2048,7 @@ String get _sortLabel {
               if (!isReply) ...[
                 const SizedBox(
                   width:
-                      15,
+                      10,
                 ),
 
                 TextButton.icon(
@@ -2062,7 +2079,7 @@ String get _sortLabel {
                         .reply_rounded,
 
                     size:
-                        18,
+                        16,
                   ),
 
                   label:
@@ -2120,7 +2137,7 @@ String get _sortLabel {
                     const EdgeInsets
                         .symmetric(
                   vertical:
-                      8,
+                      5,
 
                   horizontal:
                       3,
@@ -2134,7 +2151,7 @@ String get _sortLabel {
                           .subdirectory_arrow_right_rounded,
 
                       size:
-                          18,
+                          16,
 
                       color:
                           _commentsCyan
