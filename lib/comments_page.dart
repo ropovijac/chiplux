@@ -567,498 +567,510 @@ String get _sortLabel {
   // =====================================================
 
   Future<void> _openComposer({
-    Map<String, dynamic>?
-        parentComment,
-    Map<String, dynamic>?
-        editingComment,
-  }) async {
-    final isEditing =
-        editingComment != null;
+  Map<String, dynamic>? parentComment,
+  Map<String, dynamic>? editingComment,
+}) async {
+  final isEditing =
+      editingComment != null;
 
-    final isReply =
-        parentComment != null;
+  final isReply =
+      parentComment != null;
 
-    final controller =
-        TextEditingController(
-      text:
-          editingComment?['body']
-                  ?.toString() ??
-              '',
-    );
+  final controller =
+      TextEditingController(
+    text:
+        editingComment?['body']
+                ?.toString() ??
+            '',
+  );
 
-    String? composerError;
+  String? composerError;
 
-    final result =
-    await showModalBottomSheet<
-        bool>(
-  context:
-      context,
+  final result =
+      await showModalBottomSheet<bool>(
+    context: context,
 
-  isScrollControlled:
-      true,
+    isScrollControlled: true,
 
-  enableDrag:
-      false,
+    // IMPORTANT:
+    // Don't let Flutter drag-dismiss the
+    // focused TextField route.
+    enableDrag: false,
 
-  isDismissible:
-      false,
+    isDismissible: false,
 
-  useSafeArea:
-      true,
+    useSafeArea: true,
 
-  backgroundColor:
-      _commentsSurface,
+    backgroundColor:
+        _commentsSurface,
 
-      shape:
-          const RoundedRectangleBorder(
-        borderRadius:
-            BorderRadius.vertical(
-          top:
-              Radius.circular(
-            24,
-          ),
+    shape:
+        const RoundedRectangleBorder(
+      borderRadius:
+          BorderRadius.vertical(
+        top: Radius.circular(
+          24,
         ),
       ),
+    ),
 
-      builder:
-          (sheetContext) {
-        bool saving =
-            false;
+    builder: (
+      sheetContext,
+    ) {
+      bool saving = false;
 
-        return StatefulBuilder(
-          builder: (
-            context,
-            setSheetState,
-          ) {
-            Future<void>
-                submit() async {
-              final text =
-                  controller.text
-                      .trim();
+      return StatefulBuilder(
+        builder: (
+          context,
+          setSheetState,
+        ) {
+          Future<void> closeSheet([
+            bool? result,
+          ]) async {
+            // Release TextField / keyboard
+            // before removing the route.
+            FocusManager
+                .instance
+                .primaryFocus
+                ?.unfocus();
 
-              if (text.isEmpty) {
-                setSheetState(() {
-                  composerError =
-                      isReply
-                          ? 'Write a reply first.'
-                          : 'Write a comment first.';
-                });
+            // Give Flutter one frame to
+            // detach keyboard dependencies.
+            await Future<void>.delayed(
+              const Duration(
+                milliseconds: 80,
+              ),
+            );
 
+            if (!sheetContext.mounted) {
+              return;
+            }
+
+            Navigator.pop(
+              sheetContext,
+              result,
+            );
+          }
+
+          Future<void> submit() async {
+            if (saving) {
+              return;
+            }
+
+            final text =
+                controller.text.trim();
+
+            if (text.isEmpty) {
+              setSheetState(() {
+                composerError =
+                    isReply
+                        ? 'Write a reply first.'
+                        : 'Write a comment first.';
+              });
+
+              return;
+            }
+
+            setSheetState(() {
+              saving = true;
+              composerError = null;
+            });
+
+            try {
+              if (isEditing) {
+                await service.editComment(
+                  commentId:
+                      editingComment[
+                              'id']
+                          .toString(),
+                  body: text,
+                );
+              } else if (isReply) {
+                await service.addReply(
+                  parentCommentId:
+                      parentComment[
+                              'id']
+                          .toString(),
+
+                  mediaType:
+                      widget.mediaType,
+
+                  tmdbId:
+                      widget.tmdbId,
+
+                  seasonNumber:
+                      widget
+                          .seasonNumber,
+
+                  episodeNumber:
+                      widget
+                          .episodeNumber,
+
+                  body: text,
+                );
+              } else {
+                await service.addComment(
+                  mediaType:
+                      widget.mediaType,
+
+                  tmdbId:
+                      widget.tmdbId,
+
+                  seasonNumber:
+                      widget
+                          .seasonNumber,
+
+                  episodeNumber:
+                      widget
+                          .episodeNumber,
+
+                  body: text,
+                );
+              }
+
+              if (!sheetContext.mounted) {
+                return;
+              }
+
+              await closeSheet(
+                true,
+              );
+            } catch (e) {
+              debugPrint(
+                'Could not save comment: $e',
+              );
+
+              if (!sheetContext.mounted) {
                 return;
               }
 
               setSheetState(() {
-                saving = true;
+                saving = false;
+
                 composerError =
-                    null;
+                    'Could not save. Please try again.';
               });
-
-              try {
-                if (isEditing) {
-                  await service
-                      .editComment(
-                    commentId:
-                        editingComment[
-                                'id']
-                            .toString(),
-
-                    body:
-                        text,
-                  );
-                } else if (isReply) {
-                  await service
-                      .addReply(
-                    parentCommentId:
-                        parentComment[
-                                'id']
-                            .toString(),
-
-                    mediaType:
-                        widget
-                            .mediaType,
-
-                    tmdbId:
-                        widget
-                            .tmdbId,
-
-                    seasonNumber:
-                        widget
-                            .seasonNumber,
-
-                    episodeNumber:
-                        widget
-                            .episodeNumber,
-
-                    body:
-                        text,
-                  );
-                } else {
-                  await service
-                      .addComment(
-                    mediaType:
-                        widget
-                            .mediaType,
-
-                    tmdbId:
-                        widget
-                            .tmdbId,
-
-                    seasonNumber:
-                        widget
-                            .seasonNumber,
-
-                    episodeNumber:
-                        widget
-                            .episodeNumber,
-
-                    body:
-                        text,
-                  );
-                }
-
-                if (!sheetContext
-    .mounted) {
-  return;
-}
-
-FocusScope.of(
-  sheetContext,
-).unfocus();
-
-Navigator.pop(
-  sheetContext,
-  true,
-);
-              } catch (e) {
-                debugPrint(
-                  'Could not save comment: $e',
-                );
-
-                setSheetState(() {
-                  saving = false;
-
-                  composerError =
-                      'Could not save. Please try again.';
-                });
-              }
             }
+          }
 
-            String title =
-                'Add Comment';
+          String title =
+              'Add Comment';
 
-            if (isEditing) {
-              title =
-                  'Edit Comment';
-            } else if (isReply) {
-              title =
-                  'Reply';
-            }
+          if (isEditing) {
+            title =
+                'Edit Comment';
+          } else if (isReply) {
+            title =
+                'Reply';
+          }
 
-            return SafeArea(
-              child:
-                  Padding(
-                padding:
-                    EdgeInsets.only(
-                  left:
-                      18,
-                  right:
-                      18,
-                  top:
-                      18,
-                  bottom:
-                      MediaQuery.of(
-                            sheetContext,
-                          )
-                              .viewInsets
-                              .bottom +
-                          18,
-                ),
+          return PopScope(
+            // Don't allow Android back gesture
+            // while the database request is saving.
+            canPop:
+                !saving,
 
-                child:
-                    Column(
-                  mainAxisSize:
-                      MainAxisSize
-                          .min,
+            child:
+                Padding(
+              padding:
+                  EdgeInsets.only(
+                left: 18,
+                right: 18,
+                top: 18,
 
-                  crossAxisAlignment:
-                      CrossAxisAlignment
-                          .start,
+                bottom:
+                    MediaQuery.of(
+                          sheetContext,
+                        )
+                            .viewInsets
+                            .bottom +
+                        18,
+              ),
 
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child:
-                              Text(
-                            title,
+              child: Column(
+                mainAxisSize:
+                    MainAxisSize.min,
 
-                            style:
-                                const TextStyle(
-                              color:
-                                  Colors.white,
+                crossAxisAlignment:
+                    CrossAxisAlignment
+                        .start,
 
-                              fontSize:
-                                  20,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          title,
 
-                              fontWeight:
-                                  FontWeight.bold,
-                            ),
-                          ),
-                        ),
-
-                        IconButton(
-                          onPressed:
-    saving
-        ? null
-        : () {
-            FocusScope.of(
-              sheetContext,
-            ).unfocus();
-
-            Navigator.pop(
-              sheetContext,
-            );
-          },
-
-                          icon:
-                              const Icon(
-                            Icons.close_rounded,
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    if (isReply) ...[
-                      const SizedBox(
-                        height:
-                            4,
-                      ),
-
-                      Text(
-                        'Replying to '
-                        '${_displayName(parentComment)}',
-
-                        style:
-                            const TextStyle(
-                          color:
-                              Colors.white54,
-
-                          fontSize:
-                              13,
-                        ),
-                      ),
-                    ],
-
-                    const SizedBox(
-                      height:
-                          14,
-                    ),
-
-                    TextField(
-                      controller:
-                          controller,
-
-                      autofocus:
-                          true,
-
-                      minLines:
-                          3,
-
-                      maxLines:
-                          8,
-
-                      maxLength:
-                          4000,
-
-                      enabled:
-                          !saving,
-
-                      textCapitalization:
-                          TextCapitalization
-                              .sentences,
-
-                      decoration:
-                          InputDecoration(
-                        hintText:
-                            isReply
-                                ? 'Write a reply...'
-                                : 'Share your thoughts...',
-
-                        filled:
-                            true,
-
-                        fillColor:
-                            _commentsSurfaceLight,
-
-                        border:
-                            OutlineInputBorder(
-                          borderRadius:
-                              BorderRadius.circular(
-                            16,
-                          ),
-
-                          borderSide:
-                              BorderSide.none,
-                        ),
-
-                        enabledBorder:
-                            OutlineInputBorder(
-                          borderRadius:
-                              BorderRadius.circular(
-                            16,
-                          ),
-
-                          borderSide:
-                              BorderSide(
+                          style:
+                              const TextStyle(
                             color:
-                                Colors.white
-                                    .withValues(
-                              alpha:
-                                  0.06,
-                            ),
-                          ),
-                        ),
+                                Colors.white,
 
-                        focusedBorder:
-                            OutlineInputBorder(
-                          borderRadius:
-                              BorderRadius.circular(
-                            16,
-                          ),
+                            fontSize:
+                                20,
 
-                          borderSide:
-                              BorderSide(
-                            color:
-                                _commentsCyan
-                                    .withValues(
-                              alpha:
-                                  0.65,
-                            ),
+                            fontWeight:
+                                FontWeight
+                                    .bold,
                           ),
                         ),
                       ),
-                    ),
 
-                    if (composerError !=
-                        null) ...[
-                      const SizedBox(
-                        height:
-                            8,
-                      ),
-
-                      Text(
-                        composerError!,
-
-                        style:
-                            const TextStyle(
-                          color:
-                              Colors.redAccent,
-
-                          fontSize:
-                              13,
-                        ),
-                      ),
-                    ],
-
-                    const SizedBox(
-                      height:
-                          7,
-                    ),
-
-                    SizedBox(
-                      width:
-                          double.infinity,
-
-                      height:
-                          48,
-
-                      child:
-                          ElevatedButton(
+                      IconButton(
                         onPressed:
                             saving
                                 ? null
-                                : submit,
+                                : () {
+                                    closeSheet();
+                                  },
 
-                        style:
-                            ElevatedButton.styleFrom(
-                          backgroundColor:
-                              _commentsCyan,
-
-                          foregroundColor:
-                              Colors.black,
-
-                          shape:
-                              RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(
-                              15,
-                            ),
-                          ),
+                        icon:
+                            const Icon(
+                          Icons
+                              .close_rounded,
                         ),
+                      ),
+                    ],
+                  ),
 
-                        child:
-                            saving
-                                ? const SizedBox(
-                                    width:
-                                        20,
-                                    height:
-                                        20,
+                  if (isReply) ...[
+                    const SizedBox(
+                      height: 4,
+                    ),
 
-                                    child:
-                                        CircularProgressIndicator(
-                                      strokeWidth:
-                                          2,
+                    Text(
+                      'Replying to '
+                      '${_displayName(parentComment)}',
 
-                                      color:
-                                          Colors.black,
-                                    ),
-                                  )
-                                : Text(
-                                    isEditing
-                                        ? 'Save Changes'
-                                        : isReply
-                                            ? 'Post Reply'
-                                            : 'Post Comment',
+                      style:
+                          const TextStyle(
+                        color:
+                            Colors.white54,
 
-                                    style:
-                                        const TextStyle(
-                                      fontWeight:
-                                          FontWeight.bold,
-                                    ),
-                                  ),
+                        fontSize:
+                            13,
                       ),
                     ),
                   ],
-                ),
+
+                  const SizedBox(
+                    height: 14,
+                  ),
+
+                  TextField(
+                    controller:
+                        controller,
+
+                    autofocus:
+                        true,
+
+                    minLines:
+                        3,
+
+                    maxLines:
+                        8,
+
+                    maxLength:
+                        4000,
+
+                    enabled:
+                        !saving,
+
+                    textCapitalization:
+                        TextCapitalization
+                            .sentences,
+
+                    decoration:
+                        InputDecoration(
+                      hintText:
+                          isReply
+                              ? 'Write a reply...'
+                              : 'Share your thoughts...',
+
+                      filled:
+                          true,
+
+                      fillColor:
+                          _commentsSurfaceLight,
+
+                      border:
+                          OutlineInputBorder(
+                        borderRadius:
+                            BorderRadius.circular(
+                          16,
+                        ),
+
+                        borderSide:
+                            BorderSide.none,
+                      ),
+
+                      enabledBorder:
+                          OutlineInputBorder(
+                        borderRadius:
+                            BorderRadius.circular(
+                          16,
+                        ),
+
+                        borderSide:
+                            BorderSide(
+                          color:
+                              Colors.white
+                                  .withValues(
+                            alpha:
+                                0.06,
+                          ),
+                        ),
+                      ),
+
+                      focusedBorder:
+                          OutlineInputBorder(
+                        borderRadius:
+                            BorderRadius.circular(
+                          16,
+                        ),
+
+                        borderSide:
+                            BorderSide(
+                          color:
+                              _commentsCyan
+                                  .withValues(
+                            alpha:
+                                0.65,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  if (composerError !=
+                      null) ...[
+                    const SizedBox(
+                      height: 8,
+                    ),
+
+                    Text(
+                      composerError!,
+
+                      style:
+                          const TextStyle(
+                        color:
+                            Colors
+                                .redAccent,
+
+                        fontSize:
+                            13,
+                      ),
+                    ),
+                  ],
+
+                  const SizedBox(
+                    height: 12,
+                  ),
+
+                  SizedBox(
+                    width:
+                        double.infinity,
+
+                    height:
+                        48,
+
+                    child:
+                        ElevatedButton(
+                      onPressed:
+                          saving
+                              ? null
+                              : submit,
+
+                      style:
+                          ElevatedButton
+                              .styleFrom(
+                        backgroundColor:
+                            _commentsCyan,
+
+                        foregroundColor:
+                            Colors.black,
+
+                        shape:
+                            RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius
+                                  .circular(
+                            15,
+                          ),
+                        ),
+                      ),
+
+                      child:
+                          saving
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+
+                                  child:
+                                      CircularProgressIndicator(
+                                    strokeWidth:
+                                        2,
+
+                                    color:
+                                        Colors.black,
+                                  ),
+                                )
+                              : Text(
+                                  isEditing
+                                      ? 'Save Changes'
+                                      : isReply
+                                          ? 'Post Reply'
+                                          : 'Post Comment',
+
+                                  style:
+                                      const TextStyle(
+                                    fontWeight:
+                                        FontWeight
+                                            .bold,
+                                  ),
+                                ),
+                    ),
+                  ),
+                ],
               ),
-            );
-          },
-        );
-      },
-    );
+            ),
+          );
+        },
+      );
+    },
+  );
 
-    controller.dispose();
+  // The modal route is completely gone
+  // before disposing its controller.
+  await Future<void>.delayed(
+    Duration.zero,
+  );
 
-    if (result == true) {
-  if (isReply) {
-    final parentId =
-        parentComment['id']
-            ?.toString();
+  controller.dispose();
 
-    if (parentId != null &&
-        parentId.isNotEmpty &&
-        mounted) {
-      setState(() {
-        _expandedReplies.add(
-          parentId,
-        );
-      });
+  if (result == true) {
+    if (isReply) {
+      final parentId =
+          parentComment['id']
+              ?.toString();
+
+      if (parentId != null &&
+          parentId.isNotEmpty &&
+          mounted) {
+        setState(() {
+          _expandedReplies.add(
+            parentId,
+          );
+        });
+      }
+    }
+
+    if (mounted) {
+      await _load();
     }
   }
-
-  await _load();
 }
-  }
 
   // =====================================================
   // DELETE

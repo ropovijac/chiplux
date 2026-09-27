@@ -6285,15 +6285,16 @@ setState(() {
   child:
       Container(
     padding:
-        EdgeInsets.fromLTRB(
-      pinnedAchievement !=
-              null
-          ? 34
-          : 20,
-      8,
-      20,
-      8,
-    ),
+    EdgeInsets.fromLTRB(
+  pinnedAchievement != null
+      ? 34
+      : 20,
+  8,
+  pinnedAchievement != null
+      ? 34
+      : 20,
+  8,
+),
 
     decoration:
         BoxDecoration(
@@ -19468,15 +19469,16 @@ const Spacer(),
   child:
       Container(
     padding:
-        EdgeInsets.fromLTRB(
-      pinnedAchievement !=
-              null
-          ? 34
-          : 20,
-      8,
-      20,
-      8,
-    ),
+    EdgeInsets.fromLTRB(
+  pinnedAchievement != null
+      ? 34
+      : 20,
+  8,
+  pinnedAchievement != null
+      ? 34
+      : 20,
+  8,
+),
 
     decoration:
         BoxDecoration(
@@ -19971,6 +19973,331 @@ class _FollowerCountBadgeState
   }
 }
 
+void _showPinnedAchievementDetails(
+  BuildContext context,
+  _Achievement achievement,
+) {
+  final colors =
+      _achievementPopupColors(
+    achievement,
+  );
+
+  final accent =
+      _achievementAccent(
+    achievement.rarity,
+  );
+
+  showModalBottomSheet(
+    context: context,
+    backgroundColor:
+        Colors.transparent,
+    isScrollControlled:
+        true,
+    builder: (
+      sheetContext,
+    ) {
+      return SafeArea(
+        top: false,
+        child: Container(
+          margin:
+              const EdgeInsets.fromLTRB(
+            12,
+            0,
+            12,
+            8,
+          ),
+          padding:
+              const EdgeInsets.all(
+            1.3,
+          ),
+          decoration:
+              BoxDecoration(
+            gradient:
+                LinearGradient(
+              begin:
+                  Alignment.topLeft,
+              end:
+                  Alignment.bottomRight,
+              colors:
+                  colors,
+            ),
+            borderRadius:
+                BorderRadius.circular(
+              24,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color:
+                    accent.withValues(
+                  alpha:
+                      0.18,
+                ),
+                blurRadius:
+                    24,
+              ),
+            ],
+          ),
+          child: Container(
+            padding:
+                const EdgeInsets
+                    .fromLTRB(
+              22,
+              22,
+              22,
+              20,
+            ),
+            decoration:
+                BoxDecoration(
+              color:
+                  chipluxSurface,
+              borderRadius:
+                  BorderRadius.circular(
+                23,
+              ),
+            ),
+            child: Column(
+              mainAxisSize:
+                  MainAxisSize.min,
+              children: [
+                // =========================
+                // LABEL
+                // =========================
+
+                Text(
+                  'PINNED ACHIEVEMENT',
+                  style:
+                      TextStyle(
+                    color:
+                        accent.withValues(
+                      alpha:
+                          0.75,
+                    ),
+                    fontSize:
+                        10,
+                    fontWeight:
+                        FontWeight.w800,
+                    letterSpacing:
+                        1.5,
+                  ),
+                ),
+
+                const SizedBox(
+                  height:
+                      18,
+                ),
+
+                // =========================
+                // LARGE MEDAL
+                // =========================
+
+                SizedBox(
+                  width:
+                      76,
+                  height:
+                      76,
+                  child:
+                      _AchievementMedal(
+                    achievement:
+                        achievement,
+                  ),
+                ),
+
+                const SizedBox(
+                  height:
+                      18,
+                ),
+
+                // =========================
+                // TITLE
+                // =========================
+
+                Text(
+                  achievement.title,
+                  textAlign:
+                      TextAlign.center,
+                  style:
+                      const TextStyle(
+                    color:
+                        Colors.white,
+                    fontSize:
+                        21,
+                    fontWeight:
+                        FontWeight.bold,
+                  ),
+                ),
+
+                const SizedBox(
+                  height:
+                      14,
+                ),
+
+                // =========================
+                // REQUIREMENT
+                // =========================
+
+                Container(
+                  width:
+                      double.infinity,
+                  padding:
+                      const EdgeInsets
+                          .symmetric(
+                    horizontal:
+                        14,
+                    vertical:
+                        12,
+                  ),
+                  decoration:
+                      BoxDecoration(
+                    color:
+                        accent.withValues(
+                      alpha:
+                          0.06,
+                    ),
+                    borderRadius:
+                        BorderRadius
+                            .circular(
+                      14,
+                    ),
+                    border:
+                        Border.all(
+                      color:
+                          accent.withValues(
+                        alpha:
+                            0.16,
+                      ),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons
+                            .flag_outlined,
+                        color:
+                            accent,
+                        size:
+                            20,
+                      ),
+
+                      const SizedBox(
+                        width:
+                            11,
+                      ),
+
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment:
+                              CrossAxisAlignment
+                                  .start,
+                          children: [
+                            const Text(
+                              'Achievement requirement',
+                              style:
+                                  TextStyle(
+                                color:
+                                    Colors.white38,
+                                fontSize:
+                                    10,
+                                fontWeight:
+                                    FontWeight.w600,
+                              ),
+                            ),
+
+                            const SizedBox(
+                              height:
+                                  3,
+                            ),
+
+                            Text(
+                              achievement
+                                  .description,
+                              style:
+                                  const TextStyle(
+                                color:
+                                    Colors.white,
+                                fontSize:
+                                    14,
+                                fontWeight:
+                                    FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const Icon(
+                        Icons
+                            .check_circle_rounded,
+                        color:
+                            Colors.greenAccent,
+                        size:
+                            20,
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(
+                  height:
+                      18,
+                ),
+
+                SizedBox(
+                  width:
+                      double.infinity,
+                  child:
+                      ElevatedButton(
+                    onPressed:
+                        () {
+                      Navigator.pop(
+                        sheetContext,
+                      );
+                    },
+                    style:
+                        ElevatedButton
+                            .styleFrom(
+                      foregroundColor:
+                          Colors.white,
+                      backgroundColor:
+                          Colors.white
+                              .withValues(
+                        alpha:
+                            0.06,
+                      ),
+                      padding:
+                          const EdgeInsets
+                              .symmetric(
+                        vertical:
+                            13,
+                      ),
+                      shape:
+                          RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius
+                                .circular(
+                          14,
+                        ),
+                      ),
+                    ),
+                    child:
+                        const Text(
+                      'Close',
+                      style:
+                          TextStyle(
+                        fontWeight:
+                            FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    },
+  );
+}
+
 class _PinnedAchievementBadge
     extends StatefulWidget {
   final _Achievement
@@ -20007,8 +20334,7 @@ class _PinnedAchievementBadgeState
       ),
     );
 
-    if (widget.achievement
-            .rarity ==
+    if (widget.achievement.rarity ==
         _AchievementRarity
             .legendary) {
       _controller.repeat();
@@ -20016,97 +20342,97 @@ class _PinnedAchievementBadgeState
   }
 
   List<Color> _colors() {
-  switch (
-      widget.achievement.target) {
-    case 2:
-      return const [
-        Colors.white,
-        Color(
-          0xFFBFC9D4,
-        ),
-      ];
+    switch (
+        widget.achievement.target) {
+      case 2:
+        return const [
+          Colors.white,
+          Color(
+            0xFFBFC9D4,
+          ),
+        ];
 
-    case 8:
-      return const [
-        Color(
-          0xFF43E8FF,
-        ),
-        Color(
-          0xFF64BFFF,
-        ),
-      ];
+      case 8:
+        return const [
+          Color(
+            0xFF43E8FF,
+          ),
+          Color(
+            0xFF64BFFF,
+          ),
+        ];
 
-    case 16:
-      return const [
-        chipluxCyan,
-        chipluxViolet,
-      ];
+      case 16:
+        return const [
+          chipluxCyan,
+          chipluxViolet,
+        ];
 
-    case 32:
-      return const [
-        Color(
-          0xFFFFF1A8,
-        ),
-        Color(
-          0xFFFFC857,
-        ),
-      ];
+      case 32:
+        return const [
+          Color(
+            0xFFFFF1A8,
+          ),
+          Color(
+            0xFFFFC857,
+          ),
+        ];
 
-    case 64:
-      return const [
-        Color(
-          0xFFFFC857,
-        ),
-        Color(
-          0xFFFF8A4C,
-        ),
-        Color(
-          0xFFFF5C72,
-        ),
-      ];
+      case 64:
+        return const [
+          Color(
+            0xFFFFC857,
+          ),
+          Color(
+            0xFFFF8A4C,
+          ),
+          Color(
+            0xFFFF5C72,
+          ),
+        ];
 
-    case 128:
-      return const [
-        Color(
-          0xFFFF5C72,
-        ),
-        chipluxPurple,
-        chipluxViolet,
-      ];
+      case 128:
+        return const [
+          Color(
+            0xFFFF5C72,
+          ),
+          chipluxPurple,
+          chipluxViolet,
+        ];
 
-    case 512:
-      return const [
-        chipluxCyan,
-        chipluxViolet,
-        chipluxPurple,
-        Color(
-          0xFFFFC857,
-        ),
-        chipluxCyan,
-      ];
+      case 512:
+        return const [
+          chipluxCyan,
+          chipluxViolet,
+          chipluxPurple,
+          Color(
+            0xFFFFC857,
+          ),
+          chipluxCyan,
+        ];
 
-    case 1024:
-      return const [
-        chipluxCyan,
-        Colors.white,
-        chipluxViolet,
-        chipluxPurple,
-        Color(
-          0xFFFF5C72,
-        ),
-        Color(
-          0xFFFFC857,
-        ),
-        chipluxCyan,
-      ];
+      case 1024:
+        return const [
+          chipluxCyan,
+          Colors.white,
+          chipluxViolet,
+          chipluxPurple,
+          Color(
+            0xFFFF5C72,
+          ),
+          Color(
+            0xFFFFC857,
+          ),
+          chipluxCyan,
+        ];
 
-    default:
-      return const [
-        chipluxCyan,
-        chipluxViolet,
-      ];
+      default:
+        return const [
+          chipluxCyan,
+          chipluxViolet,
+        ];
+    }
   }
-}
 
   @override
   void dispose() {
@@ -20127,8 +20453,7 @@ class _PinnedAchievementBadgeState
         _,
       ) {
         final rotation =
-            widget.achievement
-                        .rarity ==
+            widget.achievement.rarity ==
                     _AchievementRarity
                         .legendary
                 ? _controller.value *
@@ -20142,70 +20467,108 @@ class _PinnedAchievementBadgeState
         return Tooltip(
           message:
               widget.achievement.title,
-          child: Container(
-            width: 29,
-            height: 29,
-            padding:
-                const EdgeInsets.all(
-              1.5,
-            ),
-            decoration:
-                BoxDecoration(
-              shape:
-                  BoxShape.circle,
-              gradient:
-                  LinearGradient(
-                transform:
-                    GradientRotation(
-                  rotation,
-                ),
-                colors:
-                    colors,
+
+          child:
+              GestureDetector(
+            behavior:
+                HitTestBehavior.opaque,
+
+            onTap:
+                () {
+              _showPinnedAchievementDetails(
+                context,
+                widget.achievement,
+              );
+            },
+
+            child:
+                Container(
+              width:
+                  29,
+              height:
+                  29,
+
+              padding:
+                  const EdgeInsets.all(
+                1.5,
               ),
-              boxShadow: [
-                BoxShadow(
-                  color:
-                      _achievementAccent(
-                    widget
-                        .achievement
-                        .rarity,
-                  ).withValues(
-                    alpha: 0.20,
-                  ),
-                  blurRadius: 8,
-                ),
-              ],
-            ),
-            child: Container(
+
               decoration:
-                  const BoxDecoration(
+                  BoxDecoration(
                 shape:
                     BoxShape.circle,
-                color:
-                    chipluxSurface,
-              ),
-              child: ShaderMask(
-                shaderCallback:
-                    (bounds) {
-                  return LinearGradient(
-                    transform:
-                        GradientRotation(
-                      rotation,
+
+                gradient:
+                    LinearGradient(
+                  transform:
+                      GradientRotation(
+                    rotation,
+                  ),
+
+                  colors:
+                      colors,
+                ),
+
+                boxShadow: [
+                  BoxShadow(
+                    color:
+                        _achievementAccent(
+                      widget
+                          .achievement
+                          .rarity,
+                    ).withValues(
+                      alpha:
+                          0.20,
                     ),
-                    colors:
-                        colors,
-                  ).createShader(
-                    bounds,
-                  );
-                },
-                child:
-                    Icon(
-                  widget
-                      .achievement
-                      .icon,
+
+                    blurRadius:
+                        8,
+                  ),
+                ],
+              ),
+
+              child:
+                  Container(
+                decoration:
+                    const BoxDecoration(
+                  shape:
+                      BoxShape.circle,
+
                   color:
-                      Colors.white,
-                  size: 17,
+                      chipluxSurface,
+                ),
+
+                child:
+                    ShaderMask(
+                  shaderCallback:
+                      (
+                    bounds,
+                  ) {
+                    return LinearGradient(
+                      transform:
+                          GradientRotation(
+                        rotation,
+                      ),
+
+                      colors:
+                          colors,
+                    ).createShader(
+                      bounds,
+                    );
+                  },
+
+                  child:
+                      Icon(
+                    widget
+                        .achievement
+                        .icon,
+
+                    color:
+                        Colors.white,
+
+                    size:
+                        17,
+                  ),
                 ),
               ),
             ),
