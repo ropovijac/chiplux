@@ -5672,12 +5672,13 @@ class _PublicProfilePageState
         .from('profiles')
         .select(
           'id, '
-          'display_name, '
-          'username, '
-          'avatar_url, '
-          'banner_path, '
-          'public_stats, '
-          'pinned_achievement_id',
+'display_name, '
+'username, '
+'avatar_url, '
+'banner_path, '
+'public_stats, '
+'pinned_achievement_id, '
+'display_name_frame_id',
         )
         .eq(
           'id',
@@ -6042,6 +6043,11 @@ setState(() {
                 'pinned_achievement_id']
             ?.toString();
 
+            final displayNameFrameId =
+    profile![
+            'display_name_frame_id']
+        ?.toString();
+
     final _Achievement?
         pinnedAchievement =
         pinnedId ==
@@ -6272,58 +6278,60 @@ setState(() {
                         alignment:
                             Alignment.center,
                         children: [
-                          Container(
-                            padding:
-                                EdgeInsets
-                                    .fromLTRB(
-                              pinnedAchievement !=
-                                      null
-                                  ? 34
-                                  : 20,
-                              8,
-                              20,
-                              8,
-                            ),
-                            decoration:
-                                BoxDecoration(
-                              color:
-                                  chipluxSurface
-                                      .withValues(
-                                alpha:
-                                    0.94,
-                              ),
-                              borderRadius:
-                                  BorderRadius
-                                      .circular(
-                                29,
-                              ),
-                              border:
-                                  Border.all(
-                                color:
-                                    Colors.white
-                                        .withValues(
-                                  alpha:
-                                      0.12,
-                                ),
-                              ),
-                            ),
-                            child:
-                                Text(
-                              name,
-                              maxLines: 1,
-                              overflow:
-                                  TextOverflow
-                                      .ellipsis,
-                              style:
-                                  const TextStyle(
-                                fontSize:
-                                    18,
-                                fontWeight:
-                                    FontWeight
-                                        .bold,
-                              ),
-                            ),
-                          ),
+                          _DisplayNameFrame(
+  frameId:
+      displayNameFrameId,
+
+  child:
+      Container(
+    padding:
+        EdgeInsets.fromLTRB(
+      pinnedAchievement !=
+              null
+          ? 34
+          : 20,
+      8,
+      20,
+      8,
+    ),
+
+    decoration:
+        BoxDecoration(
+      color:
+          chipluxSurface
+              .withValues(
+        alpha:
+            0.94,
+      ),
+
+      borderRadius:
+          BorderRadius.circular(
+        29,
+      ),
+    ),
+
+    child:
+        Text(
+      name,
+
+      maxLines:
+          1,
+
+      overflow:
+          TextOverflow
+              .ellipsis,
+
+      style:
+          const TextStyle(
+        fontSize:
+            18,
+
+        fontWeight:
+            FontWeight.bold,
+      ),
+    ),
+  ),
+),
 
                           if (pinnedAchievement !=
                               null)
@@ -15925,32 +15933,40 @@ class AchievementsPage
   showModalBottomSheet(
     context: context,
 
-    // Transparent so our custom
-    // bordered container is visible.
     backgroundColor:
         Colors.transparent,
 
-    isScrollControlled: true,
+    isScrollControlled:
+        true,
 
     builder: (
       sheetContext,
     ) {
+      final screenHeight =
+          MediaQuery.sizeOf(
+        sheetContext,
+      ).height;
+
       return SafeArea(
-        child: Container(
+        top: false,
+
+        child:
+            Container(
+          constraints:
+              BoxConstraints(
+            maxHeight:
+                screenHeight *
+                    0.92,
+          ),
+
           margin:
-              const EdgeInsets.only(
+              const EdgeInsets
+                  .only(
             left: 10,
             right: 10,
             bottom: 6,
           ),
-          padding:
-              const EdgeInsets
-                  .fromLTRB(
-            20,
-            20,
-            20,
-            24,
-          ),
+
           decoration:
               BoxDecoration(
             color:
@@ -15959,7 +15975,8 @@ class AchievementsPage
             borderRadius:
                 const BorderRadius
                     .vertical(
-              top: Radius.circular(
+              top:
+                  Radius.circular(
                 24,
               ),
               bottom:
@@ -15968,213 +15985,357 @@ class AchievementsPage
               ),
             ),
 
-            // SAME COLOR AS
-            // CURRENT MILESTONE
             border:
                 Border.all(
               color:
                   accent.withValues(
-                alpha: 0.75,
+                alpha:
+                    0.75,
               ),
-              width: 1.5,
+              width:
+                  1.5,
             ),
 
             boxShadow: [
               BoxShadow(
                 color:
                     accent.withValues(
-                  alpha: 0.15,
+                  alpha:
+                      0.15,
                 ),
-                blurRadius: 22,
-                spreadRadius: 1,
+                blurRadius:
+                    22,
+                spreadRadius:
+                    1,
               ),
             ],
           ),
-          child: Column(
-            mainAxisSize:
-                MainAxisSize.min,
-            children: [
-              // =========================
-              // ACHIEVEMENT ICON
-              // =========================
 
-              Icon(
-                achievementIcon,
-                color: accent,
-                size: 34,
-              ),
+          // =====================================
+          // SCROLLABLE CONTENT
+          // =====================================
 
-              const SizedBox(
-                height: 8,
-              ),
+          child:
+              SingleChildScrollView(
+            physics:
+                const BouncingScrollPhysics(),
 
-              // =========================
-              // TITLE
-              // =========================
+            padding:
+                const EdgeInsets
+                    .fromLTRB(
+              20,
+              18,
+              20,
+              20,
+            ),
 
-              Text(
-                group.title,
-                textAlign:
-                    TextAlign.center,
-                style:
-                    TextStyle(
-                  color: accent,
-                  fontSize: 21,
-                  fontWeight:
-                      FontWeight.bold,
-                ),
-              ),
+            child:
+                Column(
+              mainAxisSize:
+                  MainAxisSize.min,
 
-              const SizedBox(
-                height: 4,
-              ),
+              children: [
+                // =========================
+                // ACHIEVEMENT ICON
+                // =========================
 
-              Text(
-                '${group.current} watched',
-                style:
-                    TextStyle(
+                Icon(
+                  achievementIcon,
                   color:
-                      accent.withValues(
-                    alpha: 0.65,
-                  ),
-                  fontSize: 12,
-                  fontWeight:
-                      FontWeight.w500,
-                ),
-              ),
-
-              const SizedBox(
-                height: 20,
-              ),
-
-              // =========================
-              // TIERS
-              // =========================
-
-              for (int i = 0;
-                  i <
-                      group.tiers
-                          .length;
-                  i++) ...[
-                _AchievementTierRow(
-                  tier:
-                      group.tiers[i],
-                  isCurrent:
-                      group
-                              .highestUnlockedTier
-                              ?.id ==
-                          group
-                              .tiers[i]
-                              .id,
+                      accent,
+                  size:
+                      32,
                 ),
 
-                if (i <
-                    group.tiers.length -
-                        1)
-                  const SizedBox(
-                    height: 9,
-                  ),
-              ],
+                const SizedBox(
+                  height:
+                      7,
+                ),
 
-              const SizedBox(
-                height: 20,
-              ),
+                // =========================
+                // TITLE
+                // =========================
 
-              // =========================
-              // PIN BUTTON
-              // =========================
+                Text(
+                  group.title,
 
-              SizedBox(
-                width:
-                    double.infinity,
-                child:
-                    ElevatedButton.icon(
+                  textAlign:
+                      TextAlign.center,
+
                   style:
-                      ElevatedButton
-                          .styleFrom(
-                    foregroundColor:
+                      TextStyle(
+                    color:
                         accent,
 
-                    backgroundColor:
-                        accent
-                            .withValues(
-                      alpha: 0.10,
+                    fontSize:
+                        21,
+
+                    fontWeight:
+                        FontWeight.bold,
+                  ),
+                ),
+
+                const SizedBox(
+                  height:
+                      3,
+                ),
+
+                Text(
+                  '${group.current} watched',
+
+                  style:
+                      TextStyle(
+                    color:
+                        accent.withValues(
+                      alpha:
+                          0.65,
                     ),
 
-                    side:
-                        BorderSide(
-                      color:
-                          accent
-                              .withValues(
-                        alpha: 0.45,
-                      ),
-                    ),
+                    fontSize:
+                        12,
+
+                    fontWeight:
+                        FontWeight.w500,
+                  ),
+                ),
+
+                // =========================
+                // FRAME REWARD
+                // =========================
+
+                if (group.id ==
+                    'movies_watched') ...[
+                  const SizedBox(
+                    height:
+                        11,
+                  ),
+
+                  Container(
+                    width:
+                        double.infinity,
 
                     padding:
                         const EdgeInsets
                             .symmetric(
-                      vertical: 13,
+                      horizontal:
+                          12,
+                      vertical:
+                          9,
                     ),
 
-                    shape:
-                        RoundedRectangleBorder(
+                    decoration:
+                        BoxDecoration(
+                      color:
+                          accent.withValues(
+                        alpha:
+                            0.065,
+                      ),
+
                       borderRadius:
                           BorderRadius
                               .circular(
-                        14,
+                        12,
+                      ),
+
+                      border:
+                          Border.all(
+                        color:
+                            accent
+                                .withValues(
+                          alpha:
+                              0.18,
+                        ),
+                      ),
+                    ),
+
+                    child:
+                        Row(
+                      children: [
+                        Icon(
+                          Icons
+                              .palette_outlined,
+
+                          color:
+                              accent,
+
+                          size:
+                              18,
+                        ),
+
+                        const SizedBox(
+                          width:
+                              9,
+                        ),
+
+                        const Expanded(
+                          child:
+                              Text(
+                            'Unlock to customize display name frame.',
+
+                            style:
+                                TextStyle(
+                              color:
+                                  Colors
+                                      .white70,
+
+                              fontSize:
+                                  12,
+
+                              fontWeight:
+                                  FontWeight
+                                      .w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                const SizedBox(
+                  height:
+                      17,
+                ),
+
+                // =========================
+                // TIERS
+                // =========================
+
+                for (int i = 0;
+                    i <
+                        group.tiers
+                            .length;
+                    i++) ...[
+                  _AchievementTierRow(
+                    tier:
+                        group.tiers[i],
+
+                    isCurrent:
+                        group
+                                .highestUnlockedTier
+                                ?.id ==
+                            group
+                                .tiers[i]
+                                .id,
+                  ),
+
+                  if (i <
+                      group.tiers
+                              .length -
+                          1)
+                    const SizedBox(
+                      height:
+                          8,
+                    ),
+                ],
+
+                const SizedBox(
+                  height:
+                      16,
+                ),
+
+                // =========================
+                // PIN BUTTON
+                // =========================
+
+                SizedBox(
+                  width:
+                      double.infinity,
+
+                  child:
+                      ElevatedButton
+                          .icon(
+                    style:
+                        ElevatedButton
+                            .styleFrom(
+                      foregroundColor:
+                          accent,
+
+                      backgroundColor:
+                          accent.withValues(
+                        alpha:
+                            0.10,
+                      ),
+
+                      side:
+                          BorderSide(
+                        color:
+                            accent
+                                .withValues(
+                          alpha:
+                              0.45,
+                        ),
+                      ),
+
+                      padding:
+                          const EdgeInsets
+                              .symmetric(
+                        vertical:
+                            12,
+                      ),
+
+                      shape:
+                          RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius
+                                .circular(
+                          14,
+                        ),
+                      ),
+                    ),
+
+                    onPressed:
+                        !canPin
+                            ? null
+                            : () async {
+                                Navigator.pop(
+                                  sheetContext,
+                                );
+
+                                if (isPinned) {
+                                  await pinService
+                                      .unpin();
+                                } else {
+                                  await pinService
+                                      .pin(
+                                    group.id,
+                                  );
+                                }
+                              },
+
+                    icon:
+                        Icon(
+                      isPinned
+                          ? Icons
+                              .push_pin_outlined
+                          : Icons
+                              .push_pin_rounded,
+
+                      color:
+                          accent,
+                    ),
+
+                    label:
+                        Text(
+                      !canPin
+                          ? 'Unlock a tier first'
+                          : isPinned
+                              ? 'Remove from Display Name'
+                              : 'Pin to Display Name',
+
+                      style:
+                          TextStyle(
+                        color:
+                            accent,
+
+                        fontWeight:
+                            FontWeight.bold,
                       ),
                     ),
                   ),
-
-                  onPressed:
-                      !canPin
-                          ? null
-                          : () async {
-                              Navigator.pop(
-                                sheetContext,
-                              );
-
-                              if (isPinned) {
-                                await pinService
-                                    .unpin();
-                              } else {
-                                await pinService
-                                    .pin(
-                                  group.id,
-                                );
-                              }
-                            },
-
-                  icon:
-                      Icon(
-                    isPinned
-                        ? Icons
-                            .push_pin_outlined
-                        : Icons
-                            .push_pin_rounded,
-
-                    // SAME COLOR
-                    color: accent,
-                  ),
-
-                  label:
-                      Text(
-                    !canPin
-                        ? 'Unlock a tier first'
-                        : isPinned
-                            ? 'Remove from Display Name'
-                            : 'Pin to Display Name',
-
-                    style:
-                        TextStyle(
-                      color: accent,
-                      fontWeight:
-                          FontWeight.bold,
-                    ),
-                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       );
@@ -17228,6 +17389,489 @@ return Transform.scale(
 }
 }
 
+List<Color> _displayNameFrameColors(
+  String frameId,
+) {
+  switch (frameId) {
+    case 'movies_2':
+      return const [
+        Colors.white,
+        Color(0xFFBFC9D4),
+      ];
+
+    case 'movies_8':
+      return const [
+        Color(0xFF43E8FF),
+        Color(0xFF64BFFF),
+      ];
+
+    case 'movies_16':
+      return const [
+        chipluxCyan,
+        chipluxViolet,
+      ];
+
+    case 'movies_32':
+      return const [
+        Color(0xFFFFF1A8),
+        Color(0xFFFFC857),
+      ];
+
+    case 'movies_64':
+      return const [
+        Color(0xFFFFC857),
+        Color(0xFFFF8A4C),
+        Color(0xFFFF5C72),
+      ];
+
+    case 'movies_128':
+      return const [
+        Color(0xFFFF5C72),
+        chipluxPurple,
+        chipluxViolet,
+      ];
+
+    case 'movies_512':
+      return const [
+        chipluxCyan,
+        chipluxViolet,
+        chipluxPurple,
+        Color(0xFFFFC857),
+        chipluxCyan,
+      ];
+
+    case 'movies_1024':
+      return const [
+        chipluxCyan,
+        Colors.white,
+        chipluxViolet,
+        chipluxPurple,
+        Color(0xFFFF5C72),
+        Color(0xFFFFC857),
+        chipluxCyan,
+      ];
+
+    default:
+      return const [
+        chipluxCyan,
+        chipluxViolet,
+      ];
+  }
+}
+
+class DisplayNameFrameService
+    extends ChangeNotifier {
+  DisplayNameFrameService._();
+
+  static final DisplayNameFrameService
+      instance =
+      DisplayNameFrameService._();
+
+  String? _frameId;
+
+  String? get frameId =>
+      _frameId;
+
+  Future<void> load() async {
+    final client =
+        Supabase.instance.client;
+
+    final user =
+        client.auth.currentUser;
+
+    if (user == null) {
+      _frameId = null;
+      notifyListeners();
+
+      return;
+    }
+
+    try {
+      final row =
+          await client
+              .from('profiles')
+              .select(
+                'display_name_frame_id',
+              )
+              .eq(
+                'id',
+                user.id,
+              )
+              .maybeSingle();
+
+      _frameId =
+          row?[
+                  'display_name_frame_id']
+              ?.toString();
+
+      notifyListeners();
+    } catch (e) {
+      debugPrint(
+        'Could not load display name frame: $e',
+      );
+    }
+  }
+
+  Future<void> apply(
+    String? frameId,
+  ) async {
+    final client =
+        Supabase.instance.client;
+
+    final user =
+        client.auth.currentUser;
+
+    if (user == null) {
+      throw Exception(
+        'No signed in user.',
+      );
+    }
+
+    await client
+        .from('profiles')
+        .update({
+          'display_name_frame_id':
+              frameId,
+        })
+        .eq(
+          'id',
+          user.id,
+        );
+
+    _frameId =
+        frameId;
+
+    notifyListeners();
+  }
+}
+
+class _DisplayNameFrame
+    extends StatelessWidget {
+  final String? frameId;
+  final Widget child;
+
+  final double radius;
+
+  const _DisplayNameFrame({
+    required this.frameId,
+    required this.child,
+    this.radius = 30,
+  });
+
+  @override
+  Widget build(
+    BuildContext context,
+  ) {
+    final colors =
+        frameId == null
+            ? null
+            : _displayNameFrameColors(
+                frameId!,
+              );
+
+    return Container(
+      padding:
+          EdgeInsets.all(
+        frameId == null
+            ? 1.2
+            : 1.6,
+      ),
+
+      decoration:
+          BoxDecoration(
+        borderRadius:
+            BorderRadius.circular(
+          radius,
+        ),
+
+        color:
+            colors == null
+                ? Colors.white
+                    .withValues(
+                    alpha:
+                        0.18,
+                  )
+                : null,
+
+        gradient:
+            colors != null
+                ? LinearGradient(
+                    begin:
+                        Alignment
+                            .topLeft,
+                    end:
+                        Alignment
+                            .bottomRight,
+                    colors:
+                        colors,
+                  )
+                : null,
+
+        boxShadow:
+            colors != null
+                ? [
+                    BoxShadow(
+                      color:
+                          colors.first
+                              .withValues(
+                        alpha:
+                            0.17,
+                      ),
+                      blurRadius:
+                          12,
+                    ),
+                  ]
+                : [
+                    BoxShadow(
+                      color:
+                          Colors.black
+                              .withValues(
+                        alpha:
+                            0.18,
+                      ),
+                      blurRadius:
+                          8,
+                    ),
+                  ],
+      ),
+
+      child:
+          child,
+    );
+  }
+}
+
+class _DisplayNameFrameOption
+    extends StatelessWidget {
+  final String label;
+  final String? frameId;
+
+  final bool unlocked;
+  final bool selected;
+
+  final VoidCallback? onTap;
+
+  const _DisplayNameFrameOption({
+    required this.label,
+    required this.frameId,
+    required this.unlocked,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(
+    BuildContext context,
+  ) {
+    return SizedBox(
+      width:
+          126,
+
+      child:
+          Material(
+        color:
+            Colors.transparent,
+
+        child:
+            InkWell(
+          onTap:
+              unlocked
+                  ? onTap
+                  : null,
+
+          borderRadius:
+              BorderRadius.circular(
+            15,
+          ),
+
+          child:
+              Container(
+            padding:
+                const EdgeInsets.all(
+              8,
+            ),
+
+            decoration:
+                BoxDecoration(
+              color:
+                  selected
+                      ? Colors.white
+                          .withValues(
+                          alpha:
+                              0.06,
+                        )
+                      : Colors.transparent,
+
+              borderRadius:
+                  BorderRadius.circular(
+                15,
+              ),
+
+              border:
+                  Border.all(
+                color:
+                    selected
+                        ? chipluxCyan
+                            .withValues(
+                            alpha:
+                                0.65,
+                          )
+                        : Colors.white
+                            .withValues(
+                            alpha:
+                                0.06,
+                          ),
+
+                width:
+                    selected
+                        ? 1.3
+                        : 1,
+              ),
+            ),
+
+            child:
+                Column(
+              mainAxisSize:
+                  MainAxisSize.min,
+
+              children: [
+                Opacity(
+                  opacity:
+                      unlocked
+                          ? 1
+                          : 0.35,
+
+                  child:
+                      _DisplayNameFrame(
+                    frameId:
+                        frameId,
+
+                    radius:
+                        18,
+
+                    child:
+                        Container(
+                      width:
+                          double
+                              .infinity,
+
+                      height:
+                          34,
+
+                      alignment:
+                          Alignment
+                              .center,
+
+                      decoration:
+                          BoxDecoration(
+                        color:
+                            chipluxSurface,
+
+                        borderRadius:
+                            BorderRadius
+                                .circular(
+                          17,
+                        ),
+                      ),
+
+                      child:
+                          Text(
+                        frameId ==
+                                null
+                            ? 'Default'
+                            : 'Name',
+
+                        style:
+                            const TextStyle(
+                          color:
+                              Colors
+                                  .white,
+
+                          fontSize:
+                              11,
+
+                          fontWeight:
+                              FontWeight
+                                  .bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(
+                  height:
+                      6,
+                ),
+
+                Row(
+                  mainAxisAlignment:
+                      MainAxisAlignment
+                          .center,
+
+                  children: [
+                    if (!unlocked) ...[
+                      const Icon(
+                        Icons
+                            .lock_rounded,
+                        color:
+                            Colors
+                                .white38,
+                        size:
+                            11,
+                      ),
+
+                      const SizedBox(
+                        width:
+                            3,
+                      ),
+                    ],
+
+                    Flexible(
+                      child:
+                          Text(
+                        label,
+
+                        maxLines:
+                            1,
+
+                        overflow:
+                            TextOverflow
+                                .ellipsis,
+
+                        textAlign:
+                            TextAlign
+                                .center,
+
+                        style:
+                            TextStyle(
+                          color:
+                              unlocked
+                                  ? Colors
+                                      .white70
+                                  : Colors
+                                      .white30,
+
+                          fontSize:
+                              9,
+
+                          fontWeight:
+                              FontWeight
+                                  .w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class MedalPinService
     extends ChangeNotifier {
   MedalPinService._();
@@ -17400,6 +18044,12 @@ class _ProfilePageState
     );
 
     unawaited(
+  DisplayNameFrameService
+      .instance
+      .load(),
+);
+
+    unawaited(
       _backfillStatsInBackground(),
     );
   }
@@ -17426,11 +18076,17 @@ class _ProfilePageState
   Future<void>
       _refreshProfile() async {
     await Future.wait([
-      profile.loadProfile(),
-      library
-          .backfillMissingRuntimes(),
-      critic.refresh(),
-    ]);
+  profile.loadProfile(),
+
+  DisplayNameFrameService
+      .instance
+      .load(),
+
+  library
+      .backfillMissingRuntimes(),
+
+  critic.refresh(),
+]);
 
     if (!mounted) {
       return;
@@ -18439,6 +19095,7 @@ class _ProfilePageState
           profile,
           critic,
           MedalPinService.instance,
+          DisplayNameFrameService.instance,
         ]),
         builder:
             (
@@ -18802,73 +19459,68 @@ const Spacer(),
   alignment:
       Alignment.center,
   children: [
-    Container(
-      padding:
-          const EdgeInsets.all(
-        1.2,
+    _DisplayNameFrame(
+  frameId:
+      DisplayNameFrameService
+          .instance
+          .frameId,
+
+  child:
+      Container(
+    padding:
+        EdgeInsets.fromLTRB(
+      pinnedAchievement !=
+              null
+          ? 34
+          : 20,
+      8,
+      20,
+      8,
+    ),
+
+    decoration:
+        BoxDecoration(
+      borderRadius:
+          BorderRadius.circular(
+        29,
       ),
-      decoration:
-          BoxDecoration(
-        borderRadius:
-            BorderRadius.circular(
-          30,
-        ),
-        color:
-            Colors.white.withValues(
-          alpha: 0.18,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color:
-                Colors.black.withValues(
-              alpha: 0.18,
-            ),
-            blurRadius: 8,
-          ),
-        ],
-      ),
-      child: Container(
-        padding:
-            EdgeInsets.fromLTRB(
-          pinnedAchievement !=
-                  null
-              ? 34
-              : 20,
-          8,
-          20,
-          8,
-        ),
-        decoration:
-            BoxDecoration(
-          borderRadius:
-              BorderRadius.circular(
-            29,
-          ),
-          color:
-              chipluxSurface
-                  .withValues(
-            alpha: 0.94,
-          ),
-        ),
-        child:
-            Text(
-          shownName,
-          maxLines: 1,
-          overflow:
-              TextOverflow.ellipsis,
-          style:
-              const TextStyle(
-            color:
-                Colors.white,
-            fontSize: 18,
-            fontWeight:
-                FontWeight.bold,
-            letterSpacing:
-                0.3,
-          ),
-        ),
+
+      color:
+          chipluxSurface
+              .withValues(
+        alpha:
+            0.94,
       ),
     ),
+
+    child:
+        Text(
+      shownName,
+
+      maxLines:
+          1,
+
+      overflow:
+          TextOverflow
+              .ellipsis,
+
+      style:
+          const TextStyle(
+        color:
+            Colors.white,
+
+        fontSize:
+            18,
+
+        fontWeight:
+            FontWeight.bold,
+
+        letterSpacing:
+            0.3,
+      ),
+    ),
+  ),
+),
 
     if (pinnedAchievement !=
         null)
@@ -19585,9 +20237,9 @@ class _LevelHexBadge
         alignment:
             Alignment.center,
         children: [
-          // =================================
+          // =============================
           // OUTER GLOW
-          // =================================
+          // =============================
 
           Container(
             width: 54,
@@ -19601,183 +20253,171 @@ class _LevelHexBadge
                   color:
                       colors.first
                           .withValues(
-                    alpha: 0.25,
+                    alpha: 0.30,
                   ),
-                  blurRadius:
-                      20,
-                  spreadRadius:
-                      2,
+                  blurRadius: 22,
+                  spreadRadius: 2,
                 ),
               ],
             ),
           ),
 
-          // =================================
+          // =============================
           // HEXAGON
-          // =================================
+          // =============================
 
           ClipPath(
             clipper:
                 _HexagonClipper(),
-            child:
-                Container(
+            child: Container(
               width: 66,
               height: 74,
+              padding:
+                  const EdgeInsets.all(
+                2,
+              ),
               decoration:
                   BoxDecoration(
                 gradient:
                     LinearGradient(
                   begin:
-                      Alignment
-                          .topLeft,
+                      Alignment.topLeft,
                   end:
-                      Alignment
-                          .bottomRight,
+                      Alignment.bottomRight,
                   colors:
                       colors,
                 ),
               ),
-
-              padding:
-                  const EdgeInsets
-                      .all(
-                2,
-              ),
-
-              child:
-                  ClipPath(
+              child: ClipPath(
                 clipper:
                     _HexagonClipper(),
-
-                child:
-                    Container(
+                child: Container(
                   decoration:
                       BoxDecoration(
-                    color:
-                        chipluxSurface,
-
                     gradient:
                         LinearGradient(
                       begin:
-                          Alignment
-                              .topLeft,
+                          Alignment.topLeft,
                       end:
-                          Alignment
-                              .bottomRight,
+                          Alignment.bottomRight,
                       colors: [
                         colors.first
                             .withValues(
-                          alpha:
-                              0.10,
+                          alpha: 0.14,
                         ),
-
                         chipluxSurface,
-
                         colors.last
                             .withValues(
-                          alpha:
-                              0.08,
+                          alpha: 0.10,
                         ),
                       ],
                     ),
                   ),
-
-                  child:
-                      Stack(
+                  child: Stack(
                     alignment:
-                        Alignment
-                            .center,
-
+                        Alignment.center,
                     children: [
-                      // =================================
-                      // CENTER GLOW
-                      // =================================
+                      // =============================
+                      // CENTER AMBIENT GLOW
+                      // =============================
 
                       Container(
-                        width:
-                            48,
-                        height:
-                            48,
+                        width: 50,
+                        height: 50,
                         decoration:
                             BoxDecoration(
                           shape:
-                              BoxShape
-                                  .circle,
+                              BoxShape.circle,
                           gradient:
                               RadialGradient(
                             colors: [
-                              colors
-                                  .first
+                              colors.first
                                   .withValues(
-                                alpha:
-                                    0.16,
+                                alpha: 0.20,
                               ),
-                              Colors
-                                  .transparent,
+                              colors.last
+                                  .withValues(
+                                alpha: 0.05,
+                              ),
+                              Colors.transparent,
+                            ],
+                            stops:
+                                const [
+                              0,
+                              0.58,
+                              1,
                             ],
                           ),
                         ),
                       ),
 
-                      // =================================
-                      // SUBTLE DIAGONAL DETAIL
-                      // =================================
+                      // =============================
+                      // FAINT TECH LINES
+                      // =============================
 
                       Positioned(
-                        left:
-                            -12,
-                        top:
-                            22,
+                        left: -12,
+                        top: 22,
                         child:
                             Transform.rotate(
-                          angle:
-                              -0.45,
+                          angle: -0.45,
                           child:
                               Container(
-                            width:
-                                95,
-                            height:
-                                1,
+                            width: 95,
+                            height: 1,
                             color:
-                                Colors
-                                    .white
+                                Colors.white
                                     .withValues(
-                              alpha:
-                                  0.055,
+                              alpha: 0.065,
                             ),
                           ),
                         ),
                       ),
 
                       Positioned(
-                        left:
-                            -15,
-                        top:
-                            38,
+                        left: -15,
+                        top: 38,
                         child:
                             Transform.rotate(
-                          angle:
-                              -0.45,
+                          angle: -0.45,
                           child:
                               Container(
-                            width:
-                                95,
-                            height:
-                                1,
+                            width: 95,
+                            height: 1,
                             color:
-                                Colors
-                                    .white
+                                Colors.white
                                     .withValues(
-                              alpha:
-                                  0.035,
+                              alpha: 0.04,
                             ),
                           ),
                         ),
                       ),
 
-                      // =================================
-                      // LEVEL
-                      // =================================
+                      // Small top highlight.
+                      Positioned(
+                        top: 9,
+                        child: Container(
+                          width: 18,
+                          height: 1.5,
+                          decoration:
+                              BoxDecoration(
+                            borderRadius:
+                                BorderRadius
+                                    .circular(
+                              10,
+                            ),
+                            color:
+                                Colors.white
+                                    .withValues(
+                              alpha: 0.20,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // =============================
+                      // LEVEL TEXT
+                      // =============================
 
                       Column(
                         mainAxisAlignment:
@@ -19789,21 +20429,17 @@ class _LevelHexBadge
                             style:
                                 TextStyle(
                               color:
-                                  Colors
-                                      .white54,
-                              fontSize:
-                                  8,
+                                  Colors.white60,
+                              fontSize: 8,
                               fontWeight:
-                                  FontWeight
-                                      .w800,
+                                  FontWeight.w800,
                               letterSpacing:
-                                  1.1,
+                                  1.15,
                             ),
                           ),
 
                           const SizedBox(
-                            height:
-                                1,
+                            height: 1,
                           ),
 
                           ShaderMask(
@@ -19818,26 +20454,34 @@ class _LevelHexBadge
                                 bounds,
                               );
                             },
-
-                            child:
-                                Text(
+                            child: Text(
                               '$level',
-
                               style:
-                                  const TextStyle(
+                                  TextStyle(
                                 color:
-                                    Colors
-                                        .white,
-
-                                fontSize:
-                                    24,
-
-                                height:
-                                    1,
-
+                                    Colors.white,
+                                fontSize: 25,
+                                height: 1,
                                 fontWeight:
-                                    FontWeight
-                                        .w900,
+                                    FontWeight.w900,
+                                shadows: [
+                                  Shadow(
+                                    color:
+                                        colors.first
+                                            .withValues(
+                                      alpha: 0.65,
+                                    ),
+                                    blurRadius: 8,
+                                  ),
+                                  Shadow(
+                                    color:
+                                        Colors.white
+                                            .withValues(
+                                      alpha: 0.20,
+                                    ),
+                                    blurRadius: 2,
+                                  ),
+                                ],
                               ),
                             ),
                           ),
@@ -20002,15 +20646,25 @@ class _CriticReputationCard
           ),
 
           decoration:
-              BoxDecoration(
-            color:
-                chipluxSurface,
+    BoxDecoration(
+  color:
+      chipluxSurface,
 
-            borderRadius:
-                BorderRadius.circular(
-              21,
-            ),
-          ),
+  borderRadius:
+      BorderRadius.circular(
+    21,
+  ),
+
+  border:
+      Border.all(
+    color:
+        Colors.white
+            .withValues(
+      alpha: 0.045,
+    ),
+    width: 0.7,
+  ),
+),
 
           child:
               Column(
@@ -20274,10 +20928,8 @@ class _CriticProgressBarState
 
     _progressAnimation =
         Tween<double>(
-      begin:
-          0,
-      end:
-          widget.progress,
+      begin: 0,
+      end: widget.progress,
     ).animate(
       CurvedAnimation(
         parent:
@@ -20296,8 +20948,7 @@ class _CriticProgressBarState
       ),
     )..repeat();
 
-    _progressController
-        .forward();
+    _progressController.forward();
   }
 
   @override
@@ -20313,15 +20964,12 @@ class _CriticProgressBarState
     if (oldWidget.progress !=
         widget.progress) {
       final oldProgress =
-          _progressAnimation
-              .value;
+          _progressAnimation.value;
 
       _progressAnimation =
           Tween<double>(
-        begin:
-            oldProgress,
-        end:
-            widget.progress,
+        begin: oldProgress,
+        end: widget.progress,
       ).animate(
         CurvedAnimation(
           parent:
@@ -20342,37 +20990,40 @@ class _CriticProgressBarState
     BuildContext context,
   ) {
     return Container(
-      height:
-          8,
-
+      height: 8,
       decoration:
           BoxDecoration(
         color:
-            Colors.white10,
-
+            Colors.black
+                .withValues(
+          alpha: 0.22,
+        ),
         borderRadius:
             BorderRadius.circular(
           20,
         ),
-
+        border:
+            Border.all(
+          color:
+              Colors.white
+                  .withValues(
+            alpha: 0.055,
+          ),
+          width: 0.7,
+        ),
         boxShadow: [
           BoxShadow(
             color:
                 criticGold
                     .withValues(
-              alpha:
-                  0.15,
+              alpha: 0.18,
             ),
-
-            blurRadius:
-                7,
+            blurRadius: 8,
           ),
         ],
       ),
-
       clipBehavior:
           Clip.antiAlias,
-
       child:
           AnimatedBuilder(
         animation:
@@ -20382,20 +21033,17 @@ class _CriticProgressBarState
             _flowController,
           ],
         ),
-
         builder:
             (
           context,
           _,
         ) {
           final flow =
-              _flowController
-                  .value;
+              _flowController.value;
 
           return Align(
             alignment:
                 Alignment.centerLeft,
-
             child:
                 FractionallySizedBox(
               widthFactor:
@@ -20405,49 +21053,89 @@ class _CriticProgressBarState
                 0.0,
                 1.0,
               ),
-
               heightFactor:
                   1,
-
-              child:
+              child: Stack(
+                fit:
+                    StackFit.expand,
+                children: [
+                  // Main moving gradient.
                   Container(
-                decoration:
-                    BoxDecoration(
-                  gradient:
-                      LinearGradient(
-                    begin:
-                        Alignment(
-                      -1.8 +
-                          flow *
-                              3.6,
-                      0,
+                    decoration:
+                        BoxDecoration(
+                      gradient:
+                          LinearGradient(
+                        begin:
+                            Alignment(
+                          -1.8 +
+                              flow *
+                                  3.6,
+                          0,
+                        ),
+                        end:
+                            Alignment(
+                          -0.2 +
+                              flow *
+                                  3.6,
+                          0,
+                        ),
+                        colors:
+                            const [
+                          criticGold,
+                          Colors.white,
+                          criticOrange,
+                          chipluxPurple,
+                        ],
+                        stops:
+                            const [
+                          0,
+                          0.35,
+                          0.65,
+                          1,
+                        ],
+                      ),
                     ),
-
-                    end:
-                        Alignment(
-                      -0.2 +
-                          flow *
-                              3.6,
-                      0,
-                    ),
-
-                    colors:
-                        const [
-                      criticGold,
-                      Colors.white,
-                      criticOrange,
-                      chipluxPurple,
-                    ],
-
-                    stops:
-                        const [
-                      0,
-                      0.35,
-                      0.65,
-                      1,
-                    ],
                   ),
-                ),
+
+                  // Gloss highlight.
+                  Align(
+                    alignment:
+                        Alignment.topCenter,
+                    child: Container(
+                      height: 2,
+                      decoration:
+                          BoxDecoration(
+                        gradient:
+                            LinearGradient(
+                          colors: [
+                            Colors.white
+                                .withValues(
+                              alpha: 0.60,
+                            ),
+                            Colors.white
+                                .withValues(
+                              alpha: 0.08,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Tiny lower shade gives depth.
+                  Align(
+                    alignment:
+                        Alignment.bottomCenter,
+                    child: Container(
+                      height: 1.3,
+                      color:
+                          Colors.black
+                              .withValues(
+                        alpha: 0.18,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           );
@@ -20458,11 +21146,8 @@ class _CriticProgressBarState
 
   @override
   void dispose() {
-    _progressController
-        .dispose();
-
-    _flowController
-        .dispose();
+    _progressController.dispose();
+    _flowController.dispose();
 
     super.dispose();
   }
@@ -20613,10 +21298,8 @@ class _LevelCardState
 
       _progressAnimation =
           Tween<double>(
-        begin:
-            oldProgress,
-        end:
-            targetProgress,
+        begin: oldProgress,
+        end: targetProgress,
       ).animate(
         CurvedAnimation(
           parent:
@@ -20675,8 +21358,7 @@ class _LevelCardState
         totalMinutes % 60;
 
     if (totalHours < 24) {
-      if (remainingMinutes ==
-          0) {
+      if (remainingMinutes == 0) {
         return '${totalHours}h';
       }
 
@@ -20740,39 +21422,45 @@ class _LevelCardState
     return GestureDetector(
       behavior:
           HitTestBehavior.opaque,
-
       onTap:
           widget.onTap,
-
-      child:
-          Container(
+      child: Container(
         padding:
             const EdgeInsets.all(
           1.2,
         ),
-
         decoration:
             BoxDecoration(
           gradient:
               const LinearGradient(
+            begin:
+                Alignment.topLeft,
+            end:
+                Alignment.bottomRight,
             colors: [
               chipluxCyan,
               chipluxViolet,
               chipluxPurple,
             ],
           ),
-
           borderRadius:
               BorderRadius.circular(
             20,
           ),
+          boxShadow: [
+            BoxShadow(
+              color:
+                  chipluxCyan
+                      .withValues(
+                alpha: 0.07,
+              ),
+              blurRadius: 15,
+            ),
+          ],
         ),
-
-        child:
-            Container(
+        child: Container(
           width:
               double.infinity,
-
           padding:
               const EdgeInsets
                   .fromLTRB(
@@ -20781,33 +21469,34 @@ class _LevelCardState
             14,
             14,
           ),
-
           decoration:
               BoxDecoration(
             color:
                 chipluxSurface,
-
             borderRadius:
                 BorderRadius.circular(
               19,
             ),
-          ),
 
-          child:
-              Row(
+            // Subtle inner edge.
+            border:
+                Border.all(
+              color:
+                  Colors.white
+                      .withValues(
+                alpha: 0.045,
+              ),
+              width: 0.7,
+            ),
+          ),
+          child: Row(
             crossAxisAlignment:
                 CrossAxisAlignment
                     .center,
-
             children: [
-              // =============================
-              // LEVEL
-              // =============================
-
               _LevelHexBadge(
                 level:
                     level,
-
                 colors:
                     const [
                   chipluxCyan,
@@ -20817,130 +21506,114 @@ class _LevelCardState
               ),
 
               const SizedBox(
-                width:
-                    11,
+                width: 11,
               ),
 
-              // =============================
-              // CONTENT
-              // =============================
-
               Expanded(
-                child:
-                    Column(
+                child: Column(
                   crossAxisAlignment:
                       CrossAxisAlignment
                           .start,
-
                   children: [
                     const Text(
                       'RUNTIME LEVEL',
-
                       style:
                           TextStyle(
                         color:
-                            Colors
-                                .white38,
-
-                        fontSize:
-                            9,
-
+                            Colors.white38,
+                        fontSize: 9,
                         fontWeight:
-                            FontWeight
-                                .w700,
-
+                            FontWeight.w700,
                         letterSpacing:
                             1.2,
                       ),
                     ),
 
                     const SizedBox(
-                      height:
-                          1,
+                      height: 1,
                     ),
 
                     Text(
                       widget.title
                           .toUpperCase(),
-
-                      maxLines:
-                          1,
-
+                      maxLines: 1,
                       overflow:
                           TextOverflow
                               .ellipsis,
-
                       style:
                           const TextStyle(
                         color:
                             chipluxCyan,
-
-                        fontSize:
-                            16,
-
+                        fontSize: 16,
                         fontWeight:
-                            FontWeight
-                                .w900,
-
+                            FontWeight.w900,
                         letterSpacing:
                             0.6,
+                        shadows: [
+                          Shadow(
+                            color:
+                                Color(
+                              0x5543E8FF,
+                            ),
+                            blurRadius: 7,
+                          ),
+                        ],
                       ),
                     ),
 
                     const SizedBox(
-                      height:
-                          7,
+                      height: 7,
                     ),
 
                     // =============================
-                    // PROGRESS
+                    // GLOSSY PROGRESS
                     // =============================
 
                     Container(
-                      height:
-                          8,
-
+                      height: 8,
                       decoration:
                           BoxDecoration(
                         color:
-                            Colors
-                                .white10,
-
+                            Colors.black
+                                .withValues(
+                          alpha: 0.22,
+                        ),
                         borderRadius:
                             BorderRadius
                                 .circular(
                           20,
                         ),
-
+                        border:
+                            Border.all(
+                          color:
+                              Colors.white
+                                  .withValues(
+                            alpha: 0.055,
+                          ),
+                          width: 0.7,
+                        ),
                         boxShadow: [
                           BoxShadow(
                             color:
                                 chipluxCyan
                                     .withValues(
-                              alpha:
-                                  0.13,
+                              alpha: 0.18,
                             ),
-
-                            blurRadius:
-                                7,
+                            blurRadius: 8,
                           ),
                         ],
                       ),
-
                       clipBehavior:
                           Clip.antiAlias,
-
                       child:
                           AnimatedBuilder(
                         animation:
-                            Listenable
-                                .merge(
+                            Listenable.merge(
                           [
                             _progressAnimation,
                             _flowController,
                           ],
                         ),
-
                         builder:
                             (
                           context,
@@ -20954,7 +21627,6 @@ class _LevelCardState
                             alignment:
                                 Alignment
                                     .centerLeft,
-
                             child:
                                 FractionallySizedBox(
                               widthFactor:
@@ -20964,50 +21636,91 @@ class _LevelCardState
                                 0.0,
                                 1.0,
                               ),
-
                               heightFactor:
                                   1,
-
-                              child:
+                              child: Stack(
+                                fit:
+                                    StackFit
+                                        .expand,
+                                children: [
                                   Container(
-                                decoration:
-                                    BoxDecoration(
-                                  gradient:
-                                      LinearGradient(
-                                    begin:
-                                        Alignment(
-                                      -1.8 +
-                                          flow *
-                                              3.6,
-                                      0,
+                                    decoration:
+                                        BoxDecoration(
+                                      gradient:
+                                          LinearGradient(
+                                        begin:
+                                            Alignment(
+                                          -1.8 +
+                                              flow *
+                                                  3.6,
+                                          0,
+                                        ),
+                                        end:
+                                            Alignment(
+                                          -0.2 +
+                                              flow *
+                                                  3.6,
+                                          0,
+                                        ),
+                                        colors:
+                                            const [
+                                          chipluxCyan,
+                                          Colors.white,
+                                          chipluxViolet,
+                                          chipluxPurple,
+                                        ],
+                                        stops:
+                                            const [
+                                          0,
+                                          0.35,
+                                          0.65,
+                                          1,
+                                        ],
+                                      ),
                                     ),
-
-                                    end:
-                                        Alignment(
-                                      -0.2 +
-                                          flow *
-                                              3.6,
-                                      0,
-                                    ),
-
-                                    colors:
-                                        const [
-                                      chipluxCyan,
-                                      Colors
-                                          .white,
-                                      chipluxViolet,
-                                      chipluxPurple,
-                                    ],
-
-                                    stops:
-                                        const [
-                                      0,
-                                      0.35,
-                                      0.65,
-                                      1,
-                                    ],
                                   ),
-                                ),
+
+                                  Align(
+                                    alignment:
+                                        Alignment
+                                            .topCenter,
+                                    child:
+                                        Container(
+                                      height: 2,
+                                      decoration:
+                                          BoxDecoration(
+                                        gradient:
+                                            LinearGradient(
+                                          colors: [
+                                            Colors.white
+                                                .withValues(
+                                              alpha: 0.65,
+                                            ),
+                                            Colors.white
+                                                .withValues(
+                                              alpha: 0.08,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+
+                                  Align(
+                                    alignment:
+                                        Alignment
+                                            .bottomCenter,
+                                    child:
+                                        Container(
+                                      height: 1.3,
+                                      color:
+                                          Colors.black
+                                              .withValues(
+                                        alpha: 0.18,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           );
@@ -21016,32 +21729,21 @@ class _LevelCardState
                     ),
 
                     const SizedBox(
-                      height:
-                          6,
+                      height: 6,
                     ),
-
-                    // =============================
-                    // PROGRESS TEXT
-                    // =============================
 
                     Row(
                       children: [
                         Text(
                           '$minutesInLevel / '
                           '$requiredMinutes min',
-
                           style:
                               const TextStyle(
                             color:
-                                Colors
-                                    .white54,
-
-                            fontSize:
-                                10,
-
+                                Colors.white54,
+                            fontSize: 10,
                             fontWeight:
-                                FontWeight
-                                    .w600,
+                                FontWeight.w600,
                           ),
                         ),
 
@@ -21051,45 +21753,32 @@ class _LevelCardState
                           _formatTimeLeft(
                             minutesLeft,
                           ),
-
                           style:
                               const TextStyle(
                             color:
-                                Colors
-                                    .white70,
-
-                            fontSize:
-                                10,
-
+                                Colors.white70,
+                            fontSize: 10,
                             fontWeight:
-                                FontWeight
-                                    .w600,
+                                FontWeight.w600,
                           ),
                         ),
                       ],
                     ),
 
                     const SizedBox(
-                      height:
-                          2,
+                      height: 2,
                     ),
 
                     Text(
                       'to Level '
                       '${level + 1}',
-
                       style:
                           const TextStyle(
                         color:
-                            Colors
-                                .white38,
-
-                        fontSize:
-                            9,
-
+                            Colors.white38,
+                        fontSize: 9,
                         fontWeight:
-                            FontWeight
-                                .w500,
+                            FontWeight.w500,
                       ),
                     ),
                   ],
@@ -21580,42 +22269,56 @@ class _RatingStatCard
   }
 }
 
-class EditProfilePage extends StatefulWidget {
-  const EditProfilePage({super.key});
+class EditProfilePage
+    extends StatefulWidget {
+  const EditProfilePage({
+    super.key,
+  });
 
   @override
-  State<EditProfilePage> createState() =>
-      _EditProfilePageState();
+  State<EditProfilePage>
+      createState() =>
+          _EditProfilePageState();
 }
 
 class _EditProfilePageState
-    extends State<EditProfilePage> {
-  final profile = ProfileService.instance;
-  final avatarService = AvatarService.instance;
+    extends State<
+        EditProfilePage> {
+  final profile =
+      ProfileService.instance;
 
-  late final TextEditingController
+  final avatarService =
+      AvatarService.instance;
+
+  final library =
+      LibraryService.instance;
+
+  final frameService =
+      DisplayNameFrameService
+          .instance;
+
+  late final
+      TextEditingController
       displayNameController;
 
-  bool saving = false;
-  bool uploadingAvatar = false;
+  bool saving =
+      false;
+
+  bool uploadingAvatar =
+      false;
+
+  bool loadingFrame =
+      true;
 
   String? errorMessage;
 
-  Uint8List? selectedAvatarBytes;
-  String? selectedAvatarExtension;
+  String? selectedFrameId;
 
-  Future<void>
-    changeBanner() async {
-  await _showProfileBannerPicker(
-    context,
-  );
+  Uint8List?
+      selectedAvatarBytes;
 
-  if (!mounted) {
-    return;
-  }
-
-  setState(() {});
-}
+  String?
+      selectedAvatarExtension;
 
   @override
   void initState() {
@@ -21623,18 +22326,64 @@ class _EditProfilePageState
 
     displayNameController =
         TextEditingController(
-      text: profile.displayName,
+      text:
+          profile.displayName,
+    );
+
+    selectedFrameId =
+        frameService.frameId;
+
+    unawaited(
+      _loadFrame(),
     );
   }
 
-  Future<void> pickAvatar() async {
-    try {
-      final picker = ImagePicker();
+  Future<void>
+      _loadFrame() async {
+    await frameService.load();
 
-      final image = await picker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 85,
-        maxWidth: 1200,
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      selectedFrameId =
+          frameService.frameId;
+
+      loadingFrame =
+          false;
+    });
+  }
+
+  Future<void>
+      changeBanner() async {
+    await _showProfileBannerPicker(
+      context,
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {});
+  }
+
+  Future<void>
+      pickAvatar() async {
+    try {
+      final picker =
+          ImagePicker();
+
+      final image =
+          await picker.pickImage(
+        source:
+            ImageSource.gallery,
+
+        imageQuality:
+            85,
+
+        maxWidth:
+            1200,
       );
 
       if (image == null) {
@@ -21642,28 +22391,48 @@ class _EditProfilePageState
       }
 
       final bytes =
-          await image.readAsBytes();
+          await image
+              .readAsBytes();
 
       final name =
-          image.name.toLowerCase();
+          image.name
+              .toLowerCase();
 
-      String extension = 'jpg';
+      String extension =
+          'jpg';
 
-      if (name.endsWith('.png')) {
-        extension = 'png';
-      } else if (name.endsWith('.webp')) {
-        extension = 'webp';
-      } else if (name.endsWith('.jpeg')) {
-        extension = 'jpeg';
+      if (name.endsWith(
+        '.png',
+      )) {
+        extension =
+            'png';
+      } else if (name.endsWith(
+        '.webp',
+      )) {
+        extension =
+            'webp';
+      } else if (name.endsWith(
+        '.jpeg',
+      )) {
+        extension =
+            'jpeg';
       }
 
       setState(() {
-        selectedAvatarBytes = bytes;
+        selectedAvatarBytes =
+            bytes;
+
         selectedAvatarExtension =
             extension;
-        errorMessage = null;
+
+        errorMessage =
+            null;
       });
     } catch (e) {
+      if (!mounted) {
+        return;
+      }
+
       setState(() {
         errorMessage =
             'Could not select image: $e';
@@ -21671,11 +22440,12 @@ class _EditProfilePageState
     }
   }
 
-  Future<void> saveProfile() async {
+  Future<void>
+      saveProfile() async {
     final displayName =
-        displayNameController.text.trim();
-
-    
+        displayNameController
+            .text
+            .trim();
 
     if (displayName.isEmpty) {
       setState(() {
@@ -21686,77 +22456,130 @@ class _EditProfilePageState
       return;
     }
 
+    // Make sure a locked frame
+    // cannot be applied.
+    if (selectedFrameId !=
+        null) {
+      final movieGroup =
+          _movieAchievementGroupFor(
+        library
+            .moviesWatchedCount,
+      );
+
+      final matching =
+          movieGroup.tiers
+              .where(
+                (tier) =>
+                    tier.id ==
+                    selectedFrameId,
+              )
+              .toList();
+
+      if (matching.isEmpty ||
+          !matching.first
+              .unlocked) {
+        setState(() {
+          errorMessage =
+              'That display name frame is still locked.';
+        });
+
+        return;
+      }
+    }
+
     setState(() {
-      saving = true;
-      errorMessage = null;
+      saving =
+          true;
+
+      errorMessage =
+          null;
     });
 
     try {
-      if (selectedAvatarBytes != null &&
-          selectedAvatarExtension != null) {
+      if (selectedAvatarBytes !=
+              null &&
+          selectedAvatarExtension !=
+              null) {
         setState(() {
-          uploadingAvatar = true;
+          uploadingAvatar =
+              true;
         });
 
         final avatarUrl =
-            await avatarService.uploadAvatar(
-          bytes: selectedAvatarBytes!,
+            await avatarService
+                .uploadAvatar(
+          bytes:
+              selectedAvatarBytes!,
+
           extension:
               selectedAvatarExtension!,
         );
 
-        profile.avatarUrl = avatarUrl;
+        profile.avatarUrl =
+            avatarUrl;
 
-        setState(() {
-          uploadingAvatar = false;
-        });
+        if (mounted) {
+          setState(() {
+            uploadingAvatar =
+                false;
+          });
+        }
       }
 
-      await profile.updateProfile(
-  displayName: displayName,
-  username: profile.username,
-);
+      await profile
+          .updateProfile(
+        displayName:
+            displayName,
+
+        // Username stays unchanged.
+        username:
+            profile.username,
+      );
+
+      await frameService
+          .apply(
+        selectedFrameId,
+      );
 
       if (mounted) {
-        Navigator.pop(context);
+        Navigator.pop(
+          context,
+        );
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          uploadingAvatar = false;
+          uploadingAvatar =
+              false;
 
-          if (e
-              .toString()
-              .contains(
-                'profiles_username_unique',
-              )) {
-            errorMessage =
-                'That username is already taken.';
-          } else {
-            errorMessage =
-                'Could not save profile: $e';
-          }
+          errorMessage =
+              'Could not save profile: $e';
         });
       }
     } finally {
       if (mounted) {
         setState(() {
-          saving = false;
+          saving =
+              false;
         });
       }
     }
   }
 
   Widget buildAvatar() {
-    ImageProvider? imageProvider;
+    ImageProvider?
+        imageProvider;
 
-    if (selectedAvatarBytes != null) {
+    if (selectedAvatarBytes !=
+        null) {
       imageProvider =
           MemoryImage(
         selectedAvatarBytes!,
       );
-    } else if (profile.avatarUrl != null &&
-        profile.avatarUrl!.isNotEmpty) {
+    } else if (profile.avatarUrl !=
+            null &&
+        profile.avatarUrl!
+            .isNotEmpty) {
       imageProvider =
           NetworkImage(
         profile.avatarUrl!,
@@ -21764,23 +22587,37 @@ class _EditProfilePageState
     }
 
     final initial =
-        profile.displayName.isNotEmpty
-            ? profile.displayName[0]
+        profile.displayName
+                .isNotEmpty
+            ? profile
+                .displayName[0]
                 .toUpperCase()
             : 'C';
 
     return GestureDetector(
-      onTap: pickAvatar,
-      child: Stack(
-        alignment: Alignment.center,
+      onTap:
+          pickAvatar,
+
+      child:
+          Stack(
+        alignment:
+            Alignment.center,
+
         children: [
           Container(
-            width: 110,
-            height: 110,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
+            width:
+                110,
+            height:
+                110,
+
+            decoration:
+                BoxDecoration(
+              shape:
+                  BoxShape.circle,
+
               gradient:
-                  imageProvider == null
+                  imageProvider ==
+                          null
                       ? const LinearGradient(
                           colors: [
                             chipluxCyan,
@@ -21789,43 +22626,72 @@ class _EditProfilePageState
                           ],
                         )
                       : null,
-              image: imageProvider != null
-                  ? DecorationImage(
-                      image: imageProvider,
-                      fit: BoxFit.cover,
-                    )
-                  : null,
+
+              image:
+                  imageProvider !=
+                          null
+                      ? DecorationImage(
+                          image:
+                              imageProvider,
+                          fit:
+                              BoxFit
+                                  .cover,
+                        )
+                      : null,
             ),
-            child: imageProvider == null
-                ? Center(
-                    child: Text(
-                      initial,
-                      style:
-                          const TextStyle(
-                        color: Colors.white,
-                        fontSize: 42,
-                        fontWeight:
-                            FontWeight.bold,
-                      ),
-                    ),
-                  )
-                : null,
+
+            child:
+                imageProvider ==
+                        null
+                    ? Center(
+                        child:
+                            Text(
+                          initial,
+                          style:
+                              const TextStyle(
+                            color:
+                                Colors
+                                    .white,
+                            fontSize:
+                                42,
+                            fontWeight:
+                                FontWeight
+                                    .bold,
+                          ),
+                        ),
+                      )
+                    : null,
           ),
+
           Positioned(
-            right: 0,
-            bottom: 0,
-            child: Container(
-              width: 34,
-              height: 34,
+            right:
+                0,
+            bottom:
+                0,
+
+            child:
+                Container(
+              width:
+                  34,
+              height:
+                  34,
+
               decoration:
                   const BoxDecoration(
-                shape: BoxShape.circle,
-                color: chipluxCyan,
+                shape:
+                    BoxShape.circle,
+                color:
+                    chipluxCyan,
               ),
-              child: const Icon(
-                Icons.camera_alt_outlined,
-                color: Colors.black,
-                size: 18,
+
+              child:
+                  const Icon(
+                Icons
+                    .camera_alt_outlined,
+                color:
+                    Colors.black,
+                size:
+                    18,
               ),
             ),
           ),
@@ -21834,238 +22700,448 @@ class _EditProfilePageState
     );
   }
 
-  @override
-  void dispose() {
-    displayNameController.dispose();
+  Widget
+      buildFramePicker() {
+    final movieGroup =
+        _movieAchievementGroupFor(
+      library
+          .moviesWatchedCount,
+    );
 
-    super.dispose();
+    final options =
+        <Widget>[
+      _DisplayNameFrameOption(
+        label:
+            'Default',
+
+        frameId:
+            null,
+
+        unlocked:
+            true,
+
+        selected:
+            selectedFrameId ==
+                null,
+
+        onTap:
+            () {
+          setState(() {
+            selectedFrameId =
+                null;
+          });
+        },
+      ),
+
+      for (final tier
+          in movieGroup.tiers)
+        _DisplayNameFrameOption(
+          label:
+              tier.title,
+
+          frameId:
+              tier.id,
+
+          unlocked:
+              tier.unlocked,
+
+          selected:
+              selectedFrameId ==
+                  tier.id,
+
+          onTap:
+              () {
+            setState(() {
+              selectedFrameId =
+                  tier.id;
+            });
+          },
+        ),
+    ];
+
+    return Column(
+      crossAxisAlignment:
+          CrossAxisAlignment
+              .start,
+
+      children: [
+        const Text(
+          'Display Name Frame',
+          style:
+              TextStyle(
+            fontSize:
+                17,
+            fontWeight:
+                FontWeight
+                    .bold,
+          ),
+        ),
+
+        const SizedBox(
+          height:
+              5,
+        ),
+
+        const Text(
+          'Unlock new frames through Movies Watched achievements.',
+          style:
+              TextStyle(
+            color:
+                Colors
+                    .white54,
+            fontSize:
+                12,
+          ),
+        ),
+
+        const SizedBox(
+          height:
+              12,
+        ),
+
+        if (loadingFrame)
+          const SizedBox(
+            height:
+                80,
+
+            child:
+                Center(
+              child:
+                  CircularProgressIndicator(),
+            ),
+          )
+        else
+          SizedBox(
+            height:
+                82,
+
+            child:
+                ListView.separated(
+              scrollDirection:
+                  Axis.horizontal,
+
+              itemCount:
+                  options.length,
+
+              separatorBuilder:
+                  (
+                context,
+                index,
+              ) {
+                return const SizedBox(
+                  width:
+                      8,
+                );
+              },
+
+              itemBuilder:
+                  (
+                context,
+                index,
+              ) {
+                return options[
+                    index];
+              },
+            ),
+          ),
+      ],
+    );
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(
+    BuildContext context,
+  ) {
     return Scaffold(
-      appBar: AppBar(
+      appBar:
+          AppBar(
         title:
-            const Text('Edit Profile'),
+            const Text(
+          'Edit Profile',
+        ),
       ),
-      body: SafeArea(
-        child: ListView(
+
+      body:
+          SafeArea(
+        child:
+            ListView(
           padding:
-              const EdgeInsets.all(20),
+              const EdgeInsets
+                  .all(
+            20,
+          ),
+
           children: [
-            const SizedBox(height: 10),
+            const SizedBox(
+              height:
+                  10,
+            ),
 
             Center(
-              child: Column(
+              child:
+                  Column(
                 children: [
                   buildAvatar(),
 
                   const SizedBox(
-                      height: 10),
+                    height:
+                        10,
+                  ),
 
                   const Text(
                     'Tap to change profile picture',
-                    style: TextStyle(
+                    style:
+                        TextStyle(
                       color:
-                          Colors.white54,
-                      fontSize: 12,
+                          Colors
+                              .white54,
+                      fontSize:
+                          12,
                     ),
                   ),
                 ],
               ),
             ),
 
-            const SizedBox(height: 30),
+            const SizedBox(
+              height:
+                  28,
+            ),
+
+            const Text(
+              'Profile Banner',
+              style:
+                  TextStyle(
+                fontSize:
+                    17,
+                fontWeight:
+                    FontWeight
+                        .bold,
+              ),
+            ),
 
             const SizedBox(
-  height: 28,
-),
+              height:
+                  10,
+            ),
 
-const Align(
-  alignment:
-      Alignment.centerLeft,
-  child: Text(
-    'Profile Banner',
-    style:
-        TextStyle(
-      fontSize: 17,
-      fontWeight:
-          FontWeight.bold,
-    ),
-  ),
-),
+            InkWell(
+              onTap:
+                  changeBanner,
 
-const SizedBox(
-  height: 10,
-),
+              borderRadius:
+                  BorderRadius
+                      .circular(
+                16,
+              ),
 
-InkWell(
-  onTap:
-      changeBanner,
-  borderRadius:
-      BorderRadius.circular(
-    16,
-  ),
-  child: ClipRRect(
-    borderRadius:
-        BorderRadius.circular(
-      16,
-    ),
-    child: SizedBox(
-      width:
-          double.infinity,
-      height: 135,
-      child: Stack(
-        fit:
-            StackFit.expand,
-        children: [
-          if (profile.bannerUrl !=
-              null)
-            Image.network(
-              profile.bannerUrl!,
-              fit:
-                  BoxFit.cover,
-            )
-          else
-            Container(
-              decoration:
-                  const BoxDecoration(
-                gradient:
-                    LinearGradient(
-                  colors: [
-                    chipluxCyan,
-                    chipluxViolet,
-                    chipluxPurple,
-                  ],
+              child:
+                  ClipRRect(
+                borderRadius:
+                    BorderRadius
+                        .circular(
+                  16,
+                ),
+
+                child:
+                    SizedBox(
+                  width:
+                      double
+                          .infinity,
+
+                  height:
+                      135,
+
+                  child:
+                      Stack(
+                    fit:
+                        StackFit
+                            .expand,
+
+                    children: [
+                      if (profile
+                              .bannerUrl !=
+                          null)
+                        Image.network(
+                          profile
+                              .bannerUrl!,
+                          fit:
+                              BoxFit
+                                  .cover,
+                        )
+                      else
+                        Container(
+                          decoration:
+                              const BoxDecoration(
+                            gradient:
+                                LinearGradient(
+                              colors: [
+                                chipluxCyan,
+                                chipluxViolet,
+                                chipluxPurple,
+                              ],
+                            ),
+                          ),
+                        ),
+
+                      Container(
+                        color:
+                            Colors
+                                .black
+                                .withValues(
+                          alpha:
+                              0.30,
+                        ),
+                      ),
+
+                      const Center(
+                        child:
+                            Row(
+                          mainAxisSize:
+                              MainAxisSize
+                                  .min,
+
+                          children: [
+                            Icon(
+                              Icons
+                                  .panorama_outlined,
+                            ),
+
+                            SizedBox(
+                              width:
+                                  8,
+                            ),
+
+                            Text(
+                              'Tap to change banner',
+                              style:
+                                  TextStyle(
+                                fontWeight:
+                                    FontWeight
+                                        .bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
 
-          Container(
-            color:
-                Colors.black
-                    .withValues(
-              alpha: 0.30,
+            const SizedBox(
+              height:
+                  30,
             ),
-          ),
 
-          const Center(
-            child: Row(
-              mainAxisSize:
-                  MainAxisSize.min,
-              children: [
-                Icon(
+            TextField(
+              controller:
+                  displayNameController,
+
+              maxLength:
+                  40,
+
+              decoration:
+                  const InputDecoration(
+                labelText:
+                    'Display Name',
+
+                prefixIcon:
+                    Icon(
                   Icons
-                      .panorama_outlined,
-                  color:
-                      Colors.white,
+                      .person_outline,
                 ),
-
-                SizedBox(
-                  width: 8,
-                ),
-
-                Text(
-                  'Tap to change banner',
-                  style:
-                      TextStyle(
-                    fontWeight:
-                        FontWeight.bold,
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
-        ],
-      ),
-    ),
-  ),
-),
-
-const SizedBox(
-  height: 30,
-),
-
-
-            const SizedBox(height: 10),
 
             const SizedBox(
-  height: 30,
-),
+              height:
+                  12,
+            ),
 
-TextField(
-  controller:
-      displayNameController,
+            // =========================
+            // DISPLAY NAME FRAMES
+            // =========================
 
-  maxLength:
-      40,
+            buildFramePicker(),
 
-  decoration:
-      const InputDecoration(
-    labelText:
-        'Display Name',
+            if (errorMessage !=
+                null) ...[
+              const SizedBox(
+                height:
+                    14,
+              ),
 
-    prefixIcon:
-        Icon(
-      Icons.person_outline,
-    ),
-  ),
-),
+              Text(
+                errorMessage!,
 
-const SizedBox(
-  height: 10,
-),
+                style:
+                    const TextStyle(
+                  color:
+                      Colors
+                          .redAccent,
+                ),
+              ),
+            ],
 
-if (errorMessage != null) ...[
-  const SizedBox(
-    height: 10,
-  ),
-
-  Text(
-    errorMessage!,
-    style:
-        const TextStyle(
-      color:
-          Colors.redAccent,
-    ),
-  ),
-],
-
-            const SizedBox(height: 20),
+            const SizedBox(
+              height:
+                  24,
+            ),
 
             SizedBox(
-              width: double.infinity,
+              width:
+                  double.infinity,
+
               child:
-                  ElevatedButton.icon(
+                  ElevatedButton
+                      .icon(
                 onPressed:
                     saving
                         ? null
                         : saveProfile,
-                icon: saving
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child:
-                            CircularProgressIndicator(
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : const Icon(
-                        Icons.save_outlined,
-                      ),
-                label: Text(
+
+                icon:
+                    saving
+                        ? const SizedBox(
+                            width:
+                                18,
+                            height:
+                                18,
+                            child:
+                                CircularProgressIndicator(
+                              strokeWidth:
+                                  2,
+                            ),
+                          )
+                        : const Icon(
+                            Icons
+                                .save_outlined,
+                          ),
+
+                label:
+                    Text(
                   uploadingAvatar
                       ? 'Uploading Avatar...'
                       : saving
                           ? 'Saving...'
                           : 'Save Profile',
                 ),
-              ),           
-            ),        
+              ),
+            ),
           ],
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    displayNameController
+        .dispose();
+
+    super.dispose();
   }
 }
 
