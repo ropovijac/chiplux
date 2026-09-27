@@ -1457,7 +1457,9 @@ class AuthGate extends StatelessWidget {
 }
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+  const LoginPage({
+    super.key,
+  });
 
   @override
   State<LoginPage> createState() =>
@@ -1466,548 +1468,1225 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState
     extends State<LoginPage> {
-  final emailController =
+  // =====================================================
+  // CONTROLLERS
+  // =====================================================
+
+  final TextEditingController
+      emailController =
       TextEditingController();
 
-  final passwordController =
+  final TextEditingController
+      passwordController =
       TextEditingController();
 
- bool loading = false;
-bool signupMode = false;
-bool showPassword = false;
-bool rememberMe = false;
+  final TextEditingController
+      usernameController =
+      TextEditingController();
 
-String? message;
+  // =====================================================
+  // LOGIN STATE
+  // =====================================================
 
-static const String
-    _rememberedEmailKey =
-    'chiplux_remembered_email';
+  bool loading = false;
+  bool signupMode = false;
+  bool showPassword = false;
 
-    @override
-void initState() {
-  super.initState();
+  bool rememberMe = false;
 
-  _loadRememberedEmail();
-}
+  String? message;
 
-Future<void>
-    _loadRememberedEmail() async {
-  final prefs =
-      await SharedPreferences
-          .getInstance();
+  static const String
+      _rememberedEmailKey =
+      'chiplux_remembered_email';
 
-  final rememberedEmail =
-      prefs.getString(
-    _rememberedEmailKey,
-  );
-
-  if (!mounted ||
-      rememberedEmail == null ||
-      rememberedEmail.isEmpty) {
-    return;
-  }
-
-  setState(() {
-    emailController.text =
-        rememberedEmail;
-
-    rememberMe = true;
-  });
-}
-
-  Future<void> submit() async {
-  final email = emailController.text.trim();
-  final password = passwordController.text;
-
-  if (email.isEmpty || password.length < 6) {
-    setState(() {
-      message =
-          'Enter an email and a password of at least 6 characters.';
-    });
-    return;
-  }
-
-  setState(() {
-    loading = true;
-    message = null;
-  });
-
-  try {
-  const pendingSignupKey =
+  static const String
+      _pendingSignupKey =
       'chiplux_pending_signup_email';
 
-  final prefs =
-      await SharedPreferences
-          .getInstance();
+  // =====================================================
+  // USERNAME CHECK
+  // =====================================================
 
-  if (signupMode) {
-    final response =
-        await AuthService
-            .instance
-            .signUp(
-      email: email,
-      password: password,
+  Timer? _usernameDebounce;
+
+  bool usernameChecking = false;
+
+  bool? usernameAvailable;
+
+  String? usernameStatus;
+
+  List<String>
+      usernameSuggestions =
+      <String>[];
+
+  int _usernameCheckGeneration = 0;
+
+  // =====================================================
+  // INIT
+  // =====================================================
+
+  @override
+  void initState() {
+    super.initState();
+
+    _loadRememberedEmail();
+  }
+
+  Future<void>
+      _loadRememberedEmail() async {
+    final prefs =
+        await SharedPreferences
+            .getInstance();
+
+    final rememberedEmail =
+        prefs.getString(
+      _rememberedEmailKey,
     );
-    
 
-    if (response.session !=
-        null) {
-      // Account was created and
-      // immediately signed in.
-      // Existing local data is
-      // intentionally moved to
-      // this NEW account.
-      await LibraryService
-          .instance
-          .syncToCloud();
+    if (!mounted ||
+        rememberedEmail == null ||
+        rememberedEmail.isEmpty) {
+      return;
+    }
 
-      await prefs.remove(
-        pendingSignupKey,
+    setState(() {
+      emailController.text =
+          rememberedEmail;
+
+      rememberMe = true;
+    });
+  }
+
+  // =====================================================
+  // USERNAME
+  // =====================================================
+
+  void _onUsernameChanged(
+    String value,
+  ) {
+    _usernameDebounce?.cancel();
+
+    final username =
+        value
+            .trim()
+            .toLowerCase();
+
+    _usernameCheckGeneration++;
+
+    final generation =
+        _usernameCheckGeneration;
+
+    setState(() {
+      usernameAvailable = null;
+      usernameSuggestions = [];
+      usernameStatus = null;
+      usernameChecking = false;
+    });
+
+    if (!signupMode) {
+      return;
+    }
+
+    if (username.isEmpty) {
+      return;
+    }
+
+    if (username.length < 3) {
+      setState(() {
+        usernameStatus =
+            'Username must be at least 3 characters.';
+      });
+
+      return;
+    }
+
+    if (username.length > 20) {
+      setState(() {
+        usernameStatus =
+            'Username cannot be longer than 20 characters.';
+      });
+
+      return;
+    }
+
+    if (!RegExp(
+      r'^[a-z0-9_]+$',
+    ).hasMatch(
+      username,
+    )) {
+      setState(() {
+        usernameStatus =
+            'Use only letters, numbers and underscores.';
+      });
+
+      return;
+    }
+
+    setState(() {
+      usernameChecking = true;
+
+      usernameStatus =
+          'Checking username...';
+    });
+
+    _usernameDebounce =
+        Timer(
+      const Duration(
+        milliseconds: 350,
+      ),
+      () {
+        _checkUsername(
+          username,
+          generation,
+        );
+      },
+    );
+  }
+
+  Future<void> _checkUsername(
+    String username,
+    int generation,
+  ) async {
+    try {
+      final result =
+          await AuthService.instance
+              .checkUsernameAvailability(
+        username,
       );
-    } else {
-      // Remember which newly-created
-      // account is allowed to inherit
-      // the current guest/local data.
-      await prefs.setString(
-        pendingSignupKey,
-        email.toLowerCase(),
+
+      if (!mounted ||
+          generation !=
+              _usernameCheckGeneration) {
+        return;
+      }
+
+      final rawSuggestions =
+          result['suggestions'];
+
+      final suggestions =
+          rawSuggestions is List
+              ? rawSuggestions
+                  .map(
+                    (
+                      value,
+                    ) =>
+                        value
+                            .toString(),
+                  )
+                  .where(
+                    (
+                      value,
+                    ) =>
+                        value
+                            .isNotEmpty,
+                  )
+                  .take(3)
+                  .toList()
+              : <String>[];
+
+      final available =
+          result['available'] ==
+              true;
+
+      setState(() {
+        usernameChecking = false;
+
+        usernameAvailable =
+            available;
+
+        usernameStatus =
+            available
+                ? 'Username is available.'
+                : 'Username is already taken.';
+
+        usernameSuggestions =
+            suggestions;
+      });
+    } catch (e) {
+      debugPrint(
+        'Could not check username: $e',
       );
 
-      if (mounted) {
+      if (!mounted ||
+          generation !=
+              _usernameCheckGeneration) {
+        return;
+      }
+
+      setState(() {
+        usernameChecking = false;
+
+        usernameAvailable = null;
+
+        usernameStatus =
+            'Could not check username.';
+      });
+    }
+  }
+
+  void _useUsernameSuggestion(
+    String username,
+  ) {
+    usernameController.text =
+        username;
+
+    usernameController.selection =
+        TextSelection.collapsed(
+      offset:
+          username.length,
+    );
+
+    _onUsernameChanged(
+      username,
+    );
+  }
+
+  // =====================================================
+  // SIGN IN / SIGN UP
+  // =====================================================
+
+  Future<void> submit() async {
+    final identifier =
+        emailController.text
+            .trim();
+
+    final password =
+        passwordController.text;
+
+    final username =
+        usernameController.text
+            .trim()
+            .toLowerCase();
+
+    // ===================================================
+    // BASIC VALIDATION
+    // ===================================================
+
+    if (identifier.isEmpty ||
+        password.length < 6) {
+      setState(() {
+        message =
+            signupMode
+                ? 'Enter your email and a password of at least 6 characters.'
+                : 'Enter your email or username and a password of at least 6 characters.';
+      });
+
+      return;
+    }
+
+    // ===================================================
+    // SIGNUP VALIDATION
+    // ===================================================
+
+    if (signupMode) {
+      if (!identifier.contains(
+        '@',
+      )) {
         setState(() {
           message =
-              'Account created. Check your email and confirm your account, then sign in.';
+              'Enter a valid email address.';
         });
+
+        return;
+      }
+
+      if (username.isEmpty) {
+        setState(() {
+          message =
+              'Choose a username.';
+        });
+
+        return;
+      }
+
+      if (usernameChecking) {
+        setState(() {
+          message =
+              'Wait for the username check to finish.';
+        });
+
+        return;
+      }
+
+      if (usernameAvailable !=
+          true) {
+        setState(() {
+          message =
+              'Choose an available username.';
+        });
+
+        return;
       }
     }
-  } else {
-    await AuthService
-        .instance
-        .signIn(
-      email: email,
-      password: password,
-    );
 
-    if (rememberMe) {
-  await prefs.setString(
-    _rememberedEmailKey,
-    email,
-  );
-} else {
-  await prefs.remove(
-    _rememberedEmailKey,
-  );
-}
+    setState(() {
+      loading = true;
+      message = null;
+    });
 
-    final library =
-        LibraryService.instance;
+    try {
+      final prefs =
+          await SharedPreferences
+              .getInstance();
 
-    final cloud =
-        CloudSyncService.instance;
+      // =================================================
+      // CREATE ACCOUNT
+      // =================================================
 
-    final pendingEmail =
-        prefs.getString(
-      pendingSignupKey,
-    );
+      if (signupMode) {
+        final response =
+            await AuthService
+                .instance
+                .signUp(
+          email:
+              identifier,
 
-    final isPendingNewAccount =
-        pendingEmail != null &&
-            pendingEmail ==
-                email.toLowerCase();
+          password:
+              password,
 
-    if (isPendingNewAccount) {
-      final cloudLibrary =
-          await cloud
-              .downloadLibrary();
+          username:
+              username,
+        );
 
-      final cloudEpisodes =
-          await cloud
-              .downloadEpisodes();
+        if (response.session !=
+            null) {
+          // Email confirmation is disabled,
+          // therefore the new account is
+          // already authenticated.
+          //
+          // Move current local/guest data
+          // into this newly-created account.
 
-      final cloudIsEmpty =
-          cloudLibrary.isEmpty &&
-              cloudEpisodes.isEmpty;
+          await LibraryService
+              .instance
+              .syncToCloud();
 
-      if (cloudIsEmpty) {
-        // This is specifically the
-        // account that was just created.
-        // Move the local guest data into it.
-        await library
-            .syncToCloud();
+          await prefs.remove(
+            _pendingSignupKey,
+          );
+        } else {
+          // Email confirmation is required.
+          //
+          // Remember which specific account
+          // is allowed to inherit the local
+          // guest library after confirmation.
+
+          await prefs.setString(
+            _pendingSignupKey,
+            identifier
+                .toLowerCase(),
+          );
+
+          if (mounted) {
+            setState(() {
+              message =
+                  'Account created. Check your email and confirm your account, then sign in.';
+            });
+          }
+        }
+
+        return;
+      }
+
+      // =================================================
+      // SIGN IN
+      // =================================================
+
+      await AuthService
+          .instance
+          .signIn(
+        identifier:
+            identifier,
+
+        password:
+            password,
+      );
+
+      // Authentication succeeded.
+      //
+      // This is the ACTUAL account email,
+      // even if the user signed in using
+      // their username.
+
+      final signedInEmail =
+          AuthService.instance
+              .currentUser
+              ?.email
+              ?.trim()
+              .toLowerCase();
+
+      // =================================================
+      // REMEMBER ME
+      // =================================================
+
+      if (rememberMe &&
+          signedInEmail != null &&
+          signedInEmail.isNotEmpty) {
+        await prefs.setString(
+          _rememberedEmailKey,
+          signedInEmail,
+        );
+      } else if (!rememberMe) {
+        await prefs.remove(
+          _rememberedEmailKey,
+        );
+      }
+
+      // =================================================
+      // LOCAL / CLOUD LIBRARY
+      // =================================================
+
+      final library =
+          LibraryService.instance;
+
+      final cloud =
+          CloudSyncService.instance;
+
+      final pendingEmail =
+          prefs.getString(
+        _pendingSignupKey,
+      );
+
+      final isPendingNewAccount =
+          pendingEmail != null &&
+              signedInEmail !=
+                  null &&
+              pendingEmail ==
+                  signedInEmail;
+
+      if (isPendingNewAccount) {
+        final cloudLibrary =
+            await cloud
+                .downloadLibrary();
+
+        final cloudEpisodes =
+            await cloud
+                .downloadEpisodes();
+
+        final cloudIsEmpty =
+            cloudLibrary.isEmpty &&
+                cloudEpisodes
+                    .isEmpty;
+
+        if (cloudIsEmpty) {
+          // This is the newly-created
+          // account that owns the guest
+          // data currently on the device.
+
+          await library
+              .syncToCloud();
+        } else {
+          // Cloud already contains data.
+          // Cloud wins.
+
+          await library
+              .syncFromCloud();
+        }
+
+        await prefs.remove(
+          _pendingSignupKey,
+        );
       } else {
-        // Cloud already has data:
-        // cloud wins.
+        // Normal login to an existing
+        // account.
+        //
+        // Never accidentally upload
+        // leftover local data into it.
+
         await library
             .syncFromCloud();
       }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          String error =
+              e.toString();
 
-      await prefs.remove(
-        pendingSignupKey,
+          if (error.contains(
+            'already taken',
+          )) {
+            message =
+                'That username is already taken.';
+          } else if (error.contains(
+                'Invalid username or password',
+              ) ||
+              error.contains(
+                'Invalid login credentials',
+              )) {
+            message =
+                'Invalid email, username or password.';
+          } else {
+            message =
+                error;
+          }
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          loading = false;
+        });
+      }
+    }
+  }
+
+  // =====================================================
+  // CHANGE MODE
+  // =====================================================
+
+  void _toggleMode() {
+    if (loading) {
+      return;
+    }
+
+    _usernameDebounce?.cancel();
+
+    setState(() {
+      signupMode =
+          !signupMode;
+
+      message = null;
+
+      usernameAvailable = null;
+      usernameChecking = false;
+      usernameStatus = null;
+
+      usernameSuggestions =
+          <String>[];
+
+      passwordController.clear();
+
+      showPassword = false;
+    });
+
+    _usernameCheckGeneration++;
+
+    if (signupMode &&
+        usernameController.text
+            .trim()
+            .isNotEmpty) {
+      _onUsernameChanged(
+        usernameController.text,
       );
-    } else {
-      // Normal sign-in:
-      // NEVER upload leftover local
-      // data into another account.
-      await library
-          .syncFromCloud();
     }
   }
-} catch (e) {
-    if (mounted) {
-      setState(() {
-        message = e.toString();
-      });
-    }
-  } finally {
-    if (mounted) {
-      setState(() {
-        loading = false;
-      });
-    }
-  }
-}
+
+  // =====================================================
+  // DISPOSE
+  // =====================================================
 
   @override
   void dispose() {
+    _usernameDebounce?.cancel();
+
+    usernameController.dispose();
     emailController.dispose();
     passwordController.dispose();
 
     super.dispose();
   }
 
+  // =====================================================
+  // BUILD
+  // =====================================================
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(
+    BuildContext context,
+  ) {
+    final disableSubmit =
+        loading ||
+            (
+              signupMode &&
+              (
+                usernameChecking ||
+                usernameAvailable !=
+                    true
+              )
+            );
+
     return Scaffold(
-  backgroundColor:
-      Colors.transparent,
+      backgroundColor:
+          Colors.transparent,
 
-  body:
-      ChipluxBackground(
-    style:
-        ChipluxBackgroundStyle
-            .discover,
-
-    child:
-        SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding:
-                const EdgeInsets.all(30),
-            child: ConstrainedBox(
-              constraints:
-                  const BoxConstraints(
-                maxWidth: 430,
-              ),
-              child: Column(
-                children: [
-                  const ChipluxWordmark(
-                    fontSize: 44,
-                  ),
-
-                  const SizedBox(
-                      height: 10),
-
-                  const Text(
-                    'Your Watchlist · Your Word',
-                    style: TextStyle(
-                      color:
-                          Colors.white54,
-                      letterSpacing: 2,
-                    ),
-                  ),
-
-                  const SizedBox(
-                      height: 45),
-
-                  TextField(
-                    controller:
-                        emailController,
-                    keyboardType:
-                        TextInputType
-                            .emailAddress,
-                    decoration: InputDecoration(
-  labelText: signupMode
-      ? 'Your Email'
-      : 'Email',
-  prefixIcon: const Icon(
-    Icons.email_outlined,
-  ),
-),
-                  ),
-
-                  const SizedBox(
-                      height: 15),
-
-                  TextField(
-  controller: passwordController,
-  obscureText: !showPassword,
-  decoration: InputDecoration(
-    labelText: signupMode
-        ? 'Create Password'
-        : 'Password',
-
-    prefixIcon: const Icon(
-      Icons.lock_outline,
-    ),
-
-    suffixIcon: IconButton(
-      onPressed: () {
-        setState(() {
-          showPassword = !showPassword;
-        });
-      },
-      icon: Icon(
-        showPassword
-            ? Icons.visibility_off_outlined
-            : Icons.visibility_outlined,
-      ),
-      tooltip: showPassword
-          ? 'Hide password'
-          : 'Show password',
-    ),
-  ),
-),
-
-                  const SizedBox(
-  height: 10,
-),
-
-if (!signupMode)
-  Row(
-    children: [
-      Checkbox(
-        value:
-            rememberMe,
-
-        activeColor:
-            chipluxCyan,
-
-        checkColor:
-            Colors.black,
-
-        onChanged:
-            loading
-                ? null
-                : (value) {
-                    setState(() {
-                      rememberMe =
-                          value ??
-                              false;
-                    });
-                  },
-      ),
-
-      const Text(
-        'Remember Me',
-
+      body:
+          ChipluxBackground(
         style:
-            TextStyle(
-          color:
-              Colors.white70,
+            ChipluxBackgroundStyle
+                .discover,
 
-          fontSize:
-              14,
-        ),
-      ),
-    ],
-  ),
+        child:
+            SafeArea(
+          child:
+              Center(
+            child:
+                SingleChildScrollView(
+              padding:
+                  const EdgeInsets
+                      .all(
+                30,
+              ),
 
-const SizedBox(
-  height: 10,
-),
+              child:
+                  ConstrainedBox(
+                constraints:
+                    const BoxConstraints(
+                  maxWidth:
+                      430,
+                ),
 
-SizedBox(
-                    width:
-                        double.infinity,
-                    child:
-                        ElevatedButton(
+                child:
+                    Column(
+                  children: [
+                    // =====================================
+                    // LOGO
+                    // =====================================
+
+                    const ChipluxWordmark(
+                      fontSize:
+                          44,
+                    ),
+
+                    const SizedBox(
+                      height:
+                          10,
+                    ),
+
+                    const Text(
+                      'Your Watchlist · Your Word',
+                      textAlign:
+                          TextAlign
+                              .center,
+                      style:
+                          TextStyle(
+                        color:
+                            Colors
+                                .white54,
+                        letterSpacing:
+                            2,
+                      ),
+                    ),
+
+                    const SizedBox(
+                      height:
+                          42,
+                    ),
+
+                    // =====================================
+                    // USERNAME - CREATE ACCOUNT ONLY
+                    // =====================================
+
+                    if (signupMode) ...[
+                      TextField(
+                        controller:
+                            usernameController,
+
+                        maxLength:
+                            20,
+
+                        autocorrect:
+                            false,
+
+                        enableSuggestions:
+                            false,
+
+                        textCapitalization:
+                            TextCapitalization
+                                .none,
+
+                        textInputAction:
+                            TextInputAction
+                                .next,
+
+                        onChanged:
+                            _onUsernameChanged,
+
+                        decoration:
+                            InputDecoration(
+                          labelText:
+                              'Username',
+
+                          prefixText:
+                              '@',
+
+                          prefixIcon:
+                              const Icon(
+                            Icons
+                                .person_outline,
+                          ),
+
+                          suffixIcon:
+                              usernameChecking
+                                  ? const Padding(
+                                      padding:
+                                          EdgeInsets
+                                              .all(
+                                        14,
+                                      ),
+                                      child:
+                                          SizedBox(
+                                        width:
+                                            18,
+                                        height:
+                                            18,
+                                        child:
+                                            CircularProgressIndicator(
+                                          strokeWidth:
+                                              2,
+                                        ),
+                                      ),
+                                    )
+                                  : usernameAvailable ==
+                                          true
+                                      ? const Icon(
+                                          Icons
+                                              .check_circle_outline,
+                                          color:
+                                              Colors
+                                                  .greenAccent,
+                                        )
+                                      : usernameAvailable ==
+                                              false
+                                          ? const Icon(
+                                              Icons
+                                                  .cancel_outlined,
+                                              color:
+                                                  Colors
+                                                      .redAccent,
+                                            )
+                                          : null,
+                        ),
+                      ),
+
+                      if (usernameStatus !=
+                          null)
+                        Align(
+                          alignment:
+                              Alignment
+                                  .centerLeft,
+                          child:
+                              Text(
+                            usernameStatus!,
+                            style:
+                                TextStyle(
+                              fontSize:
+                                  12,
+                              color:
+                                  usernameAvailable ==
+                                          true
+                                      ? Colors
+                                          .greenAccent
+                                      : usernameAvailable ==
+                                              false
+                                          ? Colors
+                                              .redAccent
+                                          : Colors
+                                              .white54,
+                            ),
+                          ),
+                        ),
+
+                      if (usernameSuggestions
+                          .isNotEmpty) ...[
+                        const SizedBox(
+                          height:
+                              9,
+                        ),
+
+                        const Align(
+                          alignment:
+                              Alignment
+                                  .centerLeft,
+                          child:
+                              Text(
+                            'Try one of these:',
+                            style:
+                                TextStyle(
+                              color:
+                                  Colors
+                                      .white54,
+                              fontSize:
+                                  12,
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(
+                          height:
+                              7,
+                        ),
+
+                        Align(
+                          alignment:
+                              Alignment
+                                  .centerLeft,
+                          child:
+                              Wrap(
+                            spacing:
+                                7,
+                            runSpacing:
+                                5,
+
+                            children:
+                                usernameSuggestions
+                                    .map(
+                                      (
+                                        suggestion,
+                                      ) {
+                                        return ActionChip(
+                                          label:
+                                              Text(
+                                            '@$suggestion',
+                                          ),
+                                          onPressed:
+                                              () {
+                                            _useUsernameSuggestion(
+                                              suggestion,
+                                            );
+                                          },
+                                        );
+                                      },
+                                    )
+                                    .toList(),
+                          ),
+                        ),
+                      ],
+
+                      const SizedBox(
+                        height:
+                            15,
+                      ),
+                    ],
+
+                    // =====================================
+                    // EMAIL / USERNAME
+                    // =====================================
+
+                    TextField(
+                      controller:
+                          emailController,
+
+                      keyboardType:
+                          signupMode
+                              ? TextInputType
+                                  .emailAddress
+                              : TextInputType
+                                  .text,
+
+                      autocorrect:
+                          false,
+
+                      textCapitalization:
+                          TextCapitalization
+                              .none,
+
+                      textInputAction:
+                          TextInputAction
+                              .next,
+
+                      decoration:
+                          InputDecoration(
+                        labelText:
+                            signupMode
+                                ? 'Email'
+                                : 'Email or username',
+
+                        prefixIcon:
+                            Icon(
+                          signupMode
+                              ? Icons
+                                  .email_outlined
+                              : Icons
+                                  .person_outline,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(
+                      height:
+                          15,
+                    ),
+
+                    // =====================================
+                    // PASSWORD
+                    // =====================================
+
+                    TextField(
+                      controller:
+                          passwordController,
+
+                      obscureText:
+                          !showPassword,
+
+                      textInputAction:
+                          TextInputAction
+                              .done,
+
+                      onSubmitted:
+                          (_) {
+                        if (!disableSubmit) {
+                          submit();
+                        }
+                      },
+
+                      decoration:
+                          InputDecoration(
+                        labelText:
+                            signupMode
+                                ? 'Create Password'
+                                : 'Password',
+
+                        prefixIcon:
+                            const Icon(
+                          Icons
+                              .lock_outline,
+                        ),
+
+                        suffixIcon:
+                            IconButton(
+                          onPressed:
+                              () {
+                            setState(() {
+                              showPassword =
+                                  !showPassword;
+                            });
+                          },
+
+                          icon:
+                              Icon(
+                            showPassword
+                                ? Icons
+                                    .visibility_off_outlined
+                                : Icons
+                                    .visibility_outlined,
+                          ),
+
+                          tooltip:
+                              showPassword
+                                  ? 'Hide password'
+                                  : 'Show password',
+                        ),
+                      ),
+                    ),
+
+                    // =====================================
+                    // REMEMBER ME
+                    // =====================================
+
+                    if (!signupMode) ...[
+                      const SizedBox(
+                        height:
+                            7,
+                      ),
+
+                      Row(
+                        children: [
+                          Checkbox(
+                            value:
+                                rememberMe,
+
+                            activeColor:
+                                chipluxCyan,
+
+                            checkColor:
+                                Colors
+                                    .black,
+
+                            visualDensity:
+                                VisualDensity
+                                    .compact,
+
+                            onChanged:
+                                loading
+                                    ? null
+                                    : (
+                                        value,
+                                      ) {
+                                        setState(() {
+                                          rememberMe =
+                                              value ??
+                                                  false;
+                                        });
+                                      },
+                          ),
+
+                          GestureDetector(
+                            onTap:
+                                loading
+                                    ? null
+                                    : () {
+                                        setState(() {
+                                          rememberMe =
+                                              !rememberMe;
+                                        });
+                                      },
+                            child:
+                                const Text(
+                              'Remember Me',
+                              style:
+                                  TextStyle(
+                                color:
+                                    Colors
+                                        .white70,
+                                fontSize:
+                                    14,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+
+                    const SizedBox(
+                      height:
+                          18,
+                    ),
+
+                    // =====================================
+                    // MESSAGE
+                    // =====================================
+
+                    if (message !=
+                        null) ...[
+                      Container(
+                        width:
+                            double
+                                .infinity,
+
+                        padding:
+                            const EdgeInsets
+                                .all(
+                          12,
+                        ),
+
+                        decoration:
+                            BoxDecoration(
+                          color:
+                              Colors
+                                  .white
+                                  .withValues(
+                            alpha:
+                                0.05,
+                          ),
+
+                          borderRadius:
+                              BorderRadius
+                                  .circular(
+                            12,
+                          ),
+
+                          border:
+                              Border.all(
+                            color:
+                                Colors
+                                    .white
+                                    .withValues(
+                              alpha:
+                                  0.08,
+                            ),
+                          ),
+                        ),
+
+                        child:
+                            Text(
+                          message!,
+                          textAlign:
+                              TextAlign
+                                  .center,
+                          style:
+                              const TextStyle(
+                            color:
+                                Colors
+                                    .white70,
+                            fontSize:
+                                13,
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(
+                        height:
+                            15,
+                      ),
+                    ],
+
+                    // =====================================
+                    // SUBMIT
+                    // =====================================
+
+                    SizedBox(
+                      width:
+                          double
+                              .infinity,
+
+                      child:
+                          ElevatedButton(
+                        onPressed:
+                            disableSubmit
+                                ? null
+                                : submit,
+
+                        child:
+                            Padding(
+                          padding:
+                              const EdgeInsets
+                                  .all(
+                            15,
+                          ),
+
+                          child:
+                              loading
+                                  ? const SizedBox(
+                                      width:
+                                          20,
+                                      height:
+                                          20,
+                                      child:
+                                          CircularProgressIndicator(
+                                        strokeWidth:
+                                            2,
+                                      ),
+                                    )
+                                  : Text(
+                                      signupMode
+                                          ? 'Create Account'
+                                          : 'Sign In',
+                                    ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(
+                      height:
+                          15,
+                    ),
+
+                    // =====================================
+                    // MODE SWITCH
+                    // =====================================
+
+                    TextButton(
                       onPressed:
                           loading
                               ? null
-                              : submit,
-                      child: Padding(
-                        padding:
-                            const EdgeInsets
-                                .all(15),
-                        child: loading
-                            ? const SizedBox(
-                                width:
-                                    20,
-                                height:
-                                    20,
-                                child:
-                                    CircularProgressIndicator(
-                                  strokeWidth:
-                                      2,
-                                ),
-                              )
-                            : Text(
-                                signupMode
-                                    ? 'Create Account'
-                                    : 'Sign In',
-                              ),
+                              : _toggleMode,
+
+                      child:
+                          Text(
+                        signupMode
+                            ? 'Already have an account? Sign In'
+                            : 'Don\'t have an account? Create Account',
                       ),
                     ),
-                  ),
-
-                  const SizedBox(height: 18),
-
-Container(
-  height: 56,
-  padding: const EdgeInsets.all(5),
-  decoration: BoxDecoration(
-    color: chipluxSurface,
-    borderRadius: BorderRadius.circular(18),
-  ),
-  child: LayoutBuilder(
-    builder: (context, constraints) {
-      final tabWidth =
-          (constraints.maxWidth - 10) / 2;
-
-      return Stack(
-        children: [
-          AnimatedPositioned(
-            duration:
-                const Duration(milliseconds: 250),
-            curve: Curves.easeInOutCubic,
-            left: signupMode
-                ? tabWidth
-                : 0,
-            top: 0,
-            bottom: 0,
-            width: tabWidth,
-            child: Container(
-              decoration: BoxDecoration(
-                color: chipluxSurfaceLight,
-                borderRadius:
-                    BorderRadius.circular(14),
+                  ],
+                ),
               ),
             ),
           ),
-
-          Row(
-            children: [
-              Expanded(
-                child: InkWell(
-                  borderRadius:
-                      BorderRadius.circular(14),
-                  onTap: () {
-                    setState(() {
-                      signupMode = false;
-                      message = null;
-                    });
-                  },
-                  child: Center(
-                    child: AnimatedDefaultTextStyle(
-                      duration:
-                          const Duration(
-                        milliseconds: 200,
-                      ),
-                      curve:
-                          Curves.easeInOut,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: !signupMode
-                            ? FontWeight.bold
-                            : FontWeight.w500,
-                        color: !signupMode
-                            ? Colors.white
-                            : Colors.white38,
-                      ),
-                      child: const Padding(
-  padding:
-      EdgeInsets.symmetric(
-    horizontal: 8,
-  ),
-  child: FittedBox(
-    fit:
-        BoxFit.scaleDown,
-    child: Text(
-      'Sign In',
-      maxLines: 1,
-    ),
-  ),
-),
-                    ),
-                  ),
-                ),
-              ),
-
-              Expanded(
-                child: InkWell(
-                  borderRadius:
-                      BorderRadius.circular(14),
-                  onTap: () {
-                    setState(() {
-                      signupMode = true;
-                      message = null;
-                    });
-                  },
-                  child: Center(
-                    child: AnimatedDefaultTextStyle(
-                      duration:
-                          const Duration(
-                        milliseconds: 200,
-                      ),
-                      curve:
-                          Curves.easeInOut,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: signupMode
-                            ? FontWeight.bold
-                            : FontWeight.w500,
-                        color: signupMode
-                            ? Colors.white
-                            : Colors.white38,
-                      ),
-                      child: const Padding(
-  padding:
-      EdgeInsets.symmetric(
-    horizontal: 8,
-  ),
-  child: FittedBox(
-    fit:
-        BoxFit.scaleDown,
-    child: Text(
-      'Create Account',
-      maxLines: 1,
-    ),
-  ),
-),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      );
-    },
-  ),
-),
-
-                  if (message != null)
-                    Padding(
-                      padding:
-                          const EdgeInsets
-                              .only(
-                        top: 12,
-                      ),
-                      child: Text(
-                        message!,
-                        textAlign:
-                            TextAlign
-                                .center,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-               ),
+        ),
       ),
-    ),
-  );
+    );
   }
 }
 
@@ -5844,39 +6523,38 @@ if (!isOwnProfile) ...[
                     height: 12,
                   ),
 
-                  Row(
-                    children: [
-                      Expanded(
-                        child:
-                            _WatchStatCard(
-                          value:
-                              episodesWatched,
-                          label:
-                              'Episodes\nWatched',
-                          icon:
-                              Icons
-                                  .playlist_add_check_rounded,
-                        ),
-                      ),
+                  Column(
+  children: [
+    _WatchStatCard(
+      value:
+          episodesWatched,
 
-                      const SizedBox(
-                        width: 12,
-                      ),
+      label:
+          'Episodes Watched',
 
-                      Expanded(
-                        child:
-                            _WatchStatCard(
-                          value:
-                              moviesWatched,
-                          label:
-                              'Movies\nWatched',
-                          icon:
-                              Icons
-                                  .movie_outlined,
-                        ),
-                      ),
-                    ],
-                  ),
+      icon:
+          Icons
+              .playlist_add_check_rounded,
+    ),
+
+    const SizedBox(
+      height:
+          7,
+    ),
+
+    _WatchStatCard(
+      value:
+          moviesWatched,
+
+      label:
+          'Movies Watched',
+
+      icon:
+          Icons
+              .movie_outlined,
+    ),
+  ],
+),
 
                   const SizedBox(
                     height: 16,
@@ -5921,39 +6599,37 @@ if (!isOwnProfile) ...[
                     height: 12,
                   ),
 
-                  Row(
-                    children: [
-                      Expanded(
-                        child:
-                            _RatingStatCard(
-                          value:
-                              episodeRatings,
-                          label:
-                              'Episodes\nRated',
-                          icon:
-                              Icons
-                                  .tv_outlined,
-                        ),
-                      ),
+                  Column(
+  children: [
+    _RatingStatCard(
+      value:
+          episodeRatings,
 
-                      const SizedBox(
-                        width: 12,
-                      ),
+      label:
+          'Episodes Rated',
 
-                      Expanded(
-                        child:
-                            _RatingStatCard(
-                          value:
-                              titleRatings,
-                          label:
-                              'Titles\nRated',
-                          icon:
-                              Icons
-                                  .movie_filter_outlined,
-                        ),
-                      ),
-                    ],
-                  ),
+      icon:
+          Icons.tv_outlined,
+    ),
+
+    const SizedBox(
+      height:
+          7,
+    ),
+
+    _RatingStatCard(
+      value:
+          titleRatings,
+
+      label:
+          'Titles Rated',
+
+      icon:
+          Icons
+              .movie_filter_outlined,
+    ),
+  ],
+),
 
                   const SizedBox(
                     height: 24,
@@ -18242,47 +18918,48 @@ const SizedBox(
                 ),
 
                 // WATCHED STATS
-                Row(
-                  children: [
-                    Expanded(
-                      child:
-                          _WatchStatCard(
-                        value:
-                            library
-                                .watchedEpisodeCount,
-                        label:
-                            'Episodes\nWatched',
-                        icon:
-                            Icons
-                                .playlist_add_check_rounded,
-                        onTap:
-                            widget
-                                .onEpisodesWatchedTap,
-                      ),
-                    ),
+                Column(
+  children: [
+    _WatchStatCard(
+      value:
+          library
+              .watchedEpisodeCount,
 
-                    const SizedBox(
-                      width: 12,
-                    ),
+      label:
+          'Episodes Watched',
 
-                    Expanded(
-                      child:
-                          _WatchStatCard(
-                        value:
-                            library
-                                .moviesWatchedCount,
-                        label:
-                            'Movies\nWatched',
-                        icon:
-                            Icons
-                                .movie_outlined,
-                        onTap:
-                            widget
-                                .onMoviesWatchedTap,
-                      ),
-                    ),
-                  ],
-                ),
+      icon:
+          Icons
+              .playlist_add_check_rounded,
+
+      onTap:
+          widget
+              .onEpisodesWatchedTap,
+    ),
+
+    const SizedBox(
+      height:
+          7,
+    ),
+
+    _WatchStatCard(
+      value:
+          library
+              .moviesWatchedCount,
+
+      label:
+          'Movies Watched',
+
+      icon:
+          Icons
+              .movie_outlined,
+
+      onTap:
+          widget
+              .onMoviesWatchedTap,
+    ),
+  ],
+),
 
                 const SizedBox(
                   height: 14,
@@ -18326,45 +19003,47 @@ averageStars:
                 ),
 
                 // RATED STATS
-                Row(
-                  children: [
-                    Expanded(
-                      child:
-                          _RatingStatCard(
-  value:
-      critic
-          .episodeRatingCount,
-  label:
-      'Episodes\nRated',
-  icon:
-      Icons.tv_outlined,
-  onTap:
-      widget
-          .onEpisodesRatedTap,
-),
-                    ),
+                Column(
+  children: [
+    _RatingStatCard(
+      value:
+          critic
+              .episodeRatingCount,
 
-                    const SizedBox(
-                      width: 12,
-                    ),
+      label:
+          'Episodes Rated',
 
-                    Expanded(
-                      child:
-                          _RatingStatCard(
-  value:
-      critic.movieRatingCount +
-      critic.tvRatingCount,
-  label:
-      'Titles\nRated',
-  icon:
-      Icons.movie_filter_outlined,
-  onTap:
-      widget
-          .onTitlesRatedTap,
+      icon:
+          Icons.tv_outlined,
+
+      onTap:
+          widget
+              .onEpisodesRatedTap,
+    ),
+
+    const SizedBox(
+      height:
+          7,
+    ),
+
+    _RatingStatCard(
+      value:
+          critic.movieRatingCount +
+              critic.tvRatingCount,
+
+      label:
+          'Titles Rated',
+
+      icon:
+          Icons
+              .movie_filter_outlined,
+
+      onTap:
+          widget
+              .onTitlesRatedTap,
+    ),
+  ],
 ),
-                    ),
-                  ],
-                ),
 
                 const SizedBox(
                   height: 24,
@@ -18685,62 +19364,97 @@ class _PinnedAchievementBadgeState
   }
 
   List<Color> _colors() {
-    switch (
-        widget.achievement.rarity) {
-      case _AchievementRarity
-            .common:
-        return [
-          Colors.white,
-          Colors.white54,
-        ];
+  switch (
+      widget.achievement.target) {
+    case 2:
+      return const [
+        Colors.white,
+        Color(
+          0xFFBFC9D4,
+        ),
+      ];
 
-      case _AchievementRarity
-            .uncommon:
-        return const [
-          chipluxCyan,
-          chipluxViolet,
-        ];
+    case 8:
+      return const [
+        Color(
+          0xFF43E8FF,
+        ),
+        Color(
+          0xFF64BFFF,
+        ),
+      ];
 
-      case _AchievementRarity
-            .rare:
-        return const [
-          Color(
-            0xFFFFE49A,
-          ),
-          Color(
-            0xFFFFC857,
-          ),
-          Color(
-            0xFFFF8A4C,
-          ),
-        ];
+    case 16:
+      return const [
+        chipluxCyan,
+        chipluxViolet,
+      ];
 
-      case _AchievementRarity
-            .epic:
-        return const [
-          Color(
-            0xFFFF8A4C,
-          ),
-          Color(
-            0xFFFF5C72,
-          ),
-          chipluxPurple,
-        ];
+    case 32:
+      return const [
+        Color(
+          0xFFFFF1A8,
+        ),
+        Color(
+          0xFFFFC857,
+        ),
+      ];
 
-      case _AchievementRarity
-            .legendary:
-        return const [
-          chipluxCyan,
-          Colors.white,
-          chipluxViolet,
-          chipluxPurple,
-          Color(
-            0xFFFFC857,
-          ),
-          chipluxCyan,
-        ];
-    }
+    case 64:
+      return const [
+        Color(
+          0xFFFFC857,
+        ),
+        Color(
+          0xFFFF8A4C,
+        ),
+        Color(
+          0xFFFF5C72,
+        ),
+      ];
+
+    case 128:
+      return const [
+        Color(
+          0xFFFF5C72,
+        ),
+        chipluxPurple,
+        chipluxViolet,
+      ];
+
+    case 512:
+      return const [
+        chipluxCyan,
+        chipluxViolet,
+        chipluxPurple,
+        Color(
+          0xFFFFC857,
+        ),
+        chipluxCyan,
+      ];
+
+    case 1024:
+      return const [
+        chipluxCyan,
+        Colors.white,
+        chipluxViolet,
+        chipluxPurple,
+        Color(
+          0xFFFF5C72,
+        ),
+        Color(
+          0xFFFFC857,
+        ),
+        chipluxCyan,
+      ];
+
+    default:
+      return const [
+        chipluxCyan,
+        chipluxViolet,
+      ];
   }
+}
 
   @override
   void dispose() {
@@ -18850,19 +19564,355 @@ class _PinnedAchievementBadgeState
   }
 }
 
+class _LevelHexBadge
+    extends StatelessWidget {
+  final int level;
+  final List<Color> colors;
+
+  const _LevelHexBadge({
+    required this.level,
+    required this.colors,
+  });
+
+  @override
+  Widget build(
+    BuildContext context,
+  ) {
+    return SizedBox(
+      width: 70,
+      height: 76,
+      child: Stack(
+        alignment:
+            Alignment.center,
+        children: [
+          // =================================
+          // OUTER GLOW
+          // =================================
+
+          Container(
+            width: 54,
+            height: 54,
+            decoration:
+                BoxDecoration(
+              shape:
+                  BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color:
+                      colors.first
+                          .withValues(
+                    alpha: 0.25,
+                  ),
+                  blurRadius:
+                      20,
+                  spreadRadius:
+                      2,
+                ),
+              ],
+            ),
+          ),
+
+          // =================================
+          // HEXAGON
+          // =================================
+
+          ClipPath(
+            clipper:
+                _HexagonClipper(),
+            child:
+                Container(
+              width: 66,
+              height: 74,
+              decoration:
+                  BoxDecoration(
+                gradient:
+                    LinearGradient(
+                  begin:
+                      Alignment
+                          .topLeft,
+                  end:
+                      Alignment
+                          .bottomRight,
+                  colors:
+                      colors,
+                ),
+              ),
+
+              padding:
+                  const EdgeInsets
+                      .all(
+                2,
+              ),
+
+              child:
+                  ClipPath(
+                clipper:
+                    _HexagonClipper(),
+
+                child:
+                    Container(
+                  decoration:
+                      BoxDecoration(
+                    color:
+                        chipluxSurface,
+
+                    gradient:
+                        LinearGradient(
+                      begin:
+                          Alignment
+                              .topLeft,
+                      end:
+                          Alignment
+                              .bottomRight,
+                      colors: [
+                        colors.first
+                            .withValues(
+                          alpha:
+                              0.10,
+                        ),
+
+                        chipluxSurface,
+
+                        colors.last
+                            .withValues(
+                          alpha:
+                              0.08,
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  child:
+                      Stack(
+                    alignment:
+                        Alignment
+                            .center,
+
+                    children: [
+                      // =================================
+                      // CENTER GLOW
+                      // =================================
+
+                      Container(
+                        width:
+                            48,
+                        height:
+                            48,
+                        decoration:
+                            BoxDecoration(
+                          shape:
+                              BoxShape
+                                  .circle,
+                          gradient:
+                              RadialGradient(
+                            colors: [
+                              colors
+                                  .first
+                                  .withValues(
+                                alpha:
+                                    0.16,
+                              ),
+                              Colors
+                                  .transparent,
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      // =================================
+                      // SUBTLE DIAGONAL DETAIL
+                      // =================================
+
+                      Positioned(
+                        left:
+                            -12,
+                        top:
+                            22,
+                        child:
+                            Transform.rotate(
+                          angle:
+                              -0.45,
+                          child:
+                              Container(
+                            width:
+                                95,
+                            height:
+                                1,
+                            color:
+                                Colors
+                                    .white
+                                    .withValues(
+                              alpha:
+                                  0.055,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      Positioned(
+                        left:
+                            -15,
+                        top:
+                            38,
+                        child:
+                            Transform.rotate(
+                          angle:
+                              -0.45,
+                          child:
+                              Container(
+                            width:
+                                95,
+                            height:
+                                1,
+                            color:
+                                Colors
+                                    .white
+                                    .withValues(
+                              alpha:
+                                  0.035,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // =================================
+                      // LEVEL
+                      // =================================
+
+                      Column(
+                        mainAxisAlignment:
+                            MainAxisAlignment
+                                .center,
+                        children: [
+                          const Text(
+                            'LVL',
+                            style:
+                                TextStyle(
+                              color:
+                                  Colors
+                                      .white54,
+                              fontSize:
+                                  8,
+                              fontWeight:
+                                  FontWeight
+                                      .w800,
+                              letterSpacing:
+                                  1.1,
+                            ),
+                          ),
+
+                          const SizedBox(
+                            height:
+                                1,
+                          ),
+
+                          ShaderMask(
+                            shaderCallback:
+                                (
+                              bounds,
+                            ) {
+                              return LinearGradient(
+                                colors:
+                                    colors,
+                              ).createShader(
+                                bounds,
+                              );
+                            },
+
+                            child:
+                                Text(
+                              '$level',
+
+                              style:
+                                  const TextStyle(
+                                color:
+                                    Colors
+                                        .white,
+
+                                fontSize:
+                                    24,
+
+                                height:
+                                    1,
+
+                                fontWeight:
+                                    FontWeight
+                                        .w900,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HexagonClipper
+    extends CustomClipper<Path> {
+  @override
+  Path getClip(
+    Size size,
+  ) {
+    return Path()
+      ..moveTo(
+        size.width * 0.5,
+        0,
+      )
+      ..lineTo(
+        size.width,
+        size.height * 0.25,
+      )
+      ..lineTo(
+        size.width,
+        size.height * 0.75,
+      )
+      ..lineTo(
+        size.width * 0.5,
+        size.height,
+      )
+      ..lineTo(
+        0,
+        size.height * 0.75,
+      )
+      ..lineTo(
+        0,
+        size.height * 0.25,
+      )
+      ..close();
+  }
+
+  @override
+  bool shouldReclip(
+    covariant
+        CustomClipper<Path>
+        oldClipper,
+  ) {
+    return false;
+  }
+}
+
 class _CriticReputationCard
     extends StatelessWidget {
   final int level;
   final String title;
-final VoidCallback? onTap;
+  final VoidCallback? onTap;
+
   final int xp;
   final int requiredXp;
 
   final int totalRatings;
 
   final double titleCoverage;
-final double episodeCoverage;
-final double averageStars;
+  final double episodeCoverage;
+  final double averageStars;
 
   const _CriticReputationCard({
     required this.level,
@@ -18871,9 +19921,9 @@ final double averageStars;
     required this.requiredXp,
     required this.totalRatings,
     required this.titleCoverage,
-required this.episodeCoverage,
-required this.averageStars,
-    this.onTap
+    required this.episodeCoverage,
+    required this.averageStars,
+    this.onTap,
   });
 
   static const Color criticGold =
@@ -18886,31 +19936,42 @@ required this.averageStars,
     0xFFFF8A4C,
   );
 
-
   @override
-Widget build(BuildContext context) {
-  final progress =
-      requiredXp <= 0
-          ? 0.0
-          : (xp / requiredXp)
-              .clamp(
-                0.0,
-                1.0,
-              );
+  Widget build(
+    BuildContext context,
+  ) {
+    final progress =
+        requiredXp <= 0
+            ? 0.0
+            : (xp /
+                    requiredXp)
+                .clamp(
+                  0.0,
+                  1.0,
+                );
 
-  return GestureDetector(
-  behavior:
-      HitTestBehavior.opaque,
-  onTap:
-      onTap,
-  child: Stack(
-    clipBehavior:
-        Clip.none,
-    children: [
-      Container(
+    final xpLeft =
+        (requiredXp - xp)
+            .clamp(
+              0,
+              requiredXp,
+            );
+
+    return GestureDetector(
+      behavior:
+          HitTestBehavior.opaque,
+      onTap:
+          onTap,
+
+      child:
+          Container(
         padding:
-            const EdgeInsets.all(1.2),
-        decoration: BoxDecoration(
+            const EdgeInsets.all(
+          1.2,
+        ),
+
+        decoration:
+            BoxDecoration(
           gradient:
               const LinearGradient(
             colors: [
@@ -18919,188 +19980,246 @@ Widget build(BuildContext context) {
               chipluxPurple,
             ],
           ),
+
           borderRadius:
               BorderRadius.circular(
             22,
           ),
         ),
-        child: Container(
-          width: double.infinity,
+
+        child:
+            Container(
+          width:
+              double.infinity,
+
           padding:
-              const EdgeInsets.fromLTRB(
-            20,
-            24,
+              const EdgeInsets
+                  .fromLTRB(
+            17,
             20,
             17,
+            17,
           ),
-          decoration: BoxDecoration(
-            color: chipluxSurface,
+
+          decoration:
+              BoxDecoration(
+            color:
+                chipluxSurface,
+
             borderRadius:
                 BorderRadius.circular(
               21,
             ),
           ),
-          child: Column(
+
+          child:
+              Column(
             crossAxisAlignment:
-                CrossAxisAlignment.start,
+                CrossAxisAlignment
+                    .start,
+
             children: [
-              // LEVEL + CRITIC TITLE
-              Wrap(
-                spacing: 8,
-                runSpacing: 4,
+              Row(
                 crossAxisAlignment:
-                    WrapCrossAlignment.center,
+                    CrossAxisAlignment
+                        .center,
+
                 children: [
-                  ShaderMask(
-                    shaderCallback:
-                        (bounds) {
-                      return const LinearGradient(
-                        colors: [
-                          criticGold,
-                          criticOrange,
-                          chipluxPurple,
-                        ],
-                      ).createShader(
-                        bounds,
-                      );
-                    },
-                    child: Text(
-                      'LEVEL $level',
-                      style:
-                          const TextStyle(
-                        color:
-                            Colors.white,
-                        fontSize: 24,
-                        fontWeight:
-                            FontWeight.w800,
-                      ),
-                    ),
+                  const SizedBox(
+                    width:
+                        2,
                   ),
 
-                  const Text(
-                    '•',
-                    style: TextStyle(
-                      color: Colors.white30,
-                      fontSize: 19,
-                    ),
+                  _LevelHexBadge(
+                    level:
+                        level,
+                    colors:
+                        const [
+                      criticGold,
+                      criticOrange,
+                      chipluxPurple,
+                    ],
                   ),
 
-                  Text(
-                    title,
-                    style:
-                        const TextStyle(
-                      color: criticGold,
-                      fontSize: 15,
-                      fontWeight:
-                          FontWeight.w800,
+                  const SizedBox(
+                    width:
+                        16,
+                  ),
+
+                  Expanded(
+                    child:
+                        Column(
+                      crossAxisAlignment:
+                          CrossAxisAlignment
+                              .start,
+
+                      children: [
+                        const Text(
+                          'CRITIC LEVEL',
+                          style:
+                              TextStyle(
+                            color:
+                                Colors
+                                    .white38,
+                            fontSize:
+                                10,
+                            fontWeight:
+                                FontWeight
+                                    .w700,
+                            letterSpacing:
+                                1.3,
+                          ),
+                        ),
+
+                        const SizedBox(
+                          height:
+                              3,
+                        ),
+
+                        Text(
+                          title
+                              .toUpperCase(),
+                          maxLines:
+                              1,
+                          overflow:
+                              TextOverflow
+                                  .ellipsis,
+                          style:
+                              const TextStyle(
+                            color:
+                                criticGold,
+                            fontSize:
+                                18,
+                            fontWeight:
+                                FontWeight
+                                    .w900,
+                            letterSpacing:
+                                0.7,
+                          ),
+                        ),
+
+                        const SizedBox(
+                          height:
+                              11,
+                        ),
+
+                        _CriticProgressBar(
+                          progress:
+                              progress,
+                        ),
+
+                        const SizedBox(
+                          height:
+                              7,
+                        ),
+
+                        Row(
+                          children: [
+                            Text(
+                              '$xp / $requiredXp XP',
+                              style:
+                                  const TextStyle(
+                                color:
+                                    Colors
+                                        .white54,
+                                fontSize:
+                                    11,
+                                fontWeight:
+                                    FontWeight
+                                        .w600,
+                              ),
+                            ),
+
+                            const Spacer(),
+
+                            Text(
+                              '$xpLeft XP left',
+                              style:
+                                  const TextStyle(
+                                color:
+                                    Colors
+                                        .white70,
+                                fontSize:
+                                    11,
+                                fontWeight:
+                                    FontWeight
+                                        .w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
 
               const SizedBox(
-                height: 15,
+                height:
+                    17,
               ),
 
-              _CriticProgressBar(
-  progress:
-      progress,
-),
-
-              const SizedBox(
-                height: 8,
-              ),
-
-              Text(
-                '$xp / $requiredXp XP',
-                style:
-                    const TextStyle(
-                  color: Colors.white60,
-                  fontSize: 13,
-                  fontWeight:
-                      FontWeight.w500,
+              Container(
+                height:
+                    1,
+                color:
+                    Colors.white
+                        .withValues(
+                  alpha:
+                      0.06,
                 ),
               ),
 
               const SizedBox(
-                height: 15,
+                height:
+                    14,
               ),
 
               // STATS
               Row(
-  children: [
-    Expanded(
-      child: _CriticStat(
-        value:
-            '${titleCoverage.toStringAsFixed(1)}%',
-        label:
-            'Titles Rated',
-      ),
-    ),
+                children: [
+                  Expanded(
+                    child:
+                        _CriticStat(
+                      value:
+                          '${titleCoverage.toStringAsFixed(1)}%',
+                      label:
+                          'Titles Rated',
+                    ),
+                  ),
 
-    Expanded(
-      child: _CriticStat(
-        value:
-            '${episodeCoverage.toStringAsFixed(1)}%',
-        label:
-            'Episodes Rated',
-      ),
-    ),
+                  Expanded(
+                    child:
+                        _CriticStat(
+                      value:
+                          '${episodeCoverage.toStringAsFixed(1)}%',
+                      label:
+                          'Episodes Rated',
+                    ),
+                  ),
 
-    Expanded(
-      child: _CriticStat(
-        value:
-            averageStars > 0
-                ? '★ ${averageStars.toStringAsFixed(1)}'
-                : '★ --',
-        label:
-            'Average',
-        valueColor:
-            criticGold,
-      ),
-    ),
-  ],
-),
-            ],
-          ),
-        ),
-      ),
-
-      // CRITIC STAR ON FRAME
-      Positioned(
-        top: -13,
-        left: 28,
-        child: Container(
-          width: 30,
-          height: 30,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: chipluxBackground,
-            border: Border.all(
-              color: criticGold,
-              width: 1.2,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: criticGold
-                    .withValues(
-                  alpha: 0.25,
-                ),
-                blurRadius: 10,
+                  Expanded(
+                    child:
+                        _CriticStat(
+                      value:
+                          averageStars >
+                                  0
+                              ? '★ ${averageStars.toStringAsFixed(1)}'
+                              : '★ --',
+                      label:
+                          'Average',
+                      valueColor:
+                          criticGold,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-          child: const Icon(
-            Icons.star_rounded,
-            color: criticGold,
-            size: 22,
-          ),
         ),
       ),
-       ],
-  ),
-);
-}
+    );
+  }
 }
 
 class _CriticProgressBar
@@ -19118,7 +20237,8 @@ class _CriticProgressBar
 }
 
 class _CriticProgressBarState
-    extends State<_CriticProgressBar>
+    extends State<
+        _CriticProgressBar>
     with TickerProviderStateMixin {
   static const criticGold =
       Color(
@@ -19154,7 +20274,8 @@ class _CriticProgressBarState
 
     _progressAnimation =
         Tween<double>(
-      begin: 0,
+      begin:
+          0,
       end:
           widget.progress,
     ).animate(
@@ -19175,12 +20296,14 @@ class _CriticProgressBarState
       ),
     )..repeat();
 
-    _progressController.forward();
+    _progressController
+        .forward();
   }
 
   @override
   void didUpdateWidget(
-    covariant _CriticProgressBar
+    covariant
+        _CriticProgressBar
         oldWidget,
   ) {
     super.didUpdateWidget(
@@ -19190,7 +20313,8 @@ class _CriticProgressBarState
     if (oldWidget.progress !=
         widget.progress) {
       final oldProgress =
-          _progressAnimation.value;
+          _progressAnimation
+              .value;
 
       _progressAnimation =
           Tween<double>(
@@ -19214,52 +20338,56 @@ class _CriticProgressBarState
   }
 
   @override
-  void dispose() {
-    _progressController.dispose();
-    _flowController.dispose();
-
-    super.dispose();
-  }
-
-  @override
   Widget build(
     BuildContext context,
   ) {
     return Container(
-      height: 12,
+      height:
+          8,
+
       decoration:
           BoxDecoration(
         color:
             Colors.white10,
+
         borderRadius:
             BorderRadius.circular(
           20,
         ),
+
         boxShadow: [
           BoxShadow(
             color:
                 criticGold
                     .withValues(
-              alpha: 0.18,
+              alpha:
+                  0.15,
             ),
-            blurRadius: 9,
+
+            blurRadius:
+                7,
           ),
         ],
       ),
+
       clipBehavior:
           Clip.antiAlias,
+
       child:
           AnimatedBuilder(
         animation:
-            Listenable.merge([
-          _progressAnimation,
-          _flowController,
-        ]),
+            Listenable.merge(
+          [
+            _progressAnimation,
+            _flowController,
+          ],
+        ),
+
         builder:
             (
-              context,
-              _,
-            ) {
+          context,
+          _,
+        ) {
           final flow =
               _flowController
                   .value;
@@ -19267,6 +20395,7 @@ class _CriticProgressBarState
           return Align(
             alignment:
                 Alignment.centerLeft,
+
             child:
                 FractionallySizedBox(
               widthFactor:
@@ -19276,9 +20405,12 @@ class _CriticProgressBarState
                 0.0,
                 1.0,
               ),
+
               heightFactor:
                   1,
-              child: Container(
+
+              child:
+                  Container(
                 decoration:
                     BoxDecoration(
                   gradient:
@@ -19290,6 +20422,7 @@ class _CriticProgressBarState
                               3.6,
                       0,
                     ),
+
                     end:
                         Alignment(
                       -0.2 +
@@ -19297,6 +20430,7 @@ class _CriticProgressBarState
                               3.6,
                       0,
                     ),
+
                     colors:
                         const [
                       criticGold,
@@ -19304,12 +20438,13 @@ class _CriticProgressBarState
                       criticOrange,
                       chipluxPurple,
                     ],
+
                     stops:
                         const [
-                      0.0,
+                      0,
                       0.35,
                       0.65,
-                      1.0,
+                      1,
                     ],
                   ),
                 ),
@@ -19319,6 +20454,17 @@ class _CriticProgressBarState
         },
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _progressController
+        .dispose();
+
+    _flowController
+        .dispose();
+
+    super.dispose();
   }
 }
 
@@ -19373,20 +20519,22 @@ class _CriticStat
   }
 }
 
-class _LevelCard extends StatefulWidget {
+class _LevelCard
+    extends StatefulWidget {
   final int totalMinutes;
   final String title;
   final VoidCallback? onTap;
 
   const _LevelCard({
-  required this.totalMinutes,
-  required this.title,
-  this.onTap,
-});
+    required this.totalMinutes,
+    required this.title,
+    this.onTap,
+  });
 
   @override
-  State<_LevelCard> createState() =>
-      _LevelCardState();
+  State<_LevelCard>
+      createState() =>
+          _LevelCardState();
 }
 
 class _LevelCardState
@@ -19394,14 +20542,18 @@ class _LevelCardState
     with TickerProviderStateMixin {
   late final AnimationController
       _controller;
-      late final AnimationController _flowController;
 
-  late Animation<double> _progressAnimation;
+  late final AnimationController
+      _flowController;
+
+  late Animation<double>
+      _progressAnimation;
 
   int level = 1;
   int minutesInLevel = 0;
   int requiredMinutes = 20;
   int minutesLeft = 20;
+
   double targetProgress = 0;
 
   @override
@@ -19425,26 +20577,32 @@ class _LevelCardState
       end: targetProgress,
     ).animate(
       CurvedAnimation(
-        parent: _controller,
+        parent:
+            _controller,
         curve:
             Curves.easeOutCubic,
       ),
     );
 
     _controller.forward();
-    _flowController = AnimationController(
-  vsync: this,
-  duration: const Duration(
-    milliseconds: 2200,
-  ),
-)..repeat();
+
+    _flowController =
+        AnimationController(
+      vsync: this,
+      duration:
+          const Duration(
+        milliseconds: 2200,
+      ),
+    )..repeat();
   }
 
   @override
   void didUpdateWidget(
     covariant _LevelCard oldWidget,
   ) {
-    super.didUpdateWidget(oldWidget);
+    super.didUpdateWidget(
+      oldWidget,
+    );
 
     if (oldWidget.totalMinutes !=
         widget.totalMinutes) {
@@ -19455,11 +20613,14 @@ class _LevelCardState
 
       _progressAnimation =
           Tween<double>(
-        begin: oldProgress,
-        end: targetProgress,
+        begin:
+            oldProgress,
+        end:
+            targetProgress,
       ).animate(
         CurvedAnimation(
-          parent: _controller,
+          parent:
+              _controller,
           curve:
               Curves.easeOutCubic,
         ),
@@ -19473,6 +20634,7 @@ class _LevelCardState
 
   void _calculateLevel() {
     level = 1;
+
     minutesInLevel =
         widget.totalMinutes;
 
@@ -19498,352 +20660,455 @@ class _LevelCardState
                 requiredMinutes;
   }
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    _flowController.dispose();
-    super.dispose();
-  }
-
-  String _formatTimeLeft(int totalMinutes) {
-  if (totalMinutes < 60) {
-    return '$totalMinutes '
-        'minute${totalMinutes == 1 ? '' : 's'}';
-  }
-
-  final totalHours =
-      totalMinutes ~/ 60;
-
-  final remainingMinutes =
-      totalMinutes % 60;
-
-  if (totalHours < 24) {
-    if (remainingMinutes == 0) {
-      return '${totalHours}h';
+  String _formatTimeLeft(
+    int totalMinutes,
+  ) {
+    if (totalMinutes < 60) {
+      return '$totalMinutes '
+          'minute${totalMinutes == 1 ? '' : 's'}';
     }
 
-    return '${totalHours}h '
-        '${remainingMinutes}m';
-  }
+    final totalHours =
+        totalMinutes ~/ 60;
 
-  final totalDays =
-      totalHours ~/ 24;
+    final remainingMinutes =
+        totalMinutes % 60;
 
-  final remainingHours =
-      totalHours % 24;
+    if (totalHours < 24) {
+      if (remainingMinutes ==
+          0) {
+        return '${totalHours}h';
+      }
 
-  if (totalDays < 30) {
-    if (remainingHours == 0) {
-      return '${totalDays}d';
+      return '${totalHours}h '
+          '${remainingMinutes}m';
     }
 
-    return '${totalDays}d '
-        '${remainingHours}h';
-  }
+    final totalDays =
+        totalHours ~/ 24;
 
-  final totalMonths =
-      totalDays ~/ 30;
+    final remainingHours =
+        totalHours % 24;
 
-  final remainingDays =
-      totalDays % 30;
+    if (totalDays < 30) {
+      if (remainingHours == 0) {
+        return '${totalDays}d';
+      }
 
-  if (totalMonths < 12) {
-    if (remainingDays == 0) {
+      return '${totalDays}d '
+          '${remainingHours}h';
+    }
+
+    final totalMonths =
+        totalDays ~/ 30;
+
+    final remainingDays =
+        totalDays % 30;
+
+    if (totalMonths < 12) {
+      if (remainingDays == 0) {
+        return '$totalMonths '
+            'month${totalMonths == 1 ? '' : 's'}';
+      }
+
       return '$totalMonths '
-          'month${totalMonths == 1 ? '' : 's'}';
+          'month${totalMonths == 1 ? '' : 's'} '
+          '${remainingDays}d';
     }
 
-    return '$totalMonths '
-        'month${totalMonths == 1 ? '' : 's'} '
-        '${remainingDays}d';
-  }
+    final years =
+        totalMonths ~/ 12;
 
-  final years =
-      totalMonths ~/ 12;
+    final remainingMonths =
+        totalMonths % 12;
 
-  final remainingMonths =
-      totalMonths % 12;
+    if (remainingMonths == 0) {
+      return '$years '
+          'year${years == 1 ? '' : 's'}';
+    }
 
-  if (remainingMonths == 0) {
     return '$years '
-        'year${years == 1 ? '' : 's'}';
+        'year${years == 1 ? '' : 's'} '
+        '$remainingMonths '
+        'month${remainingMonths == 1 ? '' : 's'}';
   }
-
-  return '$years '
-      'year${years == 1 ? '' : 's'} '
-      '$remainingMonths '
-      'month${remainingMonths == 1 ? '' : 's'}';
-}
 
   @override
-Widget build(BuildContext context) {
-  return GestureDetector(
-  behavior:
-      HitTestBehavior.opaque,
-  onTap: widget.onTap,
-  child: Stack(
-    clipBehavior: Clip.none,
-    children: [
-      Container(
-        padding: const EdgeInsets.all(1.2),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
+  Widget build(
+    BuildContext context,
+  ) {
+    return GestureDetector(
+      behavior:
+          HitTestBehavior.opaque,
+
+      onTap:
+          widget.onTap,
+
+      child:
+          Container(
+        padding:
+            const EdgeInsets.all(
+          1.2,
+        ),
+
+        decoration:
+            BoxDecoration(
+          gradient:
+              const LinearGradient(
             colors: [
               chipluxCyan,
               chipluxViolet,
               chipluxPurple,
             ],
           ),
+
           borderRadius:
-              BorderRadius.circular(22),
+              BorderRadius.circular(
+            20,
+          ),
         ),
-        child: Container(
-          width: double.infinity,
+
+        child:
+            Container(
+          width:
+              double.infinity,
+
           padding:
-              const EdgeInsets.fromLTRB(
-            20,
-            24,
-            20,
-            17,
+              const EdgeInsets
+                  .fromLTRB(
+            14,
+            14,
+            14,
+            14,
           ),
-          decoration: BoxDecoration(
-            color: chipluxSurface,
+
+          decoration:
+              BoxDecoration(
+            color:
+                chipluxSurface,
+
             borderRadius:
-                BorderRadius.circular(21),
+                BorderRadius.circular(
+              19,
+            ),
           ),
-          child: Column(
+
+          child:
+              Row(
             crossAxisAlignment:
-                CrossAxisAlignment.start,
+                CrossAxisAlignment
+                    .center,
+
             children: [
-              // LEVEL + TITLE
-              Wrap(
-                crossAxisAlignment:
-                    WrapCrossAlignment.center,
-                spacing: 8,
-                runSpacing: 4,
-                children: [
-                  GradientText(
-                    'LEVEL $level',
-                    style:
-                        const TextStyle(
-                      fontSize: 24,
-                      fontWeight:
-                          FontWeight.w800,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
+              // =============================
+              // LEVEL
+              // =============================
 
-                  const Text(
-                    '•',
-                    style: TextStyle(
-                      color: Colors.white30,
-                      fontSize: 19,
-                      fontWeight:
-                          FontWeight.bold,
-                    ),
-                  ),
+              _LevelHexBadge(
+                level:
+                    level,
 
-                  Text(
-                    widget.title,
-                    style:
-                        const TextStyle(
-                      color: chipluxCyan,
-                      fontSize: 15,
-                      fontWeight:
-                          FontWeight.w800,
-                      letterSpacing: 0.6,
-                    ),
-                  ),
+                colors:
+                    const [
+                  chipluxCyan,
+                  chipluxViolet,
+                  chipluxPurple,
                 ],
               ),
 
               const SizedBox(
-                height: 15,
+                width:
+                    11,
               ),
 
-              // CURRENT MINUTES
-              Row(
-                crossAxisAlignment:
-                    CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '$minutesInLevel',
-                    style:
-                        const TextStyle(
-                      fontSize: 28,
-                      fontWeight:
-                          FontWeight.bold,
-                      height: 1,
-                    ),
-                  ),
+              // =============================
+              // CONTENT
+              // =============================
 
-                  Padding(
-                    padding:
-                        const EdgeInsets.only(
-                      left: 5,
-                      bottom: 2,
+              Expanded(
+                child:
+                    Column(
+                  crossAxisAlignment:
+                      CrossAxisAlignment
+                          .start,
+
+                  children: [
+                    const Text(
+                      'RUNTIME LEVEL',
+
+                      style:
+                          TextStyle(
+                        color:
+                            Colors
+                                .white38,
+
+                        fontSize:
+                            9,
+
+                        fontWeight:
+                            FontWeight
+                                .w700,
+
+                        letterSpacing:
+                            1.2,
+                      ),
                     ),
-                    child: Text(
-                      '/ $requiredMinutes min',
+
+                    const SizedBox(
+                      height:
+                          1,
+                    ),
+
+                    Text(
+                      widget.title
+                          .toUpperCase(),
+
+                      maxLines:
+                          1,
+
+                      overflow:
+                          TextOverflow
+                              .ellipsis,
+
                       style:
                           const TextStyle(
-                        fontSize: 13,
                         color:
-                            Colors.white54,
+                            chipluxCyan,
+
+                        fontSize:
+                            16,
+
+                        fontWeight:
+                            FontWeight
+                                .w900,
+
+                        letterSpacing:
+                            0.6,
                       ),
                     ),
-                  ),
-                ],
-              ),
 
-              const SizedBox(
-                height: 11,
-              ),
+                    const SizedBox(
+                      height:
+                          7,
+                    ),
 
-              // PROGRESS
-              Container(
-                height: 12,
-                decoration: BoxDecoration(
-                  color: Colors.white10,
-                  borderRadius:
-                      BorderRadius.circular(
-                    20,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: chipluxCyan
-                          .withValues(
-                        alpha: 0.15,
+                    // =============================
+                    // PROGRESS
+                    // =============================
+
+                    Container(
+                      height:
+                          8,
+
+                      decoration:
+                          BoxDecoration(
+                        color:
+                            Colors
+                                .white10,
+
+                        borderRadius:
+                            BorderRadius
+                                .circular(
+                          20,
+                        ),
+
+                        boxShadow: [
+                          BoxShadow(
+                            color:
+                                chipluxCyan
+                                    .withValues(
+                              alpha:
+                                  0.13,
+                            ),
+
+                            blurRadius:
+                                7,
+                          ),
+                        ],
                       ),
-                      blurRadius: 8,
+
+                      clipBehavior:
+                          Clip.antiAlias,
+
+                      child:
+                          AnimatedBuilder(
+                        animation:
+                            Listenable
+                                .merge(
+                          [
+                            _progressAnimation,
+                            _flowController,
+                          ],
+                        ),
+
+                        builder:
+                            (
+                          context,
+                          _,
+                        ) {
+                          final flow =
+                              _flowController
+                                  .value;
+
+                          return Align(
+                            alignment:
+                                Alignment
+                                    .centerLeft,
+
+                            child:
+                                FractionallySizedBox(
+                              widthFactor:
+                                  _progressAnimation
+                                      .value
+                                      .clamp(
+                                0.0,
+                                1.0,
+                              ),
+
+                              heightFactor:
+                                  1,
+
+                              child:
+                                  Container(
+                                decoration:
+                                    BoxDecoration(
+                                  gradient:
+                                      LinearGradient(
+                                    begin:
+                                        Alignment(
+                                      -1.8 +
+                                          flow *
+                                              3.6,
+                                      0,
+                                    ),
+
+                                    end:
+                                        Alignment(
+                                      -0.2 +
+                                          flow *
+                                              3.6,
+                                      0,
+                                    ),
+
+                                    colors:
+                                        const [
+                                      chipluxCyan,
+                                      Colors
+                                          .white,
+                                      chipluxViolet,
+                                      chipluxPurple,
+                                    ],
+
+                                    stops:
+                                        const [
+                                      0,
+                                      0.35,
+                                      0.65,
+                                      1,
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+
+                    const SizedBox(
+                      height:
+                          6,
+                    ),
+
+                    // =============================
+                    // PROGRESS TEXT
+                    // =============================
+
+                    Row(
+                      children: [
+                        Text(
+                          '$minutesInLevel / '
+                          '$requiredMinutes min',
+
+                          style:
+                              const TextStyle(
+                            color:
+                                Colors
+                                    .white54,
+
+                            fontSize:
+                                10,
+
+                            fontWeight:
+                                FontWeight
+                                    .w600,
+                          ),
+                        ),
+
+                        const Spacer(),
+
+                        Text(
+                          _formatTimeLeft(
+                            minutesLeft,
+                          ),
+
+                          style:
+                              const TextStyle(
+                            color:
+                                Colors
+                                    .white70,
+
+                            fontSize:
+                                10,
+
+                            fontWeight:
+                                FontWeight
+                                    .w600,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(
+                      height:
+                          2,
+                    ),
+
+                    Text(
+                      'to Level '
+                      '${level + 1}',
+
+                      style:
+                          const TextStyle(
+                        color:
+                            Colors
+                                .white38,
+
+                        fontSize:
+                            9,
+
+                        fontWeight:
+                            FontWeight
+                                .w500,
+                      ),
                     ),
                   ],
                 ),
-                clipBehavior:
-                    Clip.antiAlias,
-                child: AnimatedBuilder(
-                  animation:
-                      Listenable.merge([
-                    _progressAnimation,
-                    _flowController,
-                  ]),
-                  builder: (
-                    context,
-                    _,
-                  ) {
-                    final flow =
-                        _flowController.value;
-
-                    return Align(
-                      alignment:
-                          Alignment.centerLeft,
-                      child:
-                          FractionallySizedBox(
-                        widthFactor:
-                            _progressAnimation
-                                .value
-                                .clamp(
-                          0.0,
-                          1.0,
-                        ),
-                        heightFactor: 1,
-                        child: Container(
-                          decoration:
-                              BoxDecoration(
-                            gradient:
-                                LinearGradient(
-                              begin:
-                                  Alignment(
-                                -1.8 +
-                                    flow *
-                                        3.6,
-                                0,
-                              ),
-                              end:
-                                  Alignment(
-                                -0.2 +
-                                    flow *
-                                        3.6,
-                                0,
-                              ),
-                              colors:
-                                  const [
-                                chipluxCyan,
-                                Colors.white,
-                                chipluxViolet,
-                                chipluxPurple,
-                              ],
-                              stops:
-                                  const [
-                                0.0,
-                                0.35,
-                                0.65,
-                                1.0,
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-
-              const SizedBox(
-                height: 10,
-              ),
-
-              Text(
-                '${_formatTimeLeft(minutesLeft)} '
-                'to Level ${level + 1}',
-                style:
-                    const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 13,
-                  fontWeight:
-                      FontWeight.w500,
-                ),
               ),
             ],
           ),
         ),
       ),
+    );
+  }
 
-      // RUNTIME ICON ON FRAME
-      Positioned(
-        top: -13,
-        left: 28,
-        child: Container(
-          width: 30,
-          height: 30,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: chipluxBackground,
-            border: Border.all(
-              color: chipluxCyan,
-              width: 1.2,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: chipluxCyan
-                    .withValues(
-                  alpha: 0.25,
-                ),
-                blurRadius: 10,
-              ),
-            ],
-          ),
-          child: const Icon(
-            Icons.av_timer_rounded,
-            color: chipluxCyan,
-            size: 20,
-          ),
-        ),
-      ),
-    ],
-  ),
-  );
-}
+  @override
+  void dispose() {
+    _controller.dispose();
+    _flowController.dispose();
+
+    super.dispose();
+  }
 }
 
 
@@ -19862,92 +21127,213 @@ class _WatchStatCard
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(
+    BuildContext context,
+  ) {
+    final cleanLabel =
+        label.replaceAll(
+      '\n',
+      ' ',
+    );
+
     return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
+      color:
+          Colors.transparent,
+
+      child:
+          InkWell(
+        onTap:
+            onTap,
+
         borderRadius:
-            BorderRadius.circular(18),
-        child: Container(
-  constraints:
-      const BoxConstraints(
-    minHeight: 100,
-  ),
-  padding:
-      const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: chipluxSurface,
+            BorderRadius.circular(
+          15,
+        ),
+
+        child:
+            Container(
+          height:
+              58,
+
+          padding:
+              const EdgeInsets
+                  .symmetric(
+            horizontal:
+                12,
+            vertical:
+                8,
+          ),
+
+          decoration:
+              BoxDecoration(
+            color:
+                chipluxSurface,
+
             borderRadius:
-                BorderRadius.circular(18),
-            border: Border.all(
-              color: Colors.white
-                  .withValues(
-                alpha: 0.05,
+                BorderRadius.circular(
+              15,
+            ),
+
+            border:
+                Border.all(
+              color:
+                  Colors.white
+                      .withValues(
+                alpha:
+                    0.055,
               ),
             ),
           ),
-          child: Column(
-  mainAxisSize:
-      MainAxisSize.min,
-  mainAxisAlignment:
-      MainAxisAlignment.spaceBetween,
-  crossAxisAlignment:
-      CrossAxisAlignment.start,
-  children: [
+
+          child:
               Row(
-                children: [
-                  ShaderMask(
+            children: [
+              // =========================
+              // ICON
+              // =========================
+
+              Container(
+                width:
+                    38,
+                height:
+                    38,
+
+                decoration:
+                    BoxDecoration(
+                  borderRadius:
+                      BorderRadius
+                          .circular(
+                    11,
+                  ),
+
+                  color:
+                      chipluxCyan
+                          .withValues(
+                    alpha:
+                        0.07,
+                  ),
+
+                  border:
+                      Border.all(
+                    color:
+                        chipluxCyan
+                            .withValues(
+                      alpha:
+                          0.13,
+                    ),
+                  ),
+                ),
+
+                child:
+                    Center(
+                  child:
+                      ShaderMask(
                     shaderCallback:
-                        (bounds) =>
-                            const LinearGradient(
-                      colors: [
-                        chipluxCyan,
-                        chipluxViolet,
-                        chipluxPurple,
-                      ],
-                    ).createShader(
+                        (
                       bounds,
-                    ),
-                    child: Icon(
+                    ) {
+                      return const LinearGradient(
+                        colors: [
+                          chipluxCyan,
+                          chipluxViolet,
+                          chipluxPurple,
+                        ],
+                      ).createShader(
+                        bounds,
+                      );
+                    },
+
+                    child:
+                        Icon(
                       icon,
-                      color: Colors.white,
-                      size: 23,
+                      color:
+                          Colors.white,
+                      size:
+                          20,
                     ),
                   ),
-
-                  const Spacer(),
-
-                  Text(
-                    '$value',
-                    style:
-                        const TextStyle(
-                      fontSize: 24,
-                      fontWeight:
-                          FontWeight.bold,
-                    ),
-                  ),
-                ],
+                ),
               ),
 
               const SizedBox(
-  height: 14,
-),
+                width:
+                    12,
+              ),
 
-              Text(
-  label,
-  maxLines: 2,
-  overflow:
-      TextOverflow.ellipsis,
-  style:
-                    const TextStyle(
-                  color: Colors.white60,
-                  fontSize: 12,
-                  fontWeight:
-                      FontWeight.w600,
-                  height: 1.2,
+              // =========================
+              // LABEL
+              // =========================
+
+              Expanded(
+                child:
+                    Text(
+                  cleanLabel,
+
+                  maxLines:
+                      1,
+
+                  overflow:
+                      TextOverflow
+                          .ellipsis,
+
+                  style:
+                      const TextStyle(
+                    color:
+                        Colors
+                            .white70,
+
+                    fontSize:
+                        13,
+
+                    fontWeight:
+                        FontWeight
+                            .w600,
+                  ),
                 ),
               ),
+
+              // =========================
+              // VALUE
+              // =========================
+
+              Text(
+                '$value',
+
+                style:
+                    const TextStyle(
+                  color:
+                      Colors.white,
+
+                  fontSize:
+                      21,
+
+                  fontWeight:
+                      FontWeight
+                          .w800,
+                ),
+              ),
+
+              // =========================
+              // TAP INDICATOR
+              // =========================
+
+              if (onTap != null) ...[
+                const SizedBox(
+                  width:
+                      7,
+                ),
+
+                const Icon(
+                  Icons
+                      .chevron_right_rounded,
+
+                  color:
+                      Colors.white24,
+
+                  size:
+                      19,
+                ),
+              ],
             ],
           ),
         ),
@@ -19970,115 +21356,222 @@ class _RatingStatCard
     this.onTap,
   });
 
+  static const Color
+      criticGold =
+      Color(
+    0xFFFFC857,
+  );
+
+  static const Color
+      criticOrange =
+      Color(
+    0xFFFF8A4C,
+  );
+
   @override
   Widget build(
     BuildContext context,
   ) {
+    final cleanLabel =
+        label.replaceAll(
+      '\n',
+      ' ',
+    );
+
     return Material(
       color:
           Colors.transparent,
-      child: InkWell(
+
+      child:
+          InkWell(
         onTap:
             onTap,
+
         borderRadius:
             BorderRadius.circular(
-          18,
+          15,
         ),
-        child: Container(
-  constraints:
-      const BoxConstraints(
-    minHeight: 100,
-  ),
-  padding:
-      const EdgeInsets.all(
-    14,
-  ),
+
+        child:
+            Container(
+          height:
+              58,
+
+          padding:
+              const EdgeInsets
+                  .symmetric(
+            horizontal:
+                12,
+            vertical:
+                8,
+          ),
+
           decoration:
               BoxDecoration(
             color:
                 chipluxSurface,
+
             borderRadius:
                 BorderRadius.circular(
-              18,
+              15,
             ),
+
             border:
                 Border.all(
               color:
-                  const Color(
-                0xFFFFC857,
-              ).withValues(
-                alpha: 0.10,
+                  criticGold
+                      .withValues(
+                alpha:
+                    0.10,
               ),
             ),
           ),
-          child: Column(
-  mainAxisSize:
-      MainAxisSize.min,
-  mainAxisAlignment:
-      MainAxisAlignment.spaceBetween,
-  crossAxisAlignment:
-      CrossAxisAlignment.start,
-  children: [
+
+          child:
               Row(
-                children: [
-                  ShaderMask(
+            children: [
+              // =========================
+              // ICON
+              // =========================
+
+              Container(
+                width:
+                    38,
+                height:
+                    38,
+
+                decoration:
+                    BoxDecoration(
+                  borderRadius:
+                      BorderRadius
+                          .circular(
+                    11,
+                  ),
+
+                  color:
+                      criticGold
+                          .withValues(
+                    alpha:
+                        0.065,
+                  ),
+
+                  border:
+                      Border.all(
+                    color:
+                        criticGold
+                            .withValues(
+                      alpha:
+                          0.14,
+                    ),
+                  ),
+                ),
+
+                child:
+                    Center(
+                  child:
+                      ShaderMask(
                     shaderCallback:
-                        (bounds) {
+                        (
+                      bounds,
+                    ) {
                       return const LinearGradient(
                         colors: [
-                          Color(
-                            0xFFFFC857,
-                          ),
-                          Color(
-                            0xFFFF8A4C,
-                          ),
+                          criticGold,
+                          criticOrange,
                           chipluxPurple,
                         ],
                       ).createShader(
                         bounds,
                       );
                     },
-                    child: Icon(
+
+                    child:
+                        Icon(
                       icon,
                       color:
                           Colors.white,
-                      size: 23,
+                      size:
+                          20,
                     ),
                   ),
-
-                  const Spacer(),
-
-                  Text(
-                    '$value',
-                    style:
-                        const TextStyle(
-                      fontSize: 24,
-                      fontWeight:
-                          FontWeight.bold,
-                    ),
-                  ),
-                ],
+                ),
               ),
 
               const SizedBox(
-  height: 14,
-),
+                width:
+                    12,
+              ),
 
-              Text(
-  label,
-  maxLines: 2,
-  overflow:
-      TextOverflow.ellipsis,
-  style:
-                    const TextStyle(
-                  color:
-                      Colors.white60,
-                  fontSize: 12,
-                  fontWeight:
-                      FontWeight.w600,
-                  height: 1.2,
+              // =========================
+              // LABEL
+              // =========================
+
+              Expanded(
+                child:
+                    Text(
+                  cleanLabel,
+
+                  maxLines:
+                      1,
+
+                  overflow:
+                      TextOverflow
+                          .ellipsis,
+
+                  style:
+                      const TextStyle(
+                    color:
+                        Colors
+                            .white70,
+
+                    fontSize:
+                        13,
+
+                    fontWeight:
+                        FontWeight
+                            .w600,
+                  ),
                 ),
               ),
+
+              // =========================
+              // VALUE
+              // =========================
+
+              Text(
+                '$value',
+
+                style:
+                    const TextStyle(
+                  color:
+                      criticGold,
+
+                  fontSize:
+                      21,
+
+                  fontWeight:
+                      FontWeight
+                          .w800,
+                ),
+              ),
+
+              if (onTap != null) ...[
+                const SizedBox(
+                  width:
+                      7,
+                ),
+
+                const Icon(
+                  Icons
+                      .chevron_right_rounded,
+
+                  color:
+                      Colors.white24,
+
+                  size:
+                      19,
+                ),
+              ],
             ],
           ),
         ),
@@ -20102,10 +21595,6 @@ class _EditProfilePageState
 
   late final TextEditingController
       displayNameController;
-
-  late final TextEditingController
-      usernameController;
-
 
   bool saving = false;
   bool uploadingAvatar = false;
@@ -20135,11 +21624,6 @@ class _EditProfilePageState
     displayNameController =
         TextEditingController(
       text: profile.displayName,
-    );
-
-    usernameController =
-        TextEditingController(
-      text: profile.username,
     );
   }
 
@@ -20191,10 +21675,7 @@ class _EditProfilePageState
     final displayName =
         displayNameController.text.trim();
 
-    final username =
-        usernameController.text
-            .trim()
-            .toLowerCase();
+    
 
     if (displayName.isEmpty) {
       setState(() {
@@ -20203,30 +21684,6 @@ class _EditProfilePageState
       });
 
       return;
-    }
-
-    if (username.isNotEmpty) {
-      final validUsername =
-          RegExp(r'^[a-z0-9_]+$');
-
-      if (!validUsername
-          .hasMatch(username)) {
-        setState(() {
-          errorMessage =
-              'Username can only contain letters, numbers and underscores.';
-        });
-
-        return;
-      }
-
-      if (username.length < 3) {
-        setState(() {
-          errorMessage =
-              'Username must be at least 3 characters.';
-        });
-
-        return;
-      }
     }
 
     setState(() {
@@ -20256,9 +21713,9 @@ class _EditProfilePageState
       }
 
       await profile.updateProfile(
-        displayName: displayName,
-        username: username,
-      );
+  displayName: displayName,
+  username: profile.username,
+);
 
       if (mounted) {
         Navigator.pop(context);
@@ -20380,7 +21837,6 @@ class _EditProfilePageState
   @override
   void dispose() {
     displayNameController.dispose();
-    usernameController.dispose();
 
     super.dispose();
   }
@@ -20530,52 +21986,50 @@ const SizedBox(
   height: 30,
 ),
 
-            TextField(
-              controller:
-                  displayNameController,
-              maxLength: 40,
-              decoration:
-                  const InputDecoration(
-                labelText:
-                    'Display Name',
-                prefixIcon: Icon(
-                  Icons.person_outline,
-                ),
-              ),
-            ),
 
             const SizedBox(height: 10),
 
-            TextField(
-              controller:
-                  usernameController,
-              maxLength: 20,
-              autocorrect: false,
-              decoration:
-                  const InputDecoration(
-                labelText: 'Username',
-                prefixText: '@',
-                prefixIcon: Icon(
-                  Icons.alternate_email,
-                ),
-                helperText:
-                    'Letters, numbers and underscores only',
-              ),
-            ),
+            const SizedBox(
+  height: 30,
+),
 
-            const SizedBox(height: 10),
+TextField(
+  controller:
+      displayNameController,
 
-            if (errorMessage != null) ...[
-              const SizedBox(height: 10),
+  maxLength:
+      40,
 
-              Text(
-                errorMessage!,
-                style: const TextStyle(
-                  color:
-                      Colors.redAccent,
-                ),
-              ),
-            ],
+  decoration:
+      const InputDecoration(
+    labelText:
+        'Display Name',
+
+    prefixIcon:
+        Icon(
+      Icons.person_outline,
+    ),
+  ),
+),
+
+const SizedBox(
+  height: 10,
+),
+
+if (errorMessage != null) ...[
+  const SizedBox(
+    height: 10,
+  ),
+
+  Text(
+    errorMessage!,
+    style:
+        const TextStyle(
+      color:
+          Colors.redAccent,
+    ),
+  ),
+],
 
             const SizedBox(height: 20),
 
