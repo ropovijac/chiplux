@@ -7196,21 +7196,41 @@ class _TodayMediaCard extends StatelessWidget {
           child: Row(
             children: [
               ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: posterUrl != null
-                    ? Image.network(
-                        posterUrl,
-                        width: 96,
-                        height: 141,
-                        fit: BoxFit.cover,
-                      )
-                    : Container(
-                        width: 96,
-                        height: 141,
-                        color: chipluxSurfaceLight,
-                        child: const Icon(Icons.movie_outlined),
-                      ),
+  borderRadius: BorderRadius.circular(14),
+
+  child: posterUrl != null
+      ? Image.network(
+          posterUrl,
+          width: 96,
+          height: 141,
+          fit: BoxFit.cover,
+
+          errorBuilder: (
+            context,
+            error,
+            stackTrace,
+          ) {
+            return Container(
+              width: 96,
+              height: 141,
+              color: chipluxSurfaceLight,
+              child: const Icon(
+                Icons.movie_outlined,
+                color: Colors.white38,
               ),
+            );
+          },
+        )
+      : Container(
+          width: 96,
+          height: 141,
+          color: chipluxSurfaceLight,
+          child: const Icon(
+            Icons.movie_outlined,
+            color: Colors.white38,
+          ),
+        ),
+),
 
               const SizedBox(width: 15),
 
@@ -7602,20 +7622,41 @@ class _Top100Row extends StatelessWidget {
               ),
 
               ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: posterUrl != null
-                    ? Image.network(
-                        posterUrl,
-                        width: 58,
-                        height: 89,
-                        fit: BoxFit.cover,
-                      )
-                    : Container(
-                        width: 58,
-                        height: 89,
-                        color: chipluxSurfaceLight,
-                      ),
+  borderRadius: BorderRadius.circular(10),
+
+  child: posterUrl != null
+      ? Image.network(
+          posterUrl,
+          width: 58,
+          height: 89,
+          fit: BoxFit.cover,
+
+          errorBuilder: (
+            context,
+            error,
+            stackTrace,
+          ) {
+            return Container(
+              width: 58,
+              height: 89,
+              color: chipluxSurfaceLight,
+              child: const Icon(
+                Icons.movie_outlined,
+                color: Colors.white38,
               ),
+            );
+          },
+        )
+      : Container(
+          width: 58,
+          height: 89,
+          color: chipluxSurfaceLight,
+          child: const Icon(
+            Icons.movie_outlined,
+            color: Colors.white38,
+          ),
+        ),
+),
 
               const SizedBox(width: 12),
 
@@ -8028,20 +8069,41 @@ class _SearchPageState extends State<SearchPage> {
                       child: Row(
                         children: [
                           ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: posterUrl != null
-                                ? Image.network(
-                                    posterUrl,
-                                    width: 72,
-                                    height: 105,
-                                    fit: BoxFit.cover,
-                                  )
-                                : Container(
-                                    width: 72,
-                                    height: 105,
-                                    color: chipluxSurfaceLight,
-                                  ),
-                          ),
+  borderRadius: BorderRadius.circular(12),
+
+  child: posterUrl != null
+      ? Image.network(
+          posterUrl,
+          width: 72,
+          height: 105,
+          fit: BoxFit.cover,
+
+          errorBuilder: (
+            context,
+            error,
+            stackTrace,
+          ) {
+            return Container(
+              width: 72,
+              height: 105,
+              color: chipluxSurfaceLight,
+              child: const Icon(
+                Icons.movie_outlined,
+                color: Colors.white38,
+              ),
+            );
+          },
+        )
+      : Container(
+          width: 72,
+          height: 105,
+          color: chipluxSurfaceLight,
+          child: const Icon(
+            Icons.movie_outlined,
+            color: Colors.white38,
+          ),
+        ),
+),
 
                           const SizedBox(width: 14),
 
@@ -16918,20 +16980,41 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       ClipRRect(
-                        borderRadius: BorderRadius.circular(15),
-                        child: posterUrl != null
-                            ? Image.network(
-                                posterUrl,
-                                width: 125,
-                                height: 188,
-                                fit: BoxFit.cover,
-                              )
-                            : Container(
-                                width: 125,
-                                height: 188,
-                                color: chipluxSurface,
-                              ),
-                      ),
+  borderRadius: BorderRadius.circular(15),
+
+  child: posterUrl != null
+      ? Image.network(
+          posterUrl,
+          width: 125,
+          height: 188,
+          fit: BoxFit.cover,
+
+          errorBuilder: (
+            context,
+            error,
+            stackTrace,
+          ) {
+            return Container(
+              width: 125,
+              height: 188,
+              color: chipluxSurface,
+              child: const Icon(
+                Icons.movie_outlined,
+                color: Colors.white38,
+              ),
+            );
+          },
+        )
+      : Container(
+          width: 125,
+          height: 188,
+          color: chipluxSurface,
+          child: const Icon(
+            Icons.movie_outlined,
+            color: Colors.white38,
+          ),
+        ),
+),
 
                       const SizedBox(width: 18),
 
