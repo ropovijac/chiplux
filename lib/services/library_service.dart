@@ -226,6 +226,31 @@ class LibraryService
                 'completed',
       ).length;
 
+     int get watchedEpisodeMinutes {
+  int total = 0;
+
+  for (final key in _watchedEpisodes) {
+    total +=
+        _watchedEpisodeRuntimes[key] ??
+            0;
+  }
+
+  return total;
+}
+
+int get watchedMovieMinutes {
+  int total = 0;
+
+  for (final item in _items) {
+    if (item.mediaType == 'movie' &&
+        item.status == 'completed') {
+      total += item.runtimeMinutes;
+    }
+  }
+
+  return total;
+} 
+
   int get totalWatchedMinutes {
     int total = 0;
 
