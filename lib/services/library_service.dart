@@ -219,6 +219,13 @@ class LibraryService
                 'completed',
       ).length;
 
+      int get completedTvShowsCount =>
+    _items.where(
+      (item) =>
+          item.mediaType == 'tv' &&
+          item.status == 'completed',
+    ).length;
+
   int get completedCount =>
       _items.where(
         (item) =>

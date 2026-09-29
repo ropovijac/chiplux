@@ -141,6 +141,16 @@ _AchievementGroup _movieAchievementGroupFor(int moviesWatched) {
       ),
 
       _Achievement(
+  id: 'movies_256',
+  title: 'Film Authority',
+  description: 'Watch 256 movies',
+  icon: Icons.stars_rounded,
+  current: moviesWatched,
+  target: 256,
+  rarity: _AchievementRarity.epic,
+),
+
+      _Achievement(
         id: 'movies_512',
         title: 'Cinema Master',
         description: 'Watch 512 movies',
@@ -157,6 +167,166 @@ _AchievementGroup _movieAchievementGroupFor(int moviesWatched) {
         icon: Icons.diamond_rounded,
         current: moviesWatched,
         target: 1024,
+        rarity: _AchievementRarity.legendary,
+      ),
+    ],
+  );
+}
+
+_AchievementGroup _tvAchievementGroupFor(
+  int completedTvShows,
+) {
+  return _AchievementGroup(
+    id: 'tv_shows_completed',
+
+    title: 'TV Shows Completed',
+
+    description:
+        'Complete TV series to upgrade your avatar frame.',
+
+    icon:
+        Icons.tv_rounded,
+
+    current:
+        completedTvShows,
+
+    tiers: [
+      _Achievement(
+        id: 'tv_2',
+        title: 'Channel Surfer',
+        description: 'Complete 2 TV shows',
+        icon: Icons.tv_rounded,
+        current: completedTvShows,
+        target: 2,
+        rarity: _AchievementRarity.common,
+      ),
+
+      _Achievement(
+        id: 'tv_8',
+        title: 'Series Starter',
+        description: 'Complete 8 TV shows',
+        icon: Icons.live_tv_rounded,
+        current: completedTvShows,
+        target: 8,
+        rarity: _AchievementRarity.uncommon,
+      ),
+
+      _Achievement(
+        id: 'tv_16',
+        title: 'Binge Watcher',
+        description: 'Complete 16 TV shows',
+        icon: Icons.ondemand_video_rounded,
+        current: completedTvShows,
+        target: 16,
+        rarity: _AchievementRarity.uncommon,
+      ),
+
+      _Achievement(
+        id: 'tv_32',
+        title: 'Seasoned Viewer',
+        description: 'Complete 32 TV shows',
+        icon: Icons.video_collection_rounded,
+        current: completedTvShows,
+        target: 32,
+        rarity: _AchievementRarity.rare,
+      ),
+
+      _Achievement(
+        id: 'tv_64',
+        title: 'Series Buff',
+        description: 'Complete 64 TV shows',
+        icon: Icons.connected_tv_rounded,
+        current: completedTvShows,
+        target: 64,
+        rarity: _AchievementRarity.rare,
+      ),
+
+      _Achievement(
+        id: 'tv_128',
+        title: 'TV Connoisseur',
+        description: 'Complete 128 TV shows',
+        icon: Icons.auto_awesome_rounded,
+        current: completedTvShows,
+        target: 128,
+        rarity: _AchievementRarity.epic,
+      ),
+
+      _Achievement(
+        id: 'tv_256',
+        title: 'Small Screen Legend',
+        description: 'Complete 256 TV shows',
+        icon: Icons.workspace_premium_rounded,
+        current: completedTvShows,
+        target: 256,
+        rarity: _AchievementRarity.legendary,
+      ),
+    ],
+  );
+}
+
+_AchievementGroup _episodeAchievementGroupFor(
+  int episodesWatched,
+) {
+  return _AchievementGroup(
+    id: 'episodes_watched',
+
+    title: 'Episodes Watched',
+
+    description:
+        'Keep watching episodes to upgrade this medal.',
+
+    icon: Icons.playlist_add_check_rounded,
+
+    current: episodesWatched,
+
+    tiers: [
+      _Achievement(
+        id: 'episodes_128',
+        title: 'Episode Regular',
+        description: 'Watch 128 episodes',
+        icon: Icons.tv_outlined,
+        current: episodesWatched,
+        target: 128,
+        rarity: _AchievementRarity.common,
+      ),
+
+      _Achievement(
+        id: 'episodes_256',
+        title: 'Seasoned Binger',
+        description: 'Watch 256 episodes',
+        icon: Icons.live_tv_rounded,
+        current: episodesWatched,
+        target: 256,
+        rarity: _AchievementRarity.uncommon,
+      ),
+
+      _Achievement(
+        id: 'episodes_512',
+        title: 'Episode Collector',
+        description: 'Watch 512 episodes',
+        icon: Icons.video_collection_rounded,
+        current: episodesWatched,
+        target: 512,
+        rarity: _AchievementRarity.rare,
+      ),
+
+      _Achievement(
+        id: 'episodes_1024',
+        title: 'Marathon Viewer',
+        description: 'Watch 1024 episodes',
+        icon: Icons.auto_awesome_rounded,
+        current: episodesWatched,
+        target: 1024,
+        rarity: _AchievementRarity.epic,
+      ),
+
+      _Achievement(
+        id: 'episodes_2048',
+        title: 'Episode Legend',
+        description: 'Watch 2048 episodes',
+        icon: Icons.workspace_premium_rounded,
+        current: episodesWatched,
+        target: 2048,
         rarity: _AchievementRarity.legendary,
       ),
     ],
@@ -220,6 +390,164 @@ Future<void> _checkMovieAchievementUnlock(
     }
 
     await _showAchievementUnlocked(context, achievement);
+  }
+}
+
+Future<void> _checkTvAchievementUnlock(
+  BuildContext context, {
+  required int previousCount,
+  required int currentCount,
+}) async {
+  if (currentCount <= previousCount) {
+    return;
+  }
+
+  final group =
+      _tvAchievementGroupFor(
+    currentCount,
+  );
+
+  final newlyReached =
+      group.tiers.where(
+    (achievement) {
+      return previousCount <
+              achievement.target &&
+          currentCount >=
+              achievement.target;
+    },
+  ).toList();
+
+  if (newlyReached.isEmpty) {
+    return;
+  }
+
+  for (final achievement
+      in newlyReached) {
+    if (!context.mounted) {
+      return;
+    }
+
+    await Future<void>.delayed(
+      const Duration(
+        milliseconds: 550,
+      ),
+    );
+
+    if (!context.mounted) {
+      return;
+    }
+
+    try {
+      await CommunityService.instance
+          .deleteActivity(
+        activityType:
+            'achievement_unlocked',
+        achievementId:
+            achievement.id,
+      );
+
+      await CommunityService.instance
+          .tryCreateActivity(
+        activityType:
+            'achievement_unlocked',
+        achievementId:
+            achievement.id,
+        achievementTitle:
+            achievement.title,
+      );
+    } catch (e) {
+      debugPrint(
+        'Could not create TV achievement activity: $e',
+      );
+    }
+
+    if (!context.mounted) {
+      return;
+    }
+
+    await _showAchievementUnlocked(
+      context,
+      achievement,
+    );
+  }
+}
+
+Future<void> _checkEpisodeAchievementUnlock(
+  BuildContext context, {
+  required int previousCount,
+  required int currentCount,
+}) async {
+  if (currentCount <= previousCount) {
+    return;
+  }
+
+  final group =
+      _episodeAchievementGroupFor(
+    currentCount,
+  );
+
+  final newlyReached =
+      group.tiers.where(
+    (achievement) {
+      return previousCount <
+              achievement.target &&
+          currentCount >=
+              achievement.target;
+    },
+  ).toList();
+
+  if (newlyReached.isEmpty) {
+    return;
+  }
+
+  for (final achievement
+      in newlyReached) {
+    if (!context.mounted) {
+      return;
+    }
+
+    await Future<void>.delayed(
+      const Duration(
+        milliseconds: 550,
+      ),
+    );
+
+    if (!context.mounted) {
+      return;
+    }
+
+    try {
+      await CommunityService.instance
+          .deleteActivity(
+        activityType:
+            'achievement_unlocked',
+        achievementId:
+            achievement.id,
+      );
+
+      await CommunityService.instance
+          .tryCreateActivity(
+        activityType:
+            'achievement_unlocked',
+        achievementId:
+            achievement.id,
+        achievementTitle:
+            achievement.title,
+      );
+    } catch (e) {
+      debugPrint(
+        'Could not create episode achievement activity: $e',
+      );
+    }
+
+    if (!context.mounted) {
+      return;
+    }
+
+    await _showAchievementUnlocked(
+      context,
+      achievement,
+    );
   }
 }
 
@@ -3423,14 +3751,56 @@ class PublicStatsSyncService {
 
     final critic = CriticService.instance;
 
-    final achievementGroup = _movieAchievementGroupFor(
-      library.moviesWatchedCount,
-    );
+    final movieAchievementGroup =
+    _movieAchievementGroupFor(
+  library.moviesWatchedCount,
+);
 
-    final unlockedIds = achievementGroup.tiers
-        .where((achievement) => achievement.unlocked)
-        .map((achievement) => achievement.id)
-        .toList();
+final tvAchievementGroup =
+    _tvAchievementGroupFor(
+  library.completedTvShowsCount,
+);
+
+final episodeAchievementGroup =
+    _episodeAchievementGroupFor(
+  library.watchedEpisodeCount,
+);
+
+final unlockedIds = [
+  ...movieAchievementGroup.tiers
+      .where(
+        (achievement) =>
+            achievement.unlocked,
+      )
+      .map(
+        (achievement) =>
+            achievement.id,
+      ),
+
+  ...tvAchievementGroup.tiers
+      .where(
+        (achievement) =>
+            achievement.unlocked,
+      )
+      
+      .map(
+        (achievement) =>
+            achievement.id,
+      ),
+
+      ...episodeAchievementGroup.tiers
+    .where(
+      (achievement) =>
+          achievement.unlocked,
+    )
+    .map(
+      (achievement) =>
+          achievement.id,
+    ),
+      
+];
+
+
 
     final genreRuntime = _buildGenreRuntime(library);
 
@@ -3482,6 +3852,10 @@ class PublicStatsSyncService {
               'genre_runtime': genreRuntime,
 
               'unlocked_achievement_ids': unlockedIds,
+
+              'tv_shows_completed':
+    library
+        .completedTvShowsCount,
             },
 
             'pinned_achievement_id':
@@ -3651,7 +4025,8 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
             'banner_path, '
             'public_stats, '
             'pinned_achievement_id, '
-            'display_name_frame_id',
+            'display_name_frame_id, '
+            'avatar_frame_id',
           )
           .eq('id', widget.userId)
           .maybeSingle();
@@ -3799,7 +4174,22 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
 
     final moviesWatched = intStat('movies_watched');
 
+    final completedTvShows =
+    intStat(
+  'tv_shows_completed',
+);
+
+final tvGroup =
+    _tvAchievementGroupFor(
+  completedTvShows,
+);
+
     final episodesWatched = intStat('episodes_watched');
+
+    final episodeGroup =
+    _episodeAchievementGroupFor(
+  episodesWatched,
+);
 
     final episodeRatings = intStat('episode_ratings');
 
@@ -3869,16 +4259,39 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     // ACHIEVEMENTS + MEDAL
     // =========================
 
-    final movieGroup = _movieAchievementGroupFor(moviesWatched);
+    final movieGroup =
+    _movieAchievementGroupFor(
+  moviesWatched,
+);
 
-    final pinnedId = profile!['pinned_achievement_id']?.toString();
+final pinnedId =
+    profile![
+        'pinned_achievement_id']
+        ?.toString();
 
-    final displayNameFrameId = profile!['display_name_frame_id']?.toString();
+final displayNameFrameId =
+    profile![
+        'display_name_frame_id']
+        ?.toString();
 
-    final _Achievement? pinnedAchievement = pinnedId == movieGroup.id
-        ? movieGroup.highestUnlockedTier
-        : null;
+final avatarFrameId =
+    profile![
+        'avatar_frame_id']
+        ?.toString();
 
+final _Achievement?
+    pinnedAchievement =
+    pinnedId == movieGroup.id
+        ? movieGroup
+            .highestUnlockedTier
+        : pinnedId == tvGroup.id
+            ? tvGroup
+                .highestUnlockedTier
+            : pinnedId ==
+                    episodeGroup.id
+                ? episodeGroup
+                    .highestUnlockedTier
+                : null;
     return Scaffold(
       backgroundColor: chipluxBackground,
 
@@ -3949,60 +4362,47 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
 
                   child: Column(
                     children: [
-                      Container(
+                      SizedBox(
                         width: 94,
                         height: 94,
-                        padding: const EdgeInsets.all(3),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
+                        child: _AvatarFrame(
+                          frameId: avatarFrameId,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
 
-                          border: Border.all(color: Colors.white, width: 2),
+                              gradient: avatarUrl == null || avatarUrl.isEmpty
+                                  ? const LinearGradient(
+                                      colors: [
+                                        chipluxCyan,
+                                        chipluxViolet,
+                                        chipluxPurple,
+                                      ],
+                                    )
+                                  : null,
 
-                          color: chipluxBackground,
-
-                          boxShadow: [
-                            BoxShadow(
-                              color: chipluxViolet.withValues(alpha: 0.15),
-                              blurRadius: 20,
+                              image: avatarUrl != null && avatarUrl.isNotEmpty
+                                  ? DecorationImage(
+                                      image: NetworkImage(avatarUrl),
+                                      fit: BoxFit.cover,
+                                    )
+                                  : null,
                             ),
-                          ],
-                        ),
 
-                        child: Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-
-                            gradient: avatarUrl == null || avatarUrl.isEmpty
-                                ? const LinearGradient(
-                                    colors: [
-                                      chipluxCyan,
-                                      chipluxViolet,
-                                      chipluxPurple,
-                                    ],
-                                  )
-                                : null,
-
-                            image: avatarUrl != null && avatarUrl.isNotEmpty
-                                ? DecorationImage(
-                                    image: NetworkImage(avatarUrl),
-                                    fit: BoxFit.cover,
+                            child: avatarUrl == null || avatarUrl.isEmpty
+                                ? Center(
+                                    child: Text(
+                                      name.isNotEmpty
+                                          ? name[0].toUpperCase()
+                                          : 'C',
+                                      style: const TextStyle(
+                                        fontSize: 38,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
                                   )
                                 : null,
                           ),
-
-                          child: avatarUrl == null || avatarUrl.isEmpty
-                              ? Center(
-                                  child: Text(
-                                    name.isNotEmpty
-                                        ? name[0].toUpperCase()
-                                        : 'C',
-                                    style: const TextStyle(
-                                      fontSize: 38,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                )
-                              : null,
                         ),
                       ),
 
@@ -4153,7 +4553,24 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                   // ACHIEVEMENTS
                   // =========================
 
-                  _PublicAchievementsCard(group: movieGroup),
+                  _PublicAchievementsCard(
+  group:
+      movieGroup,
+),
+
+const SizedBox(height: 12),
+
+_PublicAchievementsCard(
+  group:
+      tvGroup,
+),
+
+const SizedBox(height: 12),
+
+_PublicAchievementsCard(
+  group:
+      episodeGroup,
+),
 
                   const SizedBox(height: 20),
 
@@ -4264,6 +4681,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     );
   }
 }
+
 
 class _PublicAchievementsCard extends StatelessWidget {
   final _AchievementGroup group;
@@ -9163,6 +9581,9 @@ class _LibraryPageState extends State<LibraryPage> {
 
         final int previousMovieCount = library.moviesWatchedCount;
 
+        final int previousTvCount =
+    library.completedTvShowsCount;
+
         await library.updateStatus(item.id, item.mediaType, status);
 
         if (item.mediaType == 'movie' &&
@@ -9190,22 +9611,39 @@ class _LibraryPageState extends State<LibraryPage> {
         }
 
         if (status == 'completed' &&
-            !wasCompleted &&
-            item.mediaType == 'movie') {
-          await Future<void>.delayed(const Duration(milliseconds: 200));
+    !wasCompleted) {
+  await Future<void>.delayed(
+    const Duration(
+      milliseconds: 200,
+    ),
+  );
 
-          if (!pageContext.mounted) {
-            return;
-          }
+  if (!pageContext.mounted) {
+    return;
+  }
 
-          showCompletionBurst(pageContext);
+  showCompletionBurst(
+    pageContext,
+  );
 
-          await _checkMovieAchievementUnlock(
-            pageContext,
-            previousCount: previousMovieCount,
-            currentCount: library.moviesWatchedCount,
-          );
-        }
+  if (item.mediaType == 'movie') {
+    await _checkMovieAchievementUnlock(
+      pageContext,
+      previousCount:
+          previousMovieCount,
+      currentCount:
+          library.moviesWatchedCount,
+    );
+  } else if (item.mediaType == 'tv') {
+    await _checkTvAchievementUnlock(
+      pageContext,
+      previousCount:
+          previousTvCount,
+      currentCount:
+          library.completedTvShowsCount,
+    );
+  }
+}
       },
     );
   }
@@ -9569,16 +10007,31 @@ class _WatchingTvCardState extends State<_WatchingTvCard> {
       return false;
     }
 
-    await library.toggleEpisode(
-      widget.item.id,
-      seasonNumber!,
-      episodeNumber!,
-      runtimeMinutes: runtime ?? 0,
-    );
+    final int previousEpisodeCount =
+    library.watchedEpisodeCount;
 
-    if (!mounted) {
-      return false;
-    }
+    await library.toggleEpisode(
+  widget.item.id,
+  seasonNumber!,
+  episodeNumber!,
+  runtimeMinutes: runtime ?? 0,
+);
+
+if (!mounted) {
+  return false;
+}
+
+await _checkEpisodeAchievementUnlock(
+  context,
+  previousCount:
+      previousEpisodeCount,
+  currentCount:
+      library.watchedEpisodeCount,
+);
+
+if (!mounted) {
+  return false;
+}
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -11318,6 +11771,69 @@ class AchievementsPage extends StatelessWidget {
                     ),
                   ],
 
+                  if (group.id ==
+    'tv_shows_completed') ...[
+  const SizedBox(height: 11),
+
+  Container(
+    width: double.infinity,
+
+    padding:
+        const EdgeInsets.symmetric(
+      horizontal: 12,
+      vertical: 9,
+    ),
+
+    decoration:
+        BoxDecoration(
+      color:
+          accent.withValues(
+        alpha: 0.065,
+      ),
+
+      borderRadius:
+          BorderRadius.circular(
+        12,
+      ),
+
+      border:
+          Border.all(
+        color:
+            accent.withValues(
+          alpha: 0.18,
+        ),
+      ),
+    ),
+
+    child: Row(
+      children: [
+        Icon(
+          Icons.account_circle_outlined,
+          color: accent,
+          size: 18,
+        ),
+
+        const SizedBox(
+          width: 9,
+        ),
+
+        const Expanded(
+          child: Text(
+            'Unlock to customize your avatar frame.',
+            style: TextStyle(
+              color:
+                  Colors.white70,
+              fontSize: 12,
+              fontWeight:
+                  FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
+    ),
+  ),
+],
+
                   const SizedBox(height: 17),
 
                   // =========================
@@ -11430,11 +11946,33 @@ class AchievementsPage extends StatelessWidget {
             // MOVIES ACHIEVEMENT GROUP
             // =========================
 
-            final int moviesWatched = library.moviesWatchedCount;
+            final int moviesWatched =
+    library.moviesWatchedCount;
 
-            final movieGroup = _movieAchievementGroupFor(moviesWatched);
+final int completedTvShows =
+    library.completedTvShowsCount;
 
-            final groups = <_AchievementGroup>[movieGroup];
+final movieGroup =
+    _movieAchievementGroupFor(
+  moviesWatched,
+);
+
+final tvGroup =
+    _tvAchievementGroupFor(
+  completedTvShows,
+);
+
+final episodeGroup =
+    _episodeAchievementGroupFor(
+  library.watchedEpisodeCount,
+);
+
+final groups =
+    <_AchievementGroup>[
+  movieGroup,
+  tvGroup,
+  episodeGroup,
+];
 
             // =========================
             // COLLECTION STATS
@@ -11544,17 +12082,22 @@ class AchievementsPage extends StatelessWidget {
                 const SizedBox(height: 25),
 
                 // =========================
-                // MOVIES SECTION
+                // ACHIEVEMENTS GRID
                 // =========================
                 const Text(
-                  'Movies',
-                  style: TextStyle(fontSize: 21, fontWeight: FontWeight.bold),
+                  'Achievements',
+                  style: TextStyle(
+                    fontSize: 21,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
 
                 const SizedBox(height: 5),
 
                 Text(
-                  '$moviesWatched movies watched',
+  '$moviesWatched movies · '
+  '$completedTvShows TV shows · '
+  '${library.watchedEpisodeCount} episodes',
                   style: const TextStyle(
                     color: Color(0x75FFFFFF),
                     fontSize: 12,
@@ -11592,11 +12135,12 @@ class AchievementsPage extends StatelessWidget {
 
                         mainAxisSpacing: 13,
 
-                        childAspectRatio: columns == 2
-                            ? 0.82
-                            : columns == 3
-                            ? 0.72
-                            : 0.80,
+                        childAspectRatio:
+    columns == 2
+        ? 0.68
+        : columns == 3
+        ? 0.60
+        : 0.68,
                       ),
 
                       itemBuilder: (context, index) {
@@ -11605,7 +12149,9 @@ class AchievementsPage extends StatelessWidget {
                         return _AchievementGroupCard(
                           group: group,
 
-                          isPinned: pinService.isPinned(group.id),
+                          isPinned: group.id == 'movies_watched'
+                              ? pinService.isPinned(group.id)
+                              : false,
 
                           onTap: () {
                             _showAchievementGroup(context, group);
@@ -11623,6 +12169,8 @@ class AchievementsPage extends StatelessWidget {
     );
   }
 }
+
+
 
 class _AchievementTierRow extends StatelessWidget {
   final _Achievement tier;
@@ -11720,91 +12268,442 @@ class _AchievementGroupCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final achieved = group.highestUnlockedTier;
+    final achieved =
+        group.highestUnlockedTier;
 
-    final next = group.nextTier;
+    final next =
+        group.nextTier;
+
+    final bool isMovieGroup =
+        group.id == 'movies_watched';
+
+    final bool isTvGroup =
+        group.id ==
+            'tv_shows_completed';
+
+    final Color accent =
+        achieved != null
+            ? _achievementAccent(
+                achieved.rarity,
+              )
+            : Colors.white38;
+
+    final String currentTitle =
+        achieved?.title ??
+            'No tier unlocked';
+
+    final String rewardLabel =
+        isMovieGroup
+            ? 'Display Frame'
+            : isTvGroup
+                ? 'Avatar Frame'
+                : 'Reward';
 
     return Material(
       color: Colors.transparent,
+
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+
+        borderRadius:
+            BorderRadius.circular(16),
+
         child: Container(
-          padding: const EdgeInsets.fromLTRB(8, 11, 8, 9),
-          decoration: BoxDecoration(
-            color: chipluxSurface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: achieved != null
-                  ? _achievementAccent(achieved.rarity).withValues(alpha: 0.28)
-                  : Colors.white.withValues(alpha: 0.06),
+          padding:
+              const EdgeInsets.fromLTRB(
+            8,
+            11,
+            8,
+            9,
+          ),
+
+          decoration:
+              BoxDecoration(
+            color:
+                chipluxSurface,
+
+            borderRadius:
+                BorderRadius.circular(
+              16,
+            ),
+
+            border:
+                Border.all(
+              color:
+                  achieved != null
+                      ? accent.withValues(
+                          alpha: 0.28,
+                        )
+                      : Colors.white
+                          .withValues(
+                          alpha: 0.06,
+                        ),
             ),
           ),
+
           child: Column(
             children: [
+              // =========================
+              // MEDAL
+              // =========================
               if (achieved != null)
-                _AchievementMedal(achievement: achieved)
+                _AchievementMedal(
+                  achievement:
+                      achieved,
+                )
               else
                 Container(
                   width: 62,
                   height: 62,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white.withValues(alpha: 0.05),
-                    border: Border.all(color: Colors.white12),
+
+                  decoration:
+                      BoxDecoration(
+                    shape:
+                        BoxShape.circle,
+
+                    color:
+                        Colors.white
+                            .withValues(
+                      alpha: 0.05,
+                    ),
+
+                    border:
+                        Border.all(
+                      color:
+                          Colors.white12,
+                    ),
                   ),
-                  child: Icon(group.icon, color: Colors.white24, size: 31),
+
+                  child: Icon(
+                    group.icon,
+                    color:
+                        Colors.white24,
+                    size: 31,
+                  ),
                 ),
 
-              const SizedBox(height: 9),
+              const SizedBox(
+                height: 9,
+              ),
 
+              // =========================
+              // GROUP TITLE
+              // =========================
               Text(
                 group.title,
+
                 maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: achieved != null ? Colors.white : Colors.white54,
+
+                overflow:
+                    TextOverflow.ellipsis,
+
+                textAlign:
+                    TextAlign.center,
+
+                style:
+                    TextStyle(
+                  color:
+                      achieved != null
+                          ? Colors.white
+                          : Colors
+                              .white54,
+
                   fontSize: 11,
-                  fontWeight: FontWeight.bold,
+
+                  fontWeight:
+                      FontWeight.bold,
                 ),
               ),
 
-              const SizedBox(height: 4),
-
-              Text(
-                next != null ? 'Next: ${next.target}' : 'Max tier',
-                style: const TextStyle(color: Colors.white38, fontSize: 8.5),
+              const SizedBox(
+                height: 3,
               ),
+
+              // =========================
+              // CURRENT ACHIEVEMENT
+              // =========================
+              Text(
+                currentTitle,
+
+                maxLines: 1,
+
+                overflow:
+                    TextOverflow.ellipsis,
+
+                textAlign:
+                    TextAlign.center,
+
+                style:
+                    TextStyle(
+                  color:
+                      achieved != null
+                          ? accent
+                          : Colors
+                              .white30,
+
+                  fontSize: 9.5,
+
+                  fontWeight:
+                      FontWeight.w700,
+                ),
+              ),
+
+              const SizedBox(
+                height: 3,
+              ),
+
+              // =========================
+              // NEXT TIER
+              // =========================
+              Text(
+                next != null
+                    ? 'Next: ${next.target}'
+                    : 'Max tier',
+
+                style:
+                    const TextStyle(
+                  color:
+                      Colors.white38,
+
+                  fontSize: 8.5,
+                ),
+              ),
+
+              // =========================
+              // REWARD
+              // =========================
+              if (isMovieGroup ||
+    isTvGroup) ...[
+  const SizedBox(
+    height: 10,
+  ),
+              Container(
+                width:
+                    double.infinity,
+
+                padding:
+                    const EdgeInsets
+                        .symmetric(
+                  horizontal: 7,
+                  vertical: 6,
+                ),
+
+                decoration:
+                    BoxDecoration(
+                  color:
+                      Colors.white
+                          .withValues(
+                    alpha: 0.025,
+                  ),
+
+                  borderRadius:
+                      BorderRadius
+                          .circular(
+                    10,
+                  ),
+
+                  border:
+                      Border.all(
+                    color:
+                        Colors.white
+                            .withValues(
+                      alpha: 0.05,
+                    ),
+                  ),
+                ),
+
+                child: Column(
+                  children: [
+                    Text(
+                      'REWARD · $rewardLabel',
+
+                      maxLines: 1,
+
+                      overflow:
+                          TextOverflow
+                              .ellipsis,
+
+                      style:
+                          const TextStyle(
+                        color:
+                            Colors
+                                .white38,
+
+                        fontSize: 7.5,
+
+                        fontWeight:
+                            FontWeight
+                                .w700,
+
+                        letterSpacing:
+                            0.4,
+                      ),
+                    ),
+
+                    const SizedBox(
+                      height: 6,
+                    ),
+
+                    if (isMovieGroup)
+                      // =================
+                      // DISPLAY FRAME
+                      // =================
+                      _DisplayNameFrame(
+                        frameId:
+                            achieved?.id,
+
+                        radius: 10,
+
+                        child:
+                            Container(
+                          width: 64,
+                          height: 21,
+
+                          alignment:
+                              Alignment
+                                  .center,
+
+                          decoration:
+                              BoxDecoration(
+                            color:
+                                chipluxSurfaceLight,
+
+                            borderRadius:
+                                BorderRadius
+                                    .circular(
+                              9,
+                            ),
+                          ),
+
+                          child:
+                              Text(
+                            achieved !=
+                                    null
+                                ? 'Name'
+                                : 'Locked',
+
+                            style:
+                                TextStyle(
+                              color:
+                                  achieved !=
+                                          null
+                                      ? Colors
+                                          .white70
+                                      : Colors
+                                          .white24,
+
+                              fontSize:
+                                  7.5,
+
+                              fontWeight:
+                                  FontWeight
+                                      .bold,
+                            ),
+                          ),
+                        ),
+                      )
+                    else if (isTvGroup)
+                      // =================
+                      // AVATAR FRAME
+                      // =================
+                      SizedBox(
+                        width: 34,
+                        height: 34,
+
+                        child:
+                            _AvatarFrame(
+                          frameId:
+                              achieved?.id,
+
+                          child:
+                              Container(
+                            decoration:
+                                const BoxDecoration(
+                              shape:
+                                  BoxShape
+                                      .circle,
+
+                              color:
+                                  chipluxSurfaceLight,
+                            ),
+
+                            child:
+                                Icon(
+                              Icons
+                                  .person_rounded,
+
+                              size: 17,
+
+                              color:
+                                  achieved !=
+                                          null
+                                      ? Colors
+                                          .white70
+                                      : Colors
+                                          .white24,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                            ),
+],
 
               const Spacer(),
 
+              // =========================
+              // PROGRESS BAR
+              // =========================
               ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: LinearProgressIndicator(
-                  value: group.progress,
+                borderRadius:
+                    BorderRadius.circular(
+                  20,
+                ),
+
+                child:
+                    LinearProgressIndicator(
+                  value:
+                      group.progress,
+
                   minHeight: 4,
-                  backgroundColor: Colors.white10,
-                  valueColor: AlwaysStoppedAnimation<Color>(
+
+                  backgroundColor:
+                      Colors.white10,
+
+                  valueColor:
+                      AlwaysStoppedAnimation<
+                          Color>(
                     achieved != null
-                        ? _achievementAccent(achieved.rarity)
+                        ? accent
                         : Colors.white30,
                   ),
                 ),
               ),
 
-              const SizedBox(height: 5),
+              const SizedBox(
+                height: 5,
+              ),
 
               Text(
                 next != null
                     ? '${group.current.clamp(0, next.target)} / ${next.target}'
                     : isPinned
-                    ? 'PINNED'
-                    : 'COMPLETE',
-                style: TextStyle(
-                  color: isPinned ? chipluxCyan : Colors.white38,
+                        ? 'PINNED'
+                        : 'COMPLETE',
+
+                style:
+                    TextStyle(
+                  color:
+                      isPinned
+                          ? chipluxCyan
+                          : Colors
+                              .white38,
+
                   fontSize: 8,
-                  fontWeight: FontWeight.bold,
+
+                  fontWeight:
+                      FontWeight.bold,
                 ),
               ),
             ],
@@ -12004,6 +12903,64 @@ class _AchievementMedalState extends State<_AchievementMedal>
   }
 }
 
+List<Color> _avatarFrameColors(
+  String frameId,
+) {
+  switch (frameId) {
+    case 'tv_2':
+      return const [
+        Colors.white,
+        Color(0xFFBFC9D4),
+      ];
+
+    case 'tv_8':
+      return const [
+        chipluxCyan,
+        Color(0xFF64BFFF),
+      ];
+
+    case 'tv_16':
+      return const [
+        chipluxCyan,
+        chipluxViolet,
+      ];
+
+    case 'tv_32':
+      return const [
+        Color(0xFFFFF1A8),
+        Color(0xFFFFC857),
+      ];
+
+    case 'tv_64':
+      return const [
+        Color(0xFFFFC857),
+        Color(0xFFFF8A4C),
+        Color(0xFFFF5C72),
+      ];
+
+    case 'tv_128':
+      return const [
+        Color(0xFFFF5C72),
+        chipluxPurple,
+        chipluxViolet,
+      ];
+
+    case 'tv_256':
+      return const [
+        chipluxCyan,
+        chipluxViolet,
+        chipluxPurple,
+        Color(0xFFFFC857),
+      ];
+
+    default:
+      return const [
+        Colors.white,
+        Colors.white54,
+      ];
+  }
+}
+
 List<Color> _displayNameFrameColors(String frameId) {
   switch (frameId) {
     case 'movies_2':
@@ -12023,6 +12980,13 @@ List<Color> _displayNameFrameColors(String frameId) {
 
     case 'movies_128':
       return const [Color(0xFFFF5C72), chipluxPurple, chipluxViolet];
+
+      case 'movies_256':
+  return const [
+    chipluxViolet,
+    chipluxPurple,
+    Color(0xFFFFC857),
+  ];
 
     case 'movies_512':
       return const [
@@ -12102,6 +13066,180 @@ class DisplayNameFrameService extends ChangeNotifier {
     _frameId = frameId;
 
     notifyListeners();
+  }
+}
+
+class AvatarFrameService
+    extends ChangeNotifier {
+  AvatarFrameService._();
+
+  static final AvatarFrameService
+      instance =
+      AvatarFrameService._();
+
+  String? _frameId;
+
+  String? get frameId =>
+      _frameId;
+
+  Future<void> load() async {
+    final client =
+        Supabase.instance.client;
+
+    final user =
+        client.auth.currentUser;
+
+    if (user == null) {
+      _frameId = null;
+
+      notifyListeners();
+
+      return;
+    }
+
+    try {
+      final row = await client
+          .from('profiles')
+          .select(
+            'avatar_frame_id',
+          )
+          .eq(
+            'id',
+            user.id,
+          )
+          .maybeSingle();
+
+      _frameId =
+          row?['avatar_frame_id']
+              ?.toString();
+
+      notifyListeners();
+    } catch (e) {
+      debugPrint(
+        'Could not load avatar frame: $e',
+      );
+    }
+  }
+
+  Future<void> apply(
+    String? frameId,
+  ) async {
+    final client =
+        Supabase.instance.client;
+
+    final user =
+        client.auth.currentUser;
+
+    if (user == null) {
+      throw Exception(
+        'No signed in user.',
+      );
+    }
+
+    await client
+        .from('profiles')
+        .update({
+          'avatar_frame_id':
+              frameId,
+        })
+        .eq(
+          'id',
+          user.id,
+        );
+
+    _frameId =
+        frameId;
+
+    notifyListeners();
+  }
+}
+
+class _AvatarFrame
+    extends StatelessWidget {
+  final String? frameId;
+  final Widget child;
+
+  const _AvatarFrame({
+    required this.frameId,
+    required this.child,
+  });
+
+  @override
+  Widget build(
+    BuildContext context,
+  ) {
+    final colors =
+        frameId == null
+            ? null
+            : _avatarFrameColors(
+                frameId!,
+              );
+
+    return Container(
+      padding:
+          EdgeInsets.all(
+        frameId == null
+            ? 3
+            : 4,
+      ),
+
+      decoration:
+          BoxDecoration(
+        shape:
+            BoxShape.circle,
+
+        border:
+            frameId == null
+                ? Border.all(
+                    color:
+                        Colors.white,
+                    width: 2,
+                  )
+                : null,
+
+        gradient:
+            colors != null
+                ? LinearGradient(
+                    begin:
+                        Alignment.topLeft,
+                    end:
+                        Alignment.bottomRight,
+                    colors:
+                        colors,
+                  )
+                : null,
+
+        boxShadow:
+            colors != null
+                ? [
+                    BoxShadow(
+                      color:
+                          colors.first
+                              .withValues(
+                        alpha: 0.30,
+                      ),
+                      blurRadius:
+                          18,
+                      spreadRadius:
+                          1,
+                    ),
+                  ]
+                : [
+                    BoxShadow(
+                      color:
+                          Colors.white
+                              .withValues(
+                        alpha: 0.08,
+                      ),
+                      blurRadius:
+                          7,
+                    ),
+                  ],
+      ),
+
+      child:
+          child,
+    );
   }
 }
 
@@ -12407,6 +13545,8 @@ class _ProfilePageState extends State<ProfilePage> {
 
     unawaited(DisplayNameFrameService.instance.load());
 
+    unawaited(AvatarFrameService.instance.load());
+
     unawaited(_backfillStatsInBackground());
   }
 
@@ -12429,6 +13569,8 @@ class _ProfilePageState extends State<ProfilePage> {
       profile.loadProfile(),
 
       DisplayNameFrameService.instance.load(),
+
+      AvatarFrameService.instance.load(),
 
       library.backfillMissingRuntimes(),
 
@@ -13044,6 +14186,7 @@ class _ProfilePageState extends State<ProfilePage> {
           critic,
           MedalPinService.instance,
           DisplayNameFrameService.instance,
+          AvatarFrameService.instance,
         ]),
         builder: (context, _) {
           final shownName = profile.displayName.isNotEmpty
@@ -13054,15 +14197,38 @@ class _ProfilePageState extends State<ProfilePage> {
               ? shownName[0].toUpperCase()
               : 'C';
 
-          final movieGroup = _movieAchievementGroupFor(
-            library.moviesWatchedCount,
-          );
+          final movieGroup =
+    _movieAchievementGroupFor(
+  library.moviesWatchedCount,
+);
 
-          final pinnedId = MedalPinService.instance.pinnedAchievementId;
+final tvGroup =
+    _tvAchievementGroupFor(
+  library.completedTvShowsCount,
+);
 
-          final _Achievement? pinnedAchievement = pinnedId == movieGroup.id
-              ? movieGroup.highestUnlockedTier
-              : null;
+final episodeGroup =
+    _episodeAchievementGroupFor(
+  library.watchedEpisodeCount,
+);
+
+final pinnedId =
+    MedalPinService.instance
+        .pinnedAchievementId;
+
+final _Achievement?
+    pinnedAchievement =
+    pinnedId == movieGroup.id
+        ? movieGroup
+            .highestUnlockedTier
+        : pinnedId == tvGroup.id
+            ? tvGroup
+                .highestUnlockedTier
+            : pinnedId ==
+                    episodeGroup.id
+                ? episodeGroup
+                    .highestUnlockedTier
+                : null;
 
           return RefreshIndicator(
             color: chipluxCyan,
@@ -13216,80 +14382,56 @@ class _ProfilePageState extends State<ProfilePage> {
                           Center(
                             child: Column(
                               children: [
-                                Container(
+                                SizedBox(
                                   width: 94,
                                   height: 94,
-                                  padding: const EdgeInsets.all(3),
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
+                                  child: _AvatarFrame(
+                                    frameId:
+                                        AvatarFrameService.instance.frameId,
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
 
-                                    // White profile frame.
-                                    border: Border.all(
-                                      color: Colors.white,
-                                      width: 2,
-                                    ),
+                                        gradient:
+                                            profile.avatarUrl == null ||
+                                                profile.avatarUrl!.isEmpty
+                                            ? const LinearGradient(
+                                                begin: Alignment.topLeft,
+                                                end: Alignment.bottomRight,
+                                                colors: [
+                                                  chipluxCyan,
+                                                  chipluxViolet,
+                                                  chipluxPurple,
+                                                ],
+                                              )
+                                            : null,
 
-                                    color: chipluxBackground,
-
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.08,
-                                        ),
-                                        blurRadius: 7,
+                                        image:
+                                            profile.avatarUrl != null &&
+                                                profile.avatarUrl!.isNotEmpty
+                                            ? DecorationImage(
+                                                image: NetworkImage(
+                                                  profile.avatarUrl!,
+                                                ),
+                                                fit: BoxFit.cover,
+                                              )
+                                            : null,
                                       ),
-
-                                      BoxShadow(
-                                        color: chipluxViolet.withValues(
-                                          alpha: 0.12,
-                                        ),
-                                        blurRadius: 20,
-                                      ),
-                                    ],
-                                  ),
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-
-                                      gradient:
+                                      child:
                                           profile.avatarUrl == null ||
                                               profile.avatarUrl!.isEmpty
-                                          ? const LinearGradient(
-                                              begin: Alignment.topLeft,
-                                              end: Alignment.bottomRight,
-                                              colors: [
-                                                chipluxCyan,
-                                                chipluxViolet,
-                                                chipluxPurple,
-                                              ],
-                                            )
-                                          : null,
-
-                                      image:
-                                          profile.avatarUrl != null &&
-                                              profile.avatarUrl!.isNotEmpty
-                                          ? DecorationImage(
-                                              image: NetworkImage(
-                                                profile.avatarUrl!,
+                                          ? Center(
+                                              child: Text(
+                                                initial,
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 38,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
                                               ),
-                                              fit: BoxFit.cover,
                                             )
                                           : null,
                                     ),
-                                    child:
-                                        profile.avatarUrl == null ||
-                                            profile.avatarUrl!.isEmpty
-                                        ? Center(
-                                            child: Text(
-                                              initial,
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 38,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          )
-                                        : null,
                                   ),
                                 ),
 
@@ -13517,6 +14659,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 }
+
 
 class _FollowerCountBadge extends StatefulWidget {
   final String userId;
@@ -14974,7 +16117,7 @@ class _WatchStatCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(15),
 
         child: Container(
-          height: 58,
+          height: 63,
 
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
 
@@ -15249,6 +16392,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   final frameService = DisplayNameFrameService.instance;
 
+  final avatarFrameService =
+    AvatarFrameService.instance;
+
   late final TextEditingController displayNameController;
 
   bool saving = false;
@@ -15256,6 +16402,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
   bool uploadingAvatar = false;
 
   bool loadingFrame = true;
+
+  bool loadingAvatarFrame = true;
+
+String? selectedAvatarFrameId;
 
   String? errorMessage;
 
@@ -15274,7 +16424,33 @@ class _EditProfilePageState extends State<EditProfilePage> {
     selectedFrameId = frameService.frameId;
 
     unawaited(_loadFrame());
+
+    selectedAvatarFrameId =
+    avatarFrameService.frameId;
+
+unawaited(
+  _loadAvatarFrame(),
+);
   }
+
+  Future<void>
+    _loadAvatarFrame() async {
+  await avatarFrameService.load();
+
+  if (!mounted) {
+    return;
+  }
+
+  setState(() {
+    selectedAvatarFrameId =
+        avatarFrameService.frameId;
+
+    loadingAvatarFrame =
+        false;
+  });
+}
+
+
 
   Future<void> _loadFrame() async {
     await frameService.load();
@@ -15377,6 +16553,34 @@ class _EditProfilePageState extends State<EditProfilePage> {
       }
     }
 
+    // Make sure a locked avatar frame
+// cannot be applied.
+if (selectedAvatarFrameId != null) {
+  final tvGroup =
+      _tvAchievementGroupFor(
+    library.completedTvShowsCount,
+  );
+
+  final matching =
+      tvGroup.tiers
+          .where(
+            (tier) =>
+                tier.id ==
+                selectedAvatarFrameId,
+          )
+          .toList();
+
+  if (matching.isEmpty ||
+      !matching.first.unlocked) {
+    setState(() {
+      errorMessage =
+          'That avatar frame is still locked.';
+    });
+
+    return;
+  }
+}
+
     setState(() {
       saving = true;
 
@@ -15412,6 +16616,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
       );
 
       await frameService.apply(selectedFrameId);
+
+      await avatarFrameService.apply(
+  selectedAvatarFrameId,
+);
 
       if (mounted) {
         Navigator.pop(context);
@@ -15509,6 +16717,117 @@ class _EditProfilePageState extends State<EditProfilePage> {
       ),
     );
   }
+
+  Widget buildAvatarFramePicker() {
+  final tvGroup =
+      _tvAchievementGroupFor(
+    library.completedTvShowsCount,
+  );
+
+  final options =
+      <Widget>[
+    _AvatarFrameOption(
+      label: 'Default',
+      frameId: null,
+      unlocked: true,
+      selected:
+          selectedAvatarFrameId ==
+              null,
+      onTap: () {
+        setState(() {
+          selectedAvatarFrameId =
+              null;
+        });
+      },
+    ),
+
+    for (final tier
+        in tvGroup.tiers)
+      _AvatarFrameOption(
+        label:
+            tier.title,
+        frameId:
+            tier.id,
+        unlocked:
+            tier.unlocked,
+        selected:
+            selectedAvatarFrameId ==
+                tier.id,
+        onTap: () {
+          setState(() {
+            selectedAvatarFrameId =
+                tier.id;
+          });
+        },
+      ),
+  ];
+
+  return Column(
+    crossAxisAlignment:
+        CrossAxisAlignment.start,
+
+    children: [
+      const Text(
+        'Avatar Frame',
+        style: TextStyle(
+          fontSize: 17,
+          fontWeight:
+              FontWeight.bold,
+        ),
+      ),
+
+      const SizedBox(height: 5),
+
+      const Text(
+        'Unlock new avatar frames through completed TV show achievements.',
+        style: TextStyle(
+          color:
+              Colors.white54,
+          fontSize: 12,
+        ),
+      ),
+
+      const SizedBox(height: 12),
+
+      if (loadingAvatarFrame)
+        const SizedBox(
+          height: 90,
+          child: Center(
+            child:
+                CircularProgressIndicator(),
+          ),
+        )
+      else
+        SizedBox(
+          height: 92,
+          child:
+              ListView.separated(
+            scrollDirection:
+                Axis.horizontal,
+            itemCount:
+                options.length,
+            separatorBuilder:
+                (
+              context,
+              index,
+            ) {
+              return const SizedBox(
+                width: 8,
+              );
+            },
+            itemBuilder:
+                (
+              context,
+              index,
+            ) {
+              return options[
+                  index];
+            },
+          ),
+        ),
+    ],
+  );
+}
 
   Widget buildFramePicker() {
     final movieGroup = _movieAchievementGroupFor(library.moviesWatchedCount);
@@ -15724,6 +17043,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
             // =========================
             buildFramePicker(),
 
+            const SizedBox(height: 24),
+
+buildAvatarFramePicker(),
+
             if (errorMessage != null) ...[
               const SizedBox(height: 14),
 
@@ -15770,6 +17093,159 @@ class _EditProfilePageState extends State<EditProfilePage> {
     displayNameController.dispose();
 
     super.dispose();
+  }
+}
+
+class _AvatarFrameOption
+    extends StatelessWidget {
+  final String label;
+  final String? frameId;
+
+  final bool unlocked;
+  final bool selected;
+
+  final VoidCallback? onTap;
+
+  const _AvatarFrameOption({
+    required this.label,
+    required this.frameId,
+    required this.unlocked,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(
+    BuildContext context,
+  ) {
+    return SizedBox(
+      width: 92,
+
+      child: Material(
+        color:
+            Colors.transparent,
+
+        child: InkWell(
+          onTap:
+              unlocked
+                  ? onTap
+                  : null,
+
+          borderRadius:
+              BorderRadius.circular(
+            15,
+          ),
+
+          child: Container(
+            padding:
+                const EdgeInsets.all(
+              8,
+            ),
+
+            decoration:
+                BoxDecoration(
+              color:
+                  selected
+                      ? Colors.white
+                          .withValues(
+                          alpha:
+                              0.06,
+                        )
+                      : Colors
+                          .transparent,
+
+              borderRadius:
+                  BorderRadius.circular(
+                15,
+              ),
+
+              border:
+                  Border.all(
+                color:
+                    selected
+                        ? chipluxCyan
+                            .withValues(
+                            alpha:
+                                0.65,
+                          )
+                        : Colors.white
+                            .withValues(
+                            alpha:
+                                0.06,
+                          ),
+              ),
+            ),
+
+            child: Column(
+              children: [
+                Opacity(
+                  opacity:
+                      unlocked
+                          ? 1
+                          : 0.35,
+
+                  child:
+                      SizedBox(
+                    width: 48,
+                    height: 48,
+
+                    child:
+                        _AvatarFrame(
+                      frameId:
+                          frameId,
+
+                      child:
+                          Container(
+                        decoration:
+                            const BoxDecoration(
+                          shape:
+                              BoxShape.circle,
+                          color:
+                              chipluxSurface,
+                        ),
+
+                        child:
+                            const Icon(
+                          Icons.person,
+                          size: 23,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(
+                  height: 6,
+                ),
+
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow:
+                      TextOverflow
+                          .ellipsis,
+                  textAlign:
+                      TextAlign.center,
+                  style:
+                      TextStyle(
+                    color:
+                        unlocked
+                            ? Colors
+                                .white70
+                            : Colors
+                                .white30,
+                    fontSize: 9,
+                    fontWeight:
+                        FontWeight
+                            .w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -17151,6 +18627,9 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
                         final int previousMovieCount =
                             library.moviesWatchedCount;
 
+                            final int previousTvCount =
+    library.completedTvShowsCount;
+
                         final newItem = LibraryItem(
                           id: widget.id,
                           mediaType: widget.mediaType,
@@ -17177,12 +18656,22 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
                           showCompletionBurst(context);
 
                           if (widget.mediaType == 'movie') {
-                            await _checkMovieAchievementUnlock(
-                              context,
-                              previousCount: previousMovieCount,
-                              currentCount: library.moviesWatchedCount,
-                            );
-                          }
+  await _checkMovieAchievementUnlock(
+    context,
+    previousCount:
+        previousMovieCount,
+    currentCount:
+        library.moviesWatchedCount,
+  );
+} else if (widget.mediaType == 'tv') {
+  await _checkTvAchievementUnlock(
+    context,
+    previousCount:
+        previousTvCount,
+    currentCount:
+        library.completedTvShowsCount,
+  );
+}
                         }
                       }
 
@@ -19072,12 +20561,25 @@ class _EpisodeTile extends StatelessWidget {
                       onPressed: () async {
                         final bool wasWatched = watched;
 
+                        final int previousEpisodeCount =
+    library.watchedEpisodeCount;
+
                         await library.toggleEpisode(
                           showId,
                           seasonNumber,
                           episodeNumber,
                           runtimeMinutes: runtime ?? 0,
                         );
+
+                        if (!wasWatched && context.mounted) {
+  await _checkEpisodeAchievementUnlock(
+    context,
+    previousCount:
+        previousEpisodeCount,
+    currentCount:
+        library.watchedEpisodeCount,
+  );
+}
 
                         if (wasWatched) {
                           await CriticService.instance.clearEpisodeAfterUnwatch(
@@ -19923,6 +21425,8 @@ class EpisodeInfoPage extends StatelessWidget {
                 child: ElevatedButton.icon(
                   onPressed: () async {
                     final bool wasWatched = watched;
+                    final int previousEpisodeCount =
+    library.watchedEpisodeCount;
 
                     await library.toggleEpisode(
                       showId,
@@ -19930,6 +21434,16 @@ class EpisodeInfoPage extends StatelessWidget {
                       episodeNumber,
                       runtimeMinutes: runtime ?? 0,
                     );
+
+                    if (!wasWatched && context.mounted) {
+  await _checkEpisodeAchievementUnlock(
+    context,
+    previousCount:
+        previousEpisodeCount,
+    currentCount:
+        library.watchedEpisodeCount,
+  );
+}
 
                     if (wasWatched) {
                       await CriticService.instance.clearEpisodeAfterUnwatch(
