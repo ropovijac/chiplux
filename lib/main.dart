@@ -195,10 +195,10 @@ _AchievementGroup _tvAchievementGroupFor(
   return _AchievementGroup(
     id: 'tv_shows_completed',
 
-    title: 'TV Shows Completed',
+    title: 'TV Shows Watched',
 
-    description:
-        'Complete TV series to upgrade your avatar frame.',
+description:
+    'Complete TV shows to upgrade your TV Shows Watched stat border.',
 
     icon:
         Icons.tv_rounded,
@@ -296,7 +296,7 @@ _AchievementGroup _episodeAchievementGroupFor(
     title: 'Episodes Watched',
 
     description:
-        'Keep watching episodes to upgrade this medal.',
+    'Watch episodes to upgrade your Episodes Watched stat border.',
 
     icon:
         Icons.playlist_add_check_rounded,
@@ -5187,16 +5187,39 @@ _PublicAchievementsCard(
                   const SizedBox(height: 12),
 
                   Column(
-                    children: [
-                      _WatchStatCard(
-                        value: episodesWatched,
+  children: [
+    _WatchStatCard(
+      value:
+          completedTvShows,
 
-                        label: 'Episodes Watched',
+      label:
+          'TV Shows Watched',
 
-                        runtimeMinutes: episodeWatchedMinutes,
+      icon:
+          Icons.tv_rounded,
 
-                        icon: Icons.playlist_add_check_rounded,
-                      ),
+      frameAchievement:
+          tvGroup.highestUnlockedTier,
+    ),
+
+    const SizedBox(height: 7),
+
+    _WatchStatCard(
+  value:
+      episodesWatched,
+
+  label:
+      'Episodes Watched',
+
+  runtimeMinutes:
+      episodeWatchedMinutes,
+
+  icon:
+      Icons.playlist_add_check_rounded,
+
+  frameAchievement:
+      episodeGroup.highestUnlockedTier,
+),
 
                       const SizedBox(height: 7),
 
@@ -12256,10 +12279,16 @@ class AchievementsPage extends StatelessWidget {
         currentTier?.icon ?? group.icon;
 
     final bool isMovieGroup =
-        group.id == 'movies_watched';
+    group.id == 'movies_watched';
 
-    final bool isDailyLoginGroup =
-        group.id == 'daily_logins';
+final bool isTvGroup =
+    group.id == 'tv_shows_completed';
+
+    final bool isEpisodeGroup =
+    group.id == 'episodes_watched';
+
+final bool isDailyLoginGroup =
+    group.id == 'daily_logins';
 
     final bool isProfileViewGroup =
         group.id ==
@@ -12453,6 +12482,118 @@ class AchievementsPage extends StatelessWidget {
                       ),
                     ),
                   ],
+
+                  // =========================
+// TV SHOWS REWARD
+// =========================
+if (isTvGroup) ...[
+  const SizedBox(height: 11),
+
+  Container(
+    width: double.infinity,
+
+    padding:
+        const EdgeInsets.symmetric(
+      horizontal: 12,
+      vertical: 9,
+    ),
+
+    decoration: BoxDecoration(
+      color: accent.withValues(
+        alpha: 0.065,
+      ),
+
+      borderRadius:
+          BorderRadius.circular(12),
+
+      border: Border.all(
+        color: accent.withValues(
+          alpha: 0.18,
+        ),
+      ),
+    ),
+
+    child: Row(
+      children: [
+        Icon(
+          Icons.border_style_rounded,
+          color: accent,
+          size: 18,
+        ),
+
+        const SizedBox(width: 9),
+
+        const Expanded(
+          child: Text(
+            'Unlock borders for your TV Shows Watched stat.',
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 12,
+              fontWeight:
+                  FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
+    ),
+  ),
+],
+
+// =========================
+// EPISODES REWARD
+// =========================
+if (isEpisodeGroup) ...[
+  const SizedBox(height: 11),
+
+  Container(
+    width: double.infinity,
+
+    padding:
+        const EdgeInsets.symmetric(
+      horizontal: 12,
+      vertical: 9,
+    ),
+
+    decoration: BoxDecoration(
+      color: accent.withValues(
+        alpha: 0.065,
+      ),
+
+      borderRadius:
+          BorderRadius.circular(12),
+
+      border: Border.all(
+        color: accent.withValues(
+          alpha: 0.18,
+        ),
+      ),
+    ),
+
+    child: Row(
+      children: [
+        Icon(
+          Icons.border_style_rounded,
+          color: accent,
+          size: 18,
+        ),
+
+        const SizedBox(width: 9),
+
+        const Expanded(
+          child: Text(
+            'Unlock borders for your Episodes Watched stat.',
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 12,
+              fontWeight:
+                  FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
+    ),
+  ),
+],
 
                   // =========================
                   // DAILY LOGIN REWARD
@@ -13109,14 +13250,20 @@ class _AchievementGroupCard
         group.nextTier;
 
     final bool isMovieGroup =
-        group.id == 'movies_watched';
+    group.id == 'movies_watched';
 
-    final bool isDailyLoginGroup =
-        group.id == 'daily_logins';
+final bool isTvGroup =
+    group.id == 'tv_shows_completed';
 
-    final bool isProfileViewGroup =
-        group.id ==
-            'public_profiles_viewed';
+    final bool isEpisodeGroup =
+    group.id == 'episodes_watched';
+
+final bool isDailyLoginGroup =
+    group.id == 'daily_logins';
+
+final bool isProfileViewGroup =
+    group.id ==
+        'public_profiles_viewed';
 
     final Color accent =
         achieved != null
@@ -13311,6 +13458,154 @@ class _AchievementGroupCard
                   ),
                 ),
               ],
+
+              // =========================
+// TV SHOWS STAT BORDER
+// =========================
+if (isTvGroup) ...[
+  const SizedBox(height: 10),
+
+  Container(
+    width: double.infinity,
+
+    padding:
+        const EdgeInsets.all(
+      1.5,
+    ),
+
+    decoration: BoxDecoration(
+      borderRadius:
+          BorderRadius.circular(
+        10,
+      ),
+
+      gradient:
+          frameColors.isNotEmpty
+              ? LinearGradient(
+                  colors:
+                      frameColors,
+                )
+              : null,
+
+      border:
+          frameColors.isEmpty
+              ? Border.all(
+                  color:
+                      Colors.white12,
+                )
+              : null,
+    ),
+
+    child: Container(
+      height: 33,
+
+      alignment:
+          Alignment.center,
+
+      decoration: BoxDecoration(
+        color:
+            chipluxSurfaceLight,
+
+        borderRadius:
+            BorderRadius.circular(
+          9,
+        ),
+      ),
+
+      child: Text(
+        achieved != null
+            ? 'TV Shows Watched'
+            : 'Locked',
+
+        style: TextStyle(
+          color:
+              achieved != null
+                  ? Colors.white70
+                  : Colors.white24,
+
+          fontSize: 8,
+
+          fontWeight:
+              FontWeight.bold,
+        ),
+      ),
+    ),
+  ),
+],
+
+// =========================
+// EPISODES STAT BORDER
+// =========================
+if (isEpisodeGroup) ...[
+  const SizedBox(height: 10),
+
+  Container(
+    width: double.infinity,
+
+    padding:
+        const EdgeInsets.all(
+      1.5,
+    ),
+
+    decoration: BoxDecoration(
+      borderRadius:
+          BorderRadius.circular(
+        10,
+      ),
+
+      gradient:
+          frameColors.isNotEmpty
+              ? LinearGradient(
+                  colors:
+                      frameColors,
+                )
+              : null,
+
+      border:
+          frameColors.isEmpty
+              ? Border.all(
+                  color:
+                      Colors.white12,
+                )
+              : null,
+    ),
+
+    child: Container(
+      height: 33,
+
+      alignment:
+          Alignment.center,
+
+      decoration: BoxDecoration(
+        color:
+            chipluxSurfaceLight,
+
+        borderRadius:
+            BorderRadius.circular(
+          9,
+        ),
+      ),
+
+      child: Text(
+        achieved != null
+            ? 'Episodes Watched'
+            : 'Locked',
+
+        style: TextStyle(
+          color:
+              achieved != null
+                  ? Colors.white70
+                  : Colors.white24,
+
+          fontSize: 8,
+
+          fontWeight:
+              FontWeight.bold,
+        ),
+      ),
+    ),
+  ),
+],
 
               // =========================
               // DAILY LOGIN FRAME
@@ -16089,18 +16384,42 @@ final _Achievement? pinnedAchievement =
 
                 // WATCHED STATS
                 Column(
-                  children: [
-                    _WatchStatCard(
-                      value: library.watchedEpisodeCount,
+  children: [
+    _WatchStatCard(
+      value:
+          library.completedTvShowsCount,
 
-                      runtimeMinutes: library.watchedEpisodeMinutes,
+      label:
+          'TV Shows Watched',
 
-                      label: 'Episodes Watched',
+      icon:
+          Icons.tv_rounded,
 
-                      icon: Icons.playlist_add_check_rounded,
+      frameAchievement:
+          tvGroup.highestUnlockedTier,
+    ),
 
-                      onTap: widget.onEpisodesWatchedTap,
-                    ),
+    const SizedBox(height: 7),
+
+    _WatchStatCard(
+  value:
+      library.watchedEpisodeCount,
+
+  runtimeMinutes:
+      library.watchedEpisodeMinutes,
+
+  label:
+      'Episodes Watched',
+
+  icon:
+      Icons.playlist_add_check_rounded,
+
+  frameAchievement:
+      episodeGroup.highestUnlockedTier,
+
+  onTap:
+      widget.onEpisodesWatchedTap,
+),
 
                     const SizedBox(height: 7),
 
