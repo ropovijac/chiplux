@@ -60,12 +60,23 @@ Future<void> main() async {
 
   await CriticService.instance.refresh();
 
-await DailyLoginService.instance
-    .recordToday();
+// Load the EXISTING values first.
+await DailyLoginService.instance.load();
 
-    await PublicProfileViewService
+await PublicProfileViewService
     .instance
     .load();
+
+// Establish the Medal Collection baseline
+// before today's login can increase the
+// achievement count.
+await _MedalCollectionUnlockTracker
+    .instance
+    .initialize();
+
+// Now record today's login.
+await DailyLoginService.instance
+    .recordToday();
 
 PublicStatsSyncService.instance.start();
 
@@ -1869,8 +1880,9 @@ Future<void>
 
 Future<void> _showAchievementUnlocked(
   BuildContext context,
-  _Achievement achievement,
-) async {
+  _Achievement achievement, {
+  bool checkMedalCollection = true,
+}) async {
   await _autoApplyAchievementReward(
     achievement,
   );
@@ -1880,35 +1892,88 @@ Future<void> _showAchievementUnlocked(
   }
 
   await showGeneralDialog<void>(
-    context: context,
+    context:
+        context,
 
-    barrierDismissible: false,
+    barrierDismissible:
+        false,
 
-    barrierLabel: 'Achievement unlocked',
+    barrierLabel:
+        'Achievement unlocked',
 
-    barrierColor: Colors.black.withValues(alpha: 0.78),
+    barrierColor:
+        Colors.black.withValues(
+      alpha: 0.78,
+    ),
 
-    transitionDuration: const Duration(milliseconds: 320),
+    transitionDuration:
+        const Duration(
+      milliseconds: 320,
+    ),
 
-    transitionBuilder: (context, animation, secondaryAnimation, child) {
-      final curved = CurvedAnimation(
-        parent: animation,
-        curve: Curves.easeOutBack,
+    transitionBuilder: (
+      context,
+      animation,
+      secondaryAnimation,
+      child,
+    ) {
+      final curved =
+          CurvedAnimation(
+        parent:
+            animation,
+        curve:
+            Curves.easeOutBack,
       );
 
       return FadeTransition(
-        opacity: animation,
-        child: ScaleTransition(
-          scale: Tween<double>(begin: 0.82, end: 1.0).animate(curved),
-          child: child,
+        opacity:
+            animation,
+
+        child:
+            ScaleTransition(
+          scale:
+              Tween<double>(
+            begin:
+                0.82,
+            end:
+                1.0,
+          ).animate(
+            curved,
+          ),
+
+          child:
+              child,
         ),
       );
     },
 
-    pageBuilder: (context, animation, secondaryAnimation) {
-      return _AchievementUnlockDialog(achievement: achievement);
+    pageBuilder: (
+      context,
+      animation,
+      secondaryAnimation,
+    ) {
+      return _AchievementUnlockDialog(
+        achievement:
+            achievement,
+      );
     },
   );
+
+  // After a normal achievement popup,
+  // check whether the user's TOTAL
+  // unlocked milestones crossed a
+  // Medal Collection milestone.
+  if (checkMedalCollection &&
+      !achievement.id.startsWith(
+        'medal_collection_',
+      ) &&
+      context.mounted) {
+    await _MedalCollectionUnlockTracker
+        .instance
+        .checkForUnlocks(
+      context,
+    );
+  }
 }
 
 class _AchievementUnlockDialog extends StatefulWidget {
@@ -14172,7 +14237,9 @@ class _AchievementGroup {
 }
 
 class AchievementsPage extends StatelessWidget {
-  const AchievementsPage({super.key});
+  const AchievementsPage({
+    super.key,
+  });
 
   void _showAchievementGroup(
     BuildContext context,
@@ -14181,67 +14248,73 @@ class AchievementsPage extends StatelessWidget {
     final pinService =
         MedalPinService.instance;
 
-        final bool isEpisodeRatedGroup =
-    group.id == 'episodes_rated';
+    final bool isMovieGroup =
+        group.id == 'movies_watched';
+
+    final bool isTvGroup =
+        group.id == 'tv_shows_completed';
+
+    final bool isEpisodeGroup =
+        group.id == 'episodes_watched';
+
+    final bool isDailyLoginGroup =
+        group.id == 'daily_logins';
+
+    final bool isProfileViewGroup =
+        group.id ==
+            'public_profiles_viewed';
+
+    final bool isEpisodeRatedGroup =
+        group.id == 'episodes_rated';
 
     final bool isTvShowsRatedGroup =
-    group.id == 'tv_shows_rated';
+        group.id == 'tv_shows_rated';
 
-final bool isMoviesRatedGroup =
-    group.id == 'movies_rated';
+    final bool isMoviesRatedGroup =
+        group.id == 'movies_rated';
 
-final bool isTitleRatedGroup =
-    isTvShowsRatedGroup ||
-    isMoviesRatedGroup;
+    final bool isTitleRatedGroup =
+        isTvShowsRatedGroup ||
+            isMoviesRatedGroup;
 
     final bool isRuntimeLevelGroup =
-    group.id ==
-        'runtime_level';
+        group.id == 'runtime_level';
 
-        final bool isRatingsLevelGroup =
-    group.id ==
-        'ratings_level';
+    final bool isRatingsLevelGroup =
+        group.id == 'ratings_level';
 
-final String titleRatedRewardLabel =
-    isTvShowsRatedGroup
-        ? 'TV Shows Rated'
-        : 'Movies Rated';
+    final bool isMedalCollectionGroup =
+        group.id == 'medal_collection';
+
+    final String titleRatedRewardLabel =
+        isTvShowsRatedGroup
+            ? 'TV Shows Rated'
+            : 'Movies Rated';
 
     final bool canPin =
         group.hasUnlockedTier;
 
     final bool isPinned =
-        pinService.isPinned(group.id);
+        pinService.isPinned(
+      group.id,
+    );
 
     final currentTier =
         group.highestUnlockedTier;
 
+    final currentTierColors =
+        _achievementTierColors(
+      currentTier,
+    );
+
     final Color accent =
-        currentTier != null
-            ? _achievementAccent(
-                currentTier.rarity,
-              )
+        currentTierColors.isNotEmpty
+            ? currentTierColors.first
             : Colors.white38;
 
     final IconData achievementIcon =
-        currentTier?.icon ?? group.icon;
-
-    final bool isMovieGroup =
-    group.id == 'movies_watched';
-
-final bool isTvGroup =
-    group.id == 'tv_shows_completed';
-
-    final bool isEpisodeGroup =
-    group.id == 'episodes_watched';
-
-final bool isDailyLoginGroup =
-    group.id == 'daily_logins';
-
-    final bool isProfileViewGroup =
-        group.id ==
-            'public_profiles_viewed';
-            
+        currentTier?.icon ??
+            group.icon;
 
     String progressText;
 
@@ -14271,19 +14344,51 @@ final bool isDailyLoginGroup =
             '${group.current} profiles viewed';
         break;
 
+      case 'episodes_rated':
+        progressText =
+            '${group.current} episodes rated';
+        break;
+
+      case 'tv_shows_rated':
+        progressText =
+            '${group.current} TV shows rated';
+        break;
+
+      case 'movies_rated':
+        progressText =
+            '${group.current} movies rated';
+        break;
+
+      case 'runtime_level':
+        progressText =
+            'Runtime level ${group.current}';
+        break;
+
+      case 'ratings_level':
+        progressText =
+            'Ratings level ${group.current}';
+        break;
+
+      case 'medal_collection':
+        progressText =
+            '${group.current} milestones unlocked';
+        break;
+
       default:
         progressText =
             '${group.current}';
     }
 
-    
-
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
+      backgroundColor:
+          Colors.transparent,
+      isScrollControlled:
+          true,
 
-      builder: (sheetContext) {
+      builder: (
+        sheetContext,
+      ) {
         final screenHeight =
             MediaQuery.sizeOf(
           sheetContext,
@@ -14293,27 +14398,42 @@ final bool isDailyLoginGroup =
           top: false,
 
           child: Container(
-            constraints: BoxConstraints(
-              maxHeight: screenHeight * 0.92,
+            constraints:
+                BoxConstraints(
+              maxHeight:
+                  screenHeight *
+                      0.92,
             ),
 
-            margin: const EdgeInsets.only(
+            margin:
+                const EdgeInsets.only(
               left: 10,
               right: 10,
               bottom: 6,
             ),
 
-            decoration: BoxDecoration(
-              color: chipluxSurface,
+            decoration:
+                BoxDecoration(
+              color:
+                  chipluxSurface,
 
               borderRadius:
-                  const BorderRadius.vertical(
-                top: Radius.circular(24),
-                bottom: Radius.circular(24),
+                  const BorderRadius
+                      .vertical(
+                top:
+                    Radius.circular(
+                  24,
+                ),
+                bottom:
+                    Radius.circular(
+                  24,
+                ),
               ),
 
-              border: Border.all(
-                color: accent.withValues(
+              border:
+                  Border.all(
+                color:
+                    accent.withValues(
                   alpha: 0.75,
                 ),
                 width: 1.5,
@@ -14321,7 +14441,8 @@ final bool isDailyLoginGroup =
 
               boxShadow: [
                 BoxShadow(
-                  color: accent.withValues(
+                  color:
+                      accent.withValues(
                     alpha: 0.15,
                   ),
                   blurRadius: 22,
@@ -14330,20 +14451,24 @@ final bool isDailyLoginGroup =
               ],
             ),
 
-            child: SingleChildScrollView(
+            child:
+                SingleChildScrollView(
               physics:
                   const BouncingScrollPhysics(),
 
               padding:
-                  const EdgeInsets.fromLTRB(
+                  const EdgeInsets
+                      .fromLTRB(
                 20,
                 18,
                 20,
                 20,
               ),
 
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+              child:
+                  Column(
+                mainAxisSize:
+                    MainAxisSize.min,
 
                 children: [
                   Icon(
@@ -14352,702 +14477,440 @@ final bool isDailyLoginGroup =
                     size: 32,
                   ),
 
-                  const SizedBox(height: 7),
+                  const SizedBox(
+                    height: 7,
+                  ),
 
                   Text(
                     group.title,
-                    textAlign: TextAlign.center,
+                    textAlign:
+                        TextAlign.center,
 
-                    style: TextStyle(
+                    style:
+                        TextStyle(
                       color: accent,
                       fontSize: 21,
-                      fontWeight: FontWeight.bold,
+                      fontWeight:
+                          FontWeight.bold,
                     ),
                   ),
 
-                  const SizedBox(height: 3),
+                  const SizedBox(
+                    height: 3,
+                  ),
 
                   Text(
                     progressText,
 
-                    style: TextStyle(
-                      color: accent.withValues(
+                    style:
+                        TextStyle(
+                      color:
+                          accent.withValues(
                         alpha: 0.65,
                       ),
                       fontSize: 12,
-                      fontWeight: FontWeight.w500,
+                      fontWeight:
+                          FontWeight.w500,
                     ),
                   ),
 
                   // =========================
-                  // MOVIES REWARD
+                  // MOVIES WATCHED REWARD
                   // =========================
                   if (isMovieGroup) ...[
-                    const SizedBox(height: 11),
+                    const SizedBox(
+                      height: 11,
+                    ),
 
-                    Container(
-                      width: double.infinity,
-
-                      padding:
-                          const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 9,
-                      ),
-
-                      decoration: BoxDecoration(
-                        color: accent.withValues(
-                          alpha: 0.065,
-                        ),
-                        borderRadius:
-                            BorderRadius.circular(12),
-                        border: Border.all(
-                          color: accent.withValues(
-                            alpha: 0.18,
-                          ),
-                        ),
-                      ),
-
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons
-                                .border_style_rounded,
-                            color: accent,
-                            size: 18,
-                          ),
-
-                          const SizedBox(width: 9),
-
-                          const Expanded(
-                            child: Text(
-                              'Unlock borders for your Movies Watched stat.',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 12,
-                                fontWeight:
-                                    FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                    _achievementRewardInfo(
+                      accent:
+                          accent,
+                      icon:
+                          Icons
+                              .border_style_rounded,
+                      text:
+                          'Unlock borders for your Movies Watched stat.',
                     ),
                   ],
 
                   // =========================
-// TV SHOWS REWARD
-// =========================
-if (isTvGroup) ...[
-  const SizedBox(height: 11),
+                  // TV WATCHED REWARD
+                  // =========================
+                  if (isTvGroup) ...[
+                    const SizedBox(
+                      height: 11,
+                    ),
 
-  Container(
-    width: double.infinity,
-
-    padding:
-        const EdgeInsets.symmetric(
-      horizontal: 12,
-      vertical: 9,
-    ),
-
-    decoration: BoxDecoration(
-      color: accent.withValues(
-        alpha: 0.065,
-      ),
-
-      borderRadius:
-          BorderRadius.circular(12),
-
-      border: Border.all(
-        color: accent.withValues(
-          alpha: 0.18,
-        ),
-      ),
-    ),
-
-    child: Row(
-      children: [
-        Icon(
-          Icons.border_style_rounded,
-          color: accent,
-          size: 18,
-        ),
-
-        const SizedBox(width: 9),
-
-        const Expanded(
-          child: Text(
-            'Unlock borders for your TV Shows Watched stat.',
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 12,
-              fontWeight:
-                  FontWeight.w500,
-            ),
-          ),
-        ),
-      ],
-    ),
-  ),
-],
-
-// =========================
-// EPISODES REWARD
-// =========================
-if (isEpisodeGroup) ...[
-  const SizedBox(height: 11),
-
-  Container(
-    width: double.infinity,
-
-    padding:
-        const EdgeInsets.symmetric(
-      horizontal: 12,
-      vertical: 9,
-    ),
-
-    decoration: BoxDecoration(
-      color: accent.withValues(
-        alpha: 0.065,
-      ),
-
-      borderRadius:
-          BorderRadius.circular(12),
-
-      border: Border.all(
-        color: accent.withValues(
-          alpha: 0.18,
-        ),
-      ),
-    ),
-
-    child: Row(
-      children: [
-        Icon(
-          Icons.border_style_rounded,
-          color: accent,
-          size: 18,
-        ),
-
-        const SizedBox(width: 9),
-
-        const Expanded(
-          child: Text(
-            'Unlock borders for your Episodes Watched stat.',
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 12,
-              fontWeight:
-                  FontWeight.w500,
-            ),
-          ),
-        ),
-      ],
-    ),
-  ),
-],
+                    _achievementRewardInfo(
+                      accent:
+                          accent,
+                      icon:
+                          Icons
+                              .border_style_rounded,
+                      text:
+                          'Unlock borders for your TV Shows Watched stat.',
+                    ),
+                  ],
 
                   // =========================
-                  // DAILY LOGIN REWARD
+                  // EPISODES WATCHED
+                  // =========================
+                  if (isEpisodeGroup) ...[
+                    const SizedBox(
+                      height: 11,
+                    ),
+
+                    _achievementRewardInfo(
+                      accent:
+                          accent,
+                      icon:
+                          Icons
+                              .border_style_rounded,
+                      text:
+                          'Unlock borders for your Episodes Watched stat.',
+                    ),
+                  ],
+
+                  // =========================
+                  // DAILY LOGIN
                   // =========================
                   if (isDailyLoginGroup) ...[
-                    const SizedBox(height: 11),
+                    const SizedBox(
+                      height: 11,
+                    ),
 
-                    Container(
-                      width: double.infinity,
-
-                      padding:
-                          const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 9,
-                      ),
-
-                      decoration: BoxDecoration(
-                        color: accent.withValues(
-                          alpha: 0.065,
-                        ),
-                        borderRadius:
-                            BorderRadius.circular(12),
-                        border: Border.all(
-                          color: accent.withValues(
-                            alpha: 0.18,
-                          ),
-                        ),
-                      ),
-
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.palette_outlined,
-                            color: accent,
-                            size: 18,
-                          ),
-
-                          const SizedBox(width: 9),
-
-                          const Expanded(
-                            child: Text(
-                              'Unlock display name frames.',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 12,
-                                fontWeight:
-                                    FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                    _achievementRewardInfo(
+                      accent:
+                          accent,
+                      icon:
+                          Icons
+                              .palette_outlined,
+                      text:
+                          'Unlock display name frames.',
                     ),
                   ],
 
                   // =========================
-                  // PROFILE VIEW REWARD
+                  // PROFILE VIEW
                   // =========================
                   if (isProfileViewGroup) ...[
-                    const SizedBox(height: 11),
+                    const SizedBox(
+                      height: 11,
+                    ),
 
-                    Container(
-                      width: double.infinity,
-
-                      padding:
-                          const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 9,
-                      ),
-
-                      decoration: BoxDecoration(
-                        color: accent.withValues(
-                          alpha: 0.065,
-                        ),
-                        borderRadius:
-                            BorderRadius.circular(12),
-                        border: Border.all(
-                          color: accent.withValues(
-                            alpha: 0.18,
-                          ),
-                        ),
-                      ),
-
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons
-                                .account_circle_outlined,
-                            color: accent,
-                            size: 18,
-                          ),
-
-                          const SizedBox(width: 9),
-
-                          const Expanded(
-                            child: Text(
-                              'Unlock avatar frames.',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 12,
-                                fontWeight:
-                                    FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                    _achievementRewardInfo(
+                      accent:
+                          accent,
+                      icon:
+                          Icons
+                              .account_circle_outlined,
+                      text:
+                          'Unlock avatar frames.',
                     ),
                   ],
 
                   // =========================
-// EPISODES RATED REWARD
-// =========================
-if (isEpisodeRatedGroup) ...[
-  const SizedBox(height: 11),
+                  // EPISODES RATED
+                  // =========================
+                  if (isEpisodeRatedGroup) ...[
+                    const SizedBox(
+                      height: 11,
+                    ),
 
-  Container(
-    width: double.infinity,
+                    _achievementRewardInfo(
+                      accent:
+                          accent,
+                      icon:
+                          Icons
+                              .border_style_rounded,
+                      text:
+                          'Unlock borders for your Episodes Rated stat.',
+                    ),
+                  ],
 
-    padding:
-        const EdgeInsets.symmetric(
-      horizontal: 12,
-      vertical: 9,
-    ),
+                  // =========================
+                  // TV/MOVIES RATED
+                  // =========================
+                  if (isTitleRatedGroup) ...[
+                    const SizedBox(
+                      height: 11,
+                    ),
 
-    decoration: BoxDecoration(
-      color: accent.withValues(
-        alpha: 0.065,
-      ),
+                    _achievementRewardInfo(
+                      accent:
+                          accent,
+                      icon:
+                          Icons
+                              .border_style_rounded,
+                      text:
+                          'Unlock borders for your $titleRatedRewardLabel stat.',
+                    ),
+                  ],
 
-      borderRadius:
-          BorderRadius.circular(12),
+                  // =========================
+                  // RUNTIME LEVEL
+                  // =========================
+                  if (isRuntimeLevelGroup) ...[
+                    const SizedBox(
+                      height: 11,
+                    ),
 
-      border: Border.all(
-        color: accent.withValues(
-          alpha: 0.18,
-        ),
-      ),
-    ),
+                    _achievementRewardInfo(
+                      accent:
+                          accent,
+                      icon:
+                          Icons
+                              .gradient_rounded,
+                      text:
+                          'Unlock new border and gradient colors for your Runtime Level card.',
+                    ),
+                  ],
 
-    child: Row(
-      children: [
-        Icon(
-          Icons.border_style_rounded,
-          color: accent,
-          size: 18,
-        ),
+                  // =========================
+                  // RATINGS LEVEL
+                  // =========================
+                  if (isRatingsLevelGroup) ...[
+                    const SizedBox(
+                      height: 11,
+                    ),
 
-        const SizedBox(width: 9),
+                    _achievementRewardInfo(
+                      accent:
+                          accent,
+                      icon:
+                          Icons
+                              .gradient_rounded,
+                      text:
+                          'Unlock new border and gradient colors for your Ratings Level card.',
+                    ),
+                  ],
 
-        const Expanded(
-          child: Text(
-            'Unlock borders for your Episodes Rated stat.',
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 12,
-              fontWeight:
-                  FontWeight.w500,
-            ),
-          ),
-        ),
-      ],
-    ),
-  ),
-],
+                  // =========================
+                  // MEDAL COLLECTION
+                  // =========================
+                  if (isMedalCollectionGroup) ...[
+                    const SizedBox(
+                      height: 11,
+                    ),
 
-// =========================
-// TITLE RATING REWARD
-// =========================
-if (isTitleRatedGroup) ...[
-  const SizedBox(height: 11),
+                    _achievementRewardInfo(
+                      accent:
+                          accent,
+                      icon:
+                          Icons
+                              .workspace_premium_rounded,
+                      text:
+                          'Unlock subtle colors for the Medal Collection border, title and icon.',
+                    ),
+                  ],
 
-  Container(
-    width: double.infinity,
-
-    padding:
-        const EdgeInsets.symmetric(
-      horizontal: 12,
-      vertical: 9,
-    ),
-
-    decoration: BoxDecoration(
-      color:
-          accent.withValues(
-        alpha: 0.065,
-      ),
-
-      borderRadius:
-          BorderRadius.circular(
-        12,
-      ),
-
-      border:
-          Border.all(
-        color:
-            accent.withValues(
-          alpha: 0.18,
-        ),
-      ),
-    ),
-
-    child: Row(
-      children: [
-        Icon(
-          Icons.border_style_rounded,
-          color:
-              accent,
-          size:
-              18,
-        ),
-
-        const SizedBox(width: 9),
-
-        Expanded(
-          child: Text(
-            'Unlock borders for your $titleRatedRewardLabel stat.',
-            style:
-                const TextStyle(
-              color:
-                  Colors.white70,
-              fontSize:
-                  12,
-              fontWeight:
-                  FontWeight.w500,
-            ),
-          ),
-        ),
-      ],
-    ),
-  ),
-],
-
-if (isRuntimeLevelGroup) ...[
-  const SizedBox(
-    height:
-        11,
-  ),
-
-  Container(
-    width:
-        double.infinity,
-
-    padding:
-        const EdgeInsets.symmetric(
-      horizontal:
-          12,
-      vertical:
-          9,
-    ),
-
-    decoration:
-        BoxDecoration(
-      color:
-          accent.withValues(
-        alpha:
-            0.065,
-      ),
-
-      borderRadius:
-          BorderRadius.circular(
-        12,
-      ),
-
-      border:
-          Border.all(
-        color:
-            accent.withValues(
-          alpha:
-              0.18,
-        ),
-      ),
-    ),
-
-    child:
-        Row(
-      children: [
-        Icon(
-          Icons
-              .gradient_rounded,
-
-          color:
-              accent,
-
-          size:
-              18,
-        ),
-
-        const SizedBox(
-          width:
-              9,
-        ),
-
-        const Expanded(
-          child:
-              Text(
-            'Unlock new border and gradient colors for your Runtime Level card.',
-
-            style:
-                TextStyle(
-              color:
-                  Colors.white70,
-
-              fontSize:
-                  12,
-
-              fontWeight:
-                  FontWeight.w500,
-            ),
-          ),
-        ),
-      ],
-    ),
-  ),
-],
-
-// =========================
-// RATINGS LEVEL REWARD
-// =========================
-if (isRatingsLevelGroup) ...[
-  const SizedBox(
-    height:
-        11,
-  ),
-
-  Container(
-    width:
-        double.infinity,
-
-    padding:
-        const EdgeInsets.symmetric(
-      horizontal:
-          12,
-      vertical:
-          9,
-    ),
-
-    decoration:
-        BoxDecoration(
-      color:
-          accent.withValues(
-        alpha:
-            0.065,
-      ),
-
-      borderRadius:
-          BorderRadius.circular(
-        12,
-      ),
-
-      border:
-          Border.all(
-        color:
-            accent.withValues(
-          alpha:
-              0.18,
-        ),
-      ),
-    ),
-
-    child:
-        Row(
-      children: [
-        Icon(
-          Icons
-              .gradient_rounded,
-
-          color:
-              accent,
-
-          size:
-              18,
-        ),
-
-        const SizedBox(
-          width:
-              9,
-        ),
-
-        const Expanded(
-          child:
-              Text(
-            'Unlock new border and gradient colors for your Ratings Level card.',
-
-            style:
-                TextStyle(
-              color:
-                  Colors.white70,
-
-              fontSize:
-                  12,
-
-              fontWeight:
-                  FontWeight.w500,
-            ),
-          ),
-        ),
-      ],
-    ),
-  ),
-],
-
-                  const SizedBox(height: 17),
+                  const SizedBox(
+                    height: 17,
+                  ),
 
                   for (
                     int i = 0;
-                    i < group.tiers.length;
+                    i <
+                        group.tiers.length;
                     i++
                   ) ...[
                     _AchievementTierRow(
-                      tier: group.tiers[i],
+                      tier:
+                          group.tiers[i],
                       isCurrent:
-                          group.highestUnlockedTier
+                          group
+                                  .highestUnlockedTier
                                   ?.id ==
-                              group.tiers[i].id,
+                              group
+                                  .tiers[i]
+                                  .id,
                     ),
 
                     if (i <
-                        group.tiers.length - 1)
-                      const SizedBox(height: 8),
+                        group.tiers.length -
+                            1)
+                      const SizedBox(
+                        height: 8,
+                      ),
                   ],
 
-                  const SizedBox(height: 16),
+                  // Medal Collection has its
+                  // own visual reward.
+                  // It does not need to be
+                  // pinned to the display name.
+                  if (!isMedalCollectionGroup) ...[
+                    const SizedBox(
+                      height: 16,
+                    ),
 
-                  SizedBox(
-                    width: double.infinity,
+                    SizedBox(
+                      width:
+                          double.infinity,
 
-                    child: ElevatedButton.icon(
-                      style:
-                          ElevatedButton.styleFrom(
-                        foregroundColor: accent,
+                      child:
+                          ElevatedButton.icon(
+                        style:
+                            ElevatedButton.styleFrom(
+                          foregroundColor:
+                              accent,
 
-                        backgroundColor:
-                            accent.withValues(
-                          alpha: 0.10,
-                        ),
+                          backgroundColor:
+                              accent.withValues(
+                            alpha: 0.10,
+                          ),
 
-                        side: BorderSide(
-                          color: accent.withValues(
-                            alpha: 0.45,
+                          side:
+                              BorderSide(
+                            color:
+                                accent.withValues(
+                              alpha: 0.45,
+                            ),
+                          ),
+
+                          padding:
+                              const EdgeInsets
+                                  .symmetric(
+                            vertical: 12,
+                          ),
+
+                          shape:
+                              RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius
+                                    .circular(
+                              14,
+                            ),
                           ),
                         ),
 
-                        padding:
-                            const EdgeInsets.symmetric(
-                          vertical: 12,
+                        onPressed:
+                            !canPin
+                                ? null
+                                : () async {
+                                    Navigator.pop(
+                                      sheetContext,
+                                    );
+
+                                    if (isPinned) {
+                                      await pinService
+                                          .unpin();
+                                    } else {
+                                      await pinService
+                                          .pin(
+                                        group.id,
+                                      );
+                                    }
+                                  },
+
+                        icon:
+                            Icon(
+                          isPinned
+                              ? Icons
+                                  .push_pin_outlined
+                              : Icons
+                                  .push_pin_rounded,
+                          color:
+                              accent,
                         ),
 
-                        shape:
-                            RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(
-                            14,
+                        label:
+                            Text(
+                          !canPin
+                              ? 'Unlock a tier first'
+                              : isPinned
+                                  ? 'Remove from Display Name'
+                                  : 'Pin to Display Name',
+
+                          style:
+                              TextStyle(
+                            color:
+                                accent,
+                            fontWeight:
+                                FontWeight.bold,
                           ),
-                        ),
-                      ),
-
-                      onPressed: !canPin
-                          ? null
-                          : () async {
-                              Navigator.pop(
-                                sheetContext,
-                              );
-
-                              if (isPinned) {
-                                await pinService
-                                    .unpin();
-                              } else {
-                                await pinService.pin(
-                                  group.id,
-                                );
-                              }
-                            },
-
-                      icon: Icon(
-                        isPinned
-                            ? Icons
-                                .push_pin_outlined
-                            : Icons
-                                .push_pin_rounded,
-                        color: accent,
-                      ),
-
-                      label: Text(
-                        !canPin
-                            ? 'Unlock a tier first'
-                            : isPinned
-                                ? 'Remove from Display Name'
-                                : 'Pin to Display Name',
-
-                        style: TextStyle(
-                          color: accent,
-                          fontWeight:
-                              FontWeight.bold,
                         ),
                       ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
           ),
         );
       },
+    );
+  }
+
+  Widget _achievementRewardInfo({
+    required Color accent,
+    required IconData icon,
+    required String text,
+  }) {
+    return Container(
+      width:
+          double.infinity,
+
+      padding:
+          const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: 9,
+      ),
+
+      decoration:
+          BoxDecoration(
+        color:
+            accent.withValues(
+          alpha: 0.065,
+        ),
+
+        borderRadius:
+            BorderRadius.circular(
+          12,
+        ),
+
+        border:
+            Border.all(
+          color:
+              accent.withValues(
+            alpha: 0.18,
+          ),
+        ),
+      ),
+
+      child:
+          Row(
+        children: [
+          Icon(
+            icon,
+            color:
+                accent,
+            size:
+                18,
+          ),
+
+          const SizedBox(
+            width:
+                9,
+          ),
+
+          Expanded(
+            child:
+                Text(
+              text,
+
+              style:
+                  const TextStyle(
+                color:
+                    Colors.white70,
+                fontSize:
+                    12,
+                fontWeight:
+                    FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -15067,30 +14930,41 @@ if (isRatingsLevelGroup) ...[
     final profileViewService =
         PublicProfileViewService.instance;
 
-        final critic =
-    CriticService.instance;
+    final critic =
+        CriticService.instance;
 
     return Scaffold(
-      backgroundColor: chipluxBackground,
+      backgroundColor:
+          chipluxBackground,
 
-      appBar: AppBar(
-        backgroundColor: chipluxBackground,
-        elevation: 0,
+      appBar:
+          AppBar(
+        backgroundColor:
+            chipluxBackground,
+        elevation:
+            0,
 
-        title: const Text(
+        title:
+            const Text(
           'Achievements',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
+
+          style:
+              TextStyle(
+            fontWeight:
+                FontWeight.bold,
           ),
         ),
       ),
 
-      body: ChipluxBackground(
+      body:
+          ChipluxBackground(
         style:
             ChipluxBackgroundStyle.profile,
 
-        child: AnimatedBuilder(
-          animation: Listenable.merge([
+        child:
+            AnimatedBuilder(
+          animation:
+              Listenable.merge([
             library,
             pinService,
             dailyLoginService,
@@ -15098,21 +14972,34 @@ if (isRatingsLevelGroup) ...[
             critic,
           ]),
 
-          builder: (context, _) {
+          builder:
+              (
+            context,
+            _,
+          ) {
             final int moviesWatched =
-                library.moviesWatchedCount;
+                library
+                    .moviesWatchedCount;
 
             final int completedTvShows =
-                library.completedTvShowsCount;
+                library
+                    .completedTvShowsCount;
 
             final int episodesWatched =
-                library.watchedEpisodeCount;
+                library
+                    .watchedEpisodeCount;
 
             final int loginDays =
-                dailyLoginService.loginDays;
+                dailyLoginService
+                    .loginDays;
 
             final int profilesViewed =
-                profileViewService.viewCount;
+                profileViewService
+                    .viewCount;
+
+            // =========================
+            // NORMAL ACHIEVEMENT GROUPS
+            // =========================
 
             final movieGroup =
                 _movieAchievementGroupFor(
@@ -15140,72 +15027,118 @@ if (isRatingsLevelGroup) ...[
             );
 
             final episodeRatedGroup =
-    _episodeRatedAchievementGroupFor(
-  critic.episodeRatingCount,
-);
+                _episodeRatedAchievementGroupFor(
+              critic
+                  .episodeRatingCount,
+            );
 
-final tvShowsRatedGroup =
-    _tvShowsRatedAchievementGroupFor(
-  critic.tvRatingCount,
-);
+            final tvShowsRatedGroup =
+                _tvShowsRatedAchievementGroupFor(
+              critic
+                  .tvRatingCount,
+            );
 
-final moviesRatedGroup =
-    _moviesRatedAchievementGroupFor(
-  critic.movieRatingCount,
-);
+            final moviesRatedGroup =
+                _moviesRatedAchievementGroupFor(
+              critic
+                  .movieRatingCount,
+            );
 
-final runtimeLevel =
-    _runtimeLevelForMinutes(
-  library.totalWatchedMinutes,
-);
+            final runtimeLevel =
+                _runtimeLevelForMinutes(
+              library
+                  .totalWatchedMinutes,
+            );
 
-final runtimeLevelGroup =
-    _runtimeLevelAchievementGroupFor(
-  runtimeLevel,
-);
+            final runtimeLevelGroup =
+                _runtimeLevelAchievementGroupFor(
+              runtimeLevel,
+            );
 
-final ratingsLevelGroup =
-    _ratingsLevelAchievementGroupFor(
-  critic.level,
-);
+            final ratingsLevelGroup =
+                _ratingsLevelAchievementGroupFor(
+              critic.level,
+            );
 
+            // IMPORTANT:
+            // Medal Collection is NOT
+            // included in this list.
+            //
+            // Otherwise its milestones
+            // would count toward itself.
             final groups =
-    <_AchievementGroup>[
-  movieGroup,
-  tvGroup,
-  episodeGroup,
-  dailyLoginGroup,
-  profileViewGroup,
-  episodeRatedGroup,
-  tvShowsRatedGroup,
-  moviesRatedGroup,
-  runtimeLevelGroup,
-  ratingsLevelGroup,
-];
+                <_AchievementGroup>[
+              movieGroup,
+              tvGroup,
+              episodeGroup,
+              dailyLoginGroup,
+              profileViewGroup,
+              episodeRatedGroup,
+              tvShowsRatedGroup,
+              moviesRatedGroup,
+              runtimeLevelGroup,
+              ratingsLevelGroup,
+            ];
 
-            final allTiers = groups
-                .expand(
-                  (group) => group.tiers,
-                )
-                .toList();
+            final allTiers =
+                groups
+                    .expand(
+                      (
+                        group,
+                      ) =>
+                          group.tiers,
+                    )
+                    .toList();
 
-            final int unlocked = allTiers
-                .where(
-                  (tier) => tier.unlocked,
-                )
-                .length;
+            final int unlocked =
+                allTiers
+                    .where(
+                      (
+                        tier,
+                      ) =>
+                          tier.unlocked,
+                    )
+                    .length;
 
             final int collectionPercent =
                 allTiers.isEmpty
                     ? 0
                     : ((unlocked /
-                                allTiers.length) *
-                            100)
-                        .round();
+                                    allTiers
+                                        .length) *
+                                100)
+                            .round();
+
+            // =========================
+            // MEDAL COLLECTION
+            // =========================
+
+            final medalCollectionGroup =
+                _medalCollectionAchievementGroupFor(
+              unlocked,
+            );
+
+            final medalCollectionTier =
+                medalCollectionGroup
+                    .highestUnlockedTier;
+
+            final medalCollectionColors =
+                _achievementTierColors(
+              medalCollectionTier,
+            );
+
+            final Color
+                medalCollectionAccent =
+                medalCollectionColors
+                        .isNotEmpty
+                    ? medalCollectionColors
+                        .first
+                    : Colors.white54;
 
             return ListView(
               padding:
-                  const EdgeInsets.fromLTRB(
+                  const EdgeInsets
+                      .fromLTRB(
                 18,
                 12,
                 18,
@@ -15213,186 +15146,306 @@ final ratingsLevelGroup =
               ),
 
               children: [
-                Container(
-                  padding:
-                      const EdgeInsets.all(1.2),
+                // =========================
+                // MEDAL COLLECTION CARD
+                // =========================
+                Material(
+                  color:
+                      Colors.transparent,
 
-                  decoration: BoxDecoration(
+                  child:
+                      InkWell(
+                    onTap:
+                        () {
+                      _showAchievementGroup(
+                        context,
+                        medalCollectionGroup,
+                      );
+                    },
+
                     borderRadius:
-                        BorderRadius.circular(
+                        BorderRadius
+                            .circular(
                       20,
                     ),
 
-                    gradient:
-                        const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end:
-                          Alignment.bottomRight,
-                      colors: [
-                        chipluxCyan,
-                        chipluxViolet,
-                        chipluxPurple,
-                      ],
-                    ),
-                  ),
-
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(
-                      horizontal: 17,
-                      vertical: 15,
-                    ),
-
-                    decoration: BoxDecoration(
-                      color: chipluxSurface,
-                      borderRadius:
-                          BorderRadius.circular(
-                        19,
+                    child:
+                        Container(
+                      padding:
+                          const EdgeInsets.all(
+                        1.2,
                       ),
-                    ),
 
-                    child: Row(
-                      children: [
-                        ShaderMask(
-                          shaderCallback:
-                              (bounds) {
-                            return const LinearGradient(
-                              begin:
-                                  Alignment.topLeft,
-                              end: Alignment
-                                  .bottomRight,
-                              colors: [
-                                chipluxCyan,
-                                chipluxViolet,
-                                chipluxPurple,
-                              ],
-                            ).createShader(
-                              bounds,
-                            );
-                          },
+                      decoration:
+                          BoxDecoration(
+                        borderRadius:
+                            BorderRadius
+                                .circular(
+                          20,
+                        ),
 
-                          child: const Icon(
-                            Icons
-                                .workspace_premium_rounded,
-                            color: Colors.white,
-                            size: 31,
+                        // Lesser visual:
+                        // faint single-color
+                        // milestone border.
+                        border:
+                            Border.all(
+                          color:
+                              medalCollectionTier !=
+                                      null
+                                  ? medalCollectionAccent
+                                      .withValues(
+                                      alpha:
+                                          0.42,
+                                    )
+                                  : Colors.white
+                                      .withValues(
+                                      alpha:
+                                          0.08,
+                                    ),
+
+                          width:
+                              1.2,
+                        ),
+
+                        color:
+                            medalCollectionTier !=
+                                    null
+                                ? medalCollectionAccent
+                                    .withValues(
+                                    alpha:
+                                        0.025,
+                                  )
+                                : Colors
+                                    .transparent,
+                      ),
+
+                      child:
+                          Container(
+                        padding:
+                            const EdgeInsets
+                                .symmetric(
+                          horizontal:
+                              17,
+                          vertical:
+                              15,
+                        ),
+
+                        decoration:
+                            BoxDecoration(
+                          color:
+                              chipluxSurface,
+
+                          borderRadius:
+                              BorderRadius
+                                  .circular(
+                            18.8,
                           ),
                         ),
 
-                        const SizedBox(
-                          width: 13,
-                        ),
+                        child:
+                            Row(
+                          children: [
+                            Icon(
+                              Icons
+                                  .workspace_premium_rounded,
 
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment
-                                    .start,
+                              color:
+                                  medalCollectionTier !=
+                                          null
+                                      ? medalCollectionAccent
+                                      : Colors
+                                          .white54,
 
-                            children: [
-                              const Text(
-                                'Medal Collection',
-                                style: TextStyle(
-                                  fontSize: 17,
-                                  fontWeight:
-                                      FontWeight
-                                          .bold,
-                                ),
+                              size:
+                                  31,
+                            ),
+
+                            const SizedBox(
+                              width:
+                                  13,
+                            ),
+
+                            Expanded(
+                              child:
+                                  Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment
+                                        .start,
+
+                                children: [
+                                  Text(
+                                    'Medal Collection',
+
+                                    style:
+                                        TextStyle(
+                                      color:
+                                          medalCollectionTier !=
+                                                  null
+                                              ? medalCollectionAccent
+                                              : Colors.white,
+
+                                      fontSize:
+                                          17,
+
+                                      fontWeight:
+                                          FontWeight
+                                              .bold,
+                                    ),
+                                  ),
+
+                                  const SizedBox(
+                                    height:
+                                        3,
+                                  ),
+
+                                  Text(
+                                    '$unlocked / ${allTiers.length} unlocked',
+
+                                    style:
+                                        const TextStyle(
+                                      color:
+                                          Colors
+                                              .white54,
+
+                                      fontSize:
+                                          12,
+                                    ),
+                                  ),
+                                ],
                               ),
+                            ),
 
-                              const SizedBox(
-                                height: 3,
+                            Text(
+                              '$collectionPercent%',
+
+                              style:
+                                  TextStyle(
+                                color:
+                                    medalCollectionTier !=
+                                            null
+                                        ? medalCollectionAccent
+                                            .withValues(
+                                            alpha:
+                                                0.78,
+                                          )
+                                        : Colors
+                                            .white54,
+
+                                fontSize:
+                                    15,
+
+                                fontWeight:
+                                    FontWeight
+                                        .bold,
                               ),
-
-                              Text(
-                                '$unlocked / ${allTiers.length} unlocked',
-                                style:
-                                    const TextStyle(
-                                  color:
-                                      Colors.white54,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-
-                        Text(
-                          '$collectionPercent%',
-                          style:
-                              const TextStyle(
-                            color: chipluxCyan,
-                            fontSize: 15,
-                            fontWeight:
-                                FontWeight.bold,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
 
-                const SizedBox(height: 25),
+                const SizedBox(
+                  height: 25,
+                ),
 
                 const Text(
                   'Achievements',
-                  style: TextStyle(
-                    fontSize: 21,
-                    fontWeight: FontWeight.bold,
+
+                  style:
+                      TextStyle(
+                    fontSize:
+                        21,
+
+                    fontWeight:
+                        FontWeight.bold,
                   ),
                 ),
 
-                const SizedBox(height: 15),
+                // We removed the old:
+                // "9 movies · 14 TV..."
+                // aggregate text here.
+
+                const SizedBox(
+                  height: 15,
+                ),
 
                 LayoutBuilder(
                   builder:
-                      (context, constraints) {
+                      (
+                    context,
+                    constraints,
+                  ) {
                     final int columns;
 
-                    if (constraints.maxWidth <
+                    if (constraints
+                            .maxWidth <
                         360) {
-                      columns = 2;
+                      columns =
+                          2;
                     } else if (constraints
                             .maxWidth <
                         520) {
-                      columns = 3;
+                      columns =
+                          3;
                     } else {
-                      columns = 4;
+                      columns =
+                          4;
                     }
 
                     return GridView.builder(
-                      shrinkWrap: true,
+                      shrinkWrap:
+                          true,
+
                       physics:
                           const NeverScrollableScrollPhysics(),
 
-                      itemCount: groups.length,
+                      itemCount:
+                          groups.length,
 
                       gridDelegate:
                           SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: columns,
-                        crossAxisSpacing: 10,
-                        mainAxisSpacing: 13,
+                        crossAxisCount:
+                            columns,
+
+                        crossAxisSpacing:
+                            10,
+
+                        mainAxisSpacing:
+                            13,
 
                         childAspectRatio:
-                            columns == 2
+                            columns ==
+                                    2
                                 ? 0.68
-                                : columns == 3
+                                : columns ==
+                                        3
                                     ? 0.60
                                     : 0.68,
                       ),
 
                       itemBuilder:
-                          (context, index) {
+                          (
+                        context,
+                        index,
+                      ) {
                         final group =
-                            groups[index];
+                            groups[
+                                index];
 
                         return _AchievementGroupCard(
-                          group: group,
+                          group:
+                              group,
+
                           isPinned:
-                              pinService.isPinned(
+                              pinService
+                                  .isPinned(
                             group.id,
                           ),
-                          onTap: () {
+
+                          onTap:
+                              () {
                             _showAchievementGroup(
                               context,
                               group,
@@ -15412,63 +15465,151 @@ final ratingsLevelGroup =
   }
 }
 
-class _AchievementTierRow extends StatelessWidget {
+class _AchievementTierRow
+    extends StatelessWidget {
   final _Achievement tier;
   final bool isCurrent;
 
-  const _AchievementTierRow({required this.tier, required this.isCurrent});
+  const _AchievementTierRow({
+    required this.tier,
+    required this.isCurrent,
+  });
 
   @override
-  Widget build(BuildContext context) {
-    final unlocked = tier.unlocked;
+  Widget build(
+    BuildContext context,
+  ) {
+    final unlocked =
+        tier.unlocked;
+
+    final tierColors =
+        _achievementTierColors(
+      tier,
+    );
+
+    final Color tierAccent =
+        tierColors.isNotEmpty
+            ? tierColors.first
+            : Colors.white38;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: isCurrent ? 0.06 : 0.025),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isCurrent
-              ? _achievementAccent(tier.rarity).withValues(alpha: 0.35)
-              : Colors.white.withValues(alpha: 0.05),
+      padding:
+          const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: 10,
+      ),
+
+      decoration:
+          BoxDecoration(
+        color:
+            Colors.white.withValues(
+          alpha:
+              isCurrent
+                  ? 0.06
+                  : 0.025,
+        ),
+
+        borderRadius:
+            BorderRadius.circular(
+          14,
+        ),
+
+        border:
+            Border.all(
+          color:
+              isCurrent &&
+                      unlocked
+                  ? tierAccent.withValues(
+                      alpha:
+                          0.55,
+                    )
+                  : Colors.white.withValues(
+                      alpha:
+                          0.05,
+                    ),
         ),
       ),
-      child: Row(
+
+      child:
+          Row(
         children: [
           SizedBox(
-            width: 42,
-            height: 42,
-            child: unlocked
-                ? _AchievementMedal(achievement: tier)
-                : Container(
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white10,
-                    ),
-                    child: Icon(tier.icon, color: Colors.white24, size: 21),
-                  ),
+            width:
+                42,
+            height:
+                42,
+
+            child:
+                unlocked
+                    ? _AchievementMedal(
+                        achievement:
+                            tier,
+                      )
+                    : Container(
+                        decoration:
+                            const BoxDecoration(
+                          shape:
+                              BoxShape.circle,
+                          color:
+                              Colors.white10,
+                        ),
+
+                        child:
+                            Icon(
+                          tier.icon,
+                          color:
+                              Colors.white24,
+                          size:
+                              21,
+                        ),
+                      ),
           ),
 
-          const SizedBox(width: 12),
+          const SizedBox(
+            width:
+                12,
+          ),
 
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child:
+                Column(
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
+
               children: [
                 Text(
                   tier.title,
-                  style: TextStyle(
-                    color: unlocked ? Colors.white : Colors.white54,
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
+
+                  style:
+                      TextStyle(
+                    color:
+                        unlocked
+                            ? tierAccent
+                            : Colors.white54,
+
+                    fontSize:
+                        13,
+
+                    fontWeight:
+                        FontWeight.bold,
                   ),
                 ),
 
-                const SizedBox(height: 2),
+                const SizedBox(
+                  height:
+                      2,
+                ),
 
                 Text(
                   tier.description,
-                  style: const TextStyle(color: Colors.white38, fontSize: 10),
+
+                  style:
+                      const TextStyle(
+                    color:
+                        Colors.white38,
+                    fontSize:
+                        10,
+                  ),
                 ),
               ],
             ),
@@ -15476,17 +15617,29 @@ class _AchievementTierRow extends StatelessWidget {
 
           if (unlocked)
             Icon(
-              Icons.check_circle_rounded,
-              color: _achievementAccent(tier.rarity),
-              size: 20,
+              Icons
+                  .check_circle_rounded,
+
+              color:
+                  tierAccent,
+
+              size:
+                  20,
             )
           else
             Text(
               '${tier.current.clamp(0, tier.target)} / ${tier.target}',
-              style: const TextStyle(
-                color: Colors.white38,
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
+
+              style:
+                  const TextStyle(
+                color:
+                    Colors.white38,
+
+                fontSize:
+                    10,
+
+                fontWeight:
+                    FontWeight.bold,
               ),
             ),
         ],
@@ -17345,6 +17498,325 @@ class PublicProfileViewService
     } catch (e) {
       debugPrint(
         'Could not record public profile view: $e',
+      );
+    }
+  }
+}
+
+_AchievementGroup
+    _medalCollectionAchievementGroupFor(
+  int unlockedMilestones,
+) {
+  return _AchievementGroup(
+    id: 'medal_collection',
+    title: 'Medal Collection',
+    description:
+        'Unlock achievement milestones to upgrade your Medal Collection.',
+    icon:
+        Icons.workspace_premium_rounded,
+    current:
+        unlockedMilestones,
+    tiers: [
+      _Achievement(
+        id: 'medal_collection_5',
+        title: 'Starting Collection',
+        description:
+            'Unlock 5 achievement milestones',
+        icon:
+            Icons.workspace_premium_outlined,
+        current:
+            unlockedMilestones,
+        target:
+            5,
+        rarity:
+            _AchievementRarity.common,
+        visualTier:
+            1,
+      ),
+      _Achievement(
+        id: 'medal_collection_10',
+        title: 'Medal Hunter',
+        description:
+            'Unlock 10 achievement milestones',
+        icon:
+            Icons.military_tech_outlined,
+        current:
+            unlockedMilestones,
+        target:
+            10,
+        rarity:
+            _AchievementRarity.uncommon,
+        visualTier:
+            2,
+      ),
+      _Achievement(
+        id: 'medal_collection_20',
+        title: 'Collector',
+        description:
+            'Unlock 20 achievement milestones',
+        icon:
+            Icons.military_tech_rounded,
+        current:
+            unlockedMilestones,
+        target:
+            20,
+        rarity:
+            _AchievementRarity.uncommon,
+        visualTier:
+            3,
+      ),
+      _Achievement(
+        id: 'medal_collection_35',
+        title: 'Medal Vault',
+        description:
+            'Unlock 35 achievement milestones',
+        icon:
+            Icons.stars_rounded,
+        current:
+            unlockedMilestones,
+        target:
+            35,
+        rarity:
+            _AchievementRarity.rare,
+        visualTier:
+            4,
+      ),
+      _Achievement(
+        id: 'medal_collection_50',
+        title: 'Master Collector',
+        description:
+            'Unlock 50 achievement milestones',
+        icon:
+            Icons.auto_awesome_rounded,
+        current:
+            unlockedMilestones,
+        target:
+            50,
+        rarity:
+            _AchievementRarity.epic,
+        visualTier:
+            5,
+      ),
+      _Achievement(
+        id: 'medal_collection_65',
+        title: 'Legendary Collection',
+        description:
+            'Unlock 65 achievement milestones',
+        icon:
+            Icons.diamond_rounded,
+        current:
+            unlockedMilestones,
+        target:
+            65,
+        rarity:
+            _AchievementRarity.legendary,
+        visualTier:
+            6,
+      ),
+    ],
+  );
+}
+
+int _totalUnlockedAchievementMilestones() {
+  final library =
+      LibraryService.instance;
+
+  final critic =
+      CriticService.instance;
+
+  final runtimeLevel =
+      _runtimeLevelForMinutes(
+    library.totalWatchedMinutes,
+  );
+
+  final groups =
+      <_AchievementGroup>[
+    _movieAchievementGroupFor(
+      library.moviesWatchedCount,
+    ),
+    _tvAchievementGroupFor(
+      library.completedTvShowsCount,
+    ),
+    _episodeAchievementGroupFor(
+      library.watchedEpisodeCount,
+    ),
+    _dailyLoginAchievementGroupFor(
+      DailyLoginService
+          .instance
+          .loginDays,
+    ),
+    _publicProfileViewAchievementGroupFor(
+      PublicProfileViewService
+          .instance
+          .viewCount,
+    ),
+    _episodeRatedAchievementGroupFor(
+      critic.episodeRatingCount,
+    ),
+    _tvShowsRatedAchievementGroupFor(
+      critic.tvRatingCount,
+    ),
+    _moviesRatedAchievementGroupFor(
+      critic.movieRatingCount,
+    ),
+    _runtimeLevelAchievementGroupFor(
+      runtimeLevel,
+    ),
+    _ratingsLevelAchievementGroupFor(
+      critic.level,
+    ),
+  ];
+
+  return groups
+      .expand(
+        (group) => group.tiers,
+      )
+      .where(
+        (tier) => tier.unlocked,
+      )
+      .length;
+}
+
+class _MedalCollectionUnlockTracker {
+  _MedalCollectionUnlockTracker._();
+
+  static final
+      _MedalCollectionUnlockTracker
+      instance =
+      _MedalCollectionUnlockTracker._();
+
+  static const String _prefKey =
+      'medal_collection_last_unlocked_count';
+
+  int? _lastCount;
+
+  Future<void> initialize() async {
+    final prefs =
+        await SharedPreferences
+            .getInstance();
+
+    final saved =
+        prefs.getInt(
+      _prefKey,
+    );
+
+    final current =
+        _totalUnlockedAchievementMilestones();
+
+    // Existing users should not suddenly
+    // receive every old Medal Collection
+    // popup after installing this update.
+    if (saved == null) {
+      _lastCount =
+          current;
+
+      await prefs.setInt(
+        _prefKey,
+        current,
+      );
+
+      return;
+    }
+
+    _lastCount =
+        saved;
+  }
+
+  Future<void> checkForUnlocks(
+    BuildContext context,
+  ) async {
+    final previous =
+        _lastCount ??
+            _totalUnlockedAchievementMilestones();
+
+    final current =
+        _totalUnlockedAchievementMilestones();
+
+    if (current <= previous) {
+      _lastCount =
+          current;
+
+      return;
+    }
+
+    final group =
+        _medalCollectionAchievementGroupFor(
+      current,
+    );
+
+    final newlyReached =
+        group.tiers.where(
+      (achievement) {
+        return previous <
+                achievement.target &&
+            current >=
+                achievement.target;
+      },
+    ).toList();
+
+    _lastCount =
+        current;
+
+    final prefs =
+        await SharedPreferences
+            .getInstance();
+
+    await prefs.setInt(
+      _prefKey,
+      current,
+    );
+
+    for (final achievement
+        in newlyReached) {
+      if (!context.mounted) {
+        return;
+      }
+
+      await Future<void>.delayed(
+        const Duration(
+          milliseconds: 350,
+        ),
+      );
+
+      if (!context.mounted) {
+        return;
+      }
+
+      try {
+        await CommunityService
+            .instance
+            .deleteActivity(
+          activityType:
+              'achievement_unlocked',
+          achievementId:
+              achievement.id,
+        );
+
+        await CommunityService
+            .instance
+            .tryCreateActivity(
+          activityType:
+              'achievement_unlocked',
+          achievementId:
+              achievement.id,
+          achievementTitle:
+              achievement.title,
+        );
+      } catch (e) {
+        debugPrint(
+          'Could not create Medal Collection achievement activity: $e',
+        );
+      }
+
+      if (!context.mounted) {
+        return;
+      }
+
+      await _showAchievementUnlocked(
+        context,
+        achievement,
+        checkMedalCollection:
+            false,
       );
     }
   }
