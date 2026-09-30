@@ -372,6 +372,599 @@ _AchievementGroup _episodeAchievementGroupFor(
 }
 
 _AchievementGroup
+    _episodeRatedAchievementGroupFor(
+  int episodesRated,
+) {
+  return _AchievementGroup(
+    id: 'episodes_rated',
+
+    title: 'Episodes Rated',
+
+    description:
+        'Rate episodes to upgrade your Episodes Rated stat border.',
+
+    icon:
+        Icons.star_rate_rounded,
+
+    current:
+        episodesRated,
+
+    tiers: [
+      _Achievement(
+        id: 'episodes_rated_8',
+        title: 'First Reviews',
+        description: 'Rate 8 episodes',
+        icon: Icons.star_outline_rounded,
+        current: episodesRated,
+        target: 8,
+        rarity:
+            _AchievementRarity.common,
+        visualTier: 1,
+      ),
+
+      _Achievement(
+        id: 'episodes_rated_16',
+        title: 'Episode Reviewer',
+        description: 'Rate 16 episodes',
+        icon: Icons.star_half_rounded,
+        current: episodesRated,
+        target: 16,
+        rarity:
+            _AchievementRarity.uncommon,
+        visualTier: 2,
+      ),
+
+      _Achievement(
+        id: 'episodes_rated_32',
+        title: 'Season Critic',
+        description: 'Rate 32 episodes',
+        icon: Icons.reviews_outlined,
+        current: episodesRated,
+        target: 32,
+        rarity:
+            _AchievementRarity.uncommon,
+        visualTier: 3,
+      ),
+
+      _Achievement(
+        id: 'episodes_rated_64',
+        title: 'Episode Analyst',
+        description: 'Rate 64 episodes',
+        icon: Icons.rate_review_rounded,
+        current: episodesRated,
+        target: 64,
+        rarity:
+            _AchievementRarity.rare,
+        visualTier: 4,
+      ),
+
+      _Achievement(
+        id: 'episodes_rated_128',
+        title: 'Binge Critic',
+        description: 'Rate 128 episodes',
+        icon: Icons.auto_awesome_rounded,
+        current: episodesRated,
+        target: 128,
+        rarity:
+            _AchievementRarity.rare,
+        visualTier: 5,
+      ),
+
+      _Achievement(
+        id: 'episodes_rated_256',
+        title: 'Episode Authority',
+        description: 'Rate 256 episodes',
+        icon: Icons.stars_rounded,
+        current: episodesRated,
+        target: 256,
+        rarity:
+            _AchievementRarity.epic,
+        visualTier: 6,
+      ),
+
+      _Achievement(
+        id: 'episodes_rated_512',
+        title: 'Episode Legend',
+        description: 'Rate 512 episodes',
+        icon:
+            Icons.workspace_premium_rounded,
+        current: episodesRated,
+        target: 512,
+        rarity:
+            _AchievementRarity.legendary,
+        visualTier: 7,
+      ),
+    ],
+  );
+}
+
+_AchievementGroup
+    _tvShowsRatedAchievementGroupFor(
+  int tvShowsRated,
+) {
+  return _AchievementGroup(
+    id: 'tv_shows_rated',
+    title: 'TV Shows Rated',
+    description:
+        'Rate TV shows to upgrade your TV Shows Rated stat border.',
+    icon: Icons.live_tv_rounded,
+    current: tvShowsRated,
+    tiers: [
+      _Achievement(
+        id: 'tv_rated_2',
+        title: 'First Verdict',
+        description: 'Rate 2 TV shows',
+        icon: Icons.star_outline_rounded,
+        current: tvShowsRated,
+        target: 2,
+        rarity: _AchievementRarity.common,
+        visualTier: 1,
+      ),
+      _Achievement(
+        id: 'tv_rated_4',
+        title: 'Show Reviewer',
+        description: 'Rate 4 TV shows',
+        icon: Icons.star_half_rounded,
+        current: tvShowsRated,
+        target: 4,
+        rarity: _AchievementRarity.uncommon,
+        visualTier: 2,
+      ),
+      _Achievement(
+        id: 'tv_rated_8',
+        title: 'Series Critic',
+        description: 'Rate 8 TV shows',
+        icon: Icons.reviews_outlined,
+        current: tvShowsRated,
+        target: 8,
+        rarity: _AchievementRarity.uncommon,
+        visualTier: 3,
+      ),
+      _Achievement(
+        id: 'tv_rated_16',
+        title: 'Small Screen Reviewer',
+        description: 'Rate 16 TV shows',
+        icon: Icons.rate_review_rounded,
+        current: tvShowsRated,
+        target: 16,
+        rarity: _AchievementRarity.rare,
+        visualTier: 4,
+      ),
+      _Achievement(
+        id: 'tv_rated_32',
+        title: 'Series Analyst',
+        description: 'Rate 32 TV shows',
+        icon: Icons.auto_awesome_rounded,
+        current: tvShowsRated,
+        target: 32,
+        rarity: _AchievementRarity.rare,
+        visualTier: 5,
+      ),
+      _Achievement(
+        id: 'tv_rated_64',
+        title: 'TV Authority',
+        description: 'Rate 64 TV shows',
+        icon: Icons.stars_rounded,
+        current: tvShowsRated,
+        target: 64,
+        rarity: _AchievementRarity.epic,
+        visualTier: 6,
+      ),
+      _Achievement(
+        id: 'tv_rated_128',
+        title: 'Television Expert',
+        description: 'Rate 128 TV shows',
+        icon: Icons.workspace_premium_rounded,
+        current: tvShowsRated,
+        target: 128,
+        rarity: _AchievementRarity.legendary,
+        visualTier: 7,
+      ),
+      _Achievement(
+        id: 'tv_rated_256',
+        title: 'TV Legend',
+        description: 'Rate 256 TV shows',
+        icon: Icons.diamond_rounded,
+        current: tvShowsRated,
+        target: 256,
+        rarity: _AchievementRarity.legendary,
+        visualTier: 8,
+      ),
+    ],
+  );
+}
+
+_AchievementGroup
+    _moviesRatedAchievementGroupFor(
+  int moviesRated,
+) {
+  return _AchievementGroup(
+    id: 'movies_rated',
+    title: 'Movies Rated',
+    description:
+        'Rate movies to upgrade your Movies Rated stat border.',
+    icon: Icons.movie_filter_rounded,
+    current: moviesRated,
+    tiers: [
+      _Achievement(
+        id: 'movies_rated_2',
+        title: 'First Review',
+        description: 'Rate 2 movies',
+        icon: Icons.star_outline_rounded,
+        current: moviesRated,
+        target: 2,
+        rarity: _AchievementRarity.common,
+        visualTier: 1,
+      ),
+      _Achievement(
+        id: 'movies_rated_4',
+        title: 'Film Reviewer',
+        description: 'Rate 4 movies',
+        icon: Icons.star_half_rounded,
+        current: moviesRated,
+        target: 4,
+        rarity: _AchievementRarity.uncommon,
+        visualTier: 2,
+      ),
+      _Achievement(
+        id: 'movies_rated_8',
+        title: 'Movie Critic',
+        description: 'Rate 8 movies',
+        icon: Icons.reviews_outlined,
+        current: moviesRated,
+        target: 8,
+        rarity: _AchievementRarity.uncommon,
+        visualTier: 3,
+      ),
+      _Achievement(
+        id: 'movies_rated_16',
+        title: 'Film Analyst',
+        description: 'Rate 16 movies',
+        icon: Icons.rate_review_rounded,
+        current: moviesRated,
+        target: 16,
+        rarity: _AchievementRarity.rare,
+        visualTier: 4,
+      ),
+      _Achievement(
+        id: 'movies_rated_32',
+        title: 'Seasoned Critic',
+        description: 'Rate 32 movies',
+        icon: Icons.auto_awesome_rounded,
+        current: moviesRated,
+        target: 32,
+        rarity: _AchievementRarity.rare,
+        visualTier: 5,
+      ),
+      _Achievement(
+        id: 'movies_rated_64',
+        title: 'Film Authority',
+        description: 'Rate 64 movies',
+        icon: Icons.stars_rounded,
+        current: moviesRated,
+        target: 64,
+        rarity: _AchievementRarity.epic,
+        visualTier: 6,
+      ),
+      _Achievement(
+        id: 'movies_rated_128',
+        title: 'Cinema Expert',
+        description: 'Rate 128 movies',
+        icon: Icons.workspace_premium_rounded,
+        current: moviesRated,
+        target: 128,
+        rarity: _AchievementRarity.legendary,
+        visualTier: 7,
+      ),
+      _Achievement(
+        id: 'movies_rated_256',
+        title: 'Cinema Legend',
+        description: 'Rate 256 movies',
+        icon: Icons.diamond_rounded,
+        current: moviesRated,
+        target: 256,
+        rarity: _AchievementRarity.legendary,
+        visualTier: 8,
+      ),
+    ],
+  );
+}
+
+int _runtimeLevelForMinutes(
+  int totalMinutes,
+) {
+  int level = 1;
+  int remainingMinutes =
+      totalMinutes;
+
+  while (remainingMinutes >=
+      level * 20) {
+    remainingMinutes -=
+        level * 20;
+
+    level++;
+  }
+
+  return level;
+}
+
+_AchievementGroup
+    _runtimeLevelAchievementGroupFor(
+  int runtimeLevel,
+) {
+  return _AchievementGroup(
+    id:
+        'runtime_level',
+
+    title:
+        'Runtime Level',
+
+    description:
+        'Reach higher Runtime Levels to upgrade your Runtime Level border and gradient.',
+
+    icon:
+        Icons.timelapse_rounded,
+
+    current:
+        runtimeLevel,
+
+    tiers: [
+      _Achievement(
+        id:
+            'runtime_level_10',
+        title:
+            'Runtime Rookie',
+        description:
+            'Reach Runtime Level 10',
+        icon:
+            Icons.timelapse_rounded,
+        current:
+            runtimeLevel,
+        target:
+            10,
+        rarity:
+            _AchievementRarity.common,
+        visualTier:
+            1,
+      ),
+
+      _Achievement(
+        id:
+            'runtime_level_20',
+        title:
+            'Dedicated Viewer',
+        description:
+            'Reach Runtime Level 20',
+        icon:
+            Icons.schedule_rounded,
+        current:
+            runtimeLevel,
+        target:
+            20,
+        rarity:
+            _AchievementRarity.uncommon,
+        visualTier:
+            2,
+      ),
+
+      _Achievement(
+        id:
+            'runtime_level_30',
+        title:
+            'Runtime Regular',
+        description:
+            'Reach Runtime Level 30',
+        icon:
+            Icons.history_toggle_off_rounded,
+        current:
+            runtimeLevel,
+        target:
+            30,
+        rarity:
+            _AchievementRarity.rare,
+        visualTier:
+            3,
+      ),
+
+      _Achievement(
+        id:
+            'runtime_level_50',
+        title:
+            'Watch Veteran',
+        description:
+            'Reach Runtime Level 50',
+        icon:
+            Icons.auto_awesome_rounded,
+        current:
+            runtimeLevel,
+        target:
+            50,
+        rarity:
+            _AchievementRarity.rare,
+        visualTier:
+            4,
+      ),
+
+      _Achievement(
+        id:
+            'runtime_level_75',
+        title:
+            'Runtime Master',
+        description:
+            'Reach Runtime Level 75',
+        icon:
+            Icons.stars_rounded,
+        current:
+            runtimeLevel,
+        target:
+            75,
+        rarity:
+            _AchievementRarity.epic,
+        visualTier:
+            5,
+      ),
+
+      _Achievement(
+        id:
+            'runtime_level_100',
+        title:
+            'Time Legend',
+        description:
+            'Reach Runtime Level 100',
+        icon:
+            Icons.workspace_premium_rounded,
+        current:
+            runtimeLevel,
+        target:
+            100,
+        rarity:
+            _AchievementRarity.legendary,
+        visualTier:
+            6,
+      ),
+    ],
+  );
+}
+
+_AchievementGroup
+    _ratingsLevelAchievementGroupFor(
+  int ratingsLevel,
+) {
+  return _AchievementGroup(
+    id:
+        'ratings_level',
+
+    title:
+        'Ratings Level',
+
+    description:
+        'Reach higher Ratings Levels to upgrade your Ratings Level border and gradient.',
+
+    icon:
+        Icons.star_rate_rounded,
+
+    current:
+        ratingsLevel,
+
+    tiers: [
+      _Achievement(
+        id:
+            'ratings_level_10',
+        title:
+            'Rising Critic',
+        description:
+            'Reach Ratings Level 10',
+        icon:
+            Icons.star_outline_rounded,
+        current:
+            ratingsLevel,
+        target:
+            10,
+        rarity:
+            _AchievementRarity.common,
+        visualTier:
+            1,
+      ),
+
+      _Achievement(
+        id:
+            'ratings_level_20',
+        title:
+            'Established Critic',
+        description:
+            'Reach Ratings Level 20',
+        icon:
+            Icons.star_half_rounded,
+        current:
+            ratingsLevel,
+        target:
+            20,
+        rarity:
+            _AchievementRarity.uncommon,
+        visualTier:
+            2,
+      ),
+
+      _Achievement(
+        id:
+            'ratings_level_30',
+        title:
+            'Seasoned Critic',
+        description:
+            'Reach Ratings Level 30',
+        icon:
+            Icons.reviews_rounded,
+        current:
+            ratingsLevel,
+        target:
+            30,
+        rarity:
+            _AchievementRarity.rare,
+        visualTier:
+            3,
+      ),
+
+      _Achievement(
+        id:
+            'ratings_level_40',
+        title:
+            'Critical Authority',
+        description:
+            'Reach Ratings Level 40',
+        icon:
+            Icons.rate_review_rounded,
+        current:
+            ratingsLevel,
+        target:
+            40,
+        rarity:
+            _AchievementRarity.rare,
+        visualTier:
+            4,
+      ),
+
+      _Achievement(
+        id:
+            'ratings_level_50',
+        title:
+            'Master Critic',
+        description:
+            'Reach Ratings Level 50',
+        icon:
+            Icons.stars_rounded,
+        current:
+            ratingsLevel,
+        target:
+            50,
+        rarity:
+            _AchievementRarity.epic,
+        visualTier:
+            5,
+      ),
+
+      _Achievement(
+        id:
+            'ratings_level_60',
+        title:
+            'Critic Legend',
+        description:
+            'Reach Ratings Level 60',
+        icon:
+            Icons.workspace_premium_rounded,
+        current:
+            ratingsLevel,
+        target:
+            60,
+        rarity:
+            _AchievementRarity.legendary,
+        visualTier:
+            6,
+      ),
+    ],
+  );
+}
+
+_AchievementGroup
     _dailyLoginAchievementGroupFor(
   int loginDays,
 ) {
@@ -493,6 +1086,336 @@ _AchievementGroup
       ),
     ],
   );
+}
+
+Future<void>
+    _checkRatingsLevelAchievementUnlock(
+  BuildContext context, {
+  required int previousLevel,
+  required int currentLevel,
+}) async {
+  if (currentLevel <=
+      previousLevel) {
+    return;
+  }
+
+  final group =
+      _ratingsLevelAchievementGroupFor(
+    currentLevel,
+  );
+
+  final newlyReached =
+      group.tiers.where(
+    (achievement) {
+      return previousLevel <
+              achievement.target &&
+          currentLevel >=
+              achievement.target;
+    },
+  ).toList();
+
+  if (newlyReached.isEmpty) {
+    return;
+  }
+
+  for (final achievement
+      in newlyReached) {
+    if (!context.mounted) {
+      return;
+    }
+
+    await Future<void>.delayed(
+      const Duration(
+        milliseconds:
+            550,
+      ),
+    );
+
+    if (!context.mounted) {
+      return;
+    }
+
+    try {
+      await CommunityService.instance
+          .deleteActivity(
+        activityType:
+            'achievement_unlocked',
+        achievementId:
+            achievement.id,
+      );
+
+      await CommunityService.instance
+          .tryCreateActivity(
+        activityType:
+            'achievement_unlocked',
+        achievementId:
+            achievement.id,
+        achievementTitle:
+            achievement.title,
+      );
+    } catch (e) {
+      debugPrint(
+        'Could not create Ratings Level achievement activity: $e',
+      );
+    }
+
+    if (!context.mounted) {
+      return;
+    }
+
+    await _showAchievementUnlocked(
+      context,
+      achievement,
+    );
+  }
+}
+
+Future<void>
+    _checkRuntimeLevelAchievementUnlock(
+  BuildContext context, {
+  required int previousLevel,
+  required int currentLevel,
+}) async {
+  if (currentLevel <=
+      previousLevel) {
+    return;
+  }
+
+  final group =
+      _runtimeLevelAchievementGroupFor(
+    currentLevel,
+  );
+
+  final newlyReached =
+      group.tiers.where(
+    (achievement) {
+      return previousLevel <
+              achievement.target &&
+          currentLevel >=
+              achievement.target;
+    },
+  ).toList();
+
+  if (newlyReached.isEmpty) {
+    return;
+  }
+
+  for (final achievement
+      in newlyReached) {
+    if (!context.mounted) {
+      return;
+    }
+
+    await Future<void>.delayed(
+      const Duration(
+        milliseconds:
+            550,
+      ),
+    );
+
+    if (!context.mounted) {
+      return;
+    }
+
+    try {
+      await CommunityService.instance
+          .deleteActivity(
+        activityType:
+            'achievement_unlocked',
+        achievementId:
+            achievement.id,
+      );
+
+      await CommunityService.instance
+          .tryCreateActivity(
+        activityType:
+            'achievement_unlocked',
+        achievementId:
+            achievement.id,
+        achievementTitle:
+            achievement.title,
+      );
+    } catch (e) {
+      debugPrint(
+        'Could not create Runtime Level achievement activity: $e',
+      );
+    }
+
+    if (!context.mounted) {
+      return;
+    }
+
+    await _showAchievementUnlocked(
+      context,
+      achievement,
+    );
+  }
+}
+
+Future<void>
+    _checkTitleRatedAchievementUnlock(
+  BuildContext context, {
+  required String mediaType,
+  required int previousCount,
+  required int currentCount,
+}) async {
+  if (currentCount <= previousCount) {
+    return;
+  }
+
+  final group =
+      mediaType == 'movie'
+          ? _moviesRatedAchievementGroupFor(
+              currentCount,
+            )
+          : _tvShowsRatedAchievementGroupFor(
+              currentCount,
+            );
+
+  final newlyReached =
+      group.tiers.where(
+    (achievement) {
+      return previousCount <
+              achievement.target &&
+          currentCount >=
+              achievement.target;
+    },
+  ).toList();
+
+  if (newlyReached.isEmpty) {
+    return;
+  }
+
+  for (final achievement
+      in newlyReached) {
+    if (!context.mounted) {
+      return;
+    }
+
+    await Future<void>.delayed(
+      const Duration(
+        milliseconds: 550,
+      ),
+    );
+
+    if (!context.mounted) {
+      return;
+    }
+
+    try {
+      await CommunityService.instance
+          .deleteActivity(
+        activityType:
+            'achievement_unlocked',
+        achievementId:
+            achievement.id,
+      );
+
+      await CommunityService.instance
+          .tryCreateActivity(
+        activityType:
+            'achievement_unlocked',
+        achievementId:
+            achievement.id,
+        achievementTitle:
+            achievement.title,
+      );
+    } catch (e) {
+      debugPrint(
+        'Could not create title rating achievement activity: $e',
+      );
+    }
+
+    if (!context.mounted) {
+      return;
+    }
+
+    await _showAchievementUnlocked(
+      context,
+      achievement,
+    );
+  }
+}
+
+Future<void>
+    _checkEpisodeRatedAchievementUnlock(
+  BuildContext context, {
+  required int previousCount,
+  required int currentCount,
+}) async {
+  if (currentCount <=
+      previousCount) {
+    return;
+  }
+
+  final group =
+      _episodeRatedAchievementGroupFor(
+    currentCount,
+  );
+
+  final newlyReached =
+      group.tiers.where(
+    (achievement) {
+      return previousCount <
+              achievement.target &&
+          currentCount >=
+              achievement.target;
+    },
+  ).toList();
+
+  if (newlyReached.isEmpty) {
+    return;
+  }
+
+  for (final achievement
+      in newlyReached) {
+    if (!context.mounted) {
+      return;
+    }
+
+    await Future<void>.delayed(
+      const Duration(
+        milliseconds: 550,
+      ),
+    );
+
+    if (!context.mounted) {
+      return;
+    }
+
+    try {
+      await CommunityService.instance
+          .deleteActivity(
+        activityType:
+            'achievement_unlocked',
+        achievementId:
+            achievement.id,
+      );
+
+      await CommunityService.instance
+          .tryCreateActivity(
+        activityType:
+            'achievement_unlocked',
+        achievementId:
+            achievement.id,
+        achievementTitle:
+            achievement.title,
+      );
+    } catch (e) {
+      debugPrint(
+        'Could not create Episodes Rated achievement activity: $e',
+      );
+    }
+
+    if (!context.mounted) {
+      return;
+    }
+
+    await _showAchievementUnlocked(
+      context,
+      achievement,
+    );
+  }
 }
 
 Future<void> _checkMovieAchievementUnlock(
@@ -2368,7 +3291,9 @@ await PublicProfileViewService.instance
 }
 
 class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+  const MainScreen({
+    super.key,
+  });
 
   @override
   State<MainScreen> createState() =>
@@ -2389,12 +3314,35 @@ class _MainScreenState
 
   int libraryOpenRequest = 0;
 
+  late int _lastRuntimeLevel;
+
+  late int _lastRatingsLevel;
+
   @override
   void initState() {
     super.initState();
 
     ProfileService.instance
         .loadProfile();
+
+    _lastRuntimeLevel =
+        _runtimeLevelForMinutes(
+      LibraryService.instance
+          .totalWatchedMinutes,
+    );
+
+    _lastRatingsLevel =
+        CriticService.instance.level;
+
+    LibraryService.instance
+        .addListener(
+      _onLibraryChanged,
+    );
+
+    CriticService.instance
+        .addListener(
+      _onCriticChanged,
+    );
 
     WidgetsBinding.instance
         .addPostFrameCallback(
@@ -2406,13 +3354,83 @@ class _MainScreenState
     );
   }
 
+  void _onLibraryChanged() {
+    final currentLevel =
+        _runtimeLevelForMinutes(
+      LibraryService.instance
+          .totalWatchedMinutes,
+    );
+
+    if (currentLevel <=
+        _lastRuntimeLevel) {
+      _lastRuntimeLevel =
+          currentLevel;
+
+      return;
+    }
+
+    final previousLevel =
+        _lastRuntimeLevel;
+
+    _lastRuntimeLevel =
+        currentLevel;
+
+    if (!mounted) {
+      return;
+    }
+
+    unawaited(
+      _checkRuntimeLevelAchievementUnlock(
+        context,
+        previousLevel:
+            previousLevel,
+        currentLevel:
+            currentLevel,
+      ),
+    );
+  }
+
+  void _onCriticChanged() {
+    final currentLevel =
+        CriticService.instance.level;
+
+    if (currentLevel <=
+        _lastRatingsLevel) {
+      _lastRatingsLevel =
+          currentLevel;
+
+      return;
+    }
+
+    final previousLevel =
+        _lastRatingsLevel;
+
+    _lastRatingsLevel =
+        currentLevel;
+
+    if (!mounted) {
+      return;
+    }
+
+    unawaited(
+      _checkRatingsLevelAchievementUnlock(
+        context,
+        previousLevel:
+            previousLevel,
+        currentLevel:
+            currentLevel,
+      ),
+    );
+  }
+
   Future<void>
       _checkPendingDailyLoginAchievement() async {
     final service =
         DailyLoginService.instance;
 
     final previousCount =
-        service.takePendingPreviousCount();
+        service
+            .takePendingPreviousCount();
 
     if (previousCount == null ||
         !mounted) {
@@ -2444,13 +3462,16 @@ class _MainScreenState
 
       libraryOpenRequest++;
 
-      currentIndex = 2;
+      currentIndex =
+          2;
     });
   }
 
   Widget _currentPage() {
     return IndexedStack(
-      index: currentIndex,
+      index:
+          currentIndex,
+
       children: [
         const HomePage(),
 
@@ -2496,7 +3517,16 @@ class _MainScreenState
             );
           },
 
-          onTitlesRatedTap:
+          onTvShowsRatedTap:
+              () {
+            _openCompleted(
+              'tv',
+              sortMode:
+                  'rated',
+            );
+          },
+
+          onMoviesRatedTap:
               () {
             _openCompleted(
               'movie',
@@ -2532,7 +3562,10 @@ class _MainScreenState
             profile,
 
         builder:
-            (context, _) {
+            (
+          context,
+          _,
+        ) {
           return _ChipluxBottomNav(
             currentIndex:
                 currentIndex,
@@ -2593,6 +3626,21 @@ class _MainScreenState
         return ChipluxBackgroundStyle
             .discover;
     }
+  }
+
+  @override
+  void dispose() {
+    LibraryService.instance
+        .removeListener(
+      _onLibraryChanged,
+    );
+
+    CriticService.instance
+        .removeListener(
+      _onCriticChanged,
+    );
+
+    super.dispose();
   }
 }
 
@@ -4214,6 +5262,16 @@ class PublicStatsSyncService {
     final dailyLoginService =
         DailyLoginService.instance;
 
+        final tvShowsRatedAchievementGroup =
+    _tvShowsRatedAchievementGroupFor(
+  critic.tvRatingCount,
+);
+
+final moviesRatedAchievementGroup =
+    _moviesRatedAchievementGroupFor(
+  critic.movieRatingCount,
+);
+
     // =========================
     // ACHIEVEMENT GROUPS
     // =========================
@@ -4232,6 +5290,26 @@ class PublicStatsSyncService {
         _episodeAchievementGroupFor(
       library.watchedEpisodeCount,
     );
+
+    final episodeRatedAchievementGroup =
+    _episodeRatedAchievementGroupFor(
+  critic.episodeRatingCount,
+);
+
+final runtimeLevel =
+    _runtimeLevelForMinutes(
+  library.totalWatchedMinutes,
+);
+
+final runtimeLevelAchievementGroup =
+    _runtimeLevelAchievementGroupFor(
+  runtimeLevel,
+);
+
+final ratingsLevelAchievementGroup =
+    _ratingsLevelAchievementGroupFor(
+  critic.level,
+);
 
     final dailyLoginAchievementGroup =
         _dailyLoginAchievementGroupFor(
@@ -4290,7 +5368,61 @@ class PublicStatsSyncService {
                 achievement.id,
           ),
 
+          ...ratingsLevelAchievementGroup
+    .tiers
+    .where(
+      (achievement) =>
+          achievement.unlocked,
+    )
+    .map(
+      (achievement) =>
+          achievement.id,
+    ),
+
           ...publicProfileAchievementGroup.tiers
+    .where(
+      (achievement) =>
+          achievement.unlocked,
+    )
+    .map(
+      (achievement) =>
+          achievement.id,
+    ),
+
+    ...episodeRatedAchievementGroup.tiers
+    .where(
+      (achievement) =>
+          achievement.unlocked,
+    )
+    .map(
+      (achievement) =>
+          achievement.id,
+    ),
+
+    ...runtimeLevelAchievementGroup
+    .tiers
+    .where(
+      (achievement) =>
+          achievement.unlocked,
+    )
+    .map(
+      (achievement) =>
+          achievement.id,
+    ),
+
+    ...tvShowsRatedAchievementGroup
+    .tiers
+    .where(
+      (achievement) =>
+          achievement.unlocked,
+    )
+    .map(
+      (achievement) =>
+          achievement.id,
+    ),
+
+...moviesRatedAchievementGroup
+    .tiers
     .where(
       (achievement) =>
           achievement.unlocked,
@@ -4365,6 +5497,16 @@ class PublicStatsSyncService {
                 dailyLoginService
                     .loginDays,
 
+                    'movie_ratings':
+    critic.movieRatingCount,
+
+'tv_ratings':
+    critic.tvRatingCount,
+
+'title_ratings':
+    critic.movieRatingCount +
+        critic.tvRatingCount,
+
                     'public_profiles_viewed':
     PublicProfileViewService
         .instance
@@ -4388,10 +5530,6 @@ class PublicStatsSyncService {
             'episode_ratings':
                 critic
                     .episodeRatingCount,
-
-            'title_ratings':
-                critic.movieRatingCount +
-                    critic.tvRatingCount,
 
             'average_stars':
                 critic.averageStars,
@@ -4522,14 +5660,20 @@ class PublicStatsSyncService {
 class PublicProfilePage extends StatefulWidget {
   final String userId;
 
-  const PublicProfilePage({super.key, required this.userId});
+  const PublicProfilePage({
+    super.key,
+    required this.userId,
+  });
 
   @override
-  State<PublicProfilePage> createState() => _PublicProfilePageState();
+  State<PublicProfilePage> createState() =>
+      _PublicProfilePageState();
 }
 
-class _PublicProfilePageState extends State<PublicProfilePage> {
-  final CommunityService community = CommunityService.instance;
+class _PublicProfilePageState
+    extends State<PublicProfilePage> {
+  final CommunityService community =
+      CommunityService.instance;
 
   Map<String, dynamic>? profile;
 
@@ -4538,92 +5682,110 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   bool changingFollow = false;
 
   @override
-void initState() {
-  super.initState();
+  void initState() {
+    super.initState();
 
-  _loadAndRecordView();
-}
-
-Future<void> _loadAndRecordView() async {
-  await _load();
-
-  if (!mounted || profile == null) {
-    return;
+    _loadAndRecordView();
   }
 
-  final ownUserId =
-      Supabase.instance.client.auth.currentUser?.id;
+  Future<void> _loadAndRecordView() async {
+    await _load();
 
-  if (ownUserId == null ||
-      ownUserId == widget.userId) {
-    return;
+    if (!mounted || profile == null) {
+      return;
+    }
+
+    final ownUserId =
+        Supabase.instance.client.auth.currentUser?.id;
+
+    if (ownUserId == null ||
+        ownUserId == widget.userId) {
+      return;
+    }
+
+    final service =
+        PublicProfileViewService.instance;
+
+    final int previousCount =
+        service.viewCount;
+
+    await service.recordView(
+      widget.userId,
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    await _checkPublicProfileViewAchievementUnlock(
+      context,
+      previousCount:
+          previousCount,
+      currentCount:
+          service.viewCount,
+    );
   }
-
-  final service =
-      PublicProfileViewService.instance;
-
-  final int previousCount =
-      service.viewCount;
-
-  await service.recordView(
-    widget.userId,
-  );
-
-  if (!mounted) {
-    return;
-  }
-
-  await _checkPublicProfileViewAchievementUnlock(
-    context,
-    previousCount: previousCount,
-    currentCount: service.viewCount,
-  );
-}
 
   Future<void> _load() async {
     try {
-      final client = Supabase.instance.client;
+      final client =
+          Supabase.instance.client;
 
-      final rawProfile = await client
-          .from('profiles')
-          .select(
-            'id, '
-            'display_name, '
-            'username, '
-            'avatar_url, '
-            'banner_path, '
-            'public_stats, '
-            'pinned_achievement_id, '
-            'display_name_frame_id, '
-            'avatar_frame_id',
-          )
-          .eq('id', widget.userId)
-          .maybeSingle();
+      final rawProfile =
+          await client
+              .from('profiles')
+              .select(
+                'id, '
+                'display_name, '
+                'username, '
+                'avatar_url, '
+                'banner_path, '
+                'public_stats, '
+                'pinned_achievement_id, '
+                'display_name_frame_id, '
+                'avatar_frame_id',
+              )
+              .eq(
+                'id',
+                widget.userId,
+              )
+              .maybeSingle();
 
-      final isFollowing = await community.isFollowing(widget.userId);
+      final isFollowing =
+          await community.isFollowing(
+        widget.userId,
+      );
 
       if (!mounted) {
         return;
       }
 
       setState(() {
-        profile = rawProfile != null
-            ? Map<String, dynamic>.from(rawProfile)
-            : null;
+        profile =
+            rawProfile != null
+                ? Map<String, dynamic>.from(
+                    rawProfile,
+                  )
+                : null;
 
-        following = isFollowing;
+        following =
+            isFollowing;
 
-        loading = false;
+        loading =
+            false;
       });
     } catch (e) {
-      debugPrint('Could not load public profile: $e');
+      debugPrint(
+        'Could not load public profile: $e',
+      );
 
       if (!mounted) {
         return;
       }
 
       setState(() {
-        loading = false;
+        loading =
+            false;
       });
     }
   }
@@ -4634,14 +5796,19 @@ Future<void> _loadAndRecordView() async {
     }
 
     setState(() {
-      changingFollow = true;
+      changingFollow =
+          true;
     });
 
     try {
       if (following) {
-        await community.unfollowUser(widget.userId);
+        await community.unfollowUser(
+          widget.userId,
+        );
       } else {
-        await community.followUser(widget.userId);
+        await community.followUser(
+          widget.userId,
+        );
       }
 
       if (!mounted) {
@@ -4649,33 +5816,55 @@ Future<void> _loadAndRecordView() async {
       }
 
       setState(() {
-        following = !following;
+        following =
+            !following;
       });
     } catch (e) {
-      debugPrint('Could not change follow state: $e');
+      debugPrint(
+        'Could not change follow state: $e',
+      );
     } finally {
       if (mounted) {
         setState(() {
-          changingFollow = false;
+          changingFollow =
+              false;
         });
       }
     }
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(
+    BuildContext context,
+  ) {
     if (loading) {
       return const Scaffold(
-        backgroundColor: chipluxBackground,
-        body: Center(child: CircularProgressIndicator()),
+        backgroundColor:
+            chipluxBackground,
+        body: Center(
+          child:
+              CircularProgressIndicator(),
+        ),
       );
     }
 
     if (profile == null) {
       return Scaffold(
-        backgroundColor: chipluxBackground,
-        appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0),
-        body: const Center(child: Text('Profile not found.')),
+        backgroundColor:
+            chipluxBackground,
+        appBar: AppBar(
+          backgroundColor:
+              Colors.transparent,
+          elevation:
+              0,
+        ),
+        body:
+            const Center(
+          child:
+              Text(
+            'Profile not found.',
+          ),
+        ),
       );
     }
 
@@ -4683,40 +5872,66 @@ Future<void> _loadAndRecordView() async {
     // BASIC PROFILE
     // =========================
 
-    final displayName = profile!['display_name']?.toString().trim() ?? '';
+    final displayName =
+        profile![
+                    'display_name']
+                ?.toString()
+                .trim() ??
+            '';
 
-    final username = profile!['username']?.toString().trim() ?? '';
+    final username =
+        profile!['username']
+                ?.toString()
+                .trim() ??
+            '';
 
-    final avatarUrl = profile!['avatar_url']?.toString();
+    final avatarUrl =
+        profile!['avatar_url']
+            ?.toString();
 
-    final bannerPath = profile!['banner_path']?.toString();
+    final bannerPath =
+        profile!['banner_path']
+            ?.toString();
 
-    final name = displayName.isNotEmpty
-        ? displayName
-        : username.isNotEmpty
-        ? username
-        : 'Chiplux User';
+    final name =
+        displayName.isNotEmpty
+            ? displayName
+            : username.isNotEmpty
+                ? username
+                : 'Chiplux User';
 
-    final bannerUrl = bannerPath != null && bannerPath.isNotEmpty
-        ? 'https://image.tmdb.org/t/p/w1280$bannerPath'
-        : null;
+    final bannerUrl =
+        bannerPath != null &&
+                bannerPath.isNotEmpty
+            ? 'https://image.tmdb.org/t/p/w1280$bannerPath'
+            : null;
 
-    final ownUserId = Supabase.instance.client.auth.currentUser?.id;
+    final ownUserId =
+        Supabase.instance.client.auth.currentUser?.id;
 
-    final isOwnProfile = ownUserId == widget.userId;
+    final isOwnProfile =
+        ownUserId ==
+            widget.userId;
 
     // =========================
     // PUBLIC STATS
     // =========================
 
-    final rawStats = profile!['public_stats'];
+    final rawStats =
+        profile!['public_stats'];
 
-    final publicStats = rawStats is Map
-        ? Map<String, dynamic>.from(rawStats)
-        : <String, dynamic>{};
+    final publicStats =
+        rawStats is Map
+            ? Map<String, dynamic>.from(
+                rawStats,
+              )
+            : <String, dynamic>{};
 
-    int intStat(String key) {
-      final value = publicStats[key];
+    int intStat(
+      String key,
+    ) {
+      final value =
+          publicStats[key];
 
       if (value is num) {
         return value.toInt();
@@ -4725,8 +5940,11 @@ Future<void> _loadAndRecordView() async {
       return 0;
     }
 
-    double doubleStat(String key) {
-      final value = publicStats[key];
+    double doubleStat(
+      String key,
+    ) {
+      final value =
+          publicStats[key];
 
       if (value is num) {
         return value.toDouble();
@@ -4735,81 +5953,225 @@ Future<void> _loadAndRecordView() async {
       return 0.0;
     }
 
-    final totalWatchedMinutes = intStat('total_watched_minutes');
+    // =========================
+    // WATCH STATS
+    // =========================
 
-    final movieWatchedMinutes = intStat('movie_watched_minutes');
+    final totalWatchedMinutes =
+        intStat(
+      'total_watched_minutes',
+    );
 
-    final episodeWatchedMinutes = intStat('episode_watched_minutes');
+    final runtimeLevel =
+    _runtimeLevelForMinutes(
+  totalWatchedMinutes,
+);
 
-    final moviesWatched = intStat('movies_watched');
+final runtimeLevelGroup =
+    _runtimeLevelAchievementGroupFor(
+  runtimeLevel,
+);
+
+    final movieWatchedMinutes =
+        intStat(
+      'movie_watched_minutes',
+    );
+
+    final episodeWatchedMinutes =
+        intStat(
+      'episode_watched_minutes',
+    );
+
+    final moviesWatched =
+        intStat(
+      'movies_watched',
+    );
 
     final completedTvShows =
-    intStat(
-  'tv_shows_completed',
-);
+        intStat(
+      'tv_shows_completed',
+    );
 
-final tvGroup =
-    _tvAchievementGroupFor(
-  completedTvShows,
-);
+    final episodesWatched =
+        intStat(
+      'episodes_watched',
+    );
 
-    final episodesWatched = intStat('episodes_watched');
+    // =========================
+    // WATCH ACHIEVEMENTS
+    // =========================
+
+    final movieGroup =
+        _movieAchievementGroupFor(
+      moviesWatched,
+    );
+
+    final tvGroup =
+        _tvAchievementGroupFor(
+      completedTvShows,
+    );
 
     final episodeGroup =
-    _episodeAchievementGroupFor(
-  episodesWatched,
+        _episodeAchievementGroupFor(
+      episodesWatched,
+    );
+
+    // =========================
+    // DAILY LOGIN
+    // =========================
+
+    final loginDays =
+        intStat(
+      'login_days',
+    );
+
+    final dailyLoginGroup =
+        _dailyLoginAchievementGroupFor(
+      loginDays,
+    );
+
+    // =========================
+    // PROFILE VIEWS
+    // =========================
+
+    final publicProfilesViewed =
+        intStat(
+      'public_profiles_viewed',
+    );
+
+    final profileViewGroup =
+        _publicProfileViewAchievementGroupFor(
+      publicProfilesViewed,
+    );
+
+    // =========================
+    // RATING COUNTS
+    // =========================
+
+    final episodeRatings =
+        intStat(
+      'episode_ratings',
+    );
+
+    final tvRatings =
+        intStat(
+      'tv_ratings',
+    );
+
+    final movieRatings =
+        intStat(
+      'movie_ratings',
+    );
+
+    // =========================
+    // RATING ACHIEVEMENTS
+    // =========================
+
+    final episodeRatedGroup =
+        _episodeRatedAchievementGroupFor(
+      episodeRatings,
+    );
+
+    final tvShowsRatedGroup =
+        _tvShowsRatedAchievementGroupFor(
+      tvRatings,
+    );
+
+    final moviesRatedGroup =
+        _moviesRatedAchievementGroupFor(
+      movieRatings,
+    );
+
+    // =========================
+    // CRITIC STATS
+    // =========================
+
+    final criticLevel =
+        intStat(
+      'critic_level',
+    );
+
+    final ratingsLevelGroup =
+    _ratingsLevelAchievementGroupFor(
+  criticLevel <= 0
+      ? 1
+      : criticLevel,
 );
 
-final loginDays =
-    intStat('login_days');
+    final criticXp =
+        intStat(
+      'critic_xp',
+    );
 
-final dailyLoginGroup =
-    _dailyLoginAchievementGroupFor(
-  loginDays,
-);
+    final criticRequiredXp =
+        intStat(
+      'critic_required_xp',
+    );
 
-    final episodeRatings = intStat('episode_ratings');
+    final totalRatings =
+        intStat(
+      'total_ratings',
+    );
 
-    final titleRatings = intStat('title_ratings');
+    final averageStars =
+        doubleStat(
+      'average_stars',
+    );
 
-    final criticLevel = intStat('critic_level');
+    final titleCoverage =
+        doubleStat(
+      'title_coverage',
+    );
 
-    final criticXp = intStat('critic_xp');
+    final episodeCoverage =
+        doubleStat(
+      'episode_coverage',
+    );
 
-    final criticRequiredXp = intStat('critic_required_xp');
+    final rawViewerTitle =
+        publicStats[
+                'viewer_title']
+            ?.toString()
+            .trim();
 
-    final totalRatings = intStat('total_ratings');
+    final viewerTitle =
+        rawViewerTitle != null &&
+                rawViewerTitle.isNotEmpty
+            ? rawViewerTitle
+            : 'VIEWER';
 
-    final averageStars = doubleStat('average_stars');
+    final rawCriticTitle =
+        publicStats[
+                'critic_title']
+            ?.toString()
+            .trim();
 
-    final titleCoverage = doubleStat('title_coverage');
-
-    final episodeCoverage = doubleStat('episode_coverage');
-
-    final rawViewerTitle = publicStats['viewer_title']?.toString().trim();
-
-    final viewerTitle = rawViewerTitle != null && rawViewerTitle.isNotEmpty
-        ? rawViewerTitle
-        : 'VIEWER';
-
-    final rawCriticTitle = publicStats['critic_title']?.toString().trim();
-
-    final criticTitle = rawCriticTitle != null && rawCriticTitle.isNotEmpty
-        ? rawCriticTitle
-        : 'NEW CRITIC';
+    final criticTitle =
+        rawCriticTitle != null &&
+                rawCriticTitle.isNotEmpty
+            ? rawCriticTitle
+            : 'NEW CRITIC';
 
     // =========================
     // GENRE RUNTIME
     // =========================
 
-    final genreRuntime = <Map<String, dynamic>>[];
+    final genreRuntime =
+        <Map<String, dynamic>>[];
 
-    final rawGenreRuntime = publicStats['genre_runtime'];
+    final rawGenreRuntime =
+        publicStats[
+            'genre_runtime'];
 
     if (rawGenreRuntime is List) {
-      for (final item in rawGenreRuntime) {
+      for (final item
+          in rawGenreRuntime) {
         if (item is Map) {
-          genreRuntime.add(Map<String, dynamic>.from(item));
+          genreRuntime.add(
+            Map<String, dynamic>.from(
+              item,
+            ),
+          );
         }
       }
     }
@@ -4818,88 +6180,138 @@ final dailyLoginGroup =
     // RATING DISTRIBUTION
     // =========================
 
-    final ratingDistribution = <int, int>{1: 0, 2: 0, 3: 0, 4: 0, 5: 0};
+    final ratingDistribution =
+        <int, int>{
+      1: 0,
+      2: 0,
+      3: 0,
+      4: 0,
+      5: 0,
+    };
 
-    final rawDistribution = publicStats['rating_distribution'];
+    final rawDistribution =
+        publicStats[
+            'rating_distribution'];
 
     if (rawDistribution is Map) {
-      for (int rating = 1; rating <= 5; rating++) {
-        final value = rawDistribution['$rating'];
+      for (
+        int rating = 1;
+        rating <= 5;
+        rating++
+      ) {
+        final value =
+            rawDistribution[
+                '$rating'];
 
         if (value is num) {
-          ratingDistribution[rating] = value.toInt();
+          ratingDistribution[
+              rating] = value.toInt();
         }
       }
     }
 
     // =========================
-    // ACHIEVEMENTS + MEDAL
+    // PROFILE COSMETICS
     // =========================
 
-    final movieGroup =
-    _movieAchievementGroupFor(
-  moviesWatched,
-);
+    final pinnedId =
+        profile![
+                'pinned_achievement_id']
+            ?.toString();
 
-final pinnedId =
-    profile![
-        'pinned_achievement_id']
-        ?.toString();
+    final displayNameFrameId =
+        profile![
+                'display_name_frame_id']
+            ?.toString();
 
-final displayNameFrameId =
-    profile![
-        'display_name_frame_id']
-        ?.toString();
+    final avatarFrameId =
+        profile![
+                'avatar_frame_id']
+            ?.toString();
 
-final avatarFrameId =
-    profile![
-        'avatar_frame_id']
-        ?.toString();
+    // =========================
+    // PINNED ACHIEVEMENT
+    // =========================
 
-        final publicProfilesViewed =
-    intStat(
-  'public_profiles_viewed',
-);
-
-final profileViewGroup =
-    _publicProfileViewAchievementGroupFor(
-  publicProfilesViewed,
-);
-
-final _Achievement? pinnedAchievement =
-    pinnedId == movieGroup.id
-        ? movieGroup.highestUnlockedTier
-        : pinnedId == tvGroup.id
-            ? tvGroup.highestUnlockedTier
-            : pinnedId == episodeGroup.id
-                ? episodeGroup.highestUnlockedTier
+    final _Achievement?
+        pinnedAchievement =
+        pinnedId ==
+                movieGroup.id
+            ? movieGroup
+                .highestUnlockedTier
+            : pinnedId ==
+                    tvGroup.id
+                ? tvGroup
+                    .highestUnlockedTier
                 : pinnedId ==
-                        dailyLoginGroup.id
-                    ? dailyLoginGroup
+                        episodeGroup.id
+                    ? episodeGroup
                         .highestUnlockedTier
                     : pinnedId ==
-                            profileViewGroup.id
-                        ? profileViewGroup
+                            dailyLoginGroup.id
+                        ? dailyLoginGroup
                             .highestUnlockedTier
-                        : null;
+                        : pinnedId ==
+                                profileViewGroup.id
+                            ? profileViewGroup
+                                .highestUnlockedTier
+                            : pinnedId ==
+                                    episodeRatedGroup.id
+                                ? episodeRatedGroup
+                                    .highestUnlockedTier
+                                : pinnedId ==
+                                        tvShowsRatedGroup.id
+                                    ? tvShowsRatedGroup
+                                        .highestUnlockedTier
+                                    : pinnedId ==
+        moviesRatedGroup.id
+    ? moviesRatedGroup
+        .highestUnlockedTier
+    : pinnedId ==
+        runtimeLevelGroup.id
+    ? runtimeLevelGroup
+        .highestUnlockedTier
+    : pinnedId ==
+            ratingsLevelGroup.id
+        ? ratingsLevelGroup
+            .highestUnlockedTier
+        : null;
+
     return Scaffold(
-      backgroundColor: chipluxBackground,
+      backgroundColor:
+          chipluxBackground,
 
-      body: ChipluxBackground(
-        style: ChipluxBackgroundStyle.profile,
+      body:
+          ChipluxBackground(
+        style:
+            ChipluxBackgroundStyle
+                .profile,
 
-        child: SafeArea(
-          child: RefreshIndicator(
-            color: chipluxCyan,
+        child:
+            SafeArea(
+          child:
+              RefreshIndicator(
+            color:
+                chipluxCyan,
 
-            backgroundColor: chipluxSurface,
+            backgroundColor:
+                chipluxSurface,
 
-            onRefresh: _load,
+            onRefresh:
+                _load,
 
-            child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
+            child:
+                ListView(
+              physics:
+                  const AlwaysScrollableScrollPhysics(),
 
-              padding: const EdgeInsets.fromLTRB(18, 12, 18, 35),
+              padding:
+                  const EdgeInsets.fromLTRB(
+                18,
+                12,
+                18,
+                35,
+              ),
 
               children: [
                 // =========================
@@ -4909,190 +6321,319 @@ final _Achievement? pinnedAchievement =
                 Row(
                   children: [
                     IconButton(
-                      onPressed: () {
-                        Navigator.pop(context);
+                      onPressed:
+                          () {
+                        Navigator.pop(
+                          context,
+                        );
                       },
-                      icon: const Icon(Icons.arrow_back_rounded),
+                      icon:
+                          const Icon(
+                        Icons
+                            .arrow_back_rounded,
+                      ),
                     ),
 
                     const Spacer(),
 
                     const Text(
                       'Profile',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
+                      style:
+                          TextStyle(
+                        fontSize:
+                            20,
+                        fontWeight:
+                            FontWeight.bold,
                       ),
                     ),
 
                     const Spacer(),
 
-                    _FollowerCountBadge(userId: widget.userId),
+                    _FollowerCountBadge(
+                      userId:
+                          widget.userId,
+                    ),
                   ],
                 ),
 
-                const SizedBox(height: 8),
+                const SizedBox(
+                  height: 8,
+                ),
 
                 // =========================
                 // BANNER
                 // =========================
+
                 SizedBox(
-                  height: 150,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(22),
-                    child: _ProfileBanner(imageUrl: bannerUrl),
+                  height:
+                      150,
+
+                  child:
+                      ClipRRect(
+                    borderRadius:
+                        BorderRadius.circular(
+                      22,
+                    ),
+
+                    child:
+                        _ProfileBanner(
+                      imageUrl:
+                          bannerUrl,
+                    ),
                   ),
                 ),
 
                 // =========================
                 // AVATAR / NAME / FOLLOW
                 // =========================
-                Transform.translate(
-                  offset: const Offset(0, -42),
 
-                  child: Column(
+                Transform.translate(
+                  offset:
+                      const Offset(
+                    0,
+                    -42,
+                  ),
+
+                  child:
+                      Column(
                     children: [
                       SizedBox(
-                        width: 94,
-                        height: 94,
-                        child: _AvatarFrame(
-                          frameId: avatarFrameId,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
+                        width:
+                            94,
+                        height:
+                            94,
 
-                              gradient: avatarUrl == null || avatarUrl.isEmpty
-                                  ? const LinearGradient(
-                                      colors: [
-                                        chipluxCyan,
-                                        chipluxViolet,
-                                        chipluxPurple,
-                                      ],
-                                    )
-                                  : null,
+                        child:
+                            _AvatarFrame(
+                          frameId:
+                              avatarFrameId,
 
-                              image: avatarUrl != null && avatarUrl.isNotEmpty
-                                  ? DecorationImage(
-                                      image: NetworkImage(avatarUrl),
-                                      fit: BoxFit.cover,
-                                    )
-                                  : null,
+                          child:
+                              Container(
+                            decoration:
+                                BoxDecoration(
+                              shape:
+                                  BoxShape.circle,
+
+                              gradient:
+                                  avatarUrl == null ||
+                                          avatarUrl.isEmpty
+                                      ? const LinearGradient(
+                                          colors: [
+                                            chipluxCyan,
+                                            chipluxViolet,
+                                            chipluxPurple,
+                                          ],
+                                        )
+                                      : null,
+
+                              image:
+                                  avatarUrl != null &&
+                                          avatarUrl.isNotEmpty
+                                      ? DecorationImage(
+                                          image:
+                                              NetworkImage(
+                                            avatarUrl,
+                                          ),
+                                          fit:
+                                              BoxFit.cover,
+                                        )
+                                      : null,
                             ),
 
-                            child: avatarUrl == null || avatarUrl.isEmpty
-                                ? Center(
-                                    child: Text(
-                                      name.isNotEmpty
-                                          ? name[0].toUpperCase()
-                                          : 'C',
-                                      style: const TextStyle(
-                                        fontSize: 38,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  )
-                                : null,
+                            child:
+                                avatarUrl == null ||
+                                        avatarUrl.isEmpty
+                                    ? Center(
+                                        child:
+                                            Text(
+                                          name.isNotEmpty
+                                              ? name[0].toUpperCase()
+                                              : 'C',
+                                          style:
+                                              const TextStyle(
+                                            fontSize:
+                                                38,
+                                            fontWeight:
+                                                FontWeight.bold,
+                                          ),
+                                        ),
+                                      )
+                                    : null,
                           ),
                         ),
                       ),
 
-                      const SizedBox(height: 10),
+                      const SizedBox(
+                        height:
+                            10,
+                      ),
 
-                      // DISPLAY NAME + PINNED MEDAL
+                      // =========================
+                      // DISPLAY NAME + MEDAL
+                      // =========================
+
                       Stack(
-                        clipBehavior: Clip.none,
-                        alignment: Alignment.center,
+                        clipBehavior:
+                            Clip.none,
+                        alignment:
+                            Alignment.center,
+
                         children: [
                           _DisplayNameFrame(
-                            frameId: displayNameFrameId,
+                            frameId:
+                                displayNameFrameId,
 
-                            child: Container(
-                              padding: EdgeInsets.fromLTRB(
-                                pinnedAchievement != null ? 34 : 20,
+                            child:
+                                Container(
+                              padding:
+                                  EdgeInsets.fromLTRB(
+                                pinnedAchievement !=
+                                        null
+                                    ? 34
+                                    : 20,
                                 8,
-                                pinnedAchievement != null ? 34 : 20,
+                                pinnedAchievement !=
+                                        null
+                                    ? 34
+                                    : 20,
                                 8,
                               ),
 
-                              decoration: BoxDecoration(
-                                color: chipluxSurface.withValues(alpha: 0.94),
+                              decoration:
+                                  BoxDecoration(
+                                color:
+                                    chipluxSurface.withValues(
+                                  alpha:
+                                      0.94,
+                                ),
 
-                                borderRadius: BorderRadius.circular(29),
+                                borderRadius:
+                                    BorderRadius.circular(
+                                  29,
+                                ),
                               ),
 
-                              child: Text(
+                              child:
+                                  Text(
                                 name,
 
-                                maxLines: 1,
+                                maxLines:
+                                    1,
 
-                                overflow: TextOverflow.ellipsis,
+                                overflow:
+                                    TextOverflow.ellipsis,
 
-                                style: const TextStyle(
-                                  fontSize: 18,
+                                style:
+                                    const TextStyle(
+                                  fontSize:
+                                      18,
 
-                                  fontWeight: FontWeight.bold,
+                                  fontWeight:
+                                      FontWeight.bold,
                                 ),
                               ),
                             ),
                           ),
 
-                          if (pinnedAchievement != null)
+                          if (pinnedAchievement !=
+                              null)
                             Positioned(
-                              left: -12,
-                              top: 6,
-                              child: _PinnedAchievementBadge(
-                                achievement: pinnedAchievement,
+                              left:
+                                  -12,
+                              top:
+                                  6,
+
+                              child:
+                                  _PinnedAchievementBadge(
+                                achievement:
+                                    pinnedAchievement,
                               ),
                             ),
                         ],
                       ),
 
-                      if (username.isNotEmpty) ...[
-                        const SizedBox(height: 6),
+                      if (username
+                          .isNotEmpty) ...[
+                        const SizedBox(
+                          height:
+                              6,
+                        ),
 
                         Text(
                           '@$username',
-                          style: const TextStyle(
-                            color: Colors.white54,
-                            fontSize: 14,
+
+                          style:
+                              const TextStyle(
+                            color:
+                                Colors.white54,
+                            fontSize:
+                                14,
                           ),
                         ),
                       ],
 
                       if (!isOwnProfile) ...[
-                        const SizedBox(height: 18),
+                        const SizedBox(
+                          height:
+                              18,
+                        ),
 
                         SizedBox(
-                          width: 180,
-                          height: 46,
-                          child: ElevatedButton.icon(
-                            onPressed: changingFollow ? null : _toggleFollow,
+                          width:
+                              180,
+                          height:
+                              46,
 
-                            icon: changingFollow
-                                ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : Icon(
-                                    following
-                                        ? Icons.check_rounded
-                                        : Icons.person_add_alt_1_rounded,
-                                  ),
+                          child:
+                              ElevatedButton.icon(
+                            onPressed:
+                                changingFollow
+                                    ? null
+                                    : _toggleFollow,
 
-                            label: Text(following ? 'Following' : 'Follow'),
+                            icon:
+                                changingFollow
+                                    ? const SizedBox(
+                                        width:
+                                            18,
+                                        height:
+                                            18,
+                                        child:
+                                            CircularProgressIndicator(
+                                          strokeWidth:
+                                              2,
+                                        ),
+                                      )
+                                    : Icon(
+                                        following
+                                            ? Icons.check_rounded
+                                            : Icons.person_add_alt_1_rounded,
+                                      ),
 
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: following
-                                  ? chipluxSurfaceLight
-                                  : chipluxViolet,
+                            label:
+                                Text(
+                              following
+                                  ? 'Following'
+                                  : 'Follow',
+                            ),
 
-                              foregroundColor: Colors.white,
+                            style:
+                                ElevatedButton.styleFrom(
+                              backgroundColor:
+                                  following
+                                      ? chipluxSurfaceLight
+                                      : chipluxViolet,
 
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
+                              foregroundColor:
+                                  Colors.white,
+
+                              shape:
+                                  RoundedRectangleBorder(
+                                borderRadius:
+                                    BorderRadius.circular(
+                                  14,
+                                ),
                               ),
                             ),
                           ),
@@ -5102,38 +6643,69 @@ final _Achievement? pinnedAchievement =
                   ),
                 ),
 
-                // Compensates for the upward
-                // profile-header translation.
-                const SizedBox(height: 2),
+                const SizedBox(
+                  height:
+                      2,
+                ),
 
                 if (publicStats.isEmpty)
                   Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: chipluxSurface,
-                      borderRadius: BorderRadius.circular(20),
+                    padding:
+                        const EdgeInsets.all(
+                      20,
                     ),
-                    child: const Column(
+
+                    decoration:
+                        BoxDecoration(
+                      color:
+                          chipluxSurface,
+
+                      borderRadius:
+                          BorderRadius.circular(
+                        20,
+                      ),
+                    ),
+
+                    child:
+                        const Column(
                       children: [
                         Icon(
-                          Icons.bar_chart_rounded,
-                          color: Colors.white38,
-                          size: 34,
+                          Icons
+                              .bar_chart_rounded,
+                          color:
+                              Colors.white38,
+                          size:
+                              34,
                         ),
 
-                        SizedBox(height: 10),
+                        SizedBox(
+                          height:
+                              10,
+                        ),
 
                         Text(
                           'No public stats yet.',
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                          style:
+                              TextStyle(
+                            fontWeight:
+                                FontWeight.bold,
+                          ),
                         ),
 
-                        SizedBox(height: 5),
+                        SizedBox(
+                          height:
+                              5,
+                        ),
 
                         Text(
                           'Stats will appear after this user syncs their profile.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.white54),
+                          textAlign:
+                              TextAlign.center,
+                          style:
+                              TextStyle(
+                            color:
+                                Colors.white54,
+                          ),
                         ),
                       ],
                     ),
@@ -5144,166 +6716,334 @@ final _Achievement? pinnedAchievement =
                   // =========================
 
                   _PublicAchievementsCard(
-  group:
-      movieGroup,
-),
+                    group:
+                        movieGroup,
+                  ),
 
-const SizedBox(height: 12),
+                  const SizedBox(
+                    height:
+                        12,
+                  ),
+
+                  _PublicAchievementsCard(
+                    group:
+                        tvGroup,
+                  ),
+
+                  const SizedBox(
+                    height:
+                        12,
+                  ),
+
+                  _PublicAchievementsCard(
+                    group:
+                        episodeGroup,
+                  ),
+
+                  const SizedBox(
+                    height:
+                        12,
+                  ),
+
+                  _PublicAchievementsCard(
+                    group:
+                        dailyLoginGroup,
+                  ),
+
+                  const SizedBox(
+                    height:
+                        12,
+                  ),
+
+                  _PublicAchievementsCard(
+                    group:
+                        profileViewGroup,
+                  ),
+
+                  const SizedBox(
+                    height:
+                        12,
+                  ),
+
+                  _PublicAchievementsCard(
+                    group:
+                        episodeRatedGroup,
+                  ),
+
+                  const SizedBox(
+                    height:
+                        12,
+                  ),
+
+                  _PublicAchievementsCard(
+                    group:
+                        tvShowsRatedGroup,
+                  ),
+
+                  const SizedBox(
+                    height:
+                        12,
+                  ),
+
+                  _PublicAchievementsCard(
+                    group:
+                        moviesRatedGroup,
+                  ),
+
+                  const SizedBox(
+  height:
+      12,
+),
 
 _PublicAchievementsCard(
   group:
-      tvGroup,
+      runtimeLevelGroup,
 ),
 
-const SizedBox(height: 12),
+const SizedBox(
+  height:
+      12,
+),
 
 _PublicAchievementsCard(
   group:
-      episodeGroup,
+      ratingsLevelGroup,
 ),
 
-const SizedBox(height: 12),
-
-_PublicAchievementsCard(
-  group: dailyLoginGroup,
-),
-
-const SizedBox(height: 12),
-
-_PublicAchievementsCard(
-  group: profileViewGroup,
-),
-
-                  const SizedBox(height: 20),
+                  const SizedBox(
+                    height:
+                        20,
+                  ),
 
                   // =========================
                   // RUNTIME LEVEL
                   // =========================
+
                   _LevelCard(
-                    totalMinutes: totalWatchedMinutes,
-                    title: viewerTitle,
-                  ),
+  totalMinutes:
+      totalWatchedMinutes,
 
-                  const SizedBox(height: 12),
-
-                  Column(
-  children: [
-    _WatchStatCard(
-      value:
-          completedTvShows,
-
-      label:
-          'TV Shows Watched',
-
-      icon:
-          Icons.tv_rounded,
-
-      frameAchievement:
-          tvGroup.highestUnlockedTier,
-    ),
-
-    const SizedBox(height: 7),
-
-    _WatchStatCard(
-  value:
-      episodesWatched,
-
-  label:
-      'Episodes Watched',
-
-  runtimeMinutes:
-      episodeWatchedMinutes,
-
-  icon:
-      Icons.playlist_add_check_rounded,
+  title:
+      viewerTitle,
 
   frameAchievement:
-      episodeGroup.highestUnlockedTier,
-),
-
-                      const SizedBox(height: 7),
-
-                      _WatchStatCard(
-  value:
-      moviesWatched,
-
-  label:
-      'Movies Watched',
-
-  runtimeMinutes:
-      movieWatchedMinutes,
-
-  icon:
-      Icons.movie_outlined,
-
-  frameAchievement:
-      movieGroup
+      runtimeLevelGroup
           .highestUnlockedTier,
 ),
+
+                  const SizedBox(
+                    height:
+                        12,
+                  ),
+
+                  // =========================
+                  // WATCHED STATS
+                  // =========================
+
+                  Column(
+                    children: [
+                      _WatchStatCard(
+                        value:
+                            completedTvShows,
+
+                        label:
+                            'TV Shows Watched',
+
+                        icon:
+                            Icons.tv_rounded,
+
+                        frameAchievement:
+                            tvGroup
+                                .highestUnlockedTier,
+                      ),
+
+                      const SizedBox(
+                        height:
+                            7,
+                      ),
+
+                      _WatchStatCard(
+                        value:
+                            episodesWatched,
+
+                        label:
+                            'Episodes Watched',
+
+                        runtimeMinutes:
+                            episodeWatchedMinutes,
+
+                        icon:
+                            Icons
+                                .playlist_add_check_rounded,
+
+                        frameAchievement:
+                            episodeGroup
+                                .highestUnlockedTier,
+                      ),
+
+                      const SizedBox(
+                        height:
+                            7,
+                      ),
+
+                      _WatchStatCard(
+                        value:
+                            moviesWatched,
+
+                        label:
+                            'Movies Watched',
+
+                        runtimeMinutes:
+                            movieWatchedMinutes,
+
+                        icon:
+                            Icons.movie_outlined,
+
+                        frameAchievement:
+                            movieGroup
+                                .highestUnlockedTier,
+                      ),
                     ],
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(
+                    height:
+                        16,
+                  ),
 
                   // =========================
                   // RATING LEVEL
                   // =========================
+
                   _CriticReputationCard(
-                    level: criticLevel <= 0 ? 1 : criticLevel,
+                    level:
+                        criticLevel <= 0
+                            ? 1
+                            : criticLevel,
 
-                    title: criticTitle,
+                    title:
+                        criticTitle,
 
-                    xp: criticXp,
+                    xp:
+                        criticXp,
 
-                    requiredXp: criticRequiredXp <= 0 ? 10 : criticRequiredXp,
+                    requiredXp:
+                        criticRequiredXp <= 0
+                            ? 10
+                            : criticRequiredXp,
 
-                    totalRatings: totalRatings,
+                    totalRatings:
+                        totalRatings,
 
-                    titleCoverage: titleCoverage,
+                    titleCoverage:
+                        titleCoverage,
 
-                    episodeCoverage: episodeCoverage,
+                    episodeCoverage:
+                        episodeCoverage,
 
-                    averageStars: averageStars,
+                        frameAchievement:
+    ratingsLevelGroup
+        .highestUnlockedTier,
+
+                    averageStars:
+                        averageStars,
                   ),
 
-                  const SizedBox(height: 12),
+                  const SizedBox(
+                    height:
+                        12,
+                  ),
+
+                  // =========================
+                  // RATED STATS
+                  // =========================
 
                   Column(
                     children: [
                       _RatingStatCard(
-                        value: episodeRatings,
+                        value:
+                            episodeRatings,
 
-                        label: 'Episodes Rated',
+                        label:
+                            'Episodes Rated',
 
-                        icon: Icons.tv_outlined,
+                        icon:
+                            Icons.tv_outlined,
+
+                        frameAchievement:
+                            episodeRatedGroup
+                                .highestUnlockedTier,
                       ),
 
-                      const SizedBox(height: 7),
+                      const SizedBox(
+                        height:
+                            7,
+                      ),
 
                       _RatingStatCard(
-                        value: titleRatings,
+                        value:
+                            tvRatings,
 
-                        label: 'Titles Rated',
+                        label:
+                            'TV Shows Rated',
 
-                        icon: Icons.movie_filter_outlined,
+                        icon:
+                            Icons.live_tv_rounded,
+
+                        frameAchievement:
+                            tvShowsRatedGroup
+                                .highestUnlockedTier,
+                      ),
+
+                      const SizedBox(
+                        height:
+                            7,
+                      ),
+
+                      _RatingStatCard(
+                        value:
+                            movieRatings,
+
+                        label:
+                            'Movies Rated',
+
+                        icon:
+                            Icons
+                                .movie_filter_outlined,
+
+                        frameAchievement:
+                            moviesRatedGroup
+                                .highestUnlockedTier,
                       ),
                     ],
                   ),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(
+                    height:
+                        24,
+                  ),
 
                   // =========================
                   // GENRE RUNTIME
                   // =========================
-                  _PublicGenreRuntimeCard(stats: genreRuntime),
 
-                  const SizedBox(height: 24),
+                  _PublicGenreRuntimeCard(
+                    stats:
+                        genreRuntime,
+                  ),
+
+                  const SizedBox(
+                    height:
+                        24,
+                  ),
 
                   // =========================
                   // RATING DISTRIBUTION
                   // =========================
+
                   _PublicRatingDistributionCard(
-                    distribution: ratingDistribution,
+                    distribution:
+                        ratingDistribution,
                   ),
                 ],
               ],
@@ -12259,6 +13999,32 @@ class AchievementsPage extends StatelessWidget {
     final pinService =
         MedalPinService.instance;
 
+        final bool isEpisodeRatedGroup =
+    group.id == 'episodes_rated';
+
+    final bool isTvShowsRatedGroup =
+    group.id == 'tv_shows_rated';
+
+final bool isMoviesRatedGroup =
+    group.id == 'movies_rated';
+
+final bool isTitleRatedGroup =
+    isTvShowsRatedGroup ||
+    isMoviesRatedGroup;
+
+    final bool isRuntimeLevelGroup =
+    group.id ==
+        'runtime_level';
+
+        final bool isRatingsLevelGroup =
+    group.id ==
+        'ratings_level';
+
+final String titleRatedRewardLabel =
+    isTvShowsRatedGroup
+        ? 'TV Shows Rated'
+        : 'Movies Rated';
+
     final bool canPin =
         group.hasUnlockedTier;
 
@@ -12293,6 +14059,7 @@ final bool isDailyLoginGroup =
     final bool isProfileViewGroup =
         group.id ==
             'public_profiles_viewed';
+            
 
     String progressText;
 
@@ -12326,6 +14093,8 @@ final bool isDailyLoginGroup =
         progressText =
             '${group.current}';
     }
+
+    
 
     showModalBottomSheet(
       context: context,
@@ -12704,6 +14473,297 @@ if (isEpisodeGroup) ...[
                     ),
                   ],
 
+                  // =========================
+// EPISODES RATED REWARD
+// =========================
+if (isEpisodeRatedGroup) ...[
+  const SizedBox(height: 11),
+
+  Container(
+    width: double.infinity,
+
+    padding:
+        const EdgeInsets.symmetric(
+      horizontal: 12,
+      vertical: 9,
+    ),
+
+    decoration: BoxDecoration(
+      color: accent.withValues(
+        alpha: 0.065,
+      ),
+
+      borderRadius:
+          BorderRadius.circular(12),
+
+      border: Border.all(
+        color: accent.withValues(
+          alpha: 0.18,
+        ),
+      ),
+    ),
+
+    child: Row(
+      children: [
+        Icon(
+          Icons.border_style_rounded,
+          color: accent,
+          size: 18,
+        ),
+
+        const SizedBox(width: 9),
+
+        const Expanded(
+          child: Text(
+            'Unlock borders for your Episodes Rated stat.',
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 12,
+              fontWeight:
+                  FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
+    ),
+  ),
+],
+
+// =========================
+// TITLE RATING REWARD
+// =========================
+if (isTitleRatedGroup) ...[
+  const SizedBox(height: 11),
+
+  Container(
+    width: double.infinity,
+
+    padding:
+        const EdgeInsets.symmetric(
+      horizontal: 12,
+      vertical: 9,
+    ),
+
+    decoration: BoxDecoration(
+      color:
+          accent.withValues(
+        alpha: 0.065,
+      ),
+
+      borderRadius:
+          BorderRadius.circular(
+        12,
+      ),
+
+      border:
+          Border.all(
+        color:
+            accent.withValues(
+          alpha: 0.18,
+        ),
+      ),
+    ),
+
+    child: Row(
+      children: [
+        Icon(
+          Icons.border_style_rounded,
+          color:
+              accent,
+          size:
+              18,
+        ),
+
+        const SizedBox(width: 9),
+
+        Expanded(
+          child: Text(
+            'Unlock borders for your $titleRatedRewardLabel stat.',
+            style:
+                const TextStyle(
+              color:
+                  Colors.white70,
+              fontSize:
+                  12,
+              fontWeight:
+                  FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
+    ),
+  ),
+],
+
+if (isRuntimeLevelGroup) ...[
+  const SizedBox(
+    height:
+        11,
+  ),
+
+  Container(
+    width:
+        double.infinity,
+
+    padding:
+        const EdgeInsets.symmetric(
+      horizontal:
+          12,
+      vertical:
+          9,
+    ),
+
+    decoration:
+        BoxDecoration(
+      color:
+          accent.withValues(
+        alpha:
+            0.065,
+      ),
+
+      borderRadius:
+          BorderRadius.circular(
+        12,
+      ),
+
+      border:
+          Border.all(
+        color:
+            accent.withValues(
+          alpha:
+              0.18,
+        ),
+      ),
+    ),
+
+    child:
+        Row(
+      children: [
+        Icon(
+          Icons
+              .gradient_rounded,
+
+          color:
+              accent,
+
+          size:
+              18,
+        ),
+
+        const SizedBox(
+          width:
+              9,
+        ),
+
+        const Expanded(
+          child:
+              Text(
+            'Unlock new border and gradient colors for your Runtime Level card.',
+
+            style:
+                TextStyle(
+              color:
+                  Colors.white70,
+
+              fontSize:
+                  12,
+
+              fontWeight:
+                  FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
+    ),
+  ),
+],
+
+// =========================
+// RATINGS LEVEL REWARD
+// =========================
+if (isRatingsLevelGroup) ...[
+  const SizedBox(
+    height:
+        11,
+  ),
+
+  Container(
+    width:
+        double.infinity,
+
+    padding:
+        const EdgeInsets.symmetric(
+      horizontal:
+          12,
+      vertical:
+          9,
+    ),
+
+    decoration:
+        BoxDecoration(
+      color:
+          accent.withValues(
+        alpha:
+            0.065,
+      ),
+
+      borderRadius:
+          BorderRadius.circular(
+        12,
+      ),
+
+      border:
+          Border.all(
+        color:
+            accent.withValues(
+          alpha:
+              0.18,
+        ),
+      ),
+    ),
+
+    child:
+        Row(
+      children: [
+        Icon(
+          Icons
+              .gradient_rounded,
+
+          color:
+              accent,
+
+          size:
+              18,
+        ),
+
+        const SizedBox(
+          width:
+              9,
+        ),
+
+        const Expanded(
+          child:
+              Text(
+            'Unlock new border and gradient colors for your Ratings Level card.',
+
+            style:
+                TextStyle(
+              color:
+                  Colors.white70,
+
+              fontSize:
+                  12,
+
+              fontWeight:
+                  FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
+    ),
+  ),
+],
+
                   const SizedBox(height: 17),
 
                   for (
@@ -12825,6 +14885,9 @@ if (isEpisodeGroup) ...[
     final profileViewService =
         PublicProfileViewService.instance;
 
+        final critic =
+    CriticService.instance;
+
     return Scaffold(
       backgroundColor: chipluxBackground,
 
@@ -12850,6 +14913,7 @@ if (isEpisodeGroup) ...[
             pinService,
             dailyLoginService,
             profileViewService,
+            critic,
           ]),
 
           builder: (context, _) {
@@ -12893,14 +14957,49 @@ if (isEpisodeGroup) ...[
               profilesViewed,
             );
 
+            final episodeRatedGroup =
+    _episodeRatedAchievementGroupFor(
+  critic.episodeRatingCount,
+);
+
+final tvShowsRatedGroup =
+    _tvShowsRatedAchievementGroupFor(
+  critic.tvRatingCount,
+);
+
+final moviesRatedGroup =
+    _moviesRatedAchievementGroupFor(
+  critic.movieRatingCount,
+);
+
+final runtimeLevel =
+    _runtimeLevelForMinutes(
+  library.totalWatchedMinutes,
+);
+
+final runtimeLevelGroup =
+    _runtimeLevelAchievementGroupFor(
+  runtimeLevel,
+);
+
+final ratingsLevelGroup =
+    _ratingsLevelAchievementGroupFor(
+  critic.level,
+);
+
             final groups =
-                <_AchievementGroup>[
-              movieGroup,
-              tvGroup,
-              episodeGroup,
-              dailyLoginGroup,
-              profileViewGroup,
-            ];
+    <_AchievementGroup>[
+  movieGroup,
+  tvGroup,
+  episodeGroup,
+  dailyLoginGroup,
+  profileViewGroup,
+  episodeRatedGroup,
+  tvShowsRatedGroup,
+  moviesRatedGroup,
+  runtimeLevelGroup,
+  ratingsLevelGroup,
+];
 
             final allTiers = groups
                 .expand(
@@ -13260,6 +15359,32 @@ final bool isTvGroup =
 
 final bool isDailyLoginGroup =
     group.id == 'daily_logins';
+
+    final bool isEpisodeRatedGroup =
+    group.id == 'episodes_rated';
+
+    final bool isRatingsLevelGroup =
+    group.id ==
+        'ratings_level';
+
+    final bool isRuntimeLevelGroup =
+    group.id ==
+        'runtime_level';
+
+    final bool isTvShowsRatedGroup =
+    group.id == 'tv_shows_rated';
+
+final bool isMoviesRatedGroup =
+    group.id == 'movies_rated';
+
+final bool isTitleRatedGroup =
+    isTvShowsRatedGroup ||
+    isMoviesRatedGroup;
+
+final String titleRatedRewardLabel =
+    isTvShowsRatedGroup
+        ? 'TV Shows Rated'
+        : 'Movies Rated';
 
 final bool isProfileViewGroup =
     group.id ==
@@ -13775,6 +15900,317 @@ if (isEpisodeGroup) ...[
                   ),
                 ),
               ],
+
+              // =========================
+// EPISODES RATED BORDER
+// =========================
+if (isEpisodeRatedGroup) ...[
+  const SizedBox(height: 10),
+
+  Container(
+    width: double.infinity,
+
+    padding:
+        const EdgeInsets.all(
+      1.5,
+    ),
+
+    decoration: BoxDecoration(
+      borderRadius:
+          BorderRadius.circular(
+        10,
+      ),
+
+      gradient:
+          frameColors.isNotEmpty
+              ? LinearGradient(
+                  colors:
+                      frameColors,
+                )
+              : null,
+
+      border:
+          frameColors.isEmpty
+              ? Border.all(
+                  color:
+                      Colors.white12,
+                )
+              : null,
+    ),
+
+    child: Container(
+      height: 33,
+
+      alignment:
+          Alignment.center,
+
+      decoration: BoxDecoration(
+        color:
+            chipluxSurfaceLight,
+
+        borderRadius:
+            BorderRadius.circular(
+          9,
+        ),
+      ),
+
+      child: Text(
+        achieved != null
+            ? 'Episodes Rated'
+            : 'Locked',
+
+        style: TextStyle(
+          color:
+              achieved != null
+                  ? Colors.white70
+                  : Colors.white24,
+          fontSize: 8,
+          fontWeight:
+              FontWeight.bold,
+        ),
+      ),
+    ),
+  ),
+],
+
+// =========================
+// TITLE RATED STAT BORDER
+// =========================
+if (isTitleRatedGroup) ...[
+  const SizedBox(height: 10),
+
+  Container(
+    width: double.infinity,
+
+    padding:
+        const EdgeInsets.all(
+      1.5,
+    ),
+
+    decoration: BoxDecoration(
+      borderRadius:
+          BorderRadius.circular(
+        10,
+      ),
+
+      gradient:
+          frameColors.isNotEmpty
+              ? LinearGradient(
+                  colors:
+                      frameColors,
+                )
+              : null,
+
+      border:
+          frameColors.isEmpty
+              ? Border.all(
+                  color:
+                      Colors.white12,
+                )
+              : null,
+    ),
+
+    child: Container(
+      height: 33,
+
+      alignment:
+          Alignment.center,
+
+      decoration: BoxDecoration(
+        color:
+            chipluxSurfaceLight,
+
+        borderRadius:
+            BorderRadius.circular(
+          9,
+        ),
+      ),
+
+      child: Text(
+        achieved != null
+            ? titleRatedRewardLabel
+            : 'Locked',
+
+        style: TextStyle(
+          color:
+              achieved != null
+                  ? Colors.white70
+                  : Colors.white24,
+          fontSize: 8,
+          fontWeight:
+              FontWeight.bold,
+        ),
+      ),
+    ),
+  ),
+],
+
+if (isRuntimeLevelGroup) ...[
+  const SizedBox(
+    height:
+        10,
+  ),
+
+  Container(
+    width:
+        double.infinity,
+
+    padding:
+        const EdgeInsets.all(
+      1.5,
+    ),
+
+    decoration:
+        BoxDecoration(
+      borderRadius:
+          BorderRadius.circular(
+        10,
+      ),
+
+      gradient:
+          frameColors.isNotEmpty
+              ? LinearGradient(
+                  colors:
+                      frameColors,
+                )
+              : null,
+
+      border:
+          frameColors.isEmpty
+              ? Border.all(
+                  color:
+                      Colors.white12,
+                )
+              : null,
+    ),
+
+    child:
+        Container(
+      height:
+          33,
+
+      alignment:
+          Alignment.center,
+
+      decoration:
+          BoxDecoration(
+        color:
+            chipluxSurfaceLight,
+
+        borderRadius:
+            BorderRadius.circular(
+          9,
+        ),
+      ),
+
+      child:
+          Text(
+        achieved != null
+            ? 'Runtime Level'
+            : 'Locked',
+
+        style:
+            TextStyle(
+          color:
+              achieved != null
+                  ? Colors.white70
+                  : Colors.white24,
+
+          fontSize:
+              8,
+
+          fontWeight:
+              FontWeight.bold,
+        ),
+      ),
+    ),
+  ),
+],
+
+// =========================
+// RATINGS LEVEL BORDER
+// =========================
+if (isRatingsLevelGroup) ...[
+  const SizedBox(
+    height:
+        10,
+  ),
+
+  Container(
+    width:
+        double.infinity,
+
+    padding:
+        const EdgeInsets.all(
+      1.5,
+    ),
+
+    decoration:
+        BoxDecoration(
+      borderRadius:
+          BorderRadius.circular(
+        10,
+      ),
+
+      gradient:
+          frameColors.isNotEmpty
+              ? LinearGradient(
+                  colors:
+                      frameColors,
+                )
+              : null,
+
+      border:
+          frameColors.isEmpty
+              ? Border.all(
+                  color:
+                      Colors.white12,
+                )
+              : null,
+    ),
+
+    child:
+        Container(
+      height:
+          33,
+
+      alignment:
+          Alignment.center,
+
+      decoration:
+          BoxDecoration(
+        color:
+            chipluxSurfaceLight,
+
+        borderRadius:
+            BorderRadius.circular(
+          9,
+        ),
+      ),
+
+      child:
+          Text(
+        achieved != null
+            ? 'Ratings Level'
+            : 'Locked',
+
+        style:
+            TextStyle(
+          color:
+              achieved != null
+                  ? Colors.white70
+                  : Colors.white24,
+
+          fontSize:
+              8,
+
+          fontWeight:
+              FontWeight.bold,
+        ),
+      ),
+    ),
+  ),
+],
 
               const Spacer(),
 
@@ -15317,25 +17753,35 @@ class MedalPinService extends ChangeNotifier {
   }
 }
 
-class ProfilePage extends StatefulWidget {
-  final VoidCallback? onEpisodesWatchedTap;
+class ProfilePage
+    extends StatefulWidget {
+  final VoidCallback?
+      onEpisodesWatchedTap;
 
-  final VoidCallback? onMoviesWatchedTap;
+  final VoidCallback?
+      onMoviesWatchedTap;
 
-  final VoidCallback? onEpisodesRatedTap;
+  final VoidCallback?
+      onEpisodesRatedTap;
 
-  final VoidCallback? onTitlesRatedTap;
+  final VoidCallback?
+      onTvShowsRatedTap;
+
+  final VoidCallback?
+      onMoviesRatedTap;
 
   const ProfilePage({
     super.key,
     this.onEpisodesWatchedTap,
     this.onMoviesWatchedTap,
     this.onEpisodesRatedTap,
-    this.onTitlesRatedTap,
+    this.onTvShowsRatedTap,
+    this.onMoviesRatedTap,
   });
 
   @override
-  State<ProfilePage> createState() => _ProfilePageState();
+  State<ProfilePage> createState() =>
+      _ProfilePageState();
 }
 
 class _ProfilePageState extends State<ProfilePage> {
@@ -15532,6 +17978,7 @@ class _ProfilePageState extends State<ProfilePage> {
     if (items.isEmpty) {
       return [];
     }
+    
 
     final titleCounts = <int, int>{};
 
@@ -16054,9 +18501,39 @@ final tvGroup =
   library.completedTvShowsCount,
 );
 
+final runtimeLevel =
+    _runtimeLevelForMinutes(
+  library.totalWatchedMinutes,
+);
+
+final runtimeLevelGroup =
+    _runtimeLevelAchievementGroupFor(
+  runtimeLevel,
+);
+
+final ratingsLevelGroup =
+    _ratingsLevelAchievementGroupFor(
+  critic.level,
+);
+
 final episodeGroup =
     _episodeAchievementGroupFor(
   library.watchedEpisodeCount,
+);
+
+final episodeRatedGroup =
+    _episodeRatedAchievementGroupFor(
+  critic.episodeRatingCount,
+);
+
+final tvShowsRatedGroup =
+    _tvShowsRatedAchievementGroupFor(
+  critic.tvRatingCount,
+);
+
+final moviesRatedGroup =
+    _moviesRatedAchievementGroupFor(
+  critic.movieRatingCount,
 );
 
 final dailyLoginGroup =
@@ -16078,22 +18555,47 @@ final pinnedId =
         .instance
         .pinnedAchievementId;
 
-final _Achievement? pinnedAchievement =
+final _Achievement?
+    pinnedAchievement =
     pinnedId == movieGroup.id
-        ? movieGroup.highestUnlockedTier
+        ? movieGroup
+            .highestUnlockedTier
         : pinnedId == tvGroup.id
-            ? tvGroup.highestUnlockedTier
-            : pinnedId == episodeGroup.id
-                ? episodeGroup.highestUnlockedTier
+            ? tvGroup
+                .highestUnlockedTier
+            : pinnedId ==
+                    episodeGroup.id
+                ? episodeGroup
+                    .highestUnlockedTier
                 : pinnedId ==
                         dailyLoginGroup.id
                     ? dailyLoginGroup
                         .highestUnlockedTier
                     : pinnedId ==
-                            profileViewGroup.id
-                        ? profileViewGroup
-                            .highestUnlockedTier
-                        : null;
+        profileViewGroup.id
+    ? profileViewGroup
+        .highestUnlockedTier
+    : pinnedId ==
+            episodeRatedGroup.id
+        ? episodeRatedGroup
+            .highestUnlockedTier
+        : pinnedId ==
+                tvShowsRatedGroup.id
+            ? tvShowsRatedGroup
+                .highestUnlockedTier
+            : pinnedId ==
+        moviesRatedGroup.id
+    ? moviesRatedGroup
+        .highestUnlockedTier
+    : pinnedId ==
+        runtimeLevelGroup.id
+    ? runtimeLevelGroup
+        .highestUnlockedTier
+    : pinnedId ==
+            ratingsLevelGroup.id
+        ? ratingsLevelGroup
+            .highestUnlockedTier
+        : null;
 
           return RefreshIndicator(
             color: chipluxCyan,
@@ -16373,12 +18875,22 @@ final _Achievement? pinnedAchievement =
                 // RUNTIME LEVEL
                 // =========================
                 _LevelCard(
-                  totalMinutes: library.totalWatchedMinutes,
-                  title: library.viewerTitle,
-                  onTap: () {
-                    _scrollToProfileSection(_genreRuntimeKey);
-                  },
-                ),
+  totalMinutes:
+      library.totalWatchedMinutes,
+
+  title:
+      library.viewerTitle,
+
+  frameAchievement:
+      runtimeLevelGroup
+          .highestUnlockedTier,
+
+  onTap: () {
+    _scrollToProfileSection(
+      _genreRuntimeKey,
+    );
+  },
+),
 
                 const SizedBox(height: 12),
 
@@ -16460,6 +18972,9 @@ final _Achievement? pinnedAchievement =
                   titleCoverage: critic.titleRatingCoverage,
 
                   episodeCoverage: critic.episodeRatingCoverage,
+                  frameAchievement:
+    ratingsLevelGroup
+        .highestUnlockedTier,
 
                   averageStars: critic.averageStars,
                   onTap: () {
@@ -16469,32 +18984,70 @@ final _Achievement? pinnedAchievement =
 
                 const SizedBox(height: 12),
 
-                // RATED STATS
-                Column(
-                  children: [
-                    _RatingStatCard(
-                      value: critic.episodeRatingCount,
+                // =========================
+// RATED STATS
+// =========================
+Column(
+  children: [
+    _RatingStatCard(
+      value:
+          critic.episodeRatingCount,
 
-                      label: 'Episodes Rated',
+      label:
+          'Episodes Rated',
 
-                      icon: Icons.tv_outlined,
+      icon:
+          Icons.tv_outlined,
 
-                      onTap: widget.onEpisodesRatedTap,
-                    ),
+      frameAchievement:
+          episodeRatedGroup
+              .highestUnlockedTier,
 
-                    const SizedBox(height: 7),
+      onTap:
+          widget.onEpisodesRatedTap,
+    ),
 
-                    _RatingStatCard(
-                      value: critic.movieRatingCount + critic.tvRatingCount,
+    const SizedBox(height: 7),
 
-                      label: 'Titles Rated',
+    _RatingStatCard(
+      value:
+          critic.tvRatingCount,
 
-                      icon: Icons.movie_filter_outlined,
+      label:
+          'TV Shows Rated',
 
-                      onTap: widget.onTitlesRatedTap,
-                    ),
-                  ],
-                ),
+      icon:
+          Icons.live_tv_rounded,
+
+      frameAchievement:
+          tvShowsRatedGroup
+              .highestUnlockedTier,
+
+      onTap:
+          widget.onTvShowsRatedTap,
+    ),
+
+    const SizedBox(height: 7),
+
+    _RatingStatCard(
+      value:
+          critic.movieRatingCount,
+
+      label:
+          'Movies Rated',
+
+      icon:
+          Icons.movie_filter_outlined,
+
+      frameAchievement:
+          moviesRatedGroup
+              .highestUnlockedTier,
+
+      onTap:
+          widget.onMoviesRatedTap,
+    ),
+  ],
+),
 
                 const SizedBox(height: 24),
 
@@ -17341,7 +19894,8 @@ class _HexagonClipper extends CustomClipper<Path> {
   }
 }
 
-class _CriticReputationCard extends StatelessWidget {
+class _CriticReputationCard
+    extends StatelessWidget {
   final int level;
   final String title;
   final VoidCallback? onTap;
@@ -17355,6 +19909,9 @@ class _CriticReputationCard extends StatelessWidget {
   final double episodeCoverage;
   final double averageStars;
 
+  final _Achievement?
+      frameAchievement;
+
   const _CriticReputationCard({
     required this.level,
     required this.title,
@@ -17365,109 +19922,267 @@ class _CriticReputationCard extends StatelessWidget {
     required this.episodeCoverage,
     required this.averageStars,
     this.onTap,
+    this.frameAchievement,
   });
 
-  static const Color criticGold = Color(0xFFFFC857);
+  static const Color criticGold =
+      Color(0xFFFFC857);
 
-  static const Color criticOrange = Color(0xFFFF8A4C);
+  static const Color criticOrange =
+      Color(0xFFFF8A4C);
 
   @override
-  Widget build(BuildContext context) {
-    final progress = requiredXp <= 0 ? 0.0 : (xp / requiredXp).clamp(0.0, 1.0);
+  Widget build(
+    BuildContext context,
+  ) {
+    final progress =
+        requiredXp <= 0
+            ? 0.0
+            : (xp / requiredXp)
+                .clamp(
+                  0.0,
+                  1.0,
+                );
 
-    final xpLeft = (requiredXp - xp).clamp(0, requiredXp);
+    final xpLeft =
+        (requiredXp - xp)
+            .clamp(
+              0,
+              requiredXp,
+            );
+
+    final achievementColors =
+        _achievementTierColors(
+      frameAchievement,
+    );
+
+    final List<Color>
+        activeColors =
+        achievementColors.isNotEmpty
+            ? achievementColors
+            : const [
+                criticGold,
+                criticOrange,
+                chipluxPurple,
+              ];
+
+    final accentColor =
+        activeColors.first;
 
     return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
+      behavior:
+          HitTestBehavior.opaque,
 
-      child: Container(
-        padding: const EdgeInsets.all(1.2),
+      onTap:
+          onTap,
 
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [criticGold, criticOrange, chipluxPurple],
-          ),
-
-          borderRadius: BorderRadius.circular(22),
+      child:
+          Container(
+        padding:
+            const EdgeInsets.all(
+          1.2,
         ),
 
-        child: Container(
-          width: double.infinity,
+        decoration:
+            BoxDecoration(
+          gradient:
+              LinearGradient(
+            begin:
+                Alignment.topLeft,
 
-          padding: const EdgeInsets.fromLTRB(17, 20, 17, 17),
+            end:
+                Alignment.bottomRight,
 
-          decoration: BoxDecoration(
-            color: chipluxSurface,
+            colors:
+                activeColors,
+          ),
 
-            borderRadius: BorderRadius.circular(21),
+          borderRadius:
+              BorderRadius.circular(
+            22,
+          ),
 
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.045),
-              width: 0.7,
+          boxShadow: [
+            BoxShadow(
+              color:
+                  accentColor.withValues(
+                alpha:
+                    0.10,
+              ),
+
+              blurRadius:
+                  15,
+            ),
+          ],
+        ),
+
+        child:
+            Container(
+          width:
+              double.infinity,
+
+          padding:
+              const EdgeInsets.fromLTRB(
+            17,
+            20,
+            17,
+            17,
+          ),
+
+          decoration:
+              BoxDecoration(
+            color:
+                chipluxSurface,
+
+            borderRadius:
+                BorderRadius.circular(
+              21,
+            ),
+
+            border:
+                Border.all(
+              color:
+                  Colors.white.withValues(
+                alpha:
+                    0.045,
+              ),
+
+              width:
+                  0.7,
             ),
           ),
 
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child:
+              Column(
+            crossAxisAlignment:
+                CrossAxisAlignment.start,
 
             children: [
               Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
+                crossAxisAlignment:
+                    CrossAxisAlignment.center,
 
                 children: [
-                  const SizedBox(width: 2),
-
-                  _LevelHexBadge(
-                    level: level,
-                    colors: const [criticGold, criticOrange, chipluxPurple],
+                  const SizedBox(
+                    width:
+                        2,
                   ),
 
-                  const SizedBox(width: 16),
+                  _LevelHexBadge(
+                    level:
+                        level,
+
+                    colors:
+                        activeColors,
+                  ),
+
+                  const SizedBox(
+                    width:
+                        16,
+                  ),
 
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child:
+                        Column(
+                      crossAxisAlignment:
+                          CrossAxisAlignment.start,
 
                       children: [
                         const Text(
                           'CRITIC LEVEL',
-                          style: TextStyle(
-                            color: Colors.white38,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 1.3,
+
+                          style:
+                              TextStyle(
+                            color:
+                                Colors.white38,
+
+                            fontSize:
+                                10,
+
+                            fontWeight:
+                                FontWeight.w700,
+
+                            letterSpacing:
+                                1.3,
                           ),
                         ),
 
-                        const SizedBox(height: 3),
+                        const SizedBox(
+                          height:
+                              3,
+                        ),
 
                         Text(
                           title.toUpperCase(),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: criticGold,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 0.7,
+
+                          maxLines:
+                              1,
+
+                          overflow:
+                              TextOverflow.ellipsis,
+
+                          style:
+                              TextStyle(
+                            color:
+                                accentColor,
+
+                            fontSize:
+                                18,
+
+                            fontWeight:
+                                FontWeight.w900,
+
+                            letterSpacing:
+                                0.7,
+
+                            shadows: [
+                              Shadow(
+                                color:
+                                    accentColor.withValues(
+                                  alpha:
+                                      0.30,
+                                ),
+
+                                blurRadius:
+                                    7,
+                              ),
+                            ],
                           ),
                         ),
 
-                        const SizedBox(height: 11),
+                        const SizedBox(
+                          height:
+                              11,
+                        ),
 
-                        _CriticProgressBar(progress: progress),
+                        _CriticProgressBar(
+                          progress:
+                              progress,
 
-                        const SizedBox(height: 7),
+                          colors:
+                              activeColors,
+                        ),
+
+                        const SizedBox(
+                          height:
+                              7,
+                        ),
 
                         Row(
                           children: [
                             Text(
                               '$xp / $requiredXp XP',
-                              style: const TextStyle(
-                                color: Colors.white54,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
+
+                              style:
+                                  const TextStyle(
+                                color:
+                                    Colors.white54,
+
+                                fontSize:
+                                    11,
+
+                                fontWeight:
+                                    FontWeight.w600,
                               ),
                             ),
 
@@ -17475,10 +20190,17 @@ class _CriticReputationCard extends StatelessWidget {
 
                             Text(
                               '$xpLeft XP left',
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
+
+                              style:
+                                  const TextStyle(
+                                color:
+                                    Colors.white70,
+
+                                fontSize:
+                                    11,
+
+                                fontWeight:
+                                    FontWeight.w600,
                               ),
                             ),
                           ],
@@ -17489,36 +20211,64 @@ class _CriticReputationCard extends StatelessWidget {
                 ],
               ),
 
-              const SizedBox(height: 17),
+              const SizedBox(
+                height:
+                    17,
+              ),
 
-              Container(height: 1, color: Colors.white.withValues(alpha: 0.06)),
+              Container(
+                height:
+                    1,
 
-              const SizedBox(height: 14),
+                color:
+                    Colors.white.withValues(
+                  alpha:
+                      0.06,
+                ),
+              ),
 
-              // STATS
+              const SizedBox(
+                height:
+                    14,
+              ),
+
               Row(
                 children: [
                   Expanded(
-                    child: _CriticStat(
-                      value: '${titleCoverage.toStringAsFixed(1)}%',
-                      label: 'Titles Rated',
+                    child:
+                        _CriticStat(
+                      value:
+                          '${titleCoverage.toStringAsFixed(1)}%',
+
+                      label:
+                          'Titles Rated',
                     ),
                   ),
 
                   Expanded(
-                    child: _CriticStat(
-                      value: '${episodeCoverage.toStringAsFixed(1)}%',
-                      label: 'Episodes Rated',
+                    child:
+                        _CriticStat(
+                      value:
+                          '${episodeCoverage.toStringAsFixed(1)}%',
+
+                      label:
+                          'Episodes Rated',
                     ),
                   ),
 
                   Expanded(
-                    child: _CriticStat(
-                      value: averageStars > 0
-                          ? '★ ${averageStars.toStringAsFixed(1)}'
-                          : '★ --',
-                      label: 'Average',
-                      valueColor: criticGold,
+                    child:
+                        _CriticStat(
+                      value:
+                          averageStars > 0
+                              ? '★ ${averageStars.toStringAsFixed(1)}'
+                              : '★ --',
+
+                      label:
+                          'Average',
+
+                      valueColor:
+                          accentColor,
                     ),
                   ),
                 ],
@@ -17531,62 +20281,113 @@ class _CriticReputationCard extends StatelessWidget {
   }
 }
 
-class _CriticProgressBar extends StatefulWidget {
+class _CriticProgressBar
+    extends StatefulWidget {
   final double progress;
 
-  const _CriticProgressBar({required this.progress});
+  final List<Color> colors;
+
+  const _CriticProgressBar({
+    required this.progress,
+    required this.colors,
+  });
 
   @override
-  State<_CriticProgressBar> createState() => _CriticProgressBarState();
+  State<_CriticProgressBar>
+      createState() =>
+          _CriticProgressBarState();
 }
 
-class _CriticProgressBarState extends State<_CriticProgressBar>
+class _CriticProgressBarState
+    extends State<_CriticProgressBar>
     with TickerProviderStateMixin {
-  static const criticGold = Color(0xFFFFC857);
+  late final AnimationController
+      _progressController;
 
-  static const criticOrange = Color(0xFFFF8A4C);
+  late final AnimationController
+      _flowController;
 
-  late final AnimationController _progressController;
-
-  late final AnimationController _flowController;
-
-  late Animation<double> _progressAnimation;
+  late Animation<double>
+      _progressAnimation;
 
   @override
   void initState() {
     super.initState();
 
-    _progressController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
+    _progressController =
+        AnimationController(
+      vsync:
+          this,
+
+      duration:
+          const Duration(
+        milliseconds:
+            900,
+      ),
     );
 
-    _progressAnimation = Tween<double>(begin: 0, end: widget.progress).animate(
-      CurvedAnimation(parent: _progressController, curve: Curves.easeOutCubic),
+    _progressAnimation =
+        Tween<double>(
+      begin:
+          0,
+
+      end:
+          widget.progress,
+    ).animate(
+      CurvedAnimation(
+        parent:
+            _progressController,
+
+        curve:
+            Curves.easeOutCubic,
+      ),
     );
 
-    _flowController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2200),
+    _flowController =
+        AnimationController(
+      vsync:
+          this,
+
+      duration:
+          const Duration(
+        milliseconds:
+            2200,
+      ),
     )..repeat();
 
     _progressController.forward();
   }
 
   @override
-  void didUpdateWidget(covariant _CriticProgressBar oldWidget) {
-    super.didUpdateWidget(oldWidget);
+  void didUpdateWidget(
+    covariant _CriticProgressBar
+        oldWidget,
+  ) {
+    super.didUpdateWidget(
+      oldWidget,
+    );
 
-    if (oldWidget.progress != widget.progress) {
-      final oldProgress = _progressAnimation.value;
+    if (oldWidget.progress !=
+        widget.progress) {
+      final oldProgress =
+          _progressAnimation.value;
 
       _progressAnimation =
-          Tween<double>(begin: oldProgress, end: widget.progress).animate(
-            CurvedAnimation(
-              parent: _progressController,
-              curve: Curves.easeOutCubic,
-            ),
-          );
+          Tween<double>(
+        begin:
+            oldProgress,
+
+        end:
+            widget.progress,
+      ).animate(
+        CurvedAnimation(
+          parent:
+              _progressController,
+
+          curve:
+              Curves.easeOutCubic,
+        ),
+      );
 
       _progressController
         ..reset()
@@ -17595,73 +20396,179 @@ class _CriticProgressBarState extends State<_CriticProgressBar>
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(
+    BuildContext context,
+  ) {
+    final colors =
+        widget.colors.isNotEmpty
+            ? widget.colors
+            : const [
+                Color(
+                  0xFFFFC857,
+                ),
+                Color(
+                  0xFFFF8A4C,
+                ),
+                chipluxPurple,
+              ];
+
+    final glowColor =
+        colors.first;
+
     return Container(
-      height: 8,
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.22),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.055),
-          width: 0.7,
+      height:
+          8,
+
+      decoration:
+          BoxDecoration(
+        color:
+            Colors.black.withValues(
+          alpha:
+              0.22,
         ),
+
+        borderRadius:
+            BorderRadius.circular(
+          20,
+        ),
+
+        border:
+            Border.all(
+          color:
+              Colors.white.withValues(
+            alpha:
+                0.055,
+          ),
+
+          width:
+              0.7,
+        ),
+
         boxShadow: [
-          BoxShadow(color: criticGold.withValues(alpha: 0.18), blurRadius: 8),
+          BoxShadow(
+            color:
+                glowColor.withValues(
+              alpha:
+                  0.18,
+            ),
+
+            blurRadius:
+                8,
+          ),
         ],
       ),
-      clipBehavior: Clip.antiAlias,
-      child: AnimatedBuilder(
-        animation: Listenable.merge([_progressAnimation, _flowController]),
-        builder: (context, _) {
-          final flow = _flowController.value;
+
+      clipBehavior:
+          Clip.antiAlias,
+
+      child:
+          AnimatedBuilder(
+        animation:
+            Listenable.merge([
+          _progressAnimation,
+          _flowController,
+        ]),
+
+        builder:
+            (
+          context,
+          _,
+        ) {
+          final flow =
+              _flowController.value;
 
           return Align(
-            alignment: Alignment.centerLeft,
-            child: FractionallySizedBox(
-              widthFactor: _progressAnimation.value.clamp(0.0, 1.0),
-              heightFactor: 1,
-              child: Stack(
-                fit: StackFit.expand,
+            alignment:
+                Alignment.centerLeft,
+
+            child:
+                FractionallySizedBox(
+              widthFactor:
+                  _progressAnimation.value
+                      .clamp(
+                0.0,
+                1.0,
+              ),
+
+              heightFactor:
+                  1,
+
+              child:
+                  Stack(
+                fit:
+                    StackFit.expand,
+
                 children: [
-                  // Main moving gradient.
                   Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment(-1.8 + flow * 3.6, 0),
-                        end: Alignment(-0.2 + flow * 3.6, 0),
-                        colors: const [
-                          criticGold,
-                          Colors.white,
-                          criticOrange,
-                          chipluxPurple,
-                        ],
-                        stops: const [0, 0.35, 0.65, 1],
+                    decoration:
+                        BoxDecoration(
+                      gradient:
+                          LinearGradient(
+                        begin:
+                            Alignment(
+                          -1.8 +
+                              flow *
+                                  3.6,
+                          0,
+                        ),
+
+                        end:
+                            Alignment(
+                          -0.2 +
+                              flow *
+                                  3.6,
+                          0,
+                        ),
+
+                        colors:
+                            colors,
                       ),
                     ),
                   ),
 
-                  // Gloss highlight.
                   Align(
-                    alignment: Alignment.topCenter,
-                    child: Container(
-                      height: 2,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
+                    alignment:
+                        Alignment.topCenter,
+
+                    child:
+                        Container(
+                      height:
+                          2,
+
+                      decoration:
+                          BoxDecoration(
+                        gradient:
+                            LinearGradient(
                           colors: [
-                            Colors.white.withValues(alpha: 0.60),
-                            Colors.white.withValues(alpha: 0.08),
+                            Colors.white.withValues(
+                              alpha:
+                                  0.60,
+                            ),
+
+                            Colors.white.withValues(
+                              alpha:
+                                  0.08,
+                            ),
                           ],
                         ),
                       ),
                     ),
                   ),
 
-                  // Tiny lower shade gives depth.
                   Align(
-                    alignment: Alignment.bottomCenter,
-                    child: Container(
-                      height: 1.3,
-                      color: Colors.black.withValues(alpha: 0.18),
+                    alignment:
+                        Alignment.bottomCenter,
+
+                    child:
+                        Container(
+                      height:
+                          1.3,
+
+                      color:
+                          Colors.black.withValues(
+                        alpha:
+                            0.18,
+                      ),
                     ),
                   ),
                 ],
@@ -17676,6 +20583,7 @@ class _CriticProgressBarState extends State<_CriticProgressBar>
   @override
   void dispose() {
     _progressController.dispose();
+
     _flowController.dispose();
 
     super.dispose();
@@ -17724,26 +20632,39 @@ class _LevelCard extends StatefulWidget {
   final String title;
   final VoidCallback? onTap;
 
+  final _Achievement?
+      frameAchievement;
+
   const _LevelCard({
     required this.totalMinutes,
     required this.title,
     this.onTap,
+    this.frameAchievement,
   });
 
   @override
-  State<_LevelCard> createState() => _LevelCardState();
+  State<_LevelCard> createState() =>
+      _LevelCardState();
 }
 
-class _LevelCardState extends State<_LevelCard> with TickerProviderStateMixin {
-  late final AnimationController _controller;
+class _LevelCardState
+    extends State<_LevelCard>
+    with TickerProviderStateMixin {
+  late final AnimationController
+      _controller;
 
-  late final AnimationController _flowController;
+  late final AnimationController
+      _flowController;
 
-  late Animation<double> _progressAnimation;
+  late Animation<double>
+      _progressAnimation;
 
   int level = 1;
+
   int minutesInLevel = 0;
+
   int requiredMinutes = 20;
+
   int minutesLeft = 20;
 
   double targetProgress = 0;
@@ -17754,37 +20675,75 @@ class _LevelCardState extends State<_LevelCard> with TickerProviderStateMixin {
 
     _calculateLevel();
 
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
+    _controller =
+        AnimationController(
+      vsync:
+          this,
+      duration:
+          const Duration(
+        milliseconds:
+            900,
+      ),
     );
 
-    _progressAnimation = Tween<double>(
-      begin: 0,
-      end: targetProgress,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+    _progressAnimation =
+        Tween<double>(
+      begin:
+          0,
+      end:
+          targetProgress,
+    ).animate(
+      CurvedAnimation(
+        parent:
+            _controller,
+        curve:
+            Curves.easeOutCubic,
+      ),
+    );
 
     _controller.forward();
 
-    _flowController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2200),
+    _flowController =
+        AnimationController(
+      vsync:
+          this,
+      duration:
+          const Duration(
+        milliseconds:
+            2200,
+      ),
     )..repeat();
   }
 
   @override
-  void didUpdateWidget(covariant _LevelCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
+  void didUpdateWidget(
+    covariant _LevelCard oldWidget,
+  ) {
+    super.didUpdateWidget(
+      oldWidget,
+    );
 
-    if (oldWidget.totalMinutes != widget.totalMinutes) {
-      final oldProgress = targetProgress;
+    if (oldWidget.totalMinutes !=
+        widget.totalMinutes) {
+      final oldProgress =
+          targetProgress;
 
       _calculateLevel();
 
       _progressAnimation =
-          Tween<double>(begin: oldProgress, end: targetProgress).animate(
-            CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
-          );
+          Tween<double>(
+        begin:
+            oldProgress,
+        end:
+            targetProgress,
+      ).animate(
+        CurvedAnimation(
+          parent:
+              _controller,
+          curve:
+              Curves.easeOutCubic,
+        ),
+      );
 
       _controller
         ..reset()
@@ -17793,34 +20752,47 @@ class _LevelCardState extends State<_LevelCard> with TickerProviderStateMixin {
   }
 
   void _calculateLevel() {
-    level = 1;
+    level =
+        1;
 
-    minutesInLevel = widget.totalMinutes;
+    minutesInLevel =
+        widget.totalMinutes;
 
-    while (minutesInLevel >= level * 20) {
-      minutesInLevel -= level * 20;
+    while (minutesInLevel >=
+        level * 20) {
+      minutesInLevel -=
+          level * 20;
 
       level++;
     }
 
-    requiredMinutes = level * 20;
+    requiredMinutes =
+        level * 20;
 
-    minutesLeft = requiredMinutes - minutesInLevel;
+    minutesLeft =
+        requiredMinutes -
+            minutesInLevel;
 
-    targetProgress = requiredMinutes == 0
-        ? 0
-        : minutesInLevel / requiredMinutes;
+    targetProgress =
+        requiredMinutes == 0
+            ? 0
+            : minutesInLevel /
+                requiredMinutes;
   }
 
-  String _formatTimeLeft(int totalMinutes) {
+  String _formatTimeLeft(
+    int totalMinutes,
+  ) {
     if (totalMinutes < 60) {
       return '$totalMinutes '
           'minute${totalMinutes == 1 ? '' : 's'}';
     }
 
-    final totalHours = totalMinutes ~/ 60;
+    final totalHours =
+        totalMinutes ~/ 60;
 
-    final remainingMinutes = totalMinutes % 60;
+    final remainingMinutes =
+        totalMinutes % 60;
 
     if (totalHours < 24) {
       if (remainingMinutes == 0) {
@@ -17831,9 +20803,11 @@ class _LevelCardState extends State<_LevelCard> with TickerProviderStateMixin {
           '${remainingMinutes}m';
     }
 
-    final totalDays = totalHours ~/ 24;
+    final totalDays =
+        totalHours ~/ 24;
 
-    final remainingHours = totalHours % 24;
+    final remainingHours =
+        totalHours % 24;
 
     if (totalDays < 30) {
       if (remainingHours == 0) {
@@ -17844,9 +20818,11 @@ class _LevelCardState extends State<_LevelCard> with TickerProviderStateMixin {
           '${remainingHours}h';
     }
 
-    final totalMonths = totalDays ~/ 30;
+    final totalMonths =
+        totalDays ~/ 30;
 
-    final remainingDays = totalDays % 30;
+    final remainingDays =
+        totalDays % 30;
 
     if (totalMonths < 12) {
       if (remainingDays == 0) {
@@ -17859,9 +20835,11 @@ class _LevelCardState extends State<_LevelCard> with TickerProviderStateMixin {
           '${remainingDays}d';
     }
 
-    final years = totalMonths ~/ 12;
+    final years =
+        totalMonths ~/ 12;
 
-    final remainingMonths = totalMonths % 12;
+    final remainingMonths =
+        totalMonths % 12;
 
     if (remainingMonths == 0) {
       return '$years '
@@ -17875,149 +20853,349 @@ class _LevelCardState extends State<_LevelCard> with TickerProviderStateMixin {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(
+    BuildContext context,
+  ) {
+    final achievementColors =
+        _achievementTierColors(
+      widget.frameAchievement,
+    );
+
+    final List<Color>
+        activeColors =
+        achievementColors.isNotEmpty
+            ? achievementColors
+            : const [
+                chipluxCyan,
+                chipluxViolet,
+                chipluxPurple,
+              ];
+
+    final Color glowColor =
+        activeColors.first;
+
+        final Color titleColor =
+    widget.frameAchievement
+                ?.visualTier ==
+            4
+        ? const Color(
+            0xFFFFC857,
+          )
+        : activeColors.first;
+
     return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: widget.onTap,
-      child: Container(
-        padding: const EdgeInsets.all(1.2),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [chipluxCyan, chipluxViolet, chipluxPurple],
+      behavior:
+          HitTestBehavior.opaque,
+
+      onTap:
+          widget.onTap,
+
+      child:
+          Container(
+        padding:
+            const EdgeInsets.all(
+          1.2,
+        ),
+
+        decoration:
+            BoxDecoration(
+          gradient:
+              LinearGradient(
+            begin:
+                Alignment.topLeft,
+
+            end:
+                Alignment.bottomRight,
+
+            colors:
+                activeColors,
           ),
-          borderRadius: BorderRadius.circular(20),
+
+          borderRadius:
+              BorderRadius.circular(
+            20,
+          ),
+
           boxShadow: [
             BoxShadow(
-              color: chipluxCyan.withValues(alpha: 0.07),
-              blurRadius: 15,
+              color:
+                  glowColor.withValues(
+                alpha:
+                    0.10,
+              ),
+
+              blurRadius:
+                  15,
             ),
           ],
         ),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-          decoration: BoxDecoration(
-            color: chipluxSurface,
-            borderRadius: BorderRadius.circular(19),
 
-            // Subtle inner edge.
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.045),
-              width: 0.7,
-            ),
+        child:
+            Container(
+          width:
+              double.infinity,
+
+          padding:
+              const EdgeInsets.fromLTRB(
+            14,
+            14,
+            14,
+            14,
           ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              _LevelHexBadge(
-                level: level,
-                colors: const [chipluxCyan, chipluxViolet, chipluxPurple],
+
+          decoration:
+              BoxDecoration(
+            color:
+                chipluxSurface,
+
+            borderRadius:
+                BorderRadius.circular(
+              19,
+            ),
+
+            border:
+                Border.all(
+              color:
+                  Colors.white.withValues(
+                alpha:
+                    0.045,
               ),
 
-              const SizedBox(width: 11),
+              width:
+                  0.7,
+            ),
+          ),
+
+          child:
+              Row(
+            crossAxisAlignment:
+                CrossAxisAlignment.center,
+
+            children: [
+              _LevelHexBadge(
+                level:
+                    level,
+
+                colors:
+                    activeColors,
+              ),
+
+              const SizedBox(
+                width:
+                    11,
+              ),
 
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child:
+                    Column(
+                  crossAxisAlignment:
+                      CrossAxisAlignment.start,
+
                   children: [
                     const Text(
                       'RUNTIME LEVEL',
-                      style: TextStyle(
-                        color: Colors.white38,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.2,
+
+                      style:
+                          TextStyle(
+                        color:
+                            Colors.white38,
+
+                        fontSize:
+                            9,
+
+                        fontWeight:
+                            FontWeight.w700,
+
+                        letterSpacing:
+                            1.2,
                       ),
                     ),
 
-                    const SizedBox(height: 1),
+                    const SizedBox(
+                      height:
+                          1,
+                    ),
 
                     Text(
-                      widget.title.toUpperCase(),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: chipluxCyan,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0.6,
+                      widget.title
+                          .toUpperCase(),
+
+                      maxLines:
+                          1,
+
+                      overflow:
+                          TextOverflow.ellipsis,
+
+                      style:
+                          TextStyle(
+                        color:
+    titleColor,
+
+                        fontSize:
+                            16,
+
+                        fontWeight:
+                            FontWeight.w900,
+
+                        letterSpacing:
+                            0.6,
+
                         shadows: [
-                          Shadow(color: Color(0x5543E8FF), blurRadius: 7),
+                          Shadow(
+                            color:
+                                titleColor.withValues(
+                              alpha:
+                                  0.34,
+                            ),
+
+                            blurRadius:
+                                7,
+                          ),
                         ],
                       ),
                     ),
 
-                    const SizedBox(height: 7),
+                    const SizedBox(
+                      height:
+                          7,
+                    ),
 
                     // =============================
                     // GLOSSY PROGRESS
                     // =============================
+
                     Container(
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.22),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.055),
-                          width: 0.7,
+                      height:
+                          8,
+
+                      decoration:
+                          BoxDecoration(
+                        color:
+                            Colors.black.withValues(
+                          alpha:
+                              0.22,
                         ),
+
+                        borderRadius:
+                            BorderRadius.circular(
+                          20,
+                        ),
+
+                        border:
+                            Border.all(
+                          color:
+                              Colors.white.withValues(
+                            alpha:
+                                0.055,
+                          ),
+
+                          width:
+                              0.7,
+                        ),
+
                         boxShadow: [
                           BoxShadow(
-                            color: chipluxCyan.withValues(alpha: 0.18),
-                            blurRadius: 8,
+                            color:
+                                glowColor.withValues(
+                              alpha:
+                                  0.18,
+                            ),
+
+                            blurRadius:
+                                8,
                           ),
                         ],
                       ),
-                      clipBehavior: Clip.antiAlias,
-                      child: AnimatedBuilder(
-                        animation: Listenable.merge([
+
+                      clipBehavior:
+                          Clip.antiAlias,
+
+                      child:
+                          AnimatedBuilder(
+                        animation:
+                            Listenable.merge([
                           _progressAnimation,
                           _flowController,
                         ]),
-                        builder: (context, _) {
-                          final flow = _flowController.value;
+
+                        builder:
+                            (
+                          context,
+                          _,
+                        ) {
+                          final flow =
+                              _flowController.value;
 
                           return Align(
-                            alignment: Alignment.centerLeft,
-                            child: FractionallySizedBox(
-                              widthFactor: _progressAnimation.value.clamp(
+                            alignment:
+                                Alignment.centerLeft,
+
+                            child:
+                                FractionallySizedBox(
+                              widthFactor:
+                                  _progressAnimation.value.clamp(
                                 0.0,
                                 1.0,
                               ),
-                              heightFactor: 1,
-                              child: Stack(
-                                fit: StackFit.expand,
+
+                              heightFactor:
+                                  1,
+
+                              child:
+                                  Stack(
+                                fit:
+                                    StackFit.expand,
+
                                 children: [
                                   Container(
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        begin: Alignment(-1.8 + flow * 3.6, 0),
-                                        end: Alignment(-0.2 + flow * 3.6, 0),
-                                        colors: const [
-                                          chipluxCyan,
-                                          Colors.white,
-                                          chipluxViolet,
-                                          chipluxPurple,
-                                        ],
-                                        stops: const [0, 0.35, 0.65, 1],
+                                    decoration:
+                                        BoxDecoration(
+                                      gradient:
+                                          LinearGradient(
+                                        begin:
+                                            Alignment(
+                                          -1.8 +
+                                              flow *
+                                                  3.6,
+                                          0,
+                                        ),
+
+                                        end:
+                                            Alignment(
+                                          -0.2 +
+                                              flow *
+                                                  3.6,
+                                          0,
+                                        ),
+
+                                        colors:
+                                            activeColors,
                                       ),
                                     ),
                                   ),
 
                                   Align(
-                                    alignment: Alignment.topCenter,
-                                    child: Container(
-                                      height: 2,
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
+                                    alignment:
+                                        Alignment.topCenter,
+
+                                    child:
+                                        Container(
+                                      height:
+                                          2,
+
+                                      decoration:
+                                          BoxDecoration(
+                                        gradient:
+                                            LinearGradient(
                                           colors: [
                                             Colors.white.withValues(
-                                              alpha: 0.65,
+                                              alpha:
+                                                  0.65,
                                             ),
+
                                             Colors.white.withValues(
-                                              alpha: 0.08,
+                                              alpha:
+                                                  0.08,
                                             ),
                                           ],
                                         ),
@@ -18026,11 +21204,18 @@ class _LevelCardState extends State<_LevelCard> with TickerProviderStateMixin {
                                   ),
 
                                   Align(
-                                    alignment: Alignment.bottomCenter,
-                                    child: Container(
-                                      height: 1.3,
-                                      color: Colors.black.withValues(
-                                        alpha: 0.18,
+                                    alignment:
+                                        Alignment.bottomCenter,
+
+                                    child:
+                                        Container(
+                                      height:
+                                          1.3,
+
+                                      color:
+                                          Colors.black.withValues(
+                                        alpha:
+                                            0.18,
                                       ),
                                     ),
                                   ),
@@ -18042,42 +21227,71 @@ class _LevelCardState extends State<_LevelCard> with TickerProviderStateMixin {
                       ),
                     ),
 
-                    const SizedBox(height: 6),
+                    const SizedBox(
+                      height:
+                          6,
+                    ),
 
                     Row(
                       children: [
                         Text(
                           '$minutesInLevel / '
                           '$requiredMinutes min',
-                          style: const TextStyle(
-                            color: Colors.white54,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
+
+                          style:
+                              const TextStyle(
+                            color:
+                                Colors.white54,
+
+                            fontSize:
+                                10,
+
+                            fontWeight:
+                                FontWeight.w600,
                           ),
                         ),
 
                         const Spacer(),
 
                         Text(
-                          _formatTimeLeft(minutesLeft),
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
+                          _formatTimeLeft(
+                            minutesLeft,
+                          ),
+
+                          style:
+                              const TextStyle(
+                            color:
+                                Colors.white70,
+
+                            fontSize:
+                                10,
+
+                            fontWeight:
+                                FontWeight.w600,
                           ),
                         ),
                       ],
                     ),
 
-                    const SizedBox(height: 2),
+                    const SizedBox(
+                      height:
+                          2,
+                    ),
 
                     Text(
                       'to Level '
                       '${level + 1}',
-                      style: const TextStyle(
-                        color: Colors.white38,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w500,
+
+                      style:
+                          const TextStyle(
+                        color:
+                            Colors.white38,
+
+                        fontSize:
+                            9,
+
+                        fontWeight:
+                            FontWeight.w500,
                       ),
                     ),
                   ],
@@ -18093,6 +21307,7 @@ class _LevelCardState extends State<_LevelCard> with TickerProviderStateMixin {
   @override
   void dispose() {
     _controller.dispose();
+
     _flowController.dispose();
 
     super.dispose();
@@ -18440,131 +21655,244 @@ class _WatchStatCard extends StatelessWidget {
   }
 }
 
-class _RatingStatCard extends StatelessWidget {
+class _RatingStatCard
+    extends StatelessWidget {
   final int value;
   final String label;
   final IconData icon;
   final VoidCallback? onTap;
+
+  final _Achievement? frameAchievement;
 
   const _RatingStatCard({
     required this.value,
     required this.label,
     required this.icon,
     this.onTap,
+    this.frameAchievement,
   });
 
-  static const Color criticGold = Color(0xFFFFC857);
+  static const Color criticGold =
+      Color(0xFFFFC857);
 
-  static const Color criticOrange = Color(0xFFFF8A4C);
+  static const Color criticOrange =
+      Color(0xFFFF8A4C);
 
   @override
-  Widget build(BuildContext context) {
-    final cleanLabel = label.replaceAll('\n', ' ');
+  Widget build(
+    BuildContext context,
+  ) {
+    final cleanLabel =
+        label.replaceAll(
+      '\n',
+      ' ',
+    );
+
+    final frameColors =
+        _achievementTierColors(
+      frameAchievement,
+    );
+
+    final bool hasFrame =
+        frameColors.isNotEmpty;
+
+    Widget card =
+        Container(
+      height: 58,
+
+      padding:
+          const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: 8,
+      ),
+
+      decoration:
+          BoxDecoration(
+        color:
+            chipluxSurface,
+
+        borderRadius:
+            BorderRadius.circular(
+          14,
+        ),
+
+        border:
+            Border.all(
+          color:
+              hasFrame
+                  ? Colors.transparent
+                  : criticGold
+                      .withValues(
+                      alpha: 0.10,
+                    ),
+        ),
+      ),
+
+      child:
+          Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+
+            decoration:
+                BoxDecoration(
+              borderRadius:
+                  BorderRadius.circular(
+                11,
+              ),
+
+              color:
+                  criticGold.withValues(
+                alpha: 0.065,
+              ),
+
+              border:
+                  Border.all(
+                color:
+                    criticGold.withValues(
+                  alpha: 0.14,
+                ),
+              ),
+            ),
+
+            child:
+                Center(
+              child:
+                  ShaderMask(
+                shaderCallback:
+                    (bounds) {
+                  return const LinearGradient(
+                    colors: [
+                      criticGold,
+                      criticOrange,
+                      chipluxPurple,
+                    ],
+                  ).createShader(
+                    bounds,
+                  );
+                },
+
+                child:
+                    Icon(
+                  icon,
+                  color:
+                      Colors.white,
+                  size:
+                      20,
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(width: 12),
+
+          Expanded(
+            child:
+                Text(
+              cleanLabel,
+              maxLines: 1,
+              overflow:
+                  TextOverflow.ellipsis,
+
+              style:
+                  const TextStyle(
+                color:
+                    Colors.white70,
+                fontSize: 13,
+                fontWeight:
+                    FontWeight.w600,
+              ),
+            ),
+          ),
+
+          Text(
+            '$value',
+
+            style:
+                const TextStyle(
+              color:
+                  criticGold,
+              fontSize:
+                  21,
+              fontWeight:
+                  FontWeight.w800,
+            ),
+          ),
+
+          if (onTap != null) ...[
+            const SizedBox(width: 7),
+
+            const Icon(
+              Icons
+                  .chevron_right_rounded,
+              color:
+                  Colors.white24,
+              size: 19,
+            ),
+          ],
+        ],
+      ),
+    );
+
+    if (hasFrame) {
+      card =
+          Container(
+        padding:
+            const EdgeInsets.all(
+          1.5,
+        ),
+
+        decoration:
+            BoxDecoration(
+          borderRadius:
+              BorderRadius.circular(
+            15,
+          ),
+
+          gradient:
+              LinearGradient(
+            begin:
+                Alignment.topLeft,
+            end:
+                Alignment.bottomRight,
+            colors:
+                frameColors,
+          ),
+
+          boxShadow: [
+            BoxShadow(
+              color:
+                  frameColors.first
+                      .withValues(
+                alpha: 0.12,
+              ),
+              blurRadius: 8,
+            ),
+          ],
+        ),
+
+        child:
+            card,
+      );
+    }
 
     return Material(
-      color: Colors.transparent,
+      color:
+          Colors.transparent,
 
-      child: InkWell(
-        onTap: onTap,
+      child:
+          InkWell(
+        onTap:
+            onTap,
 
-        borderRadius: BorderRadius.circular(15),
-
-        child: Container(
-          height: 58,
-
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-
-          decoration: BoxDecoration(
-            color: chipluxSurface,
-
-            borderRadius: BorderRadius.circular(15),
-
-            border: Border.all(color: criticGold.withValues(alpha: 0.10)),
-          ),
-
-          child: Row(
-            children: [
-              // =========================
-              // ICON
-              // =========================
-
-              Container(
-                width: 38,
-                height: 38,
-
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(11),
-
-                  color: criticGold.withValues(alpha: 0.065),
-
-                  border: Border.all(color: criticGold.withValues(alpha: 0.14)),
-                ),
-
-                child: Center(
-                  child: ShaderMask(
-                    shaderCallback: (bounds) {
-                      return const LinearGradient(
-                        colors: [criticGold, criticOrange, chipluxPurple],
-                      ).createShader(bounds);
-                    },
-
-                    child: Icon(icon, color: Colors.white, size: 20),
-                  ),
-                ),
-              ),
-
-              const SizedBox(width: 12),
-
-              // =========================
-              // LABEL
-              // =========================
-              Expanded(
-                child: Text(
-                  cleanLabel,
-
-                  maxLines: 1,
-
-                  overflow: TextOverflow.ellipsis,
-
-                  style: const TextStyle(
-                    color: Colors.white70,
-
-                    fontSize: 13,
-
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-
-              // =========================
-              // VALUE
-              // =========================
-              Text(
-                '$value',
-
-                style: const TextStyle(
-                  color: criticGold,
-
-                  fontSize: 21,
-
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-
-              if (onTap != null) ...[
-                const SizedBox(width: 7),
-
-                const Icon(
-                  Icons.chevron_right_rounded,
-
-                  color: Colors.white24,
-
-                  size: 19,
-                ),
-              ],
-            ],
-          ),
+        borderRadius:
+            BorderRadius.circular(
+          15,
         ),
+
+        child:
+            card,
       ),
     );
   }
@@ -19620,12 +22948,29 @@ class _EpisodeRatingCardState extends State<_EpisodeRatingCard> {
     final String showTitle = show?.title ?? 'Unknown TV Show';
 
     try {
+
+final int previousEpisodeRatingCount =
+    critic.episodeRatingCount;
+
       await critic.saveEpisodeRating(
         showId: widget.showId,
         seasonNumber: widget.seasonNumber,
         episodeNumber: widget.episodeNumber,
         rating: currentRating,
       );
+      
+      final int currentEpisodeRatingCount =
+    critic.episodeRatingCount;  
+
+    if (mounted) {
+  await _checkEpisodeRatedAchievementUnlock(
+    context,
+    previousCount:
+        previousEpisodeRatingCount,
+    currentCount:
+        currentEpisodeRatingCount,
+  );
+}
 
       // Keep only the newest rating
       // activity for this episode.
@@ -20322,56 +23667,112 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
     }
 
     Future<void> saveRatingNow() async {
-      final rating = mediaUserData.rating;
+  final rating =
+      mediaUserData.rating;
 
-      if (rating == null) {
-        return;
-      }
+  if (rating == null) {
+    return;
+  }
 
-      final int stars = (rating / 2).round().clamp(1, 5);
-
-      final String mediaTitle =
-          (details?['title'] ??
-                  details?['name'] ??
-                  library.getItem(widget.id, widget.mediaType)?.title ??
-                  'Unknown')
-              .toString();
-
-      try {
-        await mediaUserDataService.save(
-          tmdbId: widget.id,
-          mediaType: widget.mediaType,
-          isFavorite: mediaUserData.isFavorite,
-          rating: rating,
-          review: mediaUserData.review,
-        );
-
-        await CriticService.instance.refresh();
-
-        // Keep only the newest rating
-        // activity for this title.
-        try {
-          await CommunityService.instance.deleteActivity(
-            activityType: 'rated',
-            mediaType: widget.mediaType,
-            tmdbId: widget.id,
-            titleLevelOnly: true,
+  final int stars =
+      (rating / 2)
+          .round()
+          .clamp(
+            1,
+            5,
           );
 
-          await CommunityService.instance.tryCreateActivity(
-            activityType: 'rated',
-            mediaType: widget.mediaType,
-            tmdbId: widget.id,
-            mediaTitle: mediaTitle,
-            ratingStars: stars,
-          );
-        } catch (e) {
-          debugPrint('Could not update rating activity: $e');
-        }
-      } catch (e) {
-        debugPrint('Could not save rating: $e');
-      }
+  final String mediaTitle =
+      (
+        details?['title'] ??
+        details?['name'] ??
+        library
+            .getItem(
+              widget.id,
+              widget.mediaType,
+            )
+            ?.title ??
+        'Unknown'
+      ).toString();
+
+  final critic =
+      CriticService.instance;
+
+  final int previousCount =
+      widget.mediaType == 'movie'
+          ? critic.movieRatingCount
+          : critic.tvRatingCount;
+
+  try {
+    await mediaUserDataService.save(
+      tmdbId:
+          widget.id,
+      mediaType:
+          widget.mediaType,
+      isFavorite:
+          mediaUserData.isFavorite,
+      rating:
+          rating,
+      review:
+          mediaUserData.review,
+    );
+
+    await critic.refresh();
+
+    final int currentCount =
+        widget.mediaType == 'movie'
+            ? critic.movieRatingCount
+            : critic.tvRatingCount;
+
+    if (mounted) {
+      await _checkTitleRatedAchievementUnlock(
+        context,
+        mediaType:
+            widget.mediaType,
+        previousCount:
+            previousCount,
+        currentCount:
+            currentCount,
+      );
     }
+
+    try {
+      await CommunityService.instance
+          .deleteActivity(
+        activityType:
+            'rated',
+        mediaType:
+            widget.mediaType,
+        tmdbId:
+            widget.id,
+        titleLevelOnly:
+            true,
+      );
+
+      await CommunityService.instance
+          .tryCreateActivity(
+        activityType:
+            'rated',
+        mediaType:
+            widget.mediaType,
+        tmdbId:
+            widget.id,
+        mediaTitle:
+            mediaTitle,
+        ratingStars:
+            stars,
+      );
+    } catch (e) {
+      debugPrint(
+        'Could not update rating activity: $e',
+      );
+    }
+  } catch (e) {
+    debugPrint(
+      'Could not save rating: $e',
+    );
+  }
+}
 
     return Container(
       padding: const EdgeInsets.all(18),
