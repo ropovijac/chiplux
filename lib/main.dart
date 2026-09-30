@@ -501,16 +501,6 @@ _AchievementGroup
         visualTier: 1,
       ),
       _Achievement(
-        id: 'tv_rated_4',
-        title: 'Show Reviewer',
-        description: 'Rate 4 TV shows',
-        icon: Icons.star_half_rounded,
-        current: tvShowsRated,
-        target: 4,
-        rarity: _AchievementRarity.uncommon,
-        visualTier: 2,
-      ),
-      _Achievement(
         id: 'tv_rated_8',
         title: 'Series Critic',
         description: 'Rate 8 TV shows',
@@ -518,7 +508,7 @@ _AchievementGroup
         current: tvShowsRated,
         target: 8,
         rarity: _AchievementRarity.uncommon,
-        visualTier: 3,
+        visualTier: 2,
       ),
       _Achievement(
         id: 'tv_rated_16',
@@ -528,7 +518,7 @@ _AchievementGroup
         current: tvShowsRated,
         target: 16,
         rarity: _AchievementRarity.rare,
-        visualTier: 4,
+        visualTier: 3,
       ),
       _Achievement(
         id: 'tv_rated_32',
@@ -538,7 +528,7 @@ _AchievementGroup
         current: tvShowsRated,
         target: 32,
         rarity: _AchievementRarity.rare,
-        visualTier: 5,
+        visualTier: 4,
       ),
       _Achievement(
         id: 'tv_rated_64',
@@ -548,7 +538,7 @@ _AchievementGroup
         current: tvShowsRated,
         target: 64,
         rarity: _AchievementRarity.epic,
-        visualTier: 6,
+        visualTier: 5,
       ),
       _Achievement(
         id: 'tv_rated_128',
@@ -558,7 +548,7 @@ _AchievementGroup
         current: tvShowsRated,
         target: 128,
         rarity: _AchievementRarity.legendary,
-        visualTier: 7,
+        visualTier: 6,
       ),
       _Achievement(
         id: 'tv_rated_256',
@@ -568,7 +558,7 @@ _AchievementGroup
         current: tvShowsRated,
         target: 256,
         rarity: _AchievementRarity.legendary,
-        visualTier: 8,
+        visualTier: 7,
       ),
     ],
   );
@@ -597,16 +587,6 @@ _AchievementGroup
         visualTier: 1,
       ),
       _Achievement(
-        id: 'movies_rated_4',
-        title: 'Film Reviewer',
-        description: 'Rate 4 movies',
-        icon: Icons.star_half_rounded,
-        current: moviesRated,
-        target: 4,
-        rarity: _AchievementRarity.uncommon,
-        visualTier: 2,
-      ),
-      _Achievement(
         id: 'movies_rated_8',
         title: 'Movie Critic',
         description: 'Rate 8 movies',
@@ -614,7 +594,7 @@ _AchievementGroup
         current: moviesRated,
         target: 8,
         rarity: _AchievementRarity.uncommon,
-        visualTier: 3,
+        visualTier: 2,
       ),
       _Achievement(
         id: 'movies_rated_16',
@@ -624,7 +604,7 @@ _AchievementGroup
         current: moviesRated,
         target: 16,
         rarity: _AchievementRarity.rare,
-        visualTier: 4,
+        visualTier: 3,
       ),
       _Achievement(
         id: 'movies_rated_32',
@@ -634,7 +614,7 @@ _AchievementGroup
         current: moviesRated,
         target: 32,
         rarity: _AchievementRarity.rare,
-        visualTier: 5,
+        visualTier: 4,
       ),
       _Achievement(
         id: 'movies_rated_64',
@@ -644,7 +624,7 @@ _AchievementGroup
         current: moviesRated,
         target: 64,
         rarity: _AchievementRarity.epic,
-        visualTier: 6,
+        visualTier: 5,
       ),
       _Achievement(
         id: 'movies_rated_128',
@@ -654,7 +634,7 @@ _AchievementGroup
         current: moviesRated,
         target: 128,
         rarity: _AchievementRarity.legendary,
-        visualTier: 7,
+        visualTier: 6,
       ),
       _Achievement(
         id: 'movies_rated_256',
@@ -664,7 +644,7 @@ _AchievementGroup
         current: moviesRated,
         target: 256,
         rarity: _AchievementRarity.legendary,
-        visualTier: 8,
+        visualTier: 7,
       ),
     ],
   );
@@ -1783,10 +1763,122 @@ Future<void> _checkPublicProfileViewAchievementUnlock(
   }
 }
 
+Future<void>
+    _autoApplyAchievementReward(
+  _Achievement achievement,
+) async {
+  try {
+    final id =
+        achievement.id;
+
+    // =========================
+    // DISPLAY NAME FRAME
+    // Daily Login
+    // =========================
+    if (id.startsWith(
+      'login_',
+    )) {
+      await DisplayNameFrameService
+          .instance
+          .apply(
+        id,
+      );
+
+      return;
+    }
+
+    // =========================
+    // AVATAR FRAME
+    // Profile Explorer
+    // =========================
+    if (id.startsWith(
+      'profile_views_',
+    )) {
+      await AvatarFrameService
+          .instance
+          .apply(
+        id,
+      );
+
+      return;
+    }
+
+    String? groupId;
+
+    // IMPORTANT:
+    // Check the more specific IDs first.
+
+    if (id.startsWith(
+      'movies_rated_',
+    )) {
+      groupId =
+          'movies_rated';
+    } else if (id.startsWith(
+      'tv_rated_',
+    )) {
+      groupId =
+          'tv_shows_rated';
+    } else if (id.startsWith(
+      'episodes_rated_',
+    )) {
+      groupId =
+          'episodes_rated';
+    } else if (id.startsWith(
+      'runtime_level_',
+    )) {
+      groupId =
+          'runtime_level';
+    } else if (id.startsWith(
+      'ratings_level_',
+    )) {
+      groupId =
+          'ratings_level';
+    } else if (id.startsWith(
+      'movies_',
+    )) {
+      groupId =
+          'movies_watched';
+    } else if (id.startsWith(
+      'tv_',
+    )) {
+      groupId =
+          'tv_shows_completed';
+    } else if (id.startsWith(
+      'episodes_',
+    )) {
+      groupId =
+          'episodes_watched';
+    }
+
+    if (groupId == null) {
+      return;
+    }
+
+    await _AchievementCosmeticService
+        .instance
+        .applyTier(
+      groupId,
+      id,
+    );
+  } catch (e) {
+    debugPrint(
+      'Could not automatically apply achievement reward: $e',
+    );
+  }
+}
+
 Future<void> _showAchievementUnlocked(
   BuildContext context,
   _Achievement achievement,
 ) async {
+  await _autoApplyAchievementReward(
+    achievement,
+  );
+
+  if (!context.mounted) {
+    return;
+  }
+
   await showGeneralDialog<void>(
     context: context,
 
@@ -2224,50 +2316,76 @@ List<Color> _achievementPopupColors(
   switch (achievement.visualTier) {
     case 1:
       return const [
-        Colors.white,
+        Color(0xFFF7F9FC),
         Color(0xFFBFC9D4),
       ];
 
     case 2:
-      return const [
-        chipluxCyan,
-        Color(0xFF64BFFF),
-      ];
+  // Strong blue
+  return const [
+    Color(0xFF38BDF8),
+    Color(0xFF2563EB),
+  ];
 
     case 3:
-      return const [
-        chipluxCyan,
-        chipluxViolet,
-      ];
+  // Strong violet / magenta
+  return const [
+    Color(0xFFA855F7),
+    Color(0xFFD946EF),
+    Color(0xFF6366F1),
+  ];
 
     case 4:
-      return const [
-        Color(0xFFFFF1A8),
-        Color(0xFFFFC857),
-      ];
+  // Pure gold
+  return const [
+    Color(0xFFFFF3A3),
+    Color(0xFFFFC400),
+    Color(0xFFE6A700),
+  ];
 
     case 5:
-      return const [
-        Color(0xFFFFC857),
-        Color(0xFFFF8A4C),
-        Color(0xFFFF5C72),
-      ];
+  // Fire / molten
+  return const [
+    Color(0xFFFF8A3D),
+    Color(0xFFFF4D4D),
+    Color(0xFFD91E36),
+  ];
 
     case 6:
       return const [
-        Color(0xFFFF5C72),
-        chipluxPurple,
-        chipluxViolet,
+        Color(0xFFFF416C),
+        Color(0xFFD65CFF),
+        Color(0xFF7A5CFF),
+      ];
+
+    case 7:
+      return const [
+        Color(0xFF5CFFD1),
+        Color(0xFF25D98F),
+        Color(0xFF43E8FF),
+      ];
+
+    case 8:
+      return const [
+        Color(0xFFFF6BFF),
+        Color(0xFF9B5CFF),
+        Color(0xFF5C7CFF),
+      ];
+
+    case 9:
+      return const [
+        Color(0xFFFFD86B),
+        Color(0xFFFF6B8A),
+        Color(0xFFD65CFF),
+        Color(0xFF43E8FF),
       ];
 
     default:
       return const [
-        chipluxCyan,
-        Colors.white,
-        chipluxViolet,
-        chipluxPurple,
-        Color(0xFFFFC857),
-      ];
+    Color(0xFFFFFFFF),
+    Color(0xFFCBD5E1),
+    Color(0xFF94A3B8),
+  ];
   }
 }
 
@@ -5743,7 +5861,8 @@ class _PublicProfilePageState
                 'public_stats, '
                 'pinned_achievement_id, '
                 'display_name_frame_id, '
-                'avatar_frame_id',
+'avatar_frame_id, '
+'achievement_cosmetics',
               )
               .eq(
                 'id',
@@ -6228,6 +6347,61 @@ final runtimeLevelGroup =
         profile![
                 'avatar_frame_id']
             ?.toString();
+
+            final rawAchievementCosmetics =
+    profile![
+        'achievement_cosmetics'];
+
+final achievementCosmetics =
+    <String, String>{};
+
+if (rawAchievementCosmetics
+    is Map) {
+  rawAchievementCosmetics
+      .forEach(
+    (
+      key,
+      value,
+    ) {
+      if (value != null) {
+        final id =
+            value
+                .toString()
+                .trim();
+
+        if (id.isNotEmpty) {
+          achievementCosmetics[
+            key.toString()
+          ] = id;
+        }
+      }
+    },
+  );
+}
+
+_Achievement?
+    selectedPublicCosmetic(
+  _AchievementGroup group,
+) {
+  final selectedId =
+      achievementCosmetics[
+          group.id];
+
+  if (selectedId == null) {
+    return null;
+  }
+
+  for (final tier
+      in group.tiers) {
+    if (tier.id ==
+            selectedId &&
+        tier.unlocked) {
+      return tier;
+    }
+  }
+
+  return null;
+}
 
     // =========================
     // PINNED ACHIEVEMENT
@@ -6827,8 +7001,9 @@ _PublicAchievementsCard(
       viewerTitle,
 
   frameAchievement:
-      runtimeLevelGroup
-          .highestUnlockedTier,
+    selectedPublicCosmetic(
+      runtimeLevelGroup,
+    ),
 ),
 
                   const SizedBox(
@@ -6853,8 +7028,9 @@ _PublicAchievementsCard(
                             Icons.tv_rounded,
 
                         frameAchievement:
-                            tvGroup
-                                .highestUnlockedTier,
+    selectedPublicCosmetic(
+      tvGroup,
+    ),
                       ),
 
                       const SizedBox(
@@ -6877,8 +7053,9 @@ _PublicAchievementsCard(
                                 .playlist_add_check_rounded,
 
                         frameAchievement:
-                            episodeGroup
-                                .highestUnlockedTier,
+    selectedPublicCosmetic(
+      episodeGroup,
+    ),
                       ),
 
                       const SizedBox(
@@ -6900,8 +7077,9 @@ _PublicAchievementsCard(
                             Icons.movie_outlined,
 
                         frameAchievement:
-                            movieGroup
-                                .highestUnlockedTier,
+    selectedPublicCosmetic(
+      movieGroup,
+    ),
                       ),
                     ],
                   ),
@@ -6942,8 +7120,9 @@ _PublicAchievementsCard(
                         episodeCoverage,
 
                         frameAchievement:
-    ratingsLevelGroup
-        .highestUnlockedTier,
+    selectedPublicCosmetic(
+      ratingsLevelGroup,
+    ),
 
                     averageStars:
                         averageStars,
@@ -6971,8 +7150,9 @@ _PublicAchievementsCard(
                             Icons.tv_outlined,
 
                         frameAchievement:
-                            episodeRatedGroup
-                                .highestUnlockedTier,
+    selectedPublicCosmetic(
+      episodeRatedGroup,
+    ),
                       ),
 
                       const SizedBox(
@@ -6991,8 +7171,9 @@ _PublicAchievementsCard(
                             Icons.live_tv_rounded,
 
                         frameAchievement:
-                            tvShowsRatedGroup
-                                .highestUnlockedTier,
+    selectedPublicCosmetic(
+      tvShowsRatedGroup,
+    ),
                       ),
 
                       const SizedBox(
@@ -7012,8 +7193,9 @@ _PublicAchievementsCard(
                                 .movie_filter_outlined,
 
                         frameAchievement:
-                            moviesRatedGroup
-                                .highestUnlockedTier,
+    selectedPublicCosmetic(
+      moviesRatedGroup,
+    ),
                       ),
                     ],
                   ),
@@ -15160,21 +15342,6 @@ final ratingsLevelGroup =
                   ),
                 ),
 
-                const SizedBox(height: 5),
-
-                Text(
-                  '$moviesWatched movies · '
-                  '$completedTvShows TV · '
-                  '$episodesWatched episodes · '
-                  '$loginDays login days · '
-                  '$profilesViewed profiles',
-
-                  style: const TextStyle(
-                    color: Color(0x75FFFFFF),
-                    fontSize: 12,
-                  ),
-                ),
-
                 const SizedBox(height: 15),
 
                 LayoutBuilder(
@@ -16290,53 +16457,83 @@ List<Color> _achievementTierColors(
 
   switch (achievement.visualTier) {
     case 1:
+      // Silver
       return const [
-        Colors.white,
+        Color(0xFFF7F9FC),
         Color(0xFFBFC9D4),
       ];
 
     case 2:
-      return const [
-        chipluxCyan,
-        Color(0xFF64BFFF),
-      ];
+  // Strong blue
+  return const [
+    Color(0xFF38BDF8),
+    Color(0xFF2563EB),
+  ];
 
     case 3:
-      return const [
-        chipluxCyan,
-        chipluxViolet,
-      ];
+  // Strong violet / magenta
+  return const [
+    Color(0xFFA855F7),
+    Color(0xFFD946EF),
+    Color(0xFF6366F1),
+  ];
 
     case 4:
-      return const [
-        Color(0xFFFFF1A8),
-        Color(0xFFFFC857),
-      ];
+  // Pure gold
+  return const [
+    Color(0xFFFFF3A3),
+    Color(0xFFFFC400),
+    Color(0xFFE6A700),
+  ];
 
     case 5:
-      return const [
-        Color(0xFFFFC857),
-        Color(0xFFFF8A4C),
-        Color(0xFFFF5C72),
-      ];
+  // Fire / molten
+  return const [
+    Color(0xFFFF8A3D),
+    Color(0xFFFF4D4D),
+    Color(0xFFD91E36),
+  ];
 
     case 6:
+      // Crimson / magenta
       return const [
-        Color(0xFFFF5C72),
-        chipluxPurple,
-        chipluxViolet,
+        Color(0xFFFF416C),
+        Color(0xFFD65CFF),
+        Color(0xFF7A5CFF),
+      ];
+
+    case 7:
+      // Emerald / aurora
+      return const [
+        Color(0xFF5CFFD1),
+        Color(0xFF25D98F),
+        Color(0xFF43E8FF),
+      ];
+
+    case 8:
+      // Mythic purple
+      return const [
+        Color(0xFFFF6BFF),
+        Color(0xFF9B5CFF),
+        Color(0xFF5C7CFF),
+      ];
+
+    case 9:
+      // Legendary prism
+      return const [
+        Color(0xFFFFD86B),
+        Color(0xFFFF6B8A),
+        Color(0xFFD65CFF),
+        Color(0xFF43E8FF),
       ];
 
     default:
+      // Ultra / future tiers
       return const [
-        chipluxCyan,
-        Colors.white,
-        chipluxViolet,
-        chipluxPurple,
-        Color(0xFFFF5C72),
-        Color(0xFFFFC857),
-        chipluxCyan,
-      ];
+    Color(0xFFFFFFFF),
+    Color(0xFFCBD5E1),
+    Color(0xFF94A3B8),
+  ];
   }
 }
 
@@ -17435,6 +17632,238 @@ class AvatarFrameService
   }
 }
 
+class _AchievementCosmeticService
+    extends ChangeNotifier {
+  _AchievementCosmeticService._();
+
+  static final _AchievementCosmeticService
+      instance =
+      _AchievementCosmeticService._();
+
+  Map<String, String> _selected = {};
+
+  String? selectedTierId(
+    String groupId,
+  ) {
+    return _selected[groupId];
+  }
+
+  _Achievement? selectedAchievement(
+    _AchievementGroup group,
+  ) {
+    final selectedId =
+        _selected[group.id];
+
+    if (selectedId == null) {
+      return null;
+    }
+
+    for (final tier in group.tiers) {
+      if (tier.id == selectedId &&
+          tier.unlocked) {
+        return tier;
+      }
+    }
+
+    return null;
+  }
+
+  Future<void> load() async {
+    final client =
+        Supabase.instance.client;
+
+    final user =
+        client.auth.currentUser;
+
+    if (user == null) {
+      _selected = {};
+
+      notifyListeners();
+
+      return;
+    }
+
+    try {
+      final row = await client
+          .from('profiles')
+          .select(
+            'achievement_cosmetics',
+          )
+          .eq(
+            'id',
+            user.id,
+          )
+          .maybeSingle();
+
+      final raw =
+          row?['achievement_cosmetics'];
+
+      final loaded =
+          <String, String>{};
+
+      if (raw is Map) {
+        raw.forEach(
+          (
+            key,
+            value,
+          ) {
+            if (value != null) {
+              final id =
+                  value
+                      .toString()
+                      .trim();
+
+              if (id.isNotEmpty) {
+                loaded[
+                  key.toString()
+                ] = id;
+              }
+            }
+          },
+        );
+      }
+
+      _selected = loaded;
+
+      notifyListeners();
+    } catch (e) {
+      debugPrint(
+        'Could not load achievement cosmetics: $e',
+      );
+    }
+  }
+
+  Future<void> applyTier(
+  String groupId,
+  String tierId,
+) async {
+  final client =
+      Supabase.instance.client;
+
+  final user =
+      client.auth.currentUser;
+
+  if (user == null) {
+    return;
+  }
+
+  try {
+    // Always get the newest saved map first.
+    final row = await client
+        .from('profiles')
+        .select(
+          'achievement_cosmetics',
+        )
+        .eq(
+          'id',
+          user.id,
+        )
+        .maybeSingle();
+
+    final updated =
+        <String, String>{};
+
+    final raw =
+        row?['achievement_cosmetics'];
+
+    if (raw is Map) {
+      raw.forEach(
+        (
+          key,
+          value,
+        ) {
+          if (value != null) {
+            final id =
+                value
+                    .toString()
+                    .trim();
+
+            if (id.isNotEmpty) {
+              updated[
+                key.toString()
+              ] = id;
+            }
+          }
+        },
+      );
+    }
+
+    // Automatically equip the newly
+    // unlocked tier for this group.
+    updated[groupId] =
+        tierId;
+
+    await client
+        .from('profiles')
+        .update({
+          'achievement_cosmetics':
+              updated,
+        })
+        .eq(
+          'id',
+          user.id,
+        );
+
+    _selected =
+        updated;
+
+    notifyListeners();
+  } catch (e) {
+    debugPrint(
+      'Could not apply achievement cosmetic: $e',
+    );
+  }
+}
+
+  Future<void> applyAll(
+    Map<String, String?>
+        selections,
+  ) async {
+    final client =
+        Supabase.instance.client;
+
+    final user =
+        client.auth.currentUser;
+
+    if (user == null) {
+      throw Exception(
+        'No signed in user.',
+      );
+    }
+
+    final cleaned =
+        <String, String>{};
+
+    selections.forEach(
+      (
+        groupId,
+        tierId,
+      ) {
+        if (tierId != null &&
+            tierId.trim().isNotEmpty) {
+          cleaned[groupId] =
+              tierId;
+        }
+      },
+    );
+
+    await client
+        .from('profiles')
+        .update({
+          'achievement_cosmetics':
+              cleaned,
+        })
+        .eq(
+          'id',
+          user.id,
+        );
+
+    _selected = cleaned;
+
+    notifyListeners();
+  }
+}
+
 class _AvatarFrame
     extends StatelessWidget {
   final String? frameId;
@@ -17838,6 +18267,12 @@ class _ProfilePageState extends State<ProfilePage> {
 
     unawaited(AvatarFrameService.instance.load());
 
+    unawaited(
+  _AchievementCosmeticService
+      .instance
+      .load(),
+);
+
     unawaited(_backfillStatsInBackground());
   }
 
@@ -17862,6 +18297,10 @@ class _ProfilePageState extends State<ProfilePage> {
       DisplayNameFrameService.instance.load(),
 
       AvatarFrameService.instance.load(),
+
+      _AchievementCosmeticService
+    .instance
+    .load(),
 
       library.backfillMissingRuntimes(),
 
@@ -18479,6 +18918,7 @@ class _ProfilePageState extends State<ProfilePage> {
           MedalPinService.instance,
           DisplayNameFrameService.instance,
           AvatarFrameService.instance,
+          _AchievementCosmeticService.instance,
           DailyLoginService.instance,
           PublicProfileViewService.instance,
         ]),
@@ -18530,6 +18970,9 @@ final tvShowsRatedGroup =
     _tvShowsRatedAchievementGroupFor(
   critic.tvRatingCount,
 );
+
+final achievementCosmetics =
+    _AchievementCosmeticService.instance;
 
 final moviesRatedGroup =
     _moviesRatedAchievementGroupFor(
@@ -18882,8 +19325,10 @@ final _Achievement?
       library.viewerTitle,
 
   frameAchievement:
-      runtimeLevelGroup
-          .highestUnlockedTier,
+    achievementCosmetics
+        .selectedAchievement(
+      runtimeLevelGroup,
+    ),
 
   onTap: () {
     _scrollToProfileSection(
@@ -18908,7 +19353,10 @@ final _Achievement?
           Icons.tv_rounded,
 
       frameAchievement:
-          tvGroup.highestUnlockedTier,
+    achievementCosmetics
+        .selectedAchievement(
+      tvGroup,
+    ),
     ),
 
     const SizedBox(height: 7),
@@ -18927,7 +19375,10 @@ final _Achievement?
       Icons.playlist_add_check_rounded,
 
   frameAchievement:
-      episodeGroup.highestUnlockedTier,
+    achievementCosmetics
+        .selectedAchievement(
+      episodeGroup,
+    ),
 
   onTap:
       widget.onEpisodesWatchedTap,
@@ -18949,8 +19400,10 @@ final _Achievement?
       Icons.movie_outlined,
 
   frameAchievement:
-      movieGroup
-          .highestUnlockedTier,
+    achievementCosmetics
+        .selectedAchievement(
+      movieGroup,
+    ),
 
   onTap:
       widget.onMoviesWatchedTap,
@@ -18973,8 +19426,10 @@ final _Achievement?
 
                   episodeCoverage: critic.episodeRatingCoverage,
                   frameAchievement:
-    ratingsLevelGroup
-        .highestUnlockedTier,
+    achievementCosmetics
+        .selectedAchievement(
+      ratingsLevelGroup,
+    ),
 
                   averageStars: critic.averageStars,
                   onTap: () {
@@ -19000,8 +19455,10 @@ Column(
           Icons.tv_outlined,
 
       frameAchievement:
-          episodeRatedGroup
-              .highestUnlockedTier,
+    achievementCosmetics
+        .selectedAchievement(
+      episodeRatedGroup,
+    ),
 
       onTap:
           widget.onEpisodesRatedTap,
@@ -19020,8 +19477,10 @@ Column(
           Icons.live_tv_rounded,
 
       frameAchievement:
-          tvShowsRatedGroup
-              .highestUnlockedTier,
+    achievementCosmetics
+        .selectedAchievement(
+      tvShowsRatedGroup,
+    ),
 
       onTap:
           widget.onTvShowsRatedTap,
@@ -19040,8 +19499,10 @@ Column(
           Icons.movie_filter_outlined,
 
       frameAchievement:
-          moviesRatedGroup
-              .highestUnlockedTier,
+    achievementCosmetics
+        .selectedAchievement(
+      moviesRatedGroup,
+    ),
 
       onTap:
           widget.onMoviesRatedTap,
@@ -19694,7 +20155,10 @@ class _LevelHexBadge extends StatelessWidget {
   final int level;
   final List<Color> colors;
 
-  const _LevelHexBadge({required this.level, required this.colors});
+  const _LevelHexBadge({
+    required this.level,
+    required this.colors,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -19707,7 +20171,6 @@ class _LevelHexBadge extends StatelessWidget {
           // =============================
           // OUTER GLOW
           // =============================
-
           Container(
             width: 54,
             height: 54,
@@ -19715,16 +20178,18 @@ class _LevelHexBadge extends StatelessWidget {
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: colors.first.withValues(alpha: 0.30),
-                  blurRadius: 22,
-                  spreadRadius: 2,
+                  color: colors.first.withValues(
+                    alpha: 0.22,
+                  ),
+                  blurRadius: 18,
+                  spreadRadius: 1,
                 ),
               ],
             ),
           ),
 
           // =============================
-          // HEXAGON
+          // HEXAGON OUTLINE
           // =============================
           ClipPath(
             clipper: _HexagonClipper(),
@@ -19739,131 +20204,65 @@ class _LevelHexBadge extends StatelessWidget {
                   colors: colors,
                 ),
               ),
+
               child: ClipPath(
                 clipper: _HexagonClipper(),
+
                 child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        colors.first.withValues(alpha: 0.14),
-                        chipluxSurface,
-                        colors.last.withValues(alpha: 0.10),
+                  color: chipluxSurface,
+
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment:
+                          MainAxisAlignment.center,
+                      children: [
+                        const Text(
+                          'LVL',
+                          style: TextStyle(
+                            color: Colors.white60,
+                            fontSize: 8,
+                            fontWeight:
+                                FontWeight.w800,
+                            letterSpacing: 1.15,
+                          ),
+                        ),
+
+                        const SizedBox(
+                          height: 1,
+                        ),
+
+                        ShaderMask(
+                          shaderCallback: (bounds) {
+                            return LinearGradient(
+                              colors: colors,
+                            ).createShader(
+                              bounds,
+                            );
+                          },
+
+                          child: Text(
+                            '$level',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 25,
+                              height: 1,
+                              fontWeight:
+                                  FontWeight.w900,
+
+                              shadows: [
+                                Shadow(
+                                  color:
+                                      colors.first.withValues(
+                                    alpha: 0.50,
+                                  ),
+                                  blurRadius: 7,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ],
                     ),
-                  ),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      // =============================
-                      // CENTER AMBIENT GLOW
-                      // =============================
-
-                      Container(
-                        width: 50,
-                        height: 50,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: RadialGradient(
-                            colors: [
-                              colors.first.withValues(alpha: 0.20),
-                              colors.last.withValues(alpha: 0.05),
-                              Colors.transparent,
-                            ],
-                            stops: const [0, 0.58, 1],
-                          ),
-                        ),
-                      ),
-
-                      // =============================
-                      // FAINT TECH LINES
-                      // =============================
-                      Positioned(
-                        left: -12,
-                        top: 22,
-                        child: Transform.rotate(
-                          angle: -0.45,
-                          child: Container(
-                            width: 95,
-                            height: 1,
-                            color: Colors.white.withValues(alpha: 0.065),
-                          ),
-                        ),
-                      ),
-
-                      Positioned(
-                        left: -15,
-                        top: 38,
-                        child: Transform.rotate(
-                          angle: -0.45,
-                          child: Container(
-                            width: 95,
-                            height: 1,
-                            color: Colors.white.withValues(alpha: 0.04),
-                          ),
-                        ),
-                      ),
-
-                      // Small top highlight.
-                      Positioned(
-                        top: 9,
-                        child: Container(
-                          width: 18,
-                          height: 1.5,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(10),
-                            color: Colors.white.withValues(alpha: 0.20),
-                          ),
-                        ),
-                      ),
-
-                      // =============================
-                      // LEVEL TEXT
-                      // =============================
-                      Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text(
-                            'LVL',
-                            style: TextStyle(
-                              color: Colors.white60,
-                              fontSize: 8,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 1.15,
-                            ),
-                          ),
-
-                          const SizedBox(height: 1),
-
-                          ShaderMask(
-                            shaderCallback: (bounds) {
-                              return LinearGradient(colors: colors)
-                                  .createShader(bounds);
-                            },
-                            child: Text(
-                              '$level',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 25,
-                                height: 1,
-                                fontWeight: FontWeight.w900,
-                                shadows: [
-                                  Shadow(
-                                    color: colors.first.withValues(alpha: 0.65),
-                                    blurRadius: 8,
-                                  ),
-                                  Shadow(
-                                    color: Colors.white.withValues(alpha: 0.20),
-                                    blurRadius: 2,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
                   ),
                 ),
               ),
@@ -19925,12 +20324,6 @@ class _CriticReputationCard
     this.frameAchievement,
   });
 
-  static const Color criticGold =
-      Color(0xFFFFC857);
-
-  static const Color criticOrange =
-      Color(0xFFFF8A4C);
-
   @override
   Widget build(
     BuildContext context,
@@ -19957,14 +20350,13 @@ class _CriticReputationCard
     );
 
     final List<Color>
-        activeColors =
-        achievementColors.isNotEmpty
-            ? achievementColors
-            : const [
-                criticGold,
-                criticOrange,
-                chipluxPurple,
-              ];
+    activeColors =
+    achievementColors.isNotEmpty
+        ? achievementColors
+        : const [
+            Color(0xFFD7DEE7),
+            Color(0xFF8F9BAA),
+          ];
 
     final accentColor =
         activeColors.first;
@@ -20862,14 +21254,13 @@ class _LevelCardState
     );
 
     final List<Color>
-        activeColors =
-        achievementColors.isNotEmpty
-            ? achievementColors
-            : const [
-                chipluxCyan,
-                chipluxViolet,
-                chipluxPurple,
-              ];
+    activeColors =
+    achievementColors.isNotEmpty
+        ? achievementColors
+        : const [
+            Color(0xFFD7DEE7),
+            Color(0xFF8F9BAA),
+          ];
 
     final Color glowColor =
         activeColors.first;
@@ -21368,271 +21759,15 @@ class _WatchStatCard extends StatelessWidget {
       frameAchievement,
     );
 
-    final bool hasFrame =
+    final bool hasAchievement =
         frameColors.isNotEmpty;
 
-    Widget card =
-        Container(
-      height:
-          63,
-
-      padding:
-          const EdgeInsets
-              .symmetric(
-        horizontal:
-            12,
-        vertical:
-            8,
-      ),
-
-      decoration:
-          BoxDecoration(
-        color:
-            chipluxSurface,
-
-        borderRadius:
-            BorderRadius.circular(
-          14,
-        ),
-
-        border:
-            Border.all(
-          color:
-              hasFrame
-                  ? Colors.transparent
-                  : Colors.white
-                      .withValues(
-                      alpha:
-                          0.055,
-                    ),
-        ),
-      ),
-
-      child:
-          Row(
-        children: [
-          // =========================
-          // ICON
-          // =========================
-          Container(
-            width:
-                38,
-            height:
-                38,
-
-            decoration:
-                BoxDecoration(
-              borderRadius:
-                  BorderRadius
-                      .circular(
-                11,
-              ),
-
-              color:
-                  chipluxCyan
-                      .withValues(
-                alpha:
-                    0.07,
-              ),
-
-              border:
-                  Border.all(
-                color:
-                    chipluxCyan
-                        .withValues(
-                  alpha:
-                      0.13,
-                ),
-              ),
-            ),
-
-            child:
-                Center(
-              child:
-                  ShaderMask(
-                shaderCallback:
-                    (
-                  bounds,
-                ) {
-                  return const LinearGradient(
-                    colors: [
-                      chipluxCyan,
-                      chipluxViolet,
-                      chipluxPurple,
-                    ],
-                  ).createShader(
-                    bounds,
-                  );
-                },
-
-                child:
-                    Icon(
-                  icon,
-                  color:
-                      Colors.white,
-                  size:
-                      20,
-                ),
-              ),
-            ),
-          ),
-
-          const SizedBox(
-            width:
-                12,
-          ),
-
-          // =========================
-          // LABEL + RUNTIME
-          // =========================
-          Expanded(
-            child:
-                Column(
-              mainAxisAlignment:
-                  MainAxisAlignment
-                      .center,
-
-              crossAxisAlignment:
-                  CrossAxisAlignment
-                      .start,
-
-              children: [
-                Text(
-                  cleanLabel,
-
-                  maxLines:
-                      1,
-
-                  overflow:
-                      TextOverflow
-                          .ellipsis,
-
-                  style:
-                      const TextStyle(
-                    color:
-                        Colors.white70,
-
-                    fontSize:
-                        13,
-
-                    fontWeight:
-                        FontWeight.w600,
-                  ),
-                ),
-
-                if (runtimeMinutes !=
-                    null) ...[
-                  const SizedBox(
-                    height:
-                        2,
-                  ),
-
-                  Text(
-                    _formatRuntime(
-                      runtimeMinutes!,
-                    ),
-
-                    style:
-                        const TextStyle(
-                      color:
-                          Colors.white38,
-
-                      fontSize:
-                          11,
-
-                      fontWeight:
-                          FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-
-          // =========================
-          // VALUE
-          // =========================
-          Text(
-            '$value',
-
-            style:
-                const TextStyle(
-              color:
-                  Colors.white,
-
-              fontSize:
-                  21,
-
-              fontWeight:
-                  FontWeight.w800,
-            ),
-          ),
-
-          if (onTap != null) ...[
-            const SizedBox(
-              width:
-                  7,
-            ),
-
-            const Icon(
-              Icons
-                  .chevron_right_rounded,
-
-              color:
-                  Colors.white24,
-
-              size:
-                  19,
-            ),
-          ],
-        ],
-      ),
-    );
-
-    if (hasFrame) {
-      card =
-          Container(
-        padding:
-            const EdgeInsets.all(
-          1.5,
-        ),
-
-        decoration:
-            BoxDecoration(
-          borderRadius:
-              BorderRadius.circular(
-            15,
-          ),
-
-          gradient:
-              LinearGradient(
-            begin:
-                Alignment.topLeft,
-            end:
-                Alignment.bottomRight,
-            colors:
-                frameColors,
-          ),
-
-          boxShadow: [
-            BoxShadow(
-              color:
-                  frameColors.first
-                      .withValues(
-                alpha:
-                    0.12,
-              ),
-
-              blurRadius:
-                  8,
-            ),
-          ],
-        ),
-
-        child:
-            card,
-      );
-    }
+    final Color achievementColor =
+    hasAchievement
+        ? frameColors.first
+        : const Color(
+            0xFFBFC9D4,
+          );
 
     return Material(
       color:
@@ -21649,7 +21784,198 @@ class _WatchStatCard extends StatelessWidget {
         ),
 
         child:
-            card,
+            Container(
+          height:
+              63,
+
+          padding:
+              const EdgeInsets.symmetric(
+            horizontal:
+                12,
+            vertical:
+                8,
+          ),
+
+          decoration:
+              BoxDecoration(
+            color:
+                chipluxSurface,
+
+            borderRadius:
+                BorderRadius.circular(
+              14,
+            ),
+
+            border:
+                Border.all(
+              color:
+                  hasAchievement
+                      ? achievementColor.withValues(
+                          alpha:
+                              0.32,
+                        )
+                      : Colors.white.withValues(
+                          alpha:
+                              0.055,
+                        ),
+
+              width:
+                  hasAchievement
+                      ? 1.1
+                      : 1.0,
+            ),
+          ),
+
+          child:
+              Row(
+            children: [
+              Container(
+                width:
+                    38,
+                height:
+                    38,
+
+                decoration:
+                    BoxDecoration(
+                  borderRadius:
+                      BorderRadius.circular(
+                    11,
+                  ),
+
+                  color:
+                      achievementColor.withValues(
+                    alpha:
+                        0.07,
+                  ),
+
+                  border:
+                      Border.all(
+                    color:
+                        achievementColor.withValues(
+                      alpha:
+                          0.18,
+                    ),
+                  ),
+                ),
+
+                child:
+                    Center(
+                  child:
+                      Icon(
+                    icon,
+
+                    color:
+                        achievementColor,
+
+                    size:
+                        20,
+                  ),
+                ),
+              ),
+
+              const SizedBox(
+                width:
+                    12,
+              ),
+
+              Expanded(
+                child:
+                    Column(
+                  mainAxisAlignment:
+                      MainAxisAlignment.center,
+
+                  crossAxisAlignment:
+                      CrossAxisAlignment.start,
+
+                  children: [
+                    Text(
+                      cleanLabel,
+
+                      maxLines:
+                          1,
+
+                      overflow:
+                          TextOverflow.ellipsis,
+
+                      style:
+                          TextStyle(
+                        color:
+                            hasAchievement
+                                ? achievementColor
+                                : Colors.white70,
+
+                        fontSize:
+                            13,
+
+                        fontWeight:
+                            FontWeight.w600,
+                      ),
+                    ),
+
+                    if (runtimeMinutes !=
+                        null) ...[
+                      const SizedBox(
+                        height:
+                            2,
+                      ),
+
+                      Text(
+                        _formatRuntime(
+                          runtimeMinutes!,
+                        ),
+
+                        style:
+                            const TextStyle(
+                          color:
+                              Colors.white38,
+
+                          fontSize:
+                              11,
+
+                          fontWeight:
+                              FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+
+              Text(
+                '$value',
+
+                style:
+                    const TextStyle(
+                  color:
+                      Colors.white,
+
+                  fontSize:
+                      21,
+
+                  fontWeight:
+                      FontWeight.w800,
+                ),
+              ),
+
+              if (onTap != null) ...[
+                const SizedBox(
+                  width:
+                      7,
+                ),
+
+                const Icon(
+                  Icons.chevron_right_rounded,
+
+                  color:
+                      Colors.white24,
+
+                  size:
+                      19,
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -21672,12 +21998,6 @@ class _RatingStatCard
     this.frameAchievement,
   });
 
-  static const Color criticGold =
-      Color(0xFFFFC857);
-
-  static const Color criticOrange =
-      Color(0xFFFF8A4C);
-
   @override
   Widget build(
     BuildContext context,
@@ -21693,189 +22013,15 @@ class _RatingStatCard
       frameAchievement,
     );
 
-    final bool hasFrame =
+    final bool hasAchievement =
         frameColors.isNotEmpty;
 
-    Widget card =
-        Container(
-      height: 58,
-
-      padding:
-          const EdgeInsets.symmetric(
-        horizontal: 12,
-        vertical: 8,
-      ),
-
-      decoration:
-          BoxDecoration(
-        color:
-            chipluxSurface,
-
-        borderRadius:
-            BorderRadius.circular(
-          14,
-        ),
-
-        border:
-            Border.all(
-          color:
-              hasFrame
-                  ? Colors.transparent
-                  : criticGold
-                      .withValues(
-                      alpha: 0.10,
-                    ),
-        ),
-      ),
-
-      child:
-          Row(
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-
-            decoration:
-                BoxDecoration(
-              borderRadius:
-                  BorderRadius.circular(
-                11,
-              ),
-
-              color:
-                  criticGold.withValues(
-                alpha: 0.065,
-              ),
-
-              border:
-                  Border.all(
-                color:
-                    criticGold.withValues(
-                  alpha: 0.14,
-                ),
-              ),
-            ),
-
-            child:
-                Center(
-              child:
-                  ShaderMask(
-                shaderCallback:
-                    (bounds) {
-                  return const LinearGradient(
-                    colors: [
-                      criticGold,
-                      criticOrange,
-                      chipluxPurple,
-                    ],
-                  ).createShader(
-                    bounds,
-                  );
-                },
-
-                child:
-                    Icon(
-                  icon,
-                  color:
-                      Colors.white,
-                  size:
-                      20,
-                ),
-              ),
-            ),
-          ),
-
-          const SizedBox(width: 12),
-
-          Expanded(
-            child:
-                Text(
-              cleanLabel,
-              maxLines: 1,
-              overflow:
-                  TextOverflow.ellipsis,
-
-              style:
-                  const TextStyle(
-                color:
-                    Colors.white70,
-                fontSize: 13,
-                fontWeight:
-                    FontWeight.w600,
-              ),
-            ),
-          ),
-
-          Text(
-            '$value',
-
-            style:
-                const TextStyle(
-              color:
-                  criticGold,
-              fontSize:
-                  21,
-              fontWeight:
-                  FontWeight.w800,
-            ),
-          ),
-
-          if (onTap != null) ...[
-            const SizedBox(width: 7),
-
-            const Icon(
-              Icons
-                  .chevron_right_rounded,
-              color:
-                  Colors.white24,
-              size: 19,
-            ),
-          ],
-        ],
-      ),
-    );
-
-    if (hasFrame) {
-      card =
-          Container(
-        padding:
-            const EdgeInsets.all(
-          1.5,
-        ),
-
-        decoration:
-            BoxDecoration(
-          borderRadius:
-              BorderRadius.circular(
-            15,
-          ),
-
-          gradient:
-              LinearGradient(
-            begin:
-                Alignment.topLeft,
-            end:
-                Alignment.bottomRight,
-            colors:
-                frameColors,
-          ),
-
-          boxShadow: [
-            BoxShadow(
-              color:
-                  frameColors.first
-                      .withValues(
-                alpha: 0.12,
-              ),
-              blurRadius: 8,
-            ),
-          ],
-        ),
-
-        child:
-            card,
-      );
-    }
+    final Color achievementColor =
+    hasAchievement
+        ? frameColors.first
+        : const Color(
+            0xFFBFC9D4,
+          );
 
     return Material(
       color:
@@ -21892,7 +22038,162 @@ class _RatingStatCard
         ),
 
         child:
-            card,
+            Container(
+          height:
+              58,
+
+          padding:
+              const EdgeInsets.symmetric(
+            horizontal:
+                12,
+            vertical:
+                8,
+          ),
+
+          decoration:
+              BoxDecoration(
+            color:
+                chipluxSurface,
+
+            borderRadius:
+                BorderRadius.circular(
+              14,
+            ),
+
+            border:
+                Border.all(
+              color:
+                  hasAchievement
+                      ? achievementColor.withValues(
+                          alpha:
+                              0.32,
+                        )
+                      : Colors.white.withValues(
+    alpha:
+        0.055,
+  ),
+
+              width:
+                  hasAchievement
+                      ? 1.1
+                      : 1.0,
+            ),
+          ),
+
+          child:
+              Row(
+            children: [
+              Container(
+                width:
+                    38,
+                height:
+                    38,
+
+                decoration:
+                    BoxDecoration(
+                  borderRadius:
+                      BorderRadius.circular(
+                    11,
+                  ),
+
+                  color:
+                      achievementColor.withValues(
+                    alpha:
+                        0.07,
+                  ),
+
+                  border:
+                      Border.all(
+                    color:
+                        achievementColor.withValues(
+                      alpha:
+                          0.18,
+                    ),
+                  ),
+                ),
+
+                child:
+                    Center(
+                  child:
+                      Icon(
+                    icon,
+
+                    color:
+                        achievementColor,
+
+                    size:
+                        20,
+                  ),
+                ),
+              ),
+
+              const SizedBox(
+                width:
+                    12,
+              ),
+
+              Expanded(
+                child:
+                    Text(
+                  cleanLabel,
+
+                  maxLines:
+                      1,
+
+                  overflow:
+                      TextOverflow.ellipsis,
+
+                  style:
+                      TextStyle(
+                    color:
+                        hasAchievement
+                            ? achievementColor
+                            : Colors.white70,
+
+                    fontSize:
+                        13,
+
+                    fontWeight:
+                        FontWeight.w600,
+                  ),
+                ),
+              ),
+
+              Text(
+  '$value',
+
+  style:
+      const TextStyle(
+    color:
+        Colors.white,
+
+    fontSize:
+        21,
+
+    fontWeight:
+        FontWeight.w800,
+  ),
+),
+
+              if (onTap != null) ...[
+                const SizedBox(
+                  width:
+                      7,
+                ),
+
+                const Icon(
+                  Icons.chevron_right_rounded,
+
+                  color:
+                      Colors.white24,
+
+                  size:
+                      19,
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -21905,19 +22206,31 @@ class EditProfilePage extends StatefulWidget {
   State<EditProfilePage> createState() => _EditProfilePageState();
 }
 
-class _EditProfilePageState extends State<EditProfilePage> {
-  final profile = ProfileService.instance;
+class _EditProfilePageState
+    extends State<EditProfilePage> {
+  final profile =
+      ProfileService.instance;
 
-  final avatarService = AvatarService.instance;
+  final avatarService =
+      AvatarService.instance;
 
-  final library = LibraryService.instance;
+  final library =
+      LibraryService.instance;
 
-  final frameService = DisplayNameFrameService.instance;
+  final critic =
+      CriticService.instance;
+
+  final frameService =
+      DisplayNameFrameService.instance;
 
   final avatarFrameService =
-    AvatarFrameService.instance;
+      AvatarFrameService.instance;
 
-  late final TextEditingController displayNameController;
+  final achievementCosmeticService =
+      _AchievementCosmeticService.instance;
+
+  late final TextEditingController
+      displayNameController;
 
   bool saving = false;
 
@@ -21927,11 +22240,18 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   bool loadingAvatarFrame = true;
 
-String? selectedAvatarFrameId;
+  bool loadingAchievementCosmetics =
+      true;
 
-  String? errorMessage;
+  String? selectedAvatarFrameId;
 
   String? selectedFrameId;
+
+  Map<String, String?>
+      selectedAchievementCosmetics =
+      {};
+
+  String? errorMessage;
 
   Uint8List? selectedAvatarBytes;
 
@@ -21941,55 +22261,196 @@ String? selectedAvatarFrameId;
   void initState() {
     super.initState();
 
-    displayNameController = TextEditingController(text: profile.displayName);
+    displayNameController =
+        TextEditingController(
+      text:
+          profile.displayName,
+    );
 
-    selectedFrameId = frameService.frameId;
-
-    unawaited(_loadFrame());
+    selectedFrameId =
+        frameService.frameId;
 
     selectedAvatarFrameId =
-    avatarFrameService.frameId;
+        avatarFrameService.frameId;
 
-unawaited(
-  _loadAvatarFrame(),
-);
+    unawaited(
+      _loadFrame(),
+    );
+
+    unawaited(
+      _loadAvatarFrame(),
+    );
+
+    unawaited(
+      _loadAchievementCosmetics(),
+    );
   }
 
-  Future<void>
-    _loadAvatarFrame() async {
-  await avatarFrameService.load();
+  Future<void> _loadFrame() async {
+  await Future.wait([
+    frameService.load(),
+    DailyLoginService.instance.load(),
+  ]);
 
   if (!mounted) {
     return;
   }
 
+  String? loadedFrameId =
+      frameService.frameId;
+
+  if (loadedFrameId != null) {
+    final dailyLoginGroup =
+        _dailyLoginAchievementGroupFor(
+      DailyLoginService.instance.loginDays,
+    );
+
+    final bool validAndUnlocked =
+        dailyLoginGroup.tiers.any(
+      (tier) =>
+          tier.id == loadedFrameId &&
+          tier.unlocked,
+    );
+
+    if (!validAndUnlocked) {
+      loadedFrameId = null;
+    }
+  }
+
+  setState(() {
+    selectedFrameId =
+        loadedFrameId;
+
+    loadingFrame =
+        false;
+  });
+}
+
+  Future<void> _loadAvatarFrame() async {
+  await Future.wait([
+    avatarFrameService.load(),
+    PublicProfileViewService.instance.load(),
+  ]);
+
+  if (!mounted) {
+    return;
+  }
+
+  String? loadedFrameId =
+      avatarFrameService.frameId;
+
+  if (loadedFrameId != null) {
+    final profileViewGroup =
+        _publicProfileViewAchievementGroupFor(
+      PublicProfileViewService
+          .instance
+          .viewCount,
+    );
+
+    final bool validAndUnlocked =
+        profileViewGroup.tiers.any(
+      (tier) =>
+          tier.id == loadedFrameId &&
+          tier.unlocked,
+    );
+
+    if (!validAndUnlocked) {
+      loadedFrameId = null;
+    }
+  }
+
   setState(() {
     selectedAvatarFrameId =
-        avatarFrameService.frameId;
+        loadedFrameId;
 
     loadingAvatarFrame =
         false;
   });
 }
 
-
-
-  Future<void> _loadFrame() async {
-    await frameService.load();
+  Future<void>
+      _loadAchievementCosmetics()
+      async {
+    await Future.wait([
+      achievementCosmeticService
+          .load(),
+      critic.refresh(),
+    ]);
 
     if (!mounted) {
       return;
     }
 
-    setState(() {
-      selectedFrameId = frameService.frameId;
+    final groups =
+        _achievementCosmeticGroups();
 
-      loadingFrame = false;
+    final loaded =
+        <String, String?>{};
+
+    for (final group
+        in groups.values) {
+      loaded[group.id] =
+          achievementCosmeticService
+              .selectedTierId(
+        group.id,
+      );
+    }
+
+    setState(() {
+      selectedAchievementCosmetics =
+          loaded;
+
+      loadingAchievementCosmetics =
+          false;
     });
   }
 
-  Future<void> changeBanner() async {
-    await _showProfileBannerPicker(context);
+  Map<String, _AchievementGroup>
+      _achievementCosmeticGroups() {
+    final runtimeLevel =
+        _runtimeLevelForMinutes(
+      library.totalWatchedMinutes,
+    );
+
+    final groups =
+        <_AchievementGroup>[
+      _runtimeLevelAchievementGroupFor(
+        runtimeLevel,
+      ),
+      _ratingsLevelAchievementGroupFor(
+        critic.level,
+      ),
+      _movieAchievementGroupFor(
+        library.moviesWatchedCount,
+      ),
+      _moviesRatedAchievementGroupFor(
+        critic.movieRatingCount,
+      ),
+      _tvAchievementGroupFor(
+        library.completedTvShowsCount,
+      ),
+      _tvShowsRatedAchievementGroupFor(
+        critic.tvRatingCount,
+      ),
+      _episodeAchievementGroupFor(
+        library.watchedEpisodeCount,
+      ),
+      _episodeRatedAchievementGroupFor(
+        critic.episodeRatingCount,
+      ),
+    ];
+
+    return {
+      for (final group in groups)
+        group.id: group,
+    };
+  }
+
+  Future<void>
+      changeBanner() async {
+    await _showProfileBannerPicker(
+      context,
+    );
 
     if (!mounted) {
       return;
@@ -21998,42 +22459,61 @@ unawaited(
     setState(() {});
   }
 
-  Future<void> pickAvatar() async {
+  Future<void>
+      pickAvatar() async {
     try {
-      final picker = ImagePicker();
+      final picker =
+          ImagePicker();
 
-      final image = await picker.pickImage(
-        source: ImageSource.gallery,
-
-        imageQuality: 85,
-
-        maxWidth: 1200,
+      final image =
+          await picker.pickImage(
+        source:
+            ImageSource.gallery,
+        imageQuality:
+            85,
+        maxWidth:
+            1200,
       );
 
       if (image == null) {
         return;
       }
 
-      final bytes = await image.readAsBytes();
+      final bytes =
+          await image.readAsBytes();
 
-      final name = image.name.toLowerCase();
+      final name =
+          image.name.toLowerCase();
 
-      String extension = 'jpg';
+      String extension =
+          'jpg';
 
-      if (name.endsWith('.png')) {
-        extension = 'png';
-      } else if (name.endsWith('.webp')) {
-        extension = 'webp';
-      } else if (name.endsWith('.jpeg')) {
-        extension = 'jpeg';
+      if (name.endsWith(
+        '.png',
+      )) {
+        extension =
+            'png';
+      } else if (name.endsWith(
+        '.webp',
+      )) {
+        extension =
+            'webp';
+      } else if (name.endsWith(
+        '.jpeg',
+      )) {
+        extension =
+            'jpeg';
       }
 
       setState(() {
-        selectedAvatarBytes = bytes;
+        selectedAvatarBytes =
+            bytes;
 
-        selectedAvatarExtension = extension;
+        selectedAvatarExtension =
+            extension;
 
-        errorMessage = null;
+        errorMessage =
+            null;
       });
     } catch (e) {
       if (!mounted) {
@@ -22041,215 +22521,386 @@ unawaited(
       }
 
       setState(() {
-        errorMessage = 'Could not select image: $e';
+        errorMessage =
+            'Could not select image: $e';
       });
     }
   }
 
-  Future<void> saveProfile() async {
-    final displayName = displayNameController.text.trim();
+  bool _validateAchievementCosmetics() {
+    final groups =
+        _achievementCosmeticGroups();
+
+    for (final entry
+        in selectedAchievementCosmetics
+            .entries) {
+      final selectedId =
+          entry.value;
+
+      if (selectedId == null) {
+        continue;
+      }
+
+      final group =
+          groups[entry.key];
+
+      if (group == null) {
+        setState(() {
+          errorMessage =
+              'That achievement customization is no longer available.';
+        });
+
+        return false;
+      }
+
+      _Achievement?
+          matchingTier;
+
+      for (final tier
+          in group.tiers) {
+        if (tier.id ==
+            selectedId) {
+          matchingTier =
+              tier;
+
+          break;
+        }
+      }
+
+      if (matchingTier ==
+              null ||
+          !matchingTier.unlocked) {
+        setState(() {
+          errorMessage =
+              'That achievement customization is still locked.';
+        });
+
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  Future<void>
+      saveProfile() async {
+    final displayName =
+        displayNameController
+            .text
+            .trim();
 
     if (displayName.isEmpty) {
       setState(() {
-        errorMessage = 'Display name cannot be empty.';
+        errorMessage =
+            'Display name cannot be empty.';
       });
 
       return;
     }
 
-    // Make sure a locked frame
-    // cannot be applied.
-    if (selectedFrameId != null) {
-  final dailyLoginGroup =
-      _dailyLoginAchievementGroupFor(
-    DailyLoginService
-        .instance
-        .loginDays,
-  );
+await DailyLoginService.instance.load();
 
-  final matching =
-      dailyLoginGroup.tiers
-          .where(
-            (
-              tier,
-            ) =>
-                tier.id ==
-                selectedFrameId,
-          )
-          .toList();
+    if (selectedFrameId !=
+        null) {
+      final dailyLoginGroup =
+          _dailyLoginAchievementGroupFor(
+        DailyLoginService
+            .instance
+            .loginDays,
+      );
 
-  if (matching.isEmpty ||
-      !matching.first.unlocked) {
-    setState(
-      () {
-        errorMessage =
-            'That display name frame is still locked.';
-      },
-    );
+      _Achievement?
+          matching;
 
-    return;
-  }
-}
+      for (final tier
+          in dailyLoginGroup
+              .tiers) {
+        if (tier.id ==
+            selectedFrameId) {
+          matching =
+              tier;
 
-    // Make sure a locked avatar frame
-// cannot be applied.
-if (selectedAvatarFrameId != null) {
-  final profileViewGroup =
-      _publicProfileViewAchievementGroupFor(
-    PublicProfileViewService
-        .instance
-        .viewCount,
-  );
+          break;
+        }
+      }
 
-  final matching =
-      profileViewGroup.tiers
-          .where(
-            (tier) =>
-                tier.id ==
-                selectedAvatarFrameId,
-          )
-          .toList();
+      if (matching == null ||
+          !matching.unlocked) {
+        setState(() {
+          errorMessage =
+              'That display name frame is still locked.';
+        });
 
-  if (matching.isEmpty ||
-      !matching.first.unlocked) {
+        return;
+      }
+    }
+
+    await PublicProfileViewService
+    .instance
+    .load();
+
+    if (selectedAvatarFrameId !=
+        null) {
+      final profileViewGroup =
+          _publicProfileViewAchievementGroupFor(
+        PublicProfileViewService
+            .instance
+            .viewCount,
+      );
+
+      _Achievement?
+          matching;
+
+      for (final tier
+          in profileViewGroup
+              .tiers) {
+        if (tier.id ==
+            selectedAvatarFrameId) {
+          matching =
+              tier;
+
+          break;
+        }
+      }
+
+      if (matching == null ||
+          !matching.unlocked) {
+        setState(() {
+          errorMessage =
+              'That avatar frame is still locked.';
+        });
+
+        return;
+      }
+    }
+
+    if (!_validateAchievementCosmetics()) {
+      return;
+    }
+
     setState(() {
+      saving =
+          true;
+
       errorMessage =
-          'That avatar frame is still locked.';
-    });
-
-    return;
-  }
-}
-
-    setState(() {
-      saving = true;
-
-      errorMessage = null;
+          null;
     });
 
     try {
-      if (selectedAvatarBytes != null && selectedAvatarExtension != null) {
+      if (selectedAvatarBytes !=
+              null &&
+          selectedAvatarExtension !=
+              null) {
         setState(() {
-          uploadingAvatar = true;
+          uploadingAvatar =
+              true;
         });
 
-        final avatarUrl = await avatarService.uploadAvatar(
-          bytes: selectedAvatarBytes!,
-
-          extension: selectedAvatarExtension!,
+        final avatarUrl =
+            await avatarService
+                .uploadAvatar(
+          bytes:
+              selectedAvatarBytes!,
+          extension:
+              selectedAvatarExtension!,
         );
 
-        profile.avatarUrl = avatarUrl;
+        profile.avatarUrl =
+            avatarUrl;
 
         if (mounted) {
           setState(() {
-            uploadingAvatar = false;
+            uploadingAvatar =
+                false;
           });
         }
       }
 
-      await profile.updateProfile(
-        displayName: displayName,
+      final currentDisplayName =
+    profile.displayName.trim();
 
-        // Username stays unchanged.
-        username: profile.username,
-      );
+final bool displayNameChanged =
+    displayName !=
+        currentDisplayName;
 
-      await frameService.apply(selectedFrameId);
+// Only contact the display-name
+// update system when the user
+// actually changed the name.
+if (displayNameChanged) {
+  await profile.updateProfile(
+    displayName:
+        displayName,
 
-      await avatarFrameService.apply(
+    username:
+        profile.username,
+  );
+}
+
+// Cosmetics can always be saved,
+// even while display-name changing
+// is locked.
+await frameService.apply(
+  selectedFrameId,
+);
+
+await avatarFrameService.apply(
   selectedAvatarFrameId,
 );
 
+await achievementCosmeticService
+    .applyAll(
+  selectedAchievementCosmetics,
+);
+
       if (mounted) {
-        Navigator.pop(context);
+        Navigator.pop(
+          context,
+        );
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          uploadingAvatar = false;
+          uploadingAvatar =
+              false;
 
-          errorMessage = 'Could not save profile: $e';
+          errorMessage =
+              'Could not save profile: $e';
         });
       }
     } finally {
       if (mounted) {
         setState(() {
-          saving = false;
+          saving =
+              false;
         });
       }
     }
   }
 
   Widget buildAvatar() {
-    ImageProvider? imageProvider;
+    ImageProvider?
+        imageProvider;
 
-    if (selectedAvatarBytes != null) {
-      imageProvider = MemoryImage(selectedAvatarBytes!);
-    } else if (profile.avatarUrl != null && profile.avatarUrl!.isNotEmpty) {
-      imageProvider = NetworkImage(profile.avatarUrl!);
+    if (selectedAvatarBytes !=
+        null) {
+      imageProvider =
+          MemoryImage(
+        selectedAvatarBytes!,
+      );
+    } else if (profile.avatarUrl !=
+            null &&
+        profile.avatarUrl!
+            .isNotEmpty) {
+      imageProvider =
+          NetworkImage(
+        profile.avatarUrl!,
+      );
     }
 
-    final initial = profile.displayName.isNotEmpty
-        ? profile.displayName[0].toUpperCase()
-        : 'C';
+    final initial =
+        profile.displayName
+                .isNotEmpty
+            ? profile
+                .displayName[0]
+                .toUpperCase()
+            : 'C';
 
     return GestureDetector(
-      onTap: pickAvatar,
+      onTap:
+          pickAvatar,
 
-      child: Stack(
-        alignment: Alignment.center,
+      child:
+          Stack(
+        alignment:
+            Alignment.center,
 
         children: [
           Container(
-            width: 110,
-            height: 110,
+            width:
+                110,
+            height:
+                110,
 
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
+            decoration:
+                BoxDecoration(
+              shape:
+                  BoxShape.circle,
 
-              gradient: imageProvider == null
-                  ? const LinearGradient(
-                      colors: [chipluxCyan, chipluxViolet, chipluxPurple],
-                    )
-                  : null,
+              gradient:
+                  imageProvider ==
+                          null
+                      ? const LinearGradient(
+                          colors: [
+                            chipluxCyan,
+                            chipluxViolet,
+                            chipluxPurple,
+                          ],
+                        )
+                      : null,
 
-              image: imageProvider != null
-                  ? DecorationImage(image: imageProvider, fit: BoxFit.cover)
-                  : null,
+              image:
+                  imageProvider !=
+                          null
+                      ? DecorationImage(
+                          image:
+                              imageProvider,
+                          fit:
+                              BoxFit.cover,
+                        )
+                      : null,
             ),
 
-            child: imageProvider == null
-                ? Center(
-                    child: Text(
-                      initial,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 42,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  )
-                : null,
+            child:
+                imageProvider ==
+                        null
+                    ? Center(
+                        child:
+                            Text(
+                          initial,
+
+                          style:
+                              const TextStyle(
+                            color:
+                                Colors.white,
+                            fontSize:
+                                42,
+                            fontWeight:
+                                FontWeight.bold,
+                          ),
+                        ),
+                      )
+                    : null,
           ),
 
           Positioned(
-            right: 0,
-            bottom: 0,
+            right:
+                0,
+            bottom:
+                0,
 
-            child: Container(
-              width: 34,
-              height: 34,
+            child:
+                Container(
+              width:
+                  34,
+              height:
+                  34,
 
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: chipluxCyan,
+              decoration:
+                  const BoxDecoration(
+                shape:
+                    BoxShape.circle,
+                color:
+                    chipluxCyan,
               ),
 
-              child: const Icon(
-                Icons.camera_alt_outlined,
-                color: Colors.black,
-                size: 18,
+              child:
+                  const Icon(
+                Icons
+                    .camera_alt_outlined,
+                color:
+                    Colors.black,
+                size:
+                    18,
               ),
             ),
           ),
@@ -22259,226 +22910,373 @@ if (selectedAvatarFrameId != null) {
   }
 
   Widget buildAvatarFramePicker() {
-  final profileViewGroup =
-      _publicProfileViewAchievementGroupFor(
-    PublicProfileViewService
-        .instance
-        .viewCount,
-  );
+    final profileViewGroup =
+        _publicProfileViewAchievementGroupFor(
+      PublicProfileViewService
+          .instance
+          .viewCount,
+    );
 
-  final options = <Widget>[
-    _AvatarFrameOption(
-      label: 'Default',
-      frameId: null,
-      unlocked: true,
-      selected:
-          selectedAvatarFrameId == null,
-
-      onTap: () {
-        setState(() {
-          selectedAvatarFrameId = null;
-        });
-      },
-    ),
-
-    for (final tier
-        in profileViewGroup.tiers)
+    final options =
+        <Widget>[
       _AvatarFrameOption(
-        label: tier.title,
-        frameId: tier.id,
-        unlocked: tier.unlocked,
+        label:
+            'Default',
+        frameId:
+            null,
+        unlocked:
+            true,
         selected:
             selectedAvatarFrameId ==
-                tier.id,
-
-        onTap: () {
+                null,
+        onTap:
+            () {
           setState(() {
             selectedAvatarFrameId =
-                tier.id;
+                null;
           });
         },
       ),
-  ];
 
-  return Column(
-    crossAxisAlignment:
-        CrossAxisAlignment.start,
-
-    children: [
-      const Text(
-        'Avatar Frame',
-        style: TextStyle(
-          fontSize: 17,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-
-      const SizedBox(height: 5),
-
-      const Text(
-        'Unlock new avatar frames through Profile Explorer achievements.',
-        style: TextStyle(
-          color: Colors.white54,
-          fontSize: 12,
-        ),
-      ),
-
-      const SizedBox(height: 12),
-
-      if (loadingAvatarFrame)
-        const SizedBox(
-          height: 90,
-          child: Center(
-            child:
-                CircularProgressIndicator(),
-          ),
-        )
-      else
-        SizedBox(
-          height: 92,
-
-          child: ListView.separated(
-            scrollDirection:
-                Axis.horizontal,
-
-            itemCount: options.length,
-
-            separatorBuilder:
-                (context, index) {
-              return const SizedBox(
-                width: 8,
-              );
-            },
-
-            itemBuilder:
-                (context, index) {
-              return options[index];
-            },
-          ),
-        ),
-    ],
-  );
-}
-
-  Widget buildFramePicker() {
-  final dailyLoginGroup =
-      _dailyLoginAchievementGroupFor(
-    DailyLoginService
-        .instance
-        .loginDays,
-  );
-
-  final options =
-      <Widget>[
-    _DisplayNameFrameOption(
-      label:
-          'Default',
-
-      frameId:
-          null,
-
-      unlocked:
-          true,
-
-      selected:
-          selectedFrameId ==
-              null,
-
-      onTap:
-          () {
-        setState(
-          () {
-            selectedFrameId =
-                null;
-          },
-        );
-      },
-    ),
-
-    for (final tier
-        in dailyLoginGroup.tiers)
-      _DisplayNameFrameOption(
-        label:
-            tier.title,
-
-        frameId:
-            tier.id,
-
-        unlocked:
-            tier.unlocked,
-
-        selected:
-            selectedFrameId ==
-                tier.id,
-
-        onTap:
-            () {
-          setState(
-            () {
-              selectedFrameId =
+      for (final tier
+          in profileViewGroup.tiers)
+        _AvatarFrameOption(
+          label:
+              tier.title,
+          frameId:
+              tier.id,
+          unlocked:
+              tier.unlocked,
+          selected:
+              selectedAvatarFrameId ==
+                  tier.id,
+          onTap:
+              () {
+            setState(() {
+              selectedAvatarFrameId =
                   tier.id;
-            },
-          );
-        },
-      ),
-  ];
-
-  return Column(
-    crossAxisAlignment:
-        CrossAxisAlignment.start,
-
-    children: [
-      const Text(
-        'Display Name Frame',
-
-        style:
-            TextStyle(
-          fontSize:
-              17,
-
-          fontWeight:
-              FontWeight.bold,
+            });
+          },
         ),
-      ),
+    ];
 
-      const SizedBox(
-        height:
-            5,
-      ),
+    return Column(
+      crossAxisAlignment:
+          CrossAxisAlignment.start,
 
-      const Text(
-        'Unlock new frames through Daily Login achievements.',
+      children: [
+        const Text(
+          'Avatar Frame',
+          style:
+              TextStyle(
+            fontSize:
+                17,
+            fontWeight:
+                FontWeight.bold,
+          ),
+        ),
 
-        style:
-            TextStyle(
-          color:
-              Colors.white54,
+        const SizedBox(
+          height:
+              5,
+        ),
 
-          fontSize:
+        const Text(
+          'Unlock new avatar frames through Profile Explorer achievements.',
+          style:
+              TextStyle(
+            color:
+                Colors.white54,
+            fontSize:
+                12,
+          ),
+        ),
+
+        const SizedBox(
+          height:
               12,
         ),
+
+        if (loadingAvatarFrame)
+          const SizedBox(
+            height:
+                90,
+            child:
+                Center(
+              child:
+                  CircularProgressIndicator(),
+            ),
+          )
+        else
+          SizedBox(
+            height:
+                92,
+
+            child:
+                ListView.separated(
+              scrollDirection:
+                  Axis.horizontal,
+
+              itemCount:
+                  options.length,
+
+              separatorBuilder:
+                  (
+                context,
+                index,
+              ) =>
+                      const SizedBox(
+                width:
+                    8,
+              ),
+
+              itemBuilder:
+                  (
+                context,
+                index,
+              ) =>
+                      options[index],
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget buildFramePicker() {
+    final dailyLoginGroup =
+        _dailyLoginAchievementGroupFor(
+      DailyLoginService
+          .instance
+          .loginDays,
+    );
+
+    final options =
+        <Widget>[
+      _DisplayNameFrameOption(
+        label:
+            'Default',
+        frameId:
+            null,
+        unlocked:
+            true,
+        selected:
+            selectedFrameId ==
+                null,
+        onTap:
+            () {
+          setState(() {
+            selectedFrameId =
+                null;
+          });
+        },
       ),
 
-      const SizedBox(
-        height:
-            12,
-      ),
+      for (final tier
+          in dailyLoginGroup.tiers)
+        _DisplayNameFrameOption(
+          label:
+              tier.title,
+          frameId:
+              tier.id,
+          unlocked:
+              tier.unlocked,
+          selected:
+              selectedFrameId ==
+                  tier.id,
+          onTap:
+              () {
+            setState(() {
+              selectedFrameId =
+                  tier.id;
+            });
+          },
+        ),
+    ];
 
-      if (loadingFrame)
+    return Column(
+      crossAxisAlignment:
+          CrossAxisAlignment.start,
+
+      children: [
+        const Text(
+          'Display Name Frame',
+
+          style:
+              TextStyle(
+            fontSize:
+                17,
+            fontWeight:
+                FontWeight.bold,
+          ),
+        ),
+
         const SizedBox(
           height:
-              80,
+              5,
+        ),
 
-          child:
-              Center(
-            child:
-                CircularProgressIndicator(),
+        const Text(
+          'Unlock new frames through Daily Login achievements.',
+
+          style:
+              TextStyle(
+            color:
+                Colors.white54,
+            fontSize:
+                12,
           ),
-        )
-      else
+        ),
+
+        const SizedBox(
+          height:
+              12,
+        ),
+
+        if (loadingFrame)
+          const SizedBox(
+            height:
+                80,
+            child:
+                Center(
+              child:
+                  CircularProgressIndicator(),
+            ),
+          )
+        else
+          SizedBox(
+            height:
+                82,
+
+            child:
+                ListView.separated(
+              scrollDirection:
+                  Axis.horizontal,
+
+              itemCount:
+                  options.length,
+
+              separatorBuilder:
+                  (
+                context,
+                index,
+              ) =>
+                      const SizedBox(
+                width:
+                    8,
+              ),
+
+              itemBuilder:
+                  (
+                context,
+                index,
+              ) =>
+                      options[index],
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget buildAchievementCosmeticPicker({
+    required String title,
+    required String description,
+    required _AchievementGroup group,
+  }) {
+    final selectedId =
+        selectedAchievementCosmetics[
+            group.id];
+
+    final options =
+        <Widget>[
+      _AchievementCosmeticOption(
+        label:
+            'Default',
+        achievement:
+            null,
+        icon:
+            group.icon,
+        unlocked:
+            true,
+        selected:
+            selectedId ==
+                null,
+        onTap:
+            () {
+          setState(() {
+            selectedAchievementCosmetics[
+              group.id
+            ] = null;
+          });
+        },
+      ),
+
+      for (final tier
+          in group.tiers)
+        _AchievementCosmeticOption(
+          label:
+              tier.title,
+          achievement:
+              tier,
+          icon:
+              group.icon,
+          unlocked:
+              tier.unlocked,
+          selected:
+              selectedId ==
+                  tier.id,
+          onTap:
+              () {
+            setState(() {
+              selectedAchievementCosmetics[
+                group.id
+              ] = tier.id;
+            });
+          },
+        ),
+    ];
+
+    return Column(
+      crossAxisAlignment:
+          CrossAxisAlignment.start,
+
+      children: [
+        Text(
+          title,
+
+          style:
+              const TextStyle(
+            fontSize:
+                17,
+            fontWeight:
+                FontWeight.bold,
+          ),
+        ),
+
+        const SizedBox(
+          height:
+              5,
+        ),
+
+        Text(
+          description,
+
+          style:
+              const TextStyle(
+            color:
+                Colors.white54,
+            fontSize:
+                12,
+          ),
+        ),
+
+        const SizedBox(
+          height:
+              12,
+        ),
+
         SizedBox(
           height:
-              82,
+              100,
 
           child:
               ListView.separated(
@@ -22492,89 +23290,347 @@ if (selectedAvatarFrameId != null) {
                 (
               context,
               index,
-            ) {
-              return const SizedBox(
-                width:
-                    8,
-              );
-            },
+            ) =>
+                    const SizedBox(
+              width:
+                  8,
+            ),
 
             itemBuilder:
                 (
               context,
               index,
-            ) {
-              return options[
-                  index];
-            },
+            ) =>
+                    options[index],
           ),
         ),
-    ],
-  );
-}
+      ],
+    );
+  }
+
+  Widget buildAchievementCosmetics() {
+    final groups =
+        _achievementCosmeticGroups();
+
+    if (loadingAchievementCosmetics) {
+      return const SizedBox(
+        height:
+            100,
+
+        child:
+            Center(
+          child:
+              CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    final runtimeGroup =
+        groups[
+            'runtime_level']!;
+
+    final ratingsGroup =
+        groups[
+            'ratings_level']!;
+
+    final moviesWatchedGroup =
+        groups[
+            'movies_watched']!;
+
+    final moviesRatedGroup =
+        groups[
+            'movies_rated']!;
+
+    final tvWatchedGroup =
+        groups[
+            'tv_shows_completed']!;
+
+    final tvRatedGroup =
+        groups[
+            'tv_shows_rated']!;
+
+    final episodesWatchedGroup =
+        groups[
+            'episodes_watched']!;
+
+    final episodesRatedGroup =
+        groups[
+            'episodes_rated']!;
+
+    return Column(
+      crossAxisAlignment:
+          CrossAxisAlignment.start,
+
+      children: [
+        const Text(
+          'Achievement Styles',
+
+          style:
+              TextStyle(
+            fontSize:
+                20,
+            fontWeight:
+                FontWeight.bold,
+          ),
+        ),
+
+        const SizedBox(
+          height:
+              5,
+        ),
+
+        const Text(
+          'Choose which unlocked achievement reward style appears on your profile.',
+
+          style:
+              TextStyle(
+            color:
+                Colors.white54,
+            fontSize:
+                12,
+          ),
+        ),
+
+        const SizedBox(
+          height:
+              22,
+        ),
+
+        buildAchievementCosmeticPicker(
+          title:
+              'Runtime Level',
+          description:
+              'Choose your Runtime Level achievement style.',
+          group:
+              runtimeGroup,
+        ),
+
+        const SizedBox(
+          height:
+              22,
+        ),
+
+        buildAchievementCosmeticPicker(
+          title:
+              'Ratings Level',
+          description:
+              'Choose your Ratings Level achievement style.',
+          group:
+              ratingsGroup,
+        ),
+
+        const SizedBox(
+          height:
+              22,
+        ),
+
+        buildAchievementCosmeticPicker(
+          title:
+              'Movies Watched',
+          description:
+              'Choose your Movies Watched achievement style.',
+          group:
+              moviesWatchedGroup,
+        ),
+
+        const SizedBox(
+          height:
+              22,
+        ),
+
+        buildAchievementCosmeticPicker(
+          title:
+              'Movies Rated',
+          description:
+              'Choose your Movies Rated achievement style.',
+          group:
+              moviesRatedGroup,
+        ),
+
+        const SizedBox(
+          height:
+              22,
+        ),
+
+        buildAchievementCosmeticPicker(
+          title:
+              'TV Shows Watched',
+          description:
+              'Choose your TV Shows Watched achievement style.',
+          group:
+              tvWatchedGroup,
+        ),
+
+        const SizedBox(
+          height:
+              22,
+        ),
+
+        buildAchievementCosmeticPicker(
+          title:
+              'TV Shows Rated',
+          description:
+              'Choose your TV Shows Rated achievement style.',
+          group:
+              tvRatedGroup,
+        ),
+
+        const SizedBox(
+          height:
+              22,
+        ),
+
+        buildAchievementCosmeticPicker(
+          title:
+              'Episodes Watched',
+          description:
+              'Choose your Episodes Watched achievement style.',
+          group:
+              episodesWatchedGroup,
+        ),
+
+        const SizedBox(
+          height:
+              22,
+        ),
+
+        buildAchievementCosmeticPicker(
+          title:
+              'Episodes Rated',
+          description:
+              'Choose your Episodes Rated achievement style.',
+          group:
+              episodesRatedGroup,
+        ),
+      ],
+    );
+  }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(
+    BuildContext context,
+  ) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Edit Profile')),
+      appBar:
+          AppBar(
+        title:
+            const Text(
+          'Edit Profile',
+        ),
+      ),
 
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(20),
+      body:
+          SafeArea(
+        child:
+            ListView(
+          padding:
+              const EdgeInsets.all(
+            20,
+          ),
 
           children: [
-            const SizedBox(height: 10),
+            const SizedBox(
+              height:
+                  10,
+            ),
 
             Center(
-              child: Column(
+              child:
+                  Column(
                 children: [
                   buildAvatar(),
 
-                  const SizedBox(height: 10),
+                  const SizedBox(
+                    height:
+                        10,
+                  ),
 
                   const Text(
                     'Tap to change profile picture',
-                    style: TextStyle(color: Colors.white54, fontSize: 12),
+
+                    style:
+                        TextStyle(
+                      color:
+                          Colors.white54,
+                      fontSize:
+                          12,
+                    ),
                   ),
                 ],
               ),
             ),
 
-            const SizedBox(height: 28),
+            const SizedBox(
+              height:
+                  28,
+            ),
 
             const Text(
               'Profile Banner',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+
+              style:
+                  TextStyle(
+                fontSize:
+                    17,
+                fontWeight:
+                    FontWeight.bold,
+              ),
             ),
 
-            const SizedBox(height: 10),
+            const SizedBox(
+              height:
+                  10,
+            ),
 
             InkWell(
-              onTap: changeBanner,
+              onTap:
+                  changeBanner,
 
-              borderRadius: BorderRadius.circular(16),
+              borderRadius:
+                  BorderRadius.circular(
+                16,
+              ),
 
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
+              child:
+                  ClipRRect(
+                borderRadius:
+                    BorderRadius.circular(
+                  16,
+                ),
 
-                child: SizedBox(
-                  width: double.infinity,
+                child:
+                    SizedBox(
+                  width:
+                      double.infinity,
 
-                  height: 135,
+                  height:
+                      135,
 
-                  child: Stack(
-                    fit: StackFit.expand,
+                  child:
+                      Stack(
+                    fit:
+                        StackFit.expand,
 
                     children: [
-                      if (profile.bannerUrl != null)
+                      if (profile.bannerUrl !=
+                          null)
                         Image.network(
                           profile.bannerUrl!,
-                          fit: BoxFit.cover,
 
-                          errorBuilder: (context, error, stackTrace) {
+                          fit:
+                              BoxFit.cover,
+
+                          errorBuilder:
+                              (
+                            context,
+                            error,
+                            stackTrace,
+                          ) {
                             return Container(
-                              decoration: const BoxDecoration(
-                                gradient: LinearGradient(
+                              decoration:
+                                  const BoxDecoration(
+                                gradient:
+                                    LinearGradient(
                                   colors: [
                                     chipluxCyan,
                                     chipluxViolet,
@@ -22587,8 +23643,10 @@ if (selectedAvatarFrameId != null) {
                         )
                       else
                         Container(
-                          decoration: const BoxDecoration(
-                            gradient: LinearGradient(
+                          decoration:
+                              const BoxDecoration(
+                            gradient:
+                                LinearGradient(
                               colors: [
                                 chipluxCyan,
                                 chipluxViolet,
@@ -22598,20 +23656,39 @@ if (selectedAvatarFrameId != null) {
                           ),
                         ),
 
-                      Container(color: Colors.black.withValues(alpha: 0.30)),
+                      Container(
+                        color:
+                            Colors.black.withValues(
+                          alpha:
+                              0.30,
+                        ),
+                      ),
 
                       const Center(
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
+                        child:
+                            Row(
+                          mainAxisSize:
+                              MainAxisSize.min,
 
                           children: [
-                            Icon(Icons.panorama_outlined),
+                            Icon(
+                              Icons
+                                  .panorama_outlined,
+                            ),
 
-                            SizedBox(width: 8),
+                            SizedBox(
+                              width:
+                                  8,
+                            ),
 
                             Text(
                               'Tap to change banner',
-                              style: TextStyle(fontWeight: FontWeight.bold),
+
+                              style:
+                                  TextStyle(
+                                fontWeight:
+                                    FontWeight.bold,
+                              ),
                             ),
                           ],
                         ),
@@ -22622,63 +23699,111 @@ if (selectedAvatarFrameId != null) {
               ),
             ),
 
-            const SizedBox(height: 30),
+            const SizedBox(
+              height:
+                  30,
+            ),
 
             TextField(
-              controller: displayNameController,
+              controller:
+                  displayNameController,
 
-              maxLength: 40,
+              maxLength:
+                  40,
 
-              decoration: const InputDecoration(
-                labelText: 'Display Name',
+              decoration:
+                  const InputDecoration(
+                labelText:
+                    'Display Name',
 
-                prefixIcon: Icon(Icons.person_outline),
+                prefixIcon:
+                    Icon(
+                  Icons.person_outline,
+                ),
               ),
             ),
 
-            const SizedBox(height: 12),
+            const SizedBox(
+              height:
+                  12,
+            ),
 
-            // =========================
-            // DISPLAY NAME FRAMES
-            // =========================
             buildFramePicker(),
 
-            const SizedBox(height: 24),
+            const SizedBox(
+              height:
+                  24,
+            ),
 
-buildAvatarFramePicker(),
+            buildAvatarFramePicker(),
 
-            if (errorMessage != null) ...[
-              const SizedBox(height: 14),
+            const SizedBox(
+              height:
+                  30,
+            ),
+
+            buildAchievementCosmetics(),
+
+            if (errorMessage !=
+                null) ...[
+              const SizedBox(
+                height:
+                    14,
+              ),
 
               Text(
                 errorMessage!,
 
-                style: const TextStyle(color: Colors.redAccent),
+                style:
+                    const TextStyle(
+                  color:
+                      Colors.redAccent,
+                ),
               ),
             ],
 
-            const SizedBox(height: 24),
+            const SizedBox(
+              height:
+                  24,
+            ),
 
             SizedBox(
-              width: double.infinity,
+              width:
+                  double.infinity,
 
-              child: ElevatedButton.icon(
-                onPressed: saving ? null : saveProfile,
+              child:
+                  ElevatedButton.icon(
+                onPressed:
+                    saving
+                        ? null
+                        : saveProfile,
 
-                icon: saving
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.save_outlined),
+                icon:
+                    saving
+                        ? const SizedBox(
+                            width:
+                                18,
+                            height:
+                                18,
 
-                label: Text(
+                            child:
+                                CircularProgressIndicator(
+                              strokeWidth:
+                                  2,
+                            ),
+                          )
+                        : const Icon(
+                            Icons
+                                .save_outlined,
+                          ),
+
+                label:
+                    Text(
                   uploadingAvatar
                       ? 'Uploading Avatar...'
                       : saving
-                      ? 'Saving...'
-                      : 'Save Profile',
+                          ? 'Saving...'
+                          : 'Save Profile',
                 ),
               ),
             ),
@@ -22690,7 +23815,8 @@ buildAvatarFramePicker(),
 
   @override
   void dispose() {
-    displayNameController.dispose();
+    displayNameController
+        .dispose();
 
     super.dispose();
   }
@@ -22839,6 +23965,250 @@ class _AvatarFrameOption
                         FontWeight
                             .w600,
                   ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AchievementCosmeticOption
+    extends StatelessWidget {
+  final String label;
+
+  final _Achievement?
+      achievement;
+
+  final IconData icon;
+
+  final bool unlocked;
+
+  final bool selected;
+
+  final VoidCallback? onTap;
+
+  const _AchievementCosmeticOption({
+    required this.label,
+    required this.achievement,
+    required this.icon,
+    required this.unlocked,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(
+    BuildContext context,
+  ) {
+    final colors =
+        achievement ==
+                null
+            ? const [
+                Color(
+                  0xFFD7DEE7,
+                ),
+                Color(
+                  0xFF8F9BAA,
+                ),
+              ]
+            : _achievementTierColors(
+                achievement,
+              );
+
+    final accent =
+        colors.first;
+
+    return SizedBox(
+      width:
+          105,
+
+      child:
+          Material(
+        color:
+            Colors.transparent,
+
+        child:
+            InkWell(
+          onTap:
+              unlocked
+                  ? onTap
+                  : null,
+
+          borderRadius:
+              BorderRadius.circular(
+            15,
+          ),
+
+          child:
+              Container(
+            padding:
+                const EdgeInsets.all(
+              8,
+            ),
+
+            decoration:
+                BoxDecoration(
+              color:
+                  selected
+                      ? Colors.white.withValues(
+                          alpha:
+                              0.06,
+                        )
+                      : Colors.transparent,
+
+              borderRadius:
+                  BorderRadius.circular(
+                15,
+              ),
+
+              border:
+                  Border.all(
+                color:
+                    selected
+                        ? accent.withValues(
+                            alpha:
+                                0.80,
+                          )
+                        : Colors.white.withValues(
+                            alpha:
+                                0.06,
+                          ),
+
+                width:
+                    selected
+                        ? 1.3
+                        : 1,
+              ),
+            ),
+
+            child:
+                Column(
+              mainAxisSize:
+                  MainAxisSize.min,
+
+              children: [
+                Opacity(
+                  opacity:
+                      unlocked
+                          ? 1
+                          : 0.30,
+
+                  child:
+                      Container(
+                    width:
+                        48,
+                    height:
+                        48,
+
+                    decoration:
+                        BoxDecoration(
+                      borderRadius:
+                          BorderRadius.circular(
+                        13,
+                      ),
+
+                      color:
+                          chipluxSurface,
+
+                      border:
+                          Border.all(
+                        color:
+                            accent.withValues(
+                          alpha:
+                              0.75,
+                        ),
+
+                        width:
+                            1.5,
+                      ),
+
+                      boxShadow: [
+                        BoxShadow(
+                          color:
+                              accent.withValues(
+                            alpha:
+                                0.12,
+                          ),
+
+                          blurRadius:
+                              8,
+                        ),
+                      ],
+                    ),
+
+                    child:
+                        Icon(
+                      icon,
+
+                      color:
+                          accent,
+
+                      size:
+                          23,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(
+                  height:
+                      7,
+                ),
+
+                Row(
+                  mainAxisAlignment:
+                      MainAxisAlignment.center,
+
+                  children: [
+                    if (!unlocked) ...[
+                      const Icon(
+                        Icons.lock_rounded,
+
+                        color:
+                            Colors.white38,
+
+                        size:
+                            11,
+                      ),
+
+                      const SizedBox(
+                        width:
+                            3,
+                      ),
+                    ],
+
+                    Flexible(
+                      child:
+                          Text(
+                        label,
+
+                        maxLines:
+                            1,
+
+                        overflow:
+                            TextOverflow.ellipsis,
+
+                        textAlign:
+                            TextAlign.center,
+
+                        style:
+                            TextStyle(
+                          color:
+                              unlocked
+                                  ? Colors.white70
+                                  : Colors.white30,
+
+                          fontSize:
+                              9,
+
+                          fontWeight:
+                              FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
