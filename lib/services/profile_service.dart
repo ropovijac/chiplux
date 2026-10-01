@@ -1,15 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class ProfileService
-    extends ChangeNotifier {
+class ProfileService extends ChangeNotifier {
   ProfileService._();
 
-  static final ProfileService instance =
-      ProfileService._();
+  static final ProfileService instance = ProfileService._();
 
-  SupabaseClient get client =>
-      Supabase.instance.client;
+  SupabaseClient get client => Supabase.instance.client;
 
   String displayName = '';
   String username = '';
@@ -22,11 +19,9 @@ class ProfileService
   bool isLoading = false;
 
   String? get bannerUrl {
-    final path =
-        bannerPath;
+    final path = bannerPath;
 
-    if (path == null ||
-        path.trim().isEmpty) {
+    if (path == null || path.trim().isEmpty) {
       return null;
     }
 
@@ -34,8 +29,7 @@ class ProfileService
   }
 
   Future<void> loadProfile() async {
-    final user =
-        client.auth.currentUser;
+    final user = client.auth.currentUser;
 
     if (user == null) {
       return;
@@ -45,50 +39,29 @@ class ProfileService
     notifyListeners();
 
     try {
-      final data =
-          await client
-              .from('profiles')
-              .select()
-              .eq(
-                'id',
-                user.id,
-              )
-              .maybeSingle();
+      final data = await client
+          .from('profiles')
+          .select()
+          .eq('id', user.id)
+          .maybeSingle();
 
       // Always overwrite local state.
       //
       // This is important when switching
       // between different accounts.
-      displayName =
-          data?['display_name']
-                  ?.toString() ??
-              '';
+      displayName = data?['display_name']?.toString() ?? '';
 
-      username =
-          data?['username']
-                  ?.toString() ??
-              '';
+      username = data?['username']?.toString() ?? '';
 
-      avatarUrl =
-          data?['avatar_url']
-              ?.toString();
+      avatarUrl = data?['avatar_url']?.toString();
 
-      final rawBannerId =
-          data?['banner_tmdb_id'];
+      final rawBannerId = data?['banner_tmdb_id'];
 
-      bannerTmdbId =
-          rawBannerId is num
-              ? rawBannerId
-                  .toInt()
-              : null;
+      bannerTmdbId = rawBannerId is num ? rawBannerId.toInt() : null;
 
-      bannerMediaType =
-          data?['banner_media_type']
-              ?.toString();
+      bannerMediaType = data?['banner_media_type']?.toString();
 
-      bannerPath =
-          data?['banner_path']
-              ?.toString();
+      bannerPath = data?['banner_path']?.toString();
     } finally {
       isLoading = false;
       notifyListeners();
@@ -99,47 +72,29 @@ class ProfileService
     required String displayName,
     required String username,
   }) async {
-    final user =
-        client.auth.currentUser;
+    final user = client.auth.currentUser;
 
     if (user == null) {
-      throw Exception(
-        'You must be signed in.',
-      );
+      throw Exception('You must be signed in.');
     }
 
-    final cleanUsername =
-        username
-            .trim()
-            .toLowerCase();
+    final cleanUsername = username.trim().toLowerCase();
 
-    await client
-        .from('profiles')
-        .upsert({
+    await client.from('profiles').upsert({
       'id': user.id,
-      'display_name':
-          displayName.trim(),
-      'username':
-          cleanUsername.isEmpty
-              ? null
-              : cleanUsername,
-      'avatar_url':
-          avatarUrl,
+      'display_name': displayName.trim(),
+      'username': cleanUsername.isEmpty ? null : cleanUsername,
+      'avatar_url': avatarUrl,
 
       // Preserve banner information.
-      'banner_tmdb_id':
-          bannerTmdbId,
-      'banner_media_type':
-          bannerMediaType,
-      'banner_path':
-          bannerPath,
+      'banner_tmdb_id': bannerTmdbId,
+      'banner_media_type': bannerMediaType,
+      'banner_path': bannerPath,
     });
 
-    this.displayName =
-        displayName.trim();
+    this.displayName = displayName.trim();
 
-    this.username =
-        cleanUsername;
+    this.username = cleanUsername;
 
     notifyListeners();
   }
@@ -149,101 +104,69 @@ class ProfileService
     required String mediaType,
     required String bannerPath,
   }) async {
-    final user =
-        client.auth.currentUser;
+    final user = client.auth.currentUser;
 
     if (user == null) {
-      throw Exception(
-        'You must be signed in.',
-      );
+      throw Exception('You must be signed in.');
     }
 
-    bannerTmdbId =
-        tmdbId;
+    bannerTmdbId = tmdbId;
 
-    bannerMediaType =
-        mediaType;
+    bannerMediaType = mediaType;
 
-    this.bannerPath =
-        bannerPath;
+    this.bannerPath = bannerPath;
 
     notifyListeners();
 
-    await client
-        .from('profiles')
-        .upsert({
+    await client.from('profiles').upsert({
       'id': user.id,
-      'display_name':
-          displayName,
-      'username':
-          username.isEmpty
-              ? null
-              : username,
-      'avatar_url':
-          avatarUrl,
-      'banner_tmdb_id':
-          tmdbId,
-      'banner_media_type':
-          mediaType,
-      'banner_path':
-          bannerPath,
+      'display_name': displayName,
+      'username': username.isEmpty ? null : username,
+      'avatar_url': avatarUrl,
+      'banner_tmdb_id': tmdbId,
+      'banner_media_type': mediaType,
+      'banner_path': bannerPath,
     });
   }
 
   Future<void> removeBanner() async {
-    final user =
-        client.auth.currentUser;
+    final user = client.auth.currentUser;
 
     if (user == null) {
-      throw Exception(
-        'You must be signed in.',
-      );
+      throw Exception('You must be signed in.');
     }
 
-    bannerTmdbId =
-        null;
+    bannerTmdbId = null;
 
-    bannerMediaType =
-        null;
+    bannerMediaType = null;
 
-    bannerPath =
-        null;
+    bannerPath = null;
 
     notifyListeners();
 
     await client
         .from('profiles')
         .update({
-      'banner_tmdb_id':
-          null,
-      'banner_media_type':
-          null,
-      'banner_path':
-          null,
-    }).eq(
-      'id',
-      user.id,
-    );
+          'banner_tmdb_id': null,
+          'banner_media_type': null,
+          'banner_path': null,
+        })
+        .eq('id', user.id);
   }
 
   void clear() {
     displayName = '';
     username = '';
 
-    avatarUrl =
-        null;
+    avatarUrl = null;
 
-    bannerTmdbId =
-        null;
+    bannerTmdbId = null;
 
-    bannerMediaType =
-        null;
+    bannerMediaType = null;
 
-    bannerPath =
-        null;
+    bannerPath = null;
 
-    isLoading =
-        false;
+    isLoading = false;
 
     notifyListeners();
   }

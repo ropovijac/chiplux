@@ -3,49 +3,33 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class AuthService {
   AuthService._();
 
-  static final AuthService instance =
-      AuthService._();
+  static final AuthService instance = AuthService._();
 
-  SupabaseClient get client =>
-      Supabase.instance.client;
+  SupabaseClient get client => Supabase.instance.client;
 
-  User? get currentUser =>
-      client.auth.currentUser;
+  User? get currentUser => client.auth.currentUser;
 
-  Stream<AuthState> get authChanges =>
-      client.auth.onAuthStateChange;
+  Stream<AuthState> get authChanges => client.auth.onAuthStateChange;
 
   // =====================================================
   // USERNAME AVAILABILITY
   // =====================================================
 
-  Future<Map<String, dynamic>>
-      checkUsernameAvailability(
+  Future<Map<String, dynamic>> checkUsernameAvailability(
     String username,
   ) async {
-    final normalized =
-        username
-            .trim()
-            .toLowerCase();
+    final normalized = username.trim().toLowerCase();
 
-    final result =
-        await client.rpc(
+    final result = await client.rpc(
       'check_username_availability',
-      params: {
-        'p_username':
-            normalized,
-      },
+      params: {'p_username': normalized},
     );
 
     if (result is Map) {
-      return Map<String, dynamic>.from(
-        result,
-      );
+      return Map<String, dynamic>.from(result);
     }
 
-    throw Exception(
-      'Could not check username.',
-    );
+    throw Exception('Could not check username.');
   }
 
   // =====================================================
@@ -57,16 +41,9 @@ class AuthService {
     required String password,
     required String username,
   }) async {
-    final normalizedUsername =
-        username
-            .trim()
-            .toLowerCase();
+    final normalizedUsername = username.trim().toLowerCase();
 
-    if (!RegExp(
-      r'^[a-z0-9_]{3,20}$',
-    ).hasMatch(
-      normalizedUsername,
-    )) {
+    if (!RegExp(r'^[a-z0-9_]{3,20}$').hasMatch(normalizedUsername)) {
       throw const AuthException(
         'Username must contain 3–20 letters, numbers, or underscores.',
       );
@@ -75,40 +52,27 @@ class AuthService {
     // Recheck immediately before signup.
     // The database still provides the
     // final uniqueness guarantee.
-    final availability =
-        await checkUsernameAvailability(
-      normalizedUsername,
-    );
+    final availability = await checkUsernameAvailability(normalizedUsername);
 
-    if (availability['available'] !=
-        true) {
-      throw const AuthException(
-        'That username is already taken.',
-      );
+    if (availability['available'] != true) {
+      throw const AuthException('That username is already taken.');
     }
 
-    final response =
-        await client.auth.signUp(
-      email:
-          email.trim(),
-      password:
-          password,
+    final response = await client.auth.signUp(
+      email: email.trim(),
+      password: password,
 
       // Supabase stores this in
       // auth.users.raw_user_meta_data.
       //
       // Our database trigger claims
       // the username at account creation.
-      data: {
-        'username':
-            normalizedUsername,
-      },
+      data: {'username': normalizedUsername},
     );
 
     // If email confirmation is disabled,
     // the account is immediately logged in.
-    if (response.session !=
-        null) {
+    if (response.session != null) {
       await _syncSignupUsernameToProfile();
     }
 
@@ -131,13 +95,10 @@ class AuthService {
     required String identifier,
     required String password,
   }) async {
-    final value =
-        identifier.trim();
+    final value = identifier.trim();
 
     if (value.isEmpty) {
-      throw const AuthException(
-        'Enter your email or username.',
-      );
+      throw const AuthException('Enter your email or username.');
     }
 
     late final AuthResponse response;
@@ -147,76 +108,45 @@ class AuthService {
     // =========================================
 
     if (value.contains('@')) {
-      response =
-          await client.auth
-              .signInWithPassword(
-        email:
-            value,
-        password:
-            password,
+      response = await client.auth.signInWithPassword(
+        email: value,
+        password: password,
       );
     }
-
     // =========================================
     // USERNAME
     // =========================================
-
     else {
-      final username =
-          value.toLowerCase();
+      final username = value.toLowerCase();
 
-      final functionResponse =
-          await client.functions.invoke(
-         'super-api',
+      final functionResponse = await client.functions.invoke(
+        'super-api',
 
-        body: {
-          'username':
-              username,
-          'password':
-              password,
-        },
+        body: {'username': username, 'password': password},
       );
 
-      final raw =
-          functionResponse.data;
+      final raw = functionResponse.data;
 
       if (raw is! Map) {
-        throw const AuthException(
-          'Invalid username or password.',
-        );
+        throw const AuthException('Invalid username or password.');
       }
 
-      final data =
-          Map<String, dynamic>.from(
-        raw,
-      );
+      final data = Map<String, dynamic>.from(raw);
 
-      final refreshToken =
-          data['refresh_token']
-              ?.toString();
+      final refreshToken = data['refresh_token']?.toString();
 
-      final accessToken =
-          data['access_token']
-              ?.toString();
+      final accessToken = data['access_token']?.toString();
 
-      if (refreshToken == null ||
-          refreshToken.isEmpty) {
-        final error =
-            data['error']
-                ?.toString();
+      if (refreshToken == null || refreshToken.isEmpty) {
+        final error = data['error']?.toString();
 
-        throw AuthException(
-          error ??
-              'Invalid username or password.',
-        );
+        throw AuthException(error ?? 'Invalid username or password.');
       }
 
-      response =
-          await client.auth.setSession(
+      response = await client.auth.setSession(
         refreshToken,
 
-        accessToken:
-            accessToken,
+        accessToken: accessToken,
       );
     }
 
@@ -231,50 +161,34 @@ class AuthService {
   // Existing usernames are NEVER overwritten.
   // =====================================================
 
-  Future<void>
-      _syncSignupUsernameToProfile() async {
-    final user =
-        client.auth.currentUser;
+  Future<void> _syncSignupUsernameToProfile() async {
+    final user = client.auth.currentUser;
 
     if (user == null) {
       return;
     }
 
-    final metadataUsername =
-        user.userMetadata?['username']
-            ?.toString()
-            .trim()
-            .toLowerCase();
+    final metadataUsername = user.userMetadata?['username']
+        ?.toString()
+        .trim()
+        .toLowerCase();
 
-    if (metadataUsername == null ||
-        metadataUsername.isEmpty) {
+    if (metadataUsername == null || metadataUsername.isEmpty) {
       return;
     }
 
     try {
-      final profile =
-          await client
-              .from(
-                'profiles',
-              )
-              .select(
-                'username',
-              )
-              .eq(
-                'id',
-                user.id,
-              )
-              .maybeSingle();
+      final profile = await client
+          .from('profiles')
+          .select('username')
+          .eq('id', user.id)
+          .maybeSingle();
 
       if (profile == null) {
         return;
       }
 
-      final currentUsername =
-          profile['username']
-                  ?.toString()
-                  .trim() ??
-              '';
+      final currentUsername = profile['username']?.toString().trim() ?? '';
 
       // IMPORTANT:
       // An existing username is never
@@ -284,17 +198,9 @@ class AuthService {
       }
 
       await client
-          .from(
-            'profiles',
-          )
-          .update({
-            'username':
-                metadataUsername,
-          })
-          .eq(
-            'id',
-            user.id,
-          );
+          .from('profiles')
+          .update({'username': metadataUsername})
+          .eq('id', user.id);
     } catch (_) {
       // Profile synchronization should
       // never prevent a valid login.
