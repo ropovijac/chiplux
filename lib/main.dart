@@ -122,7 +122,7 @@ _AchievementGroup _movieAchievementGroupFor(int moviesWatched) {
         id: 'movies_8',
         title: 'Weekend Watcher',
         description: 'Watch 8 movies',
-        icon: Icons.movie_rounded,
+        icon: Icons.weekend_rounded,
         current: moviesWatched,
         target: 8,
         rarity: _AchievementRarity.uncommon,
@@ -282,7 +282,7 @@ _AchievementGroup _tvAchievementGroupFor(int completedTvShows) {
         id: 'tv_128',
         title: 'TV Connoisseur',
         description: 'Complete 128 TV shows',
-        icon: Icons.auto_awesome_rounded,
+        icon: Icons.high_quality_rounded,
         current: completedTvShows,
         target: 128,
         rarity: _AchievementRarity.epic,
@@ -293,7 +293,7 @@ _AchievementGroup _tvAchievementGroupFor(int completedTvShows) {
         id: 'tv_256',
         title: 'Small Screen Legend',
         description: 'Complete 256 TV shows',
-        icon: Icons.workspace_premium_rounded,
+        icon: Icons.personal_video_rounded,
         current: completedTvShows,
         target: 256,
         rarity: _AchievementRarity.legendary,
@@ -331,7 +331,7 @@ _AchievementGroup _episodeAchievementGroupFor(int episodesWatched) {
         id: 'episodes_256',
         title: 'Seasoned Binger',
         description: 'Watch 256 episodes',
-        icon: Icons.live_tv_rounded,
+        icon: Icons.playlist_play_rounded,
         current: episodesWatched,
         target: 256,
         rarity: _AchievementRarity.uncommon,
@@ -342,7 +342,7 @@ _AchievementGroup _episodeAchievementGroupFor(int episodesWatched) {
         id: 'episodes_512',
         title: 'Episode Collector',
         description: 'Watch 512 episodes',
-        icon: Icons.video_collection_rounded,
+        icon: Icons.video_library_outlined,
         current: episodesWatched,
         target: 512,
         rarity: _AchievementRarity.rare,
@@ -353,7 +353,7 @@ _AchievementGroup _episodeAchievementGroupFor(int episodesWatched) {
         id: 'episodes_1024',
         title: 'Marathon Viewer',
         description: 'Watch 1024 episodes',
-        icon: Icons.auto_awesome_rounded,
+        icon: Icons.view_list_rounded,
         current: episodesWatched,
         target: 1024,
         rarity: _AchievementRarity.epic,
@@ -364,7 +364,7 @@ _AchievementGroup _episodeAchievementGroupFor(int episodesWatched) {
         id: 'episodes_2048',
         title: 'Episode Legend',
         description: 'Watch 2048 episodes',
-        icon: Icons.workspace_premium_rounded,
+        icon: Icons.list_alt_rounded,
         current: episodesWatched,
         target: 2048,
         rarity: _AchievementRarity.legendary,
@@ -435,7 +435,7 @@ _AchievementGroup _episodeRatedAchievementGroupFor(int episodesRated) {
         id: 'episodes_rated_128',
         title: 'Binge Critic',
         description: 'Rate 128 episodes',
-        icon: Icons.auto_awesome_rounded,
+        icon: Icons.fact_check_rounded,
         current: episodesRated,
         target: 128,
         rarity: _AchievementRarity.rare,
@@ -446,7 +446,7 @@ _AchievementGroup _episodeRatedAchievementGroupFor(int episodesRated) {
         id: 'episodes_rated_256',
         title: 'Episode Authority',
         description: 'Rate 256 episodes',
-        icon: Icons.stars_rounded,
+        icon: Icons.grading_rounded,
         current: episodesRated,
         target: 256,
         rarity: _AchievementRarity.epic,
@@ -455,9 +455,9 @@ _AchievementGroup _episodeRatedAchievementGroupFor(int episodesRated) {
 
       _Achievement(
         id: 'episodes_rated_512',
-        title: 'Episode Legend',
+        title: 'Episode Grandmaster',
         description: 'Rate 512 episodes',
-        icon: Icons.workspace_premium_rounded,
+        icon: Icons.task_alt_rounded,
         current: episodesRated,
         target: 512,
         rarity: _AchievementRarity.legendary,
@@ -479,7 +479,7 @@ _AchievementGroup _tvShowsRatedAchievementGroupFor(int tvShowsRated) {
         id: 'tv_rated_2',
         title: 'First Verdict',
         description: 'Rate 2 TV shows',
-        icon: Icons.star_outline_rounded,
+        icon: Icons.star_border_rounded,
         current: tvShowsRated,
         target: 2,
         rarity: _AchievementRarity.common,
@@ -489,7 +489,7 @@ _AchievementGroup _tvShowsRatedAchievementGroupFor(int tvShowsRated) {
         id: 'tv_rated_8',
         title: 'Series Critic',
         description: 'Rate 8 TV shows',
-        icon: Icons.reviews_outlined,
+        icon: Icons.comment_bank_rounded,
         current: tvShowsRated,
         target: 8,
         rarity: _AchievementRarity.uncommon,
@@ -499,7 +499,7 @@ _AchievementGroup _tvShowsRatedAchievementGroupFor(int tvShowsRated) {
         id: 'tv_rated_16',
         title: 'Small Screen Reviewer',
         description: 'Rate 16 TV shows',
-        icon: Icons.rate_review_rounded,
+        icon: Icons.speaker_notes_rounded,
         current: tvShowsRated,
         target: 16,
         rarity: _AchievementRarity.rare,
@@ -509,7 +509,7 @@ _AchievementGroup _tvShowsRatedAchievementGroupFor(int tvShowsRated) {
         id: 'tv_rated_32',
         title: 'Series Analyst',
         description: 'Rate 32 TV shows',
-        icon: Icons.auto_awesome_rounded,
+        icon: Icons.analytics_rounded,
         current: tvShowsRated,
         target: 32,
         rarity: _AchievementRarity.rare,
@@ -519,7 +519,7 @@ _AchievementGroup _tvShowsRatedAchievementGroupFor(int tvShowsRated) {
         id: 'tv_rated_64',
         title: 'TV Authority',
         description: 'Rate 64 TV shows',
-        icon: Icons.stars_rounded,
+        icon: Icons.verified_rounded,
         current: tvShowsRated,
         target: 64,
         rarity: _AchievementRarity.epic,
@@ -529,7 +529,7 @@ _AchievementGroup _tvShowsRatedAchievementGroupFor(int tvShowsRated) {
         id: 'tv_rated_128',
         title: 'Television Expert',
         description: 'Rate 128 TV shows',
-        icon: Icons.workspace_premium_rounded,
+        icon: Icons.recommend_rounded,
         current: tvShowsRated,
         target: 128,
         rarity: _AchievementRarity.legendary,
@@ -539,7 +539,7 @@ _AchievementGroup _tvShowsRatedAchievementGroupFor(int tvShowsRated) {
         id: 'tv_rated_256',
         title: 'TV Legend',
         description: 'Rate 256 TV shows',
-        icon: Icons.diamond_rounded,
+        icon: Icons.hotel_class_rounded,
         current: tvShowsRated,
         target: 256,
         rarity: _AchievementRarity.legendary,
@@ -561,7 +561,7 @@ _AchievementGroup _moviesRatedAchievementGroupFor(int moviesRated) {
         id: 'movies_rated_2',
         title: 'First Review',
         description: 'Rate 2 movies',
-        icon: Icons.star_outline_rounded,
+        icon: Icons.rate_review_outlined,
         current: moviesRated,
         target: 2,
         rarity: _AchievementRarity.common,
@@ -571,7 +571,7 @@ _AchievementGroup _moviesRatedAchievementGroupFor(int moviesRated) {
         id: 'movies_rated_8',
         title: 'Movie Critic',
         description: 'Rate 8 movies',
-        icon: Icons.reviews_outlined,
+        icon: Icons.comment_rounded,
         current: moviesRated,
         target: 8,
         rarity: _AchievementRarity.uncommon,
@@ -581,7 +581,7 @@ _AchievementGroup _moviesRatedAchievementGroupFor(int moviesRated) {
         id: 'movies_rated_16',
         title: 'Film Analyst',
         description: 'Rate 16 movies',
-        icon: Icons.rate_review_rounded,
+        icon: Icons.mode_comment_rounded,
         current: moviesRated,
         target: 16,
         rarity: _AchievementRarity.rare,
@@ -591,7 +591,7 @@ _AchievementGroup _moviesRatedAchievementGroupFor(int moviesRated) {
         id: 'movies_rated_32',
         title: 'Seasoned Critic',
         description: 'Rate 32 movies',
-        icon: Icons.auto_awesome_rounded,
+        icon: Icons.psychology_rounded,
         current: moviesRated,
         target: 32,
         rarity: _AchievementRarity.rare,
@@ -599,9 +599,9 @@ _AchievementGroup _moviesRatedAchievementGroupFor(int moviesRated) {
       ),
       _Achievement(
         id: 'movies_rated_64',
-        title: 'Film Authority',
+        title: 'Film Adjudicator',
         description: 'Rate 64 movies',
-        icon: Icons.stars_rounded,
+        icon: Icons.gavel_rounded,
         current: moviesRated,
         target: 64,
         rarity: _AchievementRarity.epic,
@@ -611,7 +611,7 @@ _AchievementGroup _moviesRatedAchievementGroupFor(int moviesRated) {
         id: 'movies_rated_128',
         title: 'Cinema Expert',
         description: 'Rate 128 movies',
-        icon: Icons.workspace_premium_rounded,
+        icon: Icons.school_rounded,
         current: moviesRated,
         target: 128,
         rarity: _AchievementRarity.legendary,
@@ -621,7 +621,7 @@ _AchievementGroup _moviesRatedAchievementGroupFor(int moviesRated) {
         id: 'movies_rated_256',
         title: 'Cinema Legend',
         description: 'Rate 256 movies',
-        icon: Icons.diamond_rounded,
+        icon: Icons.local_activity_rounded,
         current: moviesRated,
         target: 256,
         rarity: _AchievementRarity.legendary,
@@ -694,7 +694,7 @@ _AchievementGroup _runtimeLevelAchievementGroupFor(int runtimeLevel) {
         id: 'runtime_level_50',
         title: 'Watch Veteran',
         description: 'Reach Runtime Level 50',
-        icon: Icons.auto_awesome_rounded,
+        icon: Icons.hourglass_bottom_rounded,
         current: runtimeLevel,
         target: 50,
         rarity: _AchievementRarity.rare,
@@ -705,7 +705,7 @@ _AchievementGroup _runtimeLevelAchievementGroupFor(int runtimeLevel) {
         id: 'runtime_level_75',
         title: 'Runtime Master',
         description: 'Reach Runtime Level 75',
-        icon: Icons.stars_rounded,
+        icon: Icons.speed_rounded,
         current: runtimeLevel,
         target: 75,
         rarity: _AchievementRarity.epic,
@@ -716,7 +716,7 @@ _AchievementGroup _runtimeLevelAchievementGroupFor(int runtimeLevel) {
         id: 'runtime_level_100',
         title: 'Time Legend',
         description: 'Reach Runtime Level 100',
-        icon: Icons.workspace_premium_rounded,
+        icon: Icons.hourglass_full_rounded,
         current: runtimeLevel,
         target: 100,
         rarity: _AchievementRarity.legendary,
@@ -743,7 +743,7 @@ _AchievementGroup _ratingsLevelAchievementGroupFor(int ratingsLevel) {
         id: 'ratings_level_10',
         title: 'Rising Critic',
         description: 'Reach Ratings Level 10',
-        icon: Icons.star_outline_rounded,
+        icon: Icons.grade_outlined,
         current: ratingsLevel,
         target: 10,
         rarity: _AchievementRarity.common,
@@ -754,7 +754,7 @@ _AchievementGroup _ratingsLevelAchievementGroupFor(int ratingsLevel) {
         id: 'ratings_level_20',
         title: 'Established Critic',
         description: 'Reach Ratings Level 20',
-        icon: Icons.star_half_rounded,
+        icon: Icons.star_rate_rounded,
         current: ratingsLevel,
         target: 20,
         rarity: _AchievementRarity.uncommon,
@@ -763,7 +763,7 @@ _AchievementGroup _ratingsLevelAchievementGroupFor(int ratingsLevel) {
 
       _Achievement(
         id: 'ratings_level_30',
-        title: 'Seasoned Critic',
+        title: 'Critical Veteran',
         description: 'Reach Ratings Level 30',
         icon: Icons.reviews_rounded,
         current: ratingsLevel,
@@ -776,7 +776,7 @@ _AchievementGroup _ratingsLevelAchievementGroupFor(int ratingsLevel) {
         id: 'ratings_level_40',
         title: 'Critical Authority',
         description: 'Reach Ratings Level 40',
-        icon: Icons.rate_review_rounded,
+        icon: Icons.edit_note_rounded,
         current: ratingsLevel,
         target: 40,
         rarity: _AchievementRarity.rare,
@@ -787,7 +787,7 @@ _AchievementGroup _ratingsLevelAchievementGroupFor(int ratingsLevel) {
         id: 'ratings_level_50',
         title: 'Master Critic',
         description: 'Reach Ratings Level 50',
-        icon: Icons.stars_rounded,
+        icon: Icons.emoji_events_rounded,
         current: ratingsLevel,
         target: 50,
         rarity: _AchievementRarity.epic,
@@ -798,7 +798,7 @@ _AchievementGroup _ratingsLevelAchievementGroupFor(int ratingsLevel) {
         id: 'ratings_level_60',
         title: 'Critic Legend',
         description: 'Reach Ratings Level 60',
-        icon: Icons.workspace_premium_rounded,
+        icon: Icons.leaderboard_rounded,
         current: ratingsLevel,
         target: 60,
         rarity: _AchievementRarity.legendary,
@@ -857,7 +857,7 @@ _AchievementGroup _dailyLoginAchievementGroupFor(int loginDays) {
 
       _Achievement(
         id: 'login_90',
-        title: 'Dedicated Viewer',
+        title: 'Committed Regular',
         description: 'Log in on 90 different days',
         icon: Icons.event_note_rounded,
         current: loginDays,
@@ -870,7 +870,7 @@ _AchievementGroup _dailyLoginAchievementGroupFor(int loginDays) {
         id: 'login_180',
         title: 'Chiplux Veteran',
         description: 'Log in on 180 different days',
-        icon: Icons.auto_awesome_rounded,
+        icon: Icons.calendar_month_rounded,
         current: loginDays,
         target: 180,
         rarity: _AchievementRarity.epic,
@@ -881,7 +881,7 @@ _AchievementGroup _dailyLoginAchievementGroupFor(int loginDays) {
         id: 'login_360',
         title: 'Chiplux Loyalist',
         description: 'Log in on 360 different days',
-        icon: Icons.workspace_premium_rounded,
+        icon: Icons.event_repeat_rounded,
         current: loginDays,
         target: 360,
         rarity: _AchievementRarity.legendary,
@@ -3183,6 +3183,10 @@ class _MainScreenState extends State<MainScreen> {
         const CommunityPage(),
 
         ProfilePage(
+          onTvShowsWatchedTap: () {
+            _openCompleted('tv');
+          },
+
           onEpisodesWatchedTap: () {
             _openCompleted('tv');
           },
@@ -5113,6 +5117,773 @@ class PublicStatsSyncService {
   }
 }
 
+class _PublicCompletedTvShowsPage extends StatefulWidget {
+  final String userId;
+  final String displayName;
+  final bool sortByRated;
+
+  const _PublicCompletedTvShowsPage({
+    required this.userId,
+    required this.displayName,
+    this.sortByRated = false,
+  });
+
+  @override
+  State<_PublicCompletedTvShowsPage> createState() =>
+      _PublicCompletedTvShowsPageState();
+}
+
+class _PublicCompletedTvShowsPageState
+    extends State<_PublicCompletedTvShowsPage> {
+  bool loading = true;
+
+  String? errorMessage;
+
+  List<Map<String, dynamic>> shows = [];
+
+  @override
+  void initState() {
+    super.initState();
+
+    _loadShows();
+  }
+
+  Future<void> _loadShows() async {
+    setState(() {
+      loading = true;
+      errorMessage = null;
+    });
+
+    try {
+      final result = await Supabase.instance.client.rpc(
+        'get_public_completed_tv_shows',
+        params: {
+          'p_user_id': widget.userId,
+          'p_sort_rated': widget.sortByRated,
+        },
+      );
+
+      final loadedShows = <Map<String, dynamic>>[];
+
+      if (result is List) {
+        for (final item in result) {
+          if (item is Map) {
+            loadedShows.add(Map<String, dynamic>.from(item));
+          }
+        }
+      }
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        shows = loadedShows;
+        loading = false;
+      });
+    } catch (e) {
+      debugPrint('Could not load public completed TV shows: $e');
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        loading = false;
+        errorMessage = 'Could not load completed TV shows.';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: chipluxBackground,
+
+      body: ChipluxBackground(
+        style: ChipluxBackgroundStyle.profile,
+
+        child: SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 8, 18, 8),
+
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+
+                      icon: const Icon(Icons.arrow_back_rounded),
+                    ),
+
+                    const SizedBox(width: 4),
+
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+
+                        children: [
+                          Text(
+                            '${widget.displayName}\'s TV Shows',
+
+                            maxLines: 1,
+
+                            overflow: TextOverflow.ellipsis,
+
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 19,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+
+                          const SizedBox(height: 2),
+
+                          Text(
+                            '${shows.length} completed',
+
+                            style: const TextStyle(
+                              color: Colors.white38,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              Divider(height: 1, color: Colors.white.withValues(alpha: 0.06)),
+
+              Expanded(
+                child: loading
+                    ? const Center(
+                        child: CircularProgressIndicator(color: chipluxCyan),
+                      )
+                    : errorMessage != null
+                    ? _buildError()
+                    : shows.isEmpty
+                    ? _buildEmpty()
+                    : RefreshIndicator(
+                        color: chipluxCyan,
+                        backgroundColor: chipluxSurface,
+                        onRefresh: _loadShows,
+
+                        child: GridView.builder(
+                          physics: const AlwaysScrollableScrollPhysics(),
+
+                          padding: const EdgeInsets.fromLTRB(16, 18, 16, 30),
+
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                crossAxisSpacing: 12,
+                                mainAxisSpacing: 14,
+                                childAspectRatio: 0.62,
+                              ),
+
+                          itemCount: shows.length,
+
+                          itemBuilder: (context, index) {
+                            return _PublicCompletedTvShowCard(
+                              show: shows[index],
+                            );
+                          },
+                        ),
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmpty() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(30),
+
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+
+          children: [
+            const Icon(Icons.tv_rounded, color: Colors.white24, size: 48),
+
+            const SizedBox(height: 14),
+
+            Text(
+              '${widget.displayName} has no completed TV shows yet.',
+
+              textAlign: TextAlign.center,
+
+              style: const TextStyle(
+                color: Colors.white54,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildError() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(30),
+
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+
+          children: [
+            const Icon(
+              Icons.error_outline_rounded,
+              color: Colors.white38,
+              size: 42,
+            ),
+
+            const SizedBox(height: 12),
+
+            Text(errorMessage!, style: const TextStyle(color: Colors.white54)),
+
+            const SizedBox(height: 16),
+
+            OutlinedButton(
+              onPressed: _loadShows,
+
+              child: const Text('Try Again'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PublicCompletedTvShowCard extends StatelessWidget {
+  final Map<String, dynamic> show;
+
+  const _PublicCompletedTvShowCard({required this.show});
+
+  @override
+  Widget build(BuildContext context) {
+    final rawId = show['tmdb_id'];
+
+    final int? id = rawId is num
+        ? rawId.toInt()
+        : int.tryParse(rawId?.toString() ?? '');
+
+    final title = show['title']?.toString().trim() ?? '';
+
+    final year = show['year']?.toString().trim() ?? '';
+
+    final posterPath = show['poster_path']?.toString();
+
+    final posterUrl = posterPath != null && posterPath.isNotEmpty
+        ? 'https://image.tmdb.org/t/p/w342$posterPath'
+        : null;
+
+    return Material(
+      color: Colors.transparent,
+
+      child: InkWell(
+        onTap: id == null
+            ? null
+            : () {
+                Navigator.push(
+                  context,
+
+                  MaterialPageRoute(
+                    builder: (_) => MediaDetailsPage(id: id, mediaType: 'tv'),
+                  ),
+                );
+              },
+
+        borderRadius: BorderRadius.circular(18),
+
+        child: Container(
+          decoration: BoxDecoration(
+            color: chipluxSurface,
+
+            borderRadius: BorderRadius.circular(18),
+
+            border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+          ),
+
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(18),
+
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    width: double.infinity,
+
+                    child: posterUrl != null
+                        ? Image.network(
+                            posterUrl,
+                            fit: BoxFit.cover,
+
+                            errorBuilder: (context, error, stackTrace) {
+                              return const _PublicTvPosterFallback();
+                            },
+                          )
+                        : const _PublicTvPosterFallback(),
+                  ),
+                ),
+
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(11, 10, 11, 11),
+
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+
+                    children: [
+                      Text(
+                        title.isNotEmpty ? title : 'Unknown TV Show',
+
+                        maxLines: 2,
+
+                        overflow: TextOverflow.ellipsis,
+
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+
+                      if (year.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+
+                        Text(
+                          year,
+
+                          style: const TextStyle(
+                            color: Colors.white38,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PublicTvPosterFallback extends StatelessWidget {
+  const _PublicTvPosterFallback();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: chipluxSurfaceLight,
+
+      child: const Center(
+        child: Icon(Icons.tv_rounded, color: Colors.white24, size: 42),
+      ),
+    );
+  }
+}
+
+class _PublicWatchedMoviesPage extends StatefulWidget {
+  final String userId;
+  final String displayName;
+  final bool sortByRated;
+
+  const _PublicWatchedMoviesPage({
+    required this.userId,
+    required this.displayName,
+    this.sortByRated = false,
+  });
+
+  @override
+  State<_PublicWatchedMoviesPage> createState() =>
+      _PublicWatchedMoviesPageState();
+}
+
+class _PublicWatchedMoviesPageState extends State<_PublicWatchedMoviesPage> {
+  bool loading = true;
+
+  String? errorMessage;
+
+  List<Map<String, dynamic>> movies = [];
+
+  @override
+  void initState() {
+    super.initState();
+
+    _loadMovies();
+  }
+
+  Future<void> _loadMovies() async {
+    setState(() {
+      loading = true;
+      errorMessage = null;
+    });
+
+    try {
+      final result = await Supabase.instance.client.rpc(
+        'get_public_watched_movies',
+        params: {
+          'p_user_id': widget.userId,
+          'p_sort_rated': widget.sortByRated,
+        },
+      );
+
+      final loadedMovies = <Map<String, dynamic>>[];
+
+      if (result is List) {
+        for (final item in result) {
+          if (item is Map) {
+            loadedMovies.add(Map<String, dynamic>.from(item));
+          }
+        }
+      }
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        movies = loadedMovies;
+        loading = false;
+      });
+    } catch (e) {
+      debugPrint('Could not load public watched movies: $e');
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        loading = false;
+        errorMessage = 'Could not load watched movies.';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: chipluxBackground,
+
+      body: ChipluxBackground(
+        style: ChipluxBackgroundStyle.profile,
+
+        child: SafeArea(
+          child: Column(
+            children: [
+              // =========================
+              // TOP BAR
+              // =========================
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 8, 18, 8),
+
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+
+                      icon: const Icon(Icons.arrow_back_rounded),
+                    ),
+
+                    const SizedBox(width: 4),
+
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+
+                        children: [
+                          Text(
+                            '${widget.displayName}\'s Movies',
+
+                            maxLines: 1,
+
+                            overflow: TextOverflow.ellipsis,
+
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 19,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+
+                          const SizedBox(height: 2),
+
+                          Text(
+                            '${movies.length} watched',
+
+                            style: const TextStyle(
+                              color: Colors.white38,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              Divider(height: 1, color: Colors.white.withValues(alpha: 0.06)),
+
+              // =========================
+              // CONTENT
+              // =========================
+              Expanded(
+                child: loading
+                    ? const Center(
+                        child: CircularProgressIndicator(color: chipluxCyan),
+                      )
+                    : errorMessage != null
+                    ? _buildError()
+                    : movies.isEmpty
+                    ? _buildEmpty()
+                    : RefreshIndicator(
+                        color: chipluxCyan,
+                        backgroundColor: chipluxSurface,
+                        onRefresh: _loadMovies,
+                        child: GridView.builder(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(16, 18, 16, 30),
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                crossAxisSpacing: 12,
+                                mainAxisSpacing: 14,
+                                childAspectRatio: 0.62,
+                              ),
+                          itemCount: movies.length,
+                          itemBuilder: (context, index) {
+                            return _PublicWatchedMovieCard(
+                              movie: movies[index],
+                            );
+                          },
+                        ),
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmpty() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(30),
+
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+
+          children: [
+            const Icon(Icons.movie_outlined, color: Colors.white24, size: 48),
+
+            const SizedBox(height: 14),
+
+            Text(
+              '${widget.displayName} has no watched movies yet.',
+
+              textAlign: TextAlign.center,
+
+              style: const TextStyle(
+                color: Colors.white54,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildError() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(30),
+
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+
+          children: [
+            const Icon(
+              Icons.error_outline_rounded,
+              color: Colors.white38,
+              size: 42,
+            ),
+
+            const SizedBox(height: 12),
+
+            Text(errorMessage!, style: const TextStyle(color: Colors.white54)),
+
+            const SizedBox(height: 16),
+
+            OutlinedButton(
+              onPressed: _loadMovies,
+
+              child: const Text('Try Again'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PublicWatchedMovieCard extends StatelessWidget {
+  final Map<String, dynamic> movie;
+
+  const _PublicWatchedMovieCard({required this.movie});
+
+  @override
+  Widget build(BuildContext context) {
+    final rawId = movie['tmdb_id'];
+
+    final int? id = rawId is num
+        ? rawId.toInt()
+        : int.tryParse(rawId?.toString() ?? '');
+
+    final title = movie['title']?.toString().trim() ?? '';
+
+    final year = movie['year']?.toString().trim() ?? '';
+
+    final posterPath = movie['poster_path']?.toString();
+
+    final posterUrl = posterPath != null && posterPath.isNotEmpty
+        ? 'https://image.tmdb.org/t/p/w342$posterPath'
+        : null;
+
+    return Material(
+      color: Colors.transparent,
+
+      child: InkWell(
+        onTap: id == null
+            ? null
+            : () {
+                Navigator.push(
+                  context,
+
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        MediaDetailsPage(id: id, mediaType: 'movie'),
+                  ),
+                );
+              },
+
+        borderRadius: BorderRadius.circular(18),
+
+        child: Container(
+          decoration: BoxDecoration(
+            color: chipluxSurface,
+
+            borderRadius: BorderRadius.circular(18),
+
+            border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+          ),
+
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(18),
+
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    width: double.infinity,
+
+                    child: posterUrl != null
+                        ? Image.network(
+                            posterUrl,
+                            fit: BoxFit.cover,
+
+                            errorBuilder: (context, error, stackTrace) {
+                              return const _PublicMoviePosterFallback();
+                            },
+                          )
+                        : const _PublicMoviePosterFallback(),
+                  ),
+                ),
+
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(11, 10, 11, 11),
+
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+
+                    children: [
+                      Text(
+                        title.isNotEmpty ? title : 'Unknown Movie',
+
+                        maxLines: 2,
+
+                        overflow: TextOverflow.ellipsis,
+
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+
+                      if (year.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+
+                        Text(
+                          year,
+
+                          style: const TextStyle(
+                            color: Colors.white38,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PublicMoviePosterFallback extends StatelessWidget {
+  const _PublicMoviePosterFallback();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: chipluxSurfaceLight,
+
+      child: const Center(
+        child: Icon(Icons.movie_outlined, color: Colors.white24, size: 42),
+      ),
+    );
+  }
+}
+
 class PublicProfilePage extends StatefulWidget {
   final String userId;
 
@@ -5956,6 +6727,19 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                         icon: Icons.tv_rounded,
 
                         frameAchievement: selectedPublicCosmetic(tvGroup),
+
+                        onTap: () {
+                          Navigator.push(
+                            context,
+
+                            MaterialPageRoute(
+                              builder: (_) => _PublicCompletedTvShowsPage(
+                                userId: widget.userId,
+                                displayName: name,
+                              ),
+                            ),
+                          );
+                        },
                       ),
 
                       const SizedBox(height: 7),
@@ -5970,6 +6754,19 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                         icon: Icons.playlist_add_check_rounded,
 
                         frameAchievement: selectedPublicCosmetic(episodeGroup),
+
+                        onTap: () {
+                          Navigator.push(
+                            context,
+
+                            MaterialPageRoute(
+                              builder: (_) => _PublicCompletedTvShowsPage(
+                                userId: widget.userId,
+                                displayName: name,
+                              ),
+                            ),
+                          );
+                        },
                       ),
 
                       const SizedBox(height: 7),
@@ -5984,6 +6781,19 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                         icon: Icons.movie_outlined,
 
                         frameAchievement: selectedPublicCosmetic(movieGroup),
+
+                        onTap: () {
+                          Navigator.push(
+                            context,
+
+                            MaterialPageRoute(
+                              builder: (_) => _PublicWatchedMoviesPage(
+                                userId: widget.userId,
+                                displayName: name,
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -6030,6 +6840,19 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                         frameAchievement: selectedPublicCosmetic(
                           episodeRatedGroup,
                         ),
+
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => _PublicCompletedTvShowsPage(
+                                userId: widget.userId,
+                                displayName: name,
+                                sortByRated: true,
+                              ),
+                            ),
+                          );
+                        },
                       ),
 
                       const SizedBox(height: 7),
@@ -6044,6 +6867,19 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                         frameAchievement: selectedPublicCosmetic(
                           tvShowsRatedGroup,
                         ),
+
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => _PublicCompletedTvShowsPage(
+                                userId: widget.userId,
+                                displayName: name,
+                                sortByRated: true,
+                              ),
+                            ),
+                          );
+                        },
                       ),
 
                       const SizedBox(height: 7),
@@ -6058,6 +6894,19 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                         frameAchievement: selectedPublicCosmetic(
                           moviesRatedGroup,
                         ),
+
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => _PublicWatchedMoviesPage(
+                                userId: widget.userId,
+                                displayName: name,
+                                sortByRated: true,
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -16063,7 +16912,7 @@ _AchievementGroup _medalCollectionAchievementGroupFor(int unlockedMilestones) {
         id: 'medal_collection_64',
         title: 'Master Collector',
         description: 'Unlock 64 achievement milestones',
-        icon: Icons.stars_rounded,
+        icon: Icons.collections_bookmark_rounded,
         current: unlockedMilestones,
         target: 64,
         rarity: _AchievementRarity.epic,
@@ -16074,7 +16923,7 @@ _AchievementGroup _medalCollectionAchievementGroupFor(int unlockedMilestones) {
         id: 'medal_collection_128',
         title: 'Legendary Collection',
         description: 'Unlock 128 achievement milestones',
-        icon: Icons.diamond_rounded,
+        icon: Icons.collections_rounded,
         current: unlockedMilestones,
         target: 128,
         rarity: _AchievementRarity.legendary,
@@ -16306,7 +17155,7 @@ _AchievementGroup _followersAchievementGroupFor(int followers) {
         id: 'followers_128',
         title: 'Chiplux Influencer',
         description: 'Have 128 followers',
-        icon: Icons.auto_awesome_rounded,
+        icon: Icons.record_voice_over_rounded,
         current: followers,
         target: 128,
         rarity: _AchievementRarity.epic,
@@ -16317,7 +17166,7 @@ _AchievementGroup _followersAchievementGroupFor(int followers) {
         id: 'followers_256',
         title: 'Chiplux Icon',
         description: 'Have 256 followers',
-        icon: Icons.workspace_premium_rounded,
+        icon: Icons.verified_user_rounded,
         current: followers,
         target: 256,
         rarity: _AchievementRarity.legendary,
@@ -16399,7 +17248,7 @@ _AchievementGroup _publicProfileViewAchievementGroupFor(int viewedProfiles) {
         id: 'profile_views_512',
         title: 'Community Veteran',
         description: 'View 512 public profiles',
-        icon: Icons.auto_awesome_rounded,
+        icon: Icons.explore_rounded,
         current: viewedProfiles,
         target: 512,
         rarity: _AchievementRarity.epic,
@@ -16410,7 +17259,7 @@ _AchievementGroup _publicProfileViewAchievementGroupFor(int viewedProfiles) {
         id: 'profile_views_1024',
         title: 'Community Legend',
         description: 'View 1024 public profiles',
-        icon: Icons.workspace_premium_rounded,
+        icon: Icons.language_rounded,
         current: viewedProfiles,
         target: 1024,
         rarity: _AchievementRarity.legendary,
@@ -17020,6 +17869,8 @@ class MedalPinService extends ChangeNotifier {
 }
 
 class ProfilePage extends StatefulWidget {
+  final VoidCallback? onTvShowsWatchedTap;
+
   final VoidCallback? onEpisodesWatchedTap;
 
   final VoidCallback? onMoviesWatchedTap;
@@ -17032,6 +17883,7 @@ class ProfilePage extends StatefulWidget {
 
   const ProfilePage({
     super.key,
+    this.onTvShowsWatchedTap,
     this.onEpisodesWatchedTap,
     this.onMoviesWatchedTap,
     this.onEpisodesRatedTap,
@@ -18169,6 +19021,8 @@ class _ProfilePageState extends State<ProfilePage> {
 
                       frameAchievement: achievementCosmetics
                           .selectedAchievement(tvGroup),
+
+                      onTap: widget.onTvShowsWatchedTap,
                     ),
 
                     const SizedBox(height: 7),
