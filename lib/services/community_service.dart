@@ -66,17 +66,17 @@ class CommunityService {
   // FOLLOWERS
   // =====================================================
 
-  Future<List<Map<String, dynamic>>> getFollowers() async {
-    final user = currentUser;
+  Future<List<Map<String, dynamic>>> getFollowers({String? userId}) async {
+    final targetUserId = userId ?? currentUser?.id;
 
-    if (user == null) {
+    if (targetUserId == null) {
       return [];
     }
 
     final follows = await client
         .from('follows')
         .select('follower_id, created_at')
-        .eq('following_id', user.id)
+        .eq('following_id', targetUserId)
         .order('created_at', ascending: false);
 
     final rows = List<Map<String, dynamic>>.from(follows);
