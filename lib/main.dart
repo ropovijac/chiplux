@@ -59,6 +59,9 @@ Future<void> _loadCurrentAccountAchievementState() async {
     AvatarFrameService.instance.load(),
 
     _AchievementCosmeticService.instance.load(),
+
+    ProfileTitleService.instance.load(),
+
   ]);
 
   await _MedalCollectionUnlockTracker.instance.initialize();
@@ -1440,14 +1443,27 @@ Future<void> _autoApplyAchievementReward(_Achievement achievement) async {
   try {
     final id = achievement.id;
 
-    if (id.startsWith('medal_collection_')) {
-      await _AchievementCosmeticService.instance.applyTier(
-        'medal_collection',
-        id,
-      );
+    if (id.startsWith(
+  'medal_collection_',
+)) {
+  // Achievement Button reward.
+  await _AchievementCosmeticService
+      .instance
+      .applyTier(
+    'medal_collection',
+    id,
+  );
 
-      return;
-    }
+  // Display Name Color reward.
+  await _AchievementCosmeticService
+      .instance
+      .applyTier(
+    'display_name_color',
+    id,
+  );
+
+  return;
+}
 
     // =========================
     // DISPLAY NAME FRAME
@@ -6259,6 +6275,142 @@ class _PublicFollowersPageState extends State<_PublicFollowersPage> {
   }
 }
 
+class _ProfileTitleOption
+    extends StatelessWidget {
+  final _Achievement? achievement;
+
+  final bool selected;
+
+  final VoidCallback onTap;
+
+  const _ProfileTitleOption({
+    required this.achievement,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors =
+        achievement == null
+            ? const [
+                chipluxCyan,
+                chipluxViolet,
+              ]
+            : _achievementTierColors(
+                achievement,
+              );
+
+    final accent =
+        colors.isNotEmpty
+            ? colors.first
+            : chipluxCyan;
+
+    final title =
+        achievement?.title ??
+            'None';
+
+    return SizedBox(
+      width: 132,
+
+      child: Material(
+        color: Colors.transparent,
+
+        child: InkWell(
+          onTap: onTap,
+
+          borderRadius:
+              BorderRadius.circular(
+            15,
+          ),
+
+          child: Container(
+            padding:
+                const EdgeInsets.all(
+              9,
+            ),
+
+            decoration:
+                BoxDecoration(
+              color: selected
+                  ? accent.withValues(
+                      alpha: 0.07,
+                    )
+                  : Colors.transparent,
+
+              borderRadius:
+                  BorderRadius.circular(
+                15,
+              ),
+
+              border: Border.all(
+                color: selected
+                    ? accent.withValues(
+                        alpha: 0.75,
+                      )
+                    : Colors.white
+                        .withValues(
+                        alpha: 0.07,
+                      ),
+
+                width:
+                    selected ? 1.4 : 1,
+              ),
+            ),
+
+            child: Column(
+              mainAxisAlignment:
+                  MainAxisAlignment
+                      .center,
+
+              children: [
+                Icon(
+                  achievement?.icon ??
+                      Icons
+                          .title_rounded,
+
+                  color: accent,
+
+                  size: 23,
+                ),
+
+                const SizedBox(
+                  height: 7,
+                ),
+
+                Text(
+                  title,
+
+                  maxLines: 1,
+
+                  overflow:
+                      TextOverflow
+                          .ellipsis,
+
+                  textAlign:
+                      TextAlign.center,
+
+                  style: TextStyle(
+                    color: selected
+                        ? accent
+                        : Colors
+                            .white70,
+
+                    fontSize: 10,
+
+                    fontWeight:
+                        FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class PublicProfilePage extends StatefulWidget {
   final String userId;
 
@@ -6330,7 +6482,8 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
             'pinned_achievement_id, '
             'display_name_frame_id, '
             'avatar_frame_id, '
-            'achievement_cosmetics',
+'profile_title_id, '
+'achievement_cosmetics',
           )
           .eq('id', widget.userId)
           .maybeSingle();
@@ -6586,6 +6739,23 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
       publicUnlockedAchievements,
     );
 
+    final publicTitleGroups =
+    <_AchievementGroup>[
+  ...publicAchievementGroups,
+  publicMedalCollectionGroup,
+];
+
+final selectedPublicTitleId =
+    profile!['profile_title_id']
+        ?.toString()
+        .trim();
+
+final selectedPublicTitle =
+    _findProfileTitleAchievement(
+  publicTitleGroups,
+  selectedPublicTitleId,
+);
+
     final criticXp = intStat('critic_xp');
 
     final criticRequiredXp = intStat('critic_required_xp');
@@ -6669,6 +6839,42 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
         }
       });
     }
+
+    final selectedPublicNameColorId =
+    achievementCosmetics[
+        'display_name_color'];
+
+_Achievement?
+    selectedPublicNameColorAchievement;
+
+if (selectedPublicNameColorId !=
+    null) {
+  for (final tier in
+      publicMedalCollectionGroup.tiers) {
+    if (tier.id ==
+            selectedPublicNameColorId &&
+        tier.unlocked) {
+      selectedPublicNameColorAchievement =
+          tier;
+
+      break;
+    }
+  }
+}
+
+final publicNameColors =
+    _achievementTierColors(
+  selectedPublicNameColorAchievement,
+);
+
+final Color publicDisplayNameColor =
+    selectedPublicNameColorAchievement
+                ?.visualTier ==
+            4
+        ? const Color(0xFFFFC857)
+        : publicNameColors.isNotEmpty
+        ? publicNameColors.first
+        : Colors.white;
 
     _Achievement? selectedPublicCosmetic(_AchievementGroup group) {
       final selectedId = achievementCosmetics[group.id];
@@ -6898,10 +7104,19 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
 
                       const SizedBox(height: 10),
 
-                      // =========================
-                      // DISPLAY NAME + MEDAL
-                      // =========================
-                      Stack(
+if (selectedPublicTitle != null) ...[
+  _ProfileTitleLabel(
+    achievement:
+        selectedPublicTitle,
+  ),
+
+  const SizedBox(height: 5),
+],
+
+// =========================
+// DISPLAY NAME + MEDAL
+// =========================
+Stack(
                         clipBehavior: Clip.none,
                         alignment: Alignment.center,
 
@@ -6924,18 +7139,41 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                               ),
 
                               child: Text(
-                                name,
+  name,
 
-                                maxLines: 1,
+  maxLines: 1,
 
-                                overflow: TextOverflow.ellipsis,
+  overflow:
+      TextOverflow.ellipsis,
 
-                                style: const TextStyle(
-                                  fontSize: 18,
+  style: TextStyle(
+    color:
+        publicDisplayNameColor,
 
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
+    fontSize: 18,
+
+    fontWeight:
+        FontWeight.bold,
+
+    letterSpacing: 0.3,
+
+    shadows:
+        selectedPublicNameColorAchievement !=
+                null
+            ? [
+                Shadow(
+                  color:
+                      publicDisplayNameColor
+                          .withValues(
+                    alpha: 0.25,
+                  ),
+
+                  blurRadius: 6,
+                ),
+              ]
+            : null,
+  ),
+),
                             ),
                           ),
 
@@ -7323,6 +7561,119 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
       ),
     );
   }
+}
+
+List<_AchievementGroup>
+    _currentUserProfileTitleGroups() {
+  final library =
+      LibraryService.instance;
+
+  final critic =
+      CriticService.instance;
+
+  final runtimeLevel =
+      _runtimeLevelForMinutes(
+    library.totalWatchedMinutes,
+  );
+
+  final normalGroups =
+      <_AchievementGroup>[
+    // MOVIES
+    _movieAchievementGroupFor(
+      library.moviesWatchedCount,
+    ),
+
+    _moviesRatedAchievementGroupFor(
+      critic.movieRatingCount,
+    ),
+
+    // TV
+    _tvAchievementGroupFor(
+      library.completedTvShowsCount,
+    ),
+
+    _episodeAchievementGroupFor(
+      library.watchedEpisodeCount,
+    ),
+
+    _tvShowsRatedAchievementGroupFor(
+      critic.tvRatingCount,
+    ),
+
+    _episodeRatedAchievementGroupFor(
+      critic.episodeRatingCount,
+    ),
+
+    // COMMUNITY
+    _publicProfileViewAchievementGroupFor(
+      PublicProfileViewService
+          .instance
+          .viewCount,
+    ),
+
+    _followersAchievementGroupFor(
+      FollowerCountService
+          .instance
+          .peakFollowerCount,
+    ),
+
+    // CHIPLUX
+    _dailyLoginAchievementGroupFor(
+      DailyLoginService
+          .instance
+          .loginDays,
+    ),
+
+    _runtimeLevelAchievementGroupFor(
+      runtimeLevel,
+    ),
+
+    _ratingsLevelAchievementGroupFor(
+      critic.level,
+    ),
+  ];
+
+  final unlockedCount =
+      _unlockedAchievementCount(
+    normalGroups,
+  );
+
+  return [
+    ...normalGroups,
+
+    _medalCollectionAchievementGroupFor(
+      unlockedCount,
+    ),
+  ];
+}
+
+_Achievement?
+    _findProfileTitleAchievement(
+  Iterable<_AchievementGroup> groups,
+  String? achievementId, {
+  bool requireUnlocked = true,
+}) {
+  if (achievementId == null ||
+      achievementId.isEmpty) {
+    return null;
+  }
+
+  for (final group in groups) {
+    for (final tier in group.tiers) {
+      if (tier.id != achievementId) {
+        continue;
+      }
+
+      if (requireUnlocked &&
+          !tier.unlocked) {
+        return null;
+      }
+
+      return tier;
+    }
+  }
+
+  return null;
 }
 
 class _PublicAchievementsCard extends StatelessWidget {
@@ -12571,15 +12922,25 @@ class _WatchingTvCard extends StatefulWidget {
   State<_WatchingTvCard> createState() => _WatchingTvCardState();
 }
 
-class _WatchingTvCardState extends State<_WatchingTvCard> {
-  static const String _nextEpisodeCacheKey = 'chiplux_next_episode_cache_v1';
+class _WatchingTvCardState
+    extends State<_WatchingTvCard> {
+  static const String
+      _nextEpisodeCacheKey =
+      'chiplux_next_episode_cache_v1';
 
-  static final Map<int, Map<String, dynamic>> _nextEpisodeCache = {};
+  static final Map<
+      int,
+      Map<String, dynamic>>
+      _nextEpisodeCache = {};
 
-  static Future<void>? _cacheLoadFuture;
-  final TmdbService tmdbService = TmdbService();
+  static Future<void>?
+      _cacheLoadFuture;
 
-  final LibraryService library = LibraryService.instance;
+  final TmdbService tmdbService =
+      TmdbService();
+
+  final LibraryService library =
+      LibraryService.instance;
 
   bool loading = true;
 
@@ -12588,75 +12949,135 @@ class _WatchingTvCardState extends State<_WatchingTvCard> {
   int? seasonNumber;
   int? episodeNumber;
 
+  // Total number of episodes
+  // in the current season.
+  int? seasonEpisodeCount;
+
   String episodeName = '';
+
   int? runtime;
+
   double? episodeRating;
 
   Future<void> _ensureCacheLoaded() {
-    _cacheLoadFuture ??= _loadCacheFromDisk();
+    _cacheLoadFuture ??=
+        _loadCacheFromDisk();
 
     return _cacheLoadFuture!;
   }
 
-  Future<void> _loadCacheFromDisk() async {
+  Future<void>
+      _loadCacheFromDisk() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs =
+          await SharedPreferences
+              .getInstance();
 
-      final raw = prefs.getString(_nextEpisodeCacheKey);
+      final raw = prefs.getString(
+        _nextEpisodeCacheKey,
+      );
 
-      if (raw == null || raw.isEmpty) {
+      if (raw == null ||
+          raw.isEmpty) {
         return;
       }
 
-      final decoded = jsonDecode(raw);
+      final decoded =
+          jsonDecode(raw);
 
       if (decoded is! Map) {
         return;
       }
 
-      for (final entry in decoded.entries) {
-        final showId = int.tryParse(entry.key.toString());
+      for (final entry
+          in decoded.entries) {
+        final showId =
+            int.tryParse(
+          entry.key.toString(),
+        );
 
-        if (showId == null || entry.value is! Map) {
+        if (showId == null ||
+            entry.value is! Map) {
           continue;
         }
 
-        _nextEpisodeCache[showId] = Map<String, dynamic>.from(entry.value);
+        _nextEpisodeCache[showId] =
+            Map<String, dynamic>.from(
+          entry.value,
+        );
       }
     } catch (e) {
-      debugPrint('Could not load next episode cache: $e');
+      debugPrint(
+        'Could not load next episode cache: $e',
+      );
     }
   }
 
-  Future<void> _saveCacheToDisk() async {
+  Future<void>
+      _saveCacheToDisk() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs =
+          await SharedPreferences
+              .getInstance();
 
-      final data = <String, dynamic>{};
+      final data =
+          <String, dynamic>{};
 
-      for (final entry in _nextEpisodeCache.entries) {
-        data[entry.key.toString()] = entry.value;
+      for (final entry
+          in _nextEpisodeCache.entries) {
+        data[entry.key.toString()] =
+            entry.value;
       }
 
-      await prefs.setString(_nextEpisodeCacheKey, jsonEncode(data));
+      await prefs.setString(
+        _nextEpisodeCacheKey,
+        jsonEncode(data),
+      );
     } catch (e) {
-      debugPrint('Could not save next episode cache: $e');
+      debugPrint(
+        'Could not save next episode cache: $e',
+      );
     }
   }
 
-  void _applyCachedEpisode(Map<String, dynamic> cached) {
-    final cachedRating = cached['episodeRating'];
+  void _applyCachedEpisode(
+    Map<String, dynamic> cached,
+  ) {
+    final cachedRating =
+        cached['episodeRating'];
+
+    final cachedSeasonEpisodeCount =
+        cached['seasonEpisodeCount'];
 
     setState(() {
-      seasonNumber = cached['seasonNumber'] as int?;
+      seasonNumber =
+          cached['seasonNumber']
+              as int?;
 
-      episodeNumber = cached['episodeNumber'] as int?;
+      episodeNumber =
+          cached['episodeNumber']
+              as int?;
 
-      episodeName = cached['episodeName']?.toString() ?? '';
+      seasonEpisodeCount =
+          cachedSeasonEpisodeCount
+                  is num
+              ? cachedSeasonEpisodeCount
+                  .toInt()
+              : null;
 
-      runtime = cached['runtime'] as int?;
+      episodeName =
+          cached['episodeName']
+                  ?.toString() ??
+              '';
 
-      episodeRating = cachedRating is num ? cachedRating.toDouble() : null;
+      runtime =
+          cached['runtime'] as int?;
+
+      episodeRating =
+          cachedRating is num
+              ? cachedRating
+                  .toDouble()
+              : null;
 
       loading = false;
     });
@@ -12669,45 +13090,87 @@ class _WatchingTvCardState extends State<_WatchingTvCard> {
     _loadCachedThenRefresh();
   }
 
-  Future<void> _loadCachedThenRefresh() async {
+  Future<void>
+      _loadCachedThenRefresh() async {
     await _ensureCacheLoaded();
 
     if (!mounted) return;
 
-    final cached = _nextEpisodeCache[widget.item.id];
+    final cached =
+        _nextEpisodeCache[
+            widget.item.id];
 
-    final currentWatched = library.watchedCountForShow(widget.item.id);
+    final currentWatched =
+        library
+            .watchedCountForShow(
+      widget.item.id,
+    );
 
     bool validCache = false;
+
     bool cacheIsOld = true;
 
-    if (cached != null && cached['watchedCount'] == currentWatched) {
+    if (cached != null &&
+        cached['watchedCount'] ==
+            currentWatched) {
       validCache = true;
 
-      _applyCachedEpisode(cached);
+      _applyCachedEpisode(
+        cached,
+      );
 
-      final updatedAt = cached['updatedAt'];
+      // Older cache entries won't
+      // contain seasonEpisodeCount.
+      // Force a background refresh
+      // so they update automatically.
+      final bool missingSeasonCount =
+          cached['seasonNumber'] !=
+                  null &&
+              cached[
+                      'seasonEpisodeCount'] ==
+                  null;
+
+      final updatedAt =
+          cached['updatedAt'];
 
       if (updatedAt is num) {
-        final age = DateTime.now().millisecondsSinceEpoch - updatedAt.toInt();
+        final age =
+            DateTime.now()
+                    .millisecondsSinceEpoch -
+                updatedAt.toInt();
 
-        cacheIsOld = age > const Duration(minutes: 15).inMilliseconds;
+        cacheIsOld =
+            missingSeasonCount ||
+                age >
+                    const Duration(
+                      minutes: 15,
+                    ).inMilliseconds;
+      } else {
+        cacheIsOld = true;
       }
     }
 
     // No usable cached information:
     // load normally.
     if (!validCache) {
-      await _loadNextEpisode(forceRefresh: true, showLoader: true);
+      await _loadNextEpisode(
+        forceRefresh: true,
+        showLoader: true,
+      );
 
       return;
     }
 
     // We already displayed the cache.
-    // Only refresh TMDB in the background
-    // if the cache is old.
+    // Only refresh TMDB in the
+    // background if needed.
     if (cacheIsOld) {
-      unawaited(_loadNextEpisode(forceRefresh: true, showLoader: false));
+      unawaited(
+        _loadNextEpisode(
+          forceRefresh: true,
+          showLoader: false,
+        ),
+      );
     }
   }
 
@@ -12715,28 +13178,58 @@ class _WatchingTvCardState extends State<_WatchingTvCard> {
     bool forceRefresh = false,
     bool showLoader = true,
   }) async {
-    final int currentWatchedCount = library.watchedCountForShow(widget.item.id);
+    final int currentWatchedCount =
+        library
+            .watchedCountForShow(
+      widget.item.id,
+    );
 
-    // Use the already calculated result immediately.
-    final cached = _nextEpisodeCache[widget.item.id];
+    final cached =
+        _nextEpisodeCache[
+            widget.item.id];
 
     if (!forceRefresh &&
         cached != null &&
-        cached['watchedCount'] == currentWatchedCount) {
+        cached['watchedCount'] ==
+            currentWatchedCount) {
       if (!mounted) return;
 
+      final cachedRating =
+          cached['episodeRating'];
+
+      final cachedSeasonEpisodeCount =
+          cached[
+              'seasonEpisodeCount'];
+
       setState(() {
-        seasonNumber = cached['seasonNumber'] as int?;
+        seasonNumber =
+            cached['seasonNumber']
+                as int?;
 
-        episodeNumber = cached['episodeNumber'] as int?;
+        episodeNumber =
+            cached['episodeNumber']
+                as int?;
 
-        episodeName = cached['episodeName']?.toString() ?? '';
+        seasonEpisodeCount =
+            cachedSeasonEpisodeCount
+                    is num
+                ? cachedSeasonEpisodeCount
+                    .toInt()
+                : null;
 
-        runtime = cached['runtime'] as int?;
+        episodeName =
+            cached['episodeName']
+                    ?.toString() ??
+                '';
 
-        final cachedRating = cached['episodeRating'];
+        runtime =
+            cached['runtime'] as int?;
 
-        episodeRating = cachedRating is num ? cachedRating.toDouble() : null;
+        episodeRating =
+            cachedRating is num
+                ? cachedRating
+                    .toDouble()
+                : null;
 
         loading = false;
       });
@@ -12751,77 +13244,135 @@ class _WatchingTvCardState extends State<_WatchingTvCard> {
     }
 
     try {
-      final details = await tmdbService.getDetails(widget.item.id, 'tv');
+      final details =
+          await tmdbService
+              .getDetails(
+        widget.item.id,
+        'tv',
+      );
 
-      final List<dynamic> seasons = details['seasons'] ?? [];
+      final List<dynamic> seasons =
+          details['seasons'] ?? [];
 
-      final validSeasons = seasons.where((season) {
-        final number = season['season_number'];
+      final validSeasons =
+          seasons.where(
+        (season) {
+          final number =
+              season[
+                  'season_number'];
 
-        return number is num && number.toInt() > 0;
-      }).toList();
+          return number is num &&
+              number.toInt() > 0;
+        },
+      ).toList();
 
-      validSeasons.sort((a, b) {
-        final aNumber = (a['season_number'] as num).toInt();
+      validSeasons.sort(
+        (a, b) {
+          final aNumber =
+              (a['season_number']
+                      as num)
+                  .toInt();
 
-        final bNumber = (b['season_number'] as num).toInt();
+          final bNumber =
+              (b['season_number']
+                      as num)
+                  .toInt();
 
-        return aNumber.compareTo(bNumber);
-      });
+          return aNumber.compareTo(
+            bNumber,
+          );
+        },
+      );
 
-      Map<String, dynamic>? nextEpisode;
+      Map<String, dynamic>?
+          nextEpisode;
 
       int? foundSeason;
 
-      for (final season in validSeasons) {
-        final int seasonNo = (season['season_number'] as num).toInt();
+      int?
+          foundSeasonEpisodeCount;
 
-        final int episodeCount = season['episode_count'] is num
-            ? (season['episode_count'] as num).toInt()
-            : 0;
+      for (final season
+          in validSeasons) {
+        final int seasonNo =
+            (season[
+                    'season_number']
+                as num)
+                .toInt();
 
-        final int watchedInSeason = library.watchedCountForSeason(
+        final int episodeCount =
+            season['episode_count']
+                    is num
+                ? (season[
+                            'episode_count']
+                        as num)
+                    .toInt()
+                : 0;
+
+        final int
+            watchedInSeason =
+            library
+                .watchedCountForSeason(
           widget.item.id,
           seasonNo,
         );
 
-        // IMPORTANT:
-        // We already know this whole
-        // season is watched, so there is
-        // no reason to download it from
-        // TMDB.
-        if (episodeCount > 0 && watchedInSeason >= episodeCount) {
+        // Skip fully watched seasons.
+        if (episodeCount > 0 &&
+            watchedInSeason >=
+                episodeCount) {
           continue;
         }
 
-        // Only download the first
+        // Download only the first
         // incomplete season.
-        final episodes = await tmdbService.getSeasonEpisodes(
+        final episodes =
+            await tmdbService
+                .getSeasonEpisodes(
           widget.item.id,
           seasonNo,
         );
 
-        for (final rawEpisode in episodes) {
-          final episode = Map<String, dynamic>.from(rawEpisode);
+        for (final rawEpisode
+            in episodes) {
+          final episode =
+              Map<String, dynamic>.from(
+            rawEpisode,
+          );
 
-          final rawEpisodeNumber = episode['episode_number'];
+          final rawEpisodeNumber =
+              episode[
+                  'episode_number'];
 
-          if (rawEpisodeNumber is! num) {
+          if (rawEpisodeNumber
+              is! num) {
             continue;
           }
 
-          final int episodeNo = rawEpisodeNumber.toInt();
+          final int episodeNo =
+              rawEpisodeNumber
+                  .toInt();
 
-          final watched = library.isEpisodeWatched(
+          final watched =
+              library
+                  .isEpisodeWatched(
             widget.item.id,
             seasonNo,
             episodeNo,
           );
 
           if (!watched) {
-            nextEpisode = episode;
+            nextEpisode =
+                episode;
 
-            foundSeason = seasonNo;
+            foundSeason =
+                seasonNo;
+
+            foundSeasonEpisodeCount =
+                episodeCount > 0
+                    ? episodeCount
+                    : episodes
+                        .length;
 
             break;
           }
@@ -12835,70 +13386,139 @@ class _WatchingTvCardState extends State<_WatchingTvCard> {
       if (!mounted) return;
 
       if (nextEpisode == null) {
-        _nextEpisodeCache[widget.item.id] = {
-          'watchedCount': library.watchedCountForShow(widget.item.id),
+        _nextEpisodeCache[
+            widget.item.id] = {
+          'watchedCount':
+              library
+                  .watchedCountForShow(
+            widget.item.id,
+          ),
 
           'seasonNumber': null,
           'episodeNumber': null,
+          'seasonEpisodeCount':
+              null,
 
-          'episodeName': 'All episodes watched',
+          'episodeName':
+              'All episodes watched',
 
           'runtime': null,
+
           'episodeRating': null,
 
-          'updatedAt': DateTime.now().millisecondsSinceEpoch,
+          'updatedAt':
+              DateTime.now()
+                  .millisecondsSinceEpoch,
         };
 
-        unawaited(_saveCacheToDisk());
+        unawaited(
+          _saveCacheToDisk(),
+        );
 
         setState(() {
           seasonNumber = null;
+
           episodeNumber = null;
-          episodeName = 'All episodes watched';
+
+          seasonEpisodeCount = null;
+
+          episodeName =
+              'All episodes watched';
+
           runtime = null;
+
           episodeRating = null;
+
           loading = false;
         });
 
         return;
       }
 
-      final rawRuntime = nextEpisode['runtime'];
+      final rawRuntime =
+          nextEpisode['runtime'];
 
-      final rawRating = nextEpisode['vote_average'];
+      final rawRating =
+          nextEpisode[
+              'vote_average'];
 
-      final int? newRuntime = rawRuntime is num ? rawRuntime.toInt() : null;
+      final int? newRuntime =
+          rawRuntime is num
+              ? rawRuntime.toInt()
+              : null;
 
-      final double? newEpisodeRating =
-          rawRating is num && rawRating.toDouble() > 0
-          ? rawRating.toDouble()
-          : null;
+      final double?
+          newEpisodeRating =
+          rawRating is num &&
+                  rawRating
+                          .toDouble() >
+                      0
+              ? rawRating
+                  .toDouble()
+              : null;
 
-      final int newEpisodeNumber = (nextEpisode['episode_number'] as num)
-          .toInt();
+      final int
+          newEpisodeNumber =
+          (nextEpisode[
+                      'episode_number']
+                  as num)
+              .toInt();
 
-      _nextEpisodeCache[widget.item.id] = {
-        'watchedCount': library.watchedCountForShow(widget.item.id),
-        'seasonNumber': foundSeason,
-        'episodeNumber': newEpisodeNumber,
-        'episodeName': nextEpisode['name'] ?? 'Episode',
-        'runtime': newRuntime,
-        'episodeRating': newEpisodeRating,
-        'updatedAt': DateTime.now().millisecondsSinceEpoch,
+      _nextEpisodeCache[
+          widget.item.id] = {
+        'watchedCount':
+            library
+                .watchedCountForShow(
+          widget.item.id,
+        ),
+
+        'seasonNumber':
+            foundSeason,
+
+        'episodeNumber':
+            newEpisodeNumber,
+
+        'seasonEpisodeCount':
+            foundSeasonEpisodeCount,
+
+        'episodeName':
+            nextEpisode['name'] ??
+                'Episode',
+
+        'runtime':
+            newRuntime,
+
+        'episodeRating':
+            newEpisodeRating,
+
+        'updatedAt':
+            DateTime.now()
+                .millisecondsSinceEpoch,
       };
 
-      unawaited(_saveCacheToDisk());
+      unawaited(
+        _saveCacheToDisk(),
+      );
 
       setState(() {
-        seasonNumber = foundSeason;
+        seasonNumber =
+            foundSeason;
 
-        episodeNumber = newEpisodeNumber;
+        episodeNumber =
+            newEpisodeNumber;
 
-        episodeName = nextEpisode!['name'] ?? 'Episode';
+        seasonEpisodeCount =
+            foundSeasonEpisodeCount;
 
-        runtime = newRuntime;
+        episodeName =
+            nextEpisode!['name'] ??
+                'Episode';
 
-        episodeRating = newEpisodeRating;
+        runtime =
+            newRuntime;
+
+        episodeRating =
+            newEpisodeRating;
 
         loading = false;
       });
@@ -12909,22 +13529,30 @@ class _WatchingTvCardState extends State<_WatchingTvCard> {
         loading = false;
       });
 
-      debugPrint('Could not load next episode: $e');
+      debugPrint(
+        'Could not load next episode: $e',
+      );
     }
   }
 
-  Future<bool> _markWatched() async {
-    if (seasonNumber == null || episodeNumber == null) {
+  Future<bool>
+      _markWatched() async {
+    if (seasonNumber == null ||
+        episodeNumber == null) {
       return false;
     }
 
-    final int previousEpisodeCount = library.watchedEpisodeCount;
+    final int
+        previousEpisodeCount =
+        library
+            .watchedEpisodeCount;
 
     await library.toggleEpisode(
       widget.item.id,
       seasonNumber!,
       episodeNumber!,
-      runtimeMinutes: runtime ?? 0,
+      runtimeMinutes:
+          runtime ?? 0,
     );
 
     if (!mounted) {
@@ -12933,15 +13561,19 @@ class _WatchingTvCardState extends State<_WatchingTvCard> {
 
     await _checkEpisodeAchievementUnlock(
       context,
-      previousCount: previousEpisodeCount,
-      currentCount: library.watchedEpisodeCount,
+      previousCount:
+          previousEpisodeCount,
+      currentCount:
+          library
+              .watchedEpisodeCount,
     );
 
     if (!mounted) {
       return false;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
+    ScaffoldMessenger.of(context)
+        .showSnackBar(
       SnackBar(
         content: Text(
           'S${seasonNumber!.toString().padLeft(2, '0')}'
@@ -12950,33 +13582,49 @@ class _WatchingTvCardState extends State<_WatchingTvCard> {
       ),
     );
 
-    await _loadNextEpisode(forceRefresh: true);
+    await _loadNextEpisode(
+      forceRefresh: true,
+    );
 
-    final onMarkedWatched = widget.onMarkedWatched;
+    final onMarkedWatched =
+        widget.onMarkedWatched;
 
-    // Let the Dismissible finish returning
-    // to its normal position first, then
-    // move the show to the top.
+    // Let the Dismissible finish
+    // returning to normal first,
+    // then move show to top.
     unawaited(
-      Future<void>.delayed(const Duration(milliseconds: 220), () {
-        onMarkedWatched?.call();
-      }),
+      Future<void>.delayed(
+        const Duration(
+          milliseconds: 220,
+        ),
+        () {
+          onMarkedWatched?.call();
+        },
+      ),
     );
 
     return false;
   }
 
-  Future<void> _openNextEpisode() async {
-    final int? nextSeason = seasonNumber;
+  Future<void>
+      _openNextEpisode() async {
+    final int? nextSeason =
+        seasonNumber;
 
-    final int? nextEpisode = episodeNumber;
+    final int? nextEpisode =
+        episodeNumber;
 
     // Nothing left to watch.
-    if (nextSeason == null || nextEpisode == null) {
+    if (nextSeason == null ||
+        nextEpisode == null) {
       await Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => MediaDetailsPage(id: widget.item.id, mediaType: 'tv'),
+          builder: (_) =>
+              MediaDetailsPage(
+            id: widget.item.id,
+            mediaType: 'tv',
+          ),
         ),
       );
 
@@ -12984,23 +13632,32 @@ class _WatchingTvCardState extends State<_WatchingTvCard> {
     }
 
     try {
-      final episodes = await tmdbService.getSeasonEpisodes(
+      final episodes =
+          await tmdbService
+              .getSeasonEpisodes(
         widget.item.id,
         nextSeason,
       );
 
-      Map<String, dynamic>? episode;
+      Map<String, dynamic>?
+          episode;
 
       for (final raw in episodes) {
         if (raw is! Map) {
           continue;
         }
 
-        final map = Map<String, dynamic>.from(raw);
+        final map =
+            Map<String, dynamic>.from(
+          raw,
+        );
 
-        final number = map['episode_number'];
+        final number =
+            map['episode_number'];
 
-        if (number is num && number.toInt() == nextEpisode) {
+        if (number is num &&
+            number.toInt() ==
+                nextEpisode) {
           episode = map;
 
           break;
@@ -13015,148 +13672,270 @@ class _WatchingTvCardState extends State<_WatchingTvCard> {
         return;
       }
 
-      final rawRuntime = episode['runtime'];
+      final rawRuntime =
+          episode['runtime'];
 
-      final rawRating = episode['vote_average'];
+      final rawRating =
+          episode['vote_average'];
 
       await Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => SwipeableEpisodePage(
-            showId: widget.item.id,
-            seasonNumber: nextSeason,
-            episodeNumber: nextEpisode,
-            title: episode?['name']?.toString() ?? episodeName,
-            stillPath: episode?['still_path']?.toString(),
-            runtime: rawRuntime is num ? rawRuntime.toInt() : runtime,
-            rating: rawRating is num ? rawRating.toDouble() : episodeRating,
-            overview: episode?['overview']?.toString() ?? '',
-            airDate: episode?['air_date']?.toString(),
+          builder: (_) =>
+              SwipeableEpisodePage(
+            showId:
+                widget.item.id,
+
+            seasonNumber:
+                nextSeason,
+
+            episodeNumber:
+                nextEpisode,
+
+            title:
+                episode?['name']
+                        ?.toString() ??
+                    episodeName,
+
+            stillPath:
+                episode?['still_path']
+                    ?.toString(),
+
+            runtime:
+                rawRuntime is num
+                    ? rawRuntime
+                        .toInt()
+                    : runtime,
+
+            rating:
+                rawRating is num
+                    ? rawRating
+                        .toDouble()
+                    : episodeRating,
+
+            overview:
+                episode?['overview']
+                        ?.toString() ??
+                    '',
+
+            airDate:
+                episode?['air_date']
+                    ?.toString(),
           ),
         ),
       );
     } catch (e) {
-      debugPrint('Could not open next episode: $e');
+      debugPrint(
+        'Could not open next episode: $e',
+      );
     }
 
     if (!mounted) {
       return;
     }
 
-    await _loadNextEpisode(forceRefresh: true);
+    await _loadNextEpisode(
+      forceRefresh: true,
+    );
   }
 
   @override
-  Widget build(BuildContext context) {
-    final posterUrl = widget.item.posterPath != null
-        ? 'https://image.tmdb.org/t/p/w342${widget.item.posterPath}'
-        : null;
+  Widget build(
+    BuildContext context,
+  ) {
+    final posterUrl =
+        widget.item.posterPath != null
+            ? 'https://image.tmdb.org/t/p/w342${widget.item.posterPath}'
+            : null;
 
-    final watched = library.watchedCountForShow(widget.item.id);
+    final watched =
+        library.watchedCountForShow(
+      widget.item.id,
+    );
 
-    final total = widget.item.totalEpisodes;
+    final total =
+        widget.item.totalEpisodes;
 
-    final progress = total <= 0 ? 0.0 : (watched / total).clamp(0.0, 1.0);
+    final progress =
+        total <= 0
+            ? 0.0
+            : (watched / total)
+                .clamp(
+                  0.0,
+                  1.0,
+                );
 
-    final completionPercent = total <= 0
-        ? 0
-        : ((watched / total) * 100).round();
-
-    final episodeCode = seasonNumber != null && episodeNumber != null
-        ? 'S${seasonNumber!.toString().padLeft(2, '0')}'
-              'E${episodeNumber!.toString().padLeft(2, '0')}'
-        : '';
+    final completionPercent =
+        total <= 0
+            ? 0
+            : ((watched / total) *
+                    100)
+                .round();
 
     return Dismissible(
-      key: ValueKey('watching-${widget.item.id}'),
+      key: ValueKey(
+        'watching-${widget.item.id}',
+      ),
 
-      direction: DismissDirection.startToEnd,
+      direction:
+          DismissDirection
+              .startToEnd,
 
-      // Only about 22% of the card needs
-      // to be swiped before it triggers.
-      dismissThresholds: const {DismissDirection.startToEnd: 0.22},
+      dismissThresholds: const {
+        DismissDirection.startToEnd:
+            0.22,
+      },
 
-      // Faster snap / return animation.
-      movementDuration: const Duration(milliseconds: 140),
+      movementDuration:
+          const Duration(
+        milliseconds: 140,
+      ),
 
       onUpdate: (details) {
         setState(() {
-          _swipeProgress = details.progress.clamp(0.0, 1.0).toDouble();
+          _swipeProgress =
+              details.progress
+                  .clamp(
+                    0.0,
+                    1.0,
+                  )
+                  .toDouble();
         });
       },
 
-      confirmDismiss: (_) => _markWatched(),
+      confirmDismiss:
+          (_) => _markWatched(),
 
       background: Container(
-        padding: const EdgeInsets.all(1.2),
+        padding:
+            const EdgeInsets.all(
+          1.2,
+        ),
 
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius:
+              BorderRadius.circular(
+            18,
+          ),
 
-          // Chiplux gradient FRAME only.
-          gradient: const LinearGradient(
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-            colors: [chipluxCyan, chipluxViolet, chipluxPurple],
+          gradient:
+              const LinearGradient(
+            begin:
+                Alignment.centerLeft,
+            end:
+                Alignment.centerRight,
+            colors: [
+              chipluxCyan,
+              chipluxViolet,
+              chipluxPurple,
+            ],
           ),
 
           boxShadow: [
             BoxShadow(
-              color: chipluxViolet.withValues(
-                alpha: 0.04 + (_swipeProgress * 0.12),
+              color: chipluxViolet
+                  .withValues(
+                alpha:
+                    0.04 +
+                        (_swipeProgress *
+                            0.12),
               ),
-              blurRadius: 8 + (_swipeProgress * 10),
+              blurRadius:
+                  8 +
+                      (_swipeProgress *
+                          10),
             ),
           ],
         ),
 
         child: Container(
-          alignment: Alignment.centerLeft,
+          alignment:
+              Alignment.centerLeft,
 
-          padding: const EdgeInsets.symmetric(horizontal: 22),
+          padding:
+              const EdgeInsets
+                  .symmetric(
+            horizontal: 22,
+          ),
 
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(17),
+          decoration:
+              BoxDecoration(
+            borderRadius:
+                BorderRadius.circular(
+              17,
+            ),
 
-            // Dark / restrained swipe area.
             color: Color.alphaBlend(
-              chipluxViolet.withValues(alpha: 0.025 + (_swipeProgress * 0.035)),
+              chipluxViolet
+                  .withValues(
+                alpha:
+                    0.025 +
+                        (_swipeProgress *
+                            0.035),
+              ),
               chipluxBackground,
             ),
           ),
 
           child: Transform.scale(
-            alignment: Alignment.centerLeft,
+            alignment:
+                Alignment.centerLeft,
 
-            scale: 0.86 + (_swipeProgress * 0.14),
+            scale:
+                0.86 +
+                    (_swipeProgress *
+                        0.14),
 
             child: Opacity(
-              opacity: 0.55 + (_swipeProgress * 0.45),
+              opacity:
+                  0.55 +
+                      (_swipeProgress *
+                          0.45),
 
               child: Row(
-                mainAxisSize: MainAxisSize.min,
+                mainAxisSize:
+                    MainAxisSize.min,
+
                 children: [
                   ShaderMask(
-                    shaderCallback: (bounds) {
+                    shaderCallback:
+                        (bounds) {
                       return const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [chipluxCyan, chipluxViolet, chipluxPurple],
-                      ).createShader(bounds);
+                        begin: Alignment
+                            .topLeft,
+                        end: Alignment
+                            .bottomRight,
+                        colors: [
+                          chipluxCyan,
+                          chipluxViolet,
+                          chipluxPurple,
+                        ],
+                      ).createShader(
+                        bounds,
+                      );
                     },
 
-                    child: const Icon(
-                      Icons.check_circle_outline_rounded,
-                      color: Colors.white,
+                    child:
+                        const Icon(
+                      Icons
+                          .check_circle_outline_rounded,
+                      color:
+                          Colors.white,
                       size: 27,
                     ),
                   ),
 
-                  const SizedBox(width: 11),
+                  const SizedBox(
+                    width: 11,
+                  ),
 
                   const GradientText(
                     'Mark as watched',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight:
+                          FontWeight.w700,
+                    ),
                   ),
                 ],
               ),
@@ -13166,160 +13945,392 @@ class _WatchingTvCardState extends State<_WatchingTvCard> {
       ),
 
       child: InkWell(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius:
+            BorderRadius.circular(
+          18,
+        ),
 
         onTap: () async {
           await _openNextEpisode();
         },
 
         child: Container(
-          constraints: const BoxConstraints(minHeight: 138),
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
+          constraints:
+              const BoxConstraints(
+            minHeight: 138,
+          ),
+
+          padding:
+              const EdgeInsets.all(
+            8,
+          ),
+
+          decoration:
+              BoxDecoration(
             color: chipluxSurface,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+
+            borderRadius:
+                BorderRadius.circular(
+              18,
+            ),
+
+            border: Border.all(
+              color: Colors.white
+                  .withValues(
+                alpha: 0.06,
+              ),
+            ),
           ),
 
           child: loading
-              ? const Center(child: CircularProgressIndicator())
+              ? const Center(
+                  child:
+                      CircularProgressIndicator(),
+                )
               : Row(
                   children: [
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: posterUrl != null
-                          ? Image.network(
-                              posterUrl,
-                              width: 82,
-                              height: 118,
-                              fit: BoxFit.cover,
-                            )
-                          : Container(
-                              width: 82,
-                              height: 118,
-                              color: chipluxSurfaceLight,
-                              child: const Icon(Icons.tv_outlined),
-                            ),
+                      borderRadius:
+                          BorderRadius
+                              .circular(
+                        12,
+                      ),
+
+                      child:
+                          posterUrl !=
+                                  null
+                              ? Image.network(
+                                  posterUrl,
+                                  width:
+                                      82,
+                                  height:
+                                      118,
+                                  fit: BoxFit
+                                      .cover,
+                                )
+                              : Container(
+                                  width:
+                                      82,
+                                  height:
+                                      118,
+                                  color:
+                                      chipluxSurfaceLight,
+                                  child:
+                                      const Icon(
+                                    Icons
+                                        .tv_outlined,
+                                  ),
+                                ),
                     ),
 
-                    const SizedBox(width: 10),
+                    const SizedBox(
+                      width: 10,
+                    ),
 
                     Expanded(
                       child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize:
+                            MainAxisSize
+                                .min,
+
+                        crossAxisAlignment:
+                            CrossAxisAlignment
+                                .start,
+
                         children: [
                           Row(
                             children: [
                               Expanded(
-                                child: Text(
-                                  widget.item.title,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.bold,
+                                child:
+                                    Text(
+                                  widget
+                                      .item
+                                      .title,
+
+                                  maxLines:
+                                      1,
+
+                                  overflow:
+                                      TextOverflow
+                                          .ellipsis,
+
+                                  style:
+                                      const TextStyle(
+                                    fontSize:
+                                        17,
+
+                                    fontWeight:
+                                        FontWeight
+                                            .bold,
                                   ),
                                 ),
                               ),
 
                               const Icon(
-                                Icons.chevron_right,
-                                color: Colors.white60,
+                                Icons
+                                    .chevron_right,
+
+                                color:
+                                    Colors
+                                        .white60,
                               ),
                             ],
                           ),
 
-                          const SizedBox(height: 7),
+                          const SizedBox(
+                            height: 6,
+                          ),
+
+                          // =========================
+                          // NEXT EPISODE POSITION
+                          // =========================
+                          if (seasonNumber !=
+                                  null &&
+                              episodeNumber !=
+                                  null) ...[
+                            Row(
+                              children: [
+                                Text(
+                                  'Season $seasonNumber',
+
+                                  style:
+                                      const TextStyle(
+                                    color:
+                                        chipluxCyan,
+
+                                    fontSize:
+                                        12,
+
+                                    fontWeight:
+                                        FontWeight
+                                            .w700,
+                                  ),
+                                ),
+
+                                const SizedBox(
+                                  width: 9,
+                                ),
+
+                                Container(
+                                  width: 3,
+                                  height: 3,
+
+                                  decoration:
+                                      const BoxDecoration(
+                                    color:
+                                        Colors
+                                            .white24,
+
+                                    shape:
+                                        BoxShape
+                                            .circle,
+                                  ),
+                                ),
+
+                                const SizedBox(
+                                  width: 9,
+                                ),
+
+                                Text(
+                                  seasonEpisodeCount !=
+                                              null &&
+                                          seasonEpisodeCount! >
+                                              0
+                                      ? 'EP ${episodeNumber!.toString().padLeft(2, '0')}'
+    '/${seasonEpisodeCount!.toString().padLeft(2, '0')}'
+: 'EP ${episodeNumber!.toString().padLeft(2, '0')}',
+
+                                  style:
+                                      const TextStyle(
+                                    color:
+                                        Colors
+                                            .white54,
+
+                                    fontSize:
+                                        11,
+
+                                    fontWeight:
+                                        FontWeight
+                                            .w600,
+
+                                    letterSpacing:
+                                        0.2,
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(
+                              height: 3,
+                            ),
+                          ],
 
                           Text(
-                            episodeCode.isEmpty
-                                ? episodeName
-                                : '$episodeCode • $episodeName',
+                            episodeName,
+
                             maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white70,
+
+                            overflow:
+                                TextOverflow
+                                    .ellipsis,
+
+                            style:
+                                const TextStyle(
+                              color:
+                                  Colors
+                                      .white70,
+
                               fontSize: 12,
                             ),
                           ),
 
-                          const SizedBox(height: 10),
+                          const SizedBox(
+                            height: 8,
+                          ),
 
                           Row(
                             children: [
                               const Icon(
-                                Icons.access_time_rounded,
+                                Icons
+                                    .access_time_rounded,
+
                                 size: 17,
-                                color: Colors.white54,
+
+                                color:
+                                    Colors
+                                        .white54,
                               ),
 
-                              const SizedBox(width: 5),
+                              const SizedBox(
+                                width: 5,
+                              ),
 
                               Text(
-                                runtime != null ? '${runtime}m' : '--m',
-                                style: const TextStyle(
-                                  color: Colors.white60,
-                                  fontSize: 12,
+                                runtime !=
+                                        null
+                                    ? '${runtime}m'
+                                    : '--m',
+
+                                style:
+                                    const TextStyle(
+                                  color:
+                                      Colors
+                                          .white60,
+
+                                  fontSize:
+                                      12,
                                 ),
                               ),
 
-                              const SizedBox(width: 10),
+                              const SizedBox(
+                                width: 10,
+                              ),
 
                               const Icon(
                                 Icons.star,
+
                                 size: 18,
-                                color: Colors.amber,
+
+                                color:
+                                    Colors
+                                        .amber,
                               ),
 
-                              const SizedBox(width: 5),
+                              const SizedBox(
+                                width: 5,
+                              ),
 
                               Text(
-                                episodeRating != null
+                                episodeRating !=
+                                        null
                                     ? '${episodeRating!.toStringAsFixed(1)}/10'
                                     : '--/10',
-                                style: const TextStyle(
-                                  color: Colors.white60,
-                                  fontSize: 13,
+
+                                style:
+                                    const TextStyle(
+                                  color:
+                                      Colors
+                                          .white60,
+
+                                  fontSize:
+                                      13,
                                 ),
                               ),
                             ],
                           ),
 
-                          const SizedBox(height: 10),
+                          const SizedBox(
+                            height: 8,
+                          ),
 
                           Row(
                             children: [
                               Expanded(
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(20),
-                                  child: LinearProgressIndicator(
-                                    value: progress,
-                                    minHeight: 6,
-                                    backgroundColor: Colors.white12,
+                                child:
+                                    ClipRRect(
+                                  borderRadius:
+                                      BorderRadius
+                                          .circular(
+                                    20,
+                                  ),
+
+                                  child:
+                                      LinearProgressIndicator(
+                                    value:
+                                        progress,
+
+                                    minHeight:
+                                        6,
+
+                                    backgroundColor:
+                                        Colors
+                                            .white12,
+
                                     valueColor:
-                                        const AlwaysStoppedAnimation<Color>(
-                                          chipluxPurple,
-                                        ),
+                                        const AlwaysStoppedAnimation<
+                                            Color>(
+                                      chipluxPurple,
+                                    ),
                                   ),
                                 ),
                               ),
 
-                              const SizedBox(width: 12),
+                              const SizedBox(
+                                width: 12,
+                              ),
 
                               SizedBox(
                                 width: 46,
                                 height: 22,
-                                child: FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  alignment: Alignment.centerRight,
-                                  child: Text(
+
+                                child:
+                                    FittedBox(
+                                  fit: BoxFit
+                                      .scaleDown,
+
+                                  alignment:
+                                      Alignment
+                                          .centerRight,
+
+                                  child:
+                                      Text(
                                     '$completionPercent%',
-                                    maxLines: 1,
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
+
+                                    maxLines:
+                                        1,
+
+                                    style:
+                                        const TextStyle(
+                                      fontSize:
+                                          15,
+
+                                      fontWeight:
+                                          FontWeight
+                                              .bold,
+
+                                      color:
+                                          Colors
+                                              .white,
                                     ),
                                   ),
                                 ),
@@ -14874,13 +15885,13 @@ class _PublicAchievementsPage extends StatelessWidget {
               builder: (context, constraints) {
                 final int columns;
 
-                if (constraints.maxWidth < 360) {
-                  columns = 2;
-                } else if (constraints.maxWidth < 520) {
-                  columns = 3;
-                } else {
-                  columns = 4;
-                }
+                if (constraints.maxWidth < 520) {
+  columns = 2;
+} else if (constraints.maxWidth < 760) {
+  columns = 3;
+} else {
+  columns = 4;
+}
 
                 return GridView.builder(
                   shrinkWrap: true,
@@ -15219,7 +16230,8 @@ class AchievementsPage extends StatelessWidget {
                     _achievementRewardInfo(
                       accent: accent,
                       icon: Icons.workspace_premium_rounded,
-                      text: 'Unlock subtle colors for the Medal Collection border, title and icon.',
+                      text:
+    'Unlock Achievement Button styles and new colors for your display name.',
                     ),
                   ],
 
@@ -15323,51 +16335,59 @@ class AchievementsPage extends StatelessWidget {
   }
 
   Widget _buildAchievementCategory(
-    BuildContext context,
-    List<_AchievementGroup> groups,
-    MedalPinService pinService,
-  ) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final int columns;
+  BuildContext context,
+  List<_AchievementGroup> groups,
+  MedalPinService pinService,
+) {
+  return GridView.builder(
+    padding: const EdgeInsets.fromLTRB(
+      18,
+      8,
+      18,
+      35,
+    ),
 
-        if (constraints.maxWidth < 360) {
-          columns = 2;
-        } else if (constraints.maxWidth < 520) {
-          columns = 3;
-        } else {
-          columns = 4;
-        }
+    physics:
+        const BouncingScrollPhysics(),
 
-        return GridView.builder(
-          padding: const EdgeInsets.fromLTRB(18, 8, 18, 35),
-          physics: const BouncingScrollPhysics(),
-          itemCount: groups.length,
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: columns,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 13,
-            childAspectRatio: columns == 2
-                ? 0.68
-                : columns == 3
-                ? 0.60
-                : 0.68,
-          ),
-          itemBuilder: (context, index) {
-            final group = groups[index];
+    itemCount: groups.length,
 
-            return _AchievementGroupCard(
-              group: group,
-              isPinned: pinService.isPinned(group.id),
-              onTap: () {
-                _showAchievementGroup(context, group);
-              },
-            );
-          },
-        );
-      },
-    );
-  }
+    gridDelegate:
+        const SliverGridDelegateWithFixedCrossAxisCount(
+      crossAxisCount: 2,
+
+      crossAxisSpacing: 10,
+
+      mainAxisSpacing: 13,
+
+      mainAxisExtent: 250,
+    ),
+
+    itemBuilder: (
+      context,
+      index,
+    ) {
+      final group =
+          groups[index];
+
+      return _AchievementGroupCard(
+        group: group,
+
+        isPinned:
+            pinService.isPinned(
+          group.id,
+        ),
+
+        onTap: () {
+          _showAchievementGroup(
+            context,
+            group,
+          );
+        },
+      );
+    },
+  );
+}
 
   @override
   Widget build(BuildContext context) {
@@ -15644,6 +16664,15 @@ class AchievementsPage extends StatelessWidget {
                         ),
                       ),
                       child: TabBar(
+
+                        isScrollable: true,
+
+tabAlignment: TabAlignment.center,
+
+labelPadding:
+    const EdgeInsets.symmetric(
+  horizontal: 22,
+),
                         dividerColor: Colors.transparent,
                         indicatorSize: TabBarIndicatorSize.tab,
                         indicator: BoxDecoration(
@@ -17268,7 +18297,7 @@ _AchievementGroup _medalCollectionAchievementGroupFor(int unlockedMilestones) {
     id: 'medal_collection',
     title: 'Medal Collection',
     description:
-        'Unlock achievement milestones to upgrade your achievement button.',
+    'Unlock achievement milestones to upgrade your achievement button and unlock display name colors.',
     icon: Icons.workspace_premium_rounded,
     current: unlockedMilestones,
     tiers: [
@@ -17327,6 +18356,36 @@ _AchievementGroup _medalCollectionAchievementGroupFor(int unlockedMilestones) {
         visualTier: 5,
       ),
     ],
+  );
+}
+
+_AchievementGroup
+    _displayNameColorAchievementGroupFor(
+  int unlockedMilestones,
+) {
+  final medalGroup =
+      _medalCollectionAchievementGroupFor(
+    unlockedMilestones,
+  );
+
+  return _AchievementGroup(
+    id: 'display_name_color',
+
+    title: 'Display Name Color',
+
+    description:
+        'Unlock Medal Collection milestones to unlock display name colors.',
+
+    icon:
+        Icons.format_color_text_rounded,
+
+    current:
+        unlockedMilestones,
+
+    // Same milestones and colors as
+    // Medal Collection.
+    tiers:
+        medalGroup.tiers,
   );
 }
 
@@ -17666,6 +18725,106 @@ _AchievementGroup _publicProfileViewAchievementGroupFor(int viewedProfiles) {
   );
 }
 
+class ProfileTitleService
+    extends ChangeNotifier {
+  ProfileTitleService._();
+
+  static final ProfileTitleService
+      instance =
+      ProfileTitleService._();
+
+  String? _achievementId;
+
+  String? get achievementId =>
+      _achievementId;
+
+  Future<void> load() async {
+    final client =
+        Supabase.instance.client;
+
+    final user =
+        client.auth.currentUser;
+
+    if (user == null) {
+      _achievementId = null;
+
+      notifyListeners();
+
+      return;
+    }
+
+    try {
+      final row = await client
+          .from('profiles')
+          .select(
+            'profile_title_id',
+          )
+          .eq(
+            'id',
+            user.id,
+          )
+          .maybeSingle();
+
+      final rawId =
+          row?['profile_title_id']
+              ?.toString()
+              .trim();
+
+      _achievementId =
+          rawId != null &&
+                  rawId.isNotEmpty
+              ? rawId
+              : null;
+
+      notifyListeners();
+    } catch (e) {
+      debugPrint(
+        'Could not load profile title: $e',
+      );
+    }
+  }
+
+  Future<void> apply(
+    String? achievementId,
+  ) async {
+    final client =
+        Supabase.instance.client;
+
+    final user =
+        client.auth.currentUser;
+
+    if (user == null) {
+      throw Exception(
+        'No signed in user.',
+      );
+    }
+
+    final cleanId =
+        achievementId?.trim();
+
+    final value =
+        cleanId == null ||
+                cleanId.isEmpty
+            ? null
+            : cleanId;
+
+    await client
+        .from('profiles')
+        .update({
+          'profile_title_id':
+              value,
+        })
+        .eq(
+          'id',
+          user.id,
+        );
+
+    _achievementId = value;
+
+    notifyListeners();
+  }
+}
+
 class DisplayNameFrameService extends ChangeNotifier {
   DisplayNameFrameService._();
 
@@ -17974,6 +19133,93 @@ class _AvatarFrame extends StatelessWidget {
       ),
 
       child: child,
+    );
+  }
+}
+
+class _ProfileTitleLabel
+    extends StatelessWidget {
+  final _Achievement achievement;
+
+  const _ProfileTitleLabel({
+    required this.achievement,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors =
+        _achievementTierColors(
+      achievement,
+    );
+
+    final accent =
+        colors.isNotEmpty
+            ? colors.first
+            : chipluxCyan;
+
+    return Container(
+      constraints:
+          const BoxConstraints(
+        maxWidth: 220,
+      ),
+
+      padding:
+          const EdgeInsets.symmetric(
+        horizontal: 13,
+        vertical: 4,
+      ),
+
+      decoration: BoxDecoration(
+        color: chipluxSurface
+            .withValues(
+          alpha: 0.88,
+        ),
+
+        borderRadius:
+            BorderRadius.circular(
+          18,
+        ),
+
+        border: Border.all(
+          color: accent.withValues(
+            alpha: 0.38,
+          ),
+        ),
+
+        boxShadow: [
+          BoxShadow(
+            color: accent.withValues(
+              alpha: 0.05,
+            ),
+
+            blurRadius: 8,
+          ),
+        ],
+      ),
+
+      child: Text(
+        achievement.title
+            .toUpperCase(),
+
+        maxLines: 1,
+
+        overflow:
+            TextOverflow.ellipsis,
+
+        textAlign:
+            TextAlign.center,
+
+        style: TextStyle(
+          color: accent,
+
+          fontSize: 10.5,
+
+          fontWeight:
+              FontWeight.w800,
+
+          letterSpacing: 0.9,
+        ),
+      ),
     );
   }
 }
@@ -19036,6 +20282,7 @@ class _ProfilePageState extends State<ProfilePage> {
           DailyLoginService.instance,
           PublicProfileViewService.instance,
           FollowerCountService.instance,
+          ProfileTitleService.instance,
         ]),
         builder: (context, _) {
           final shownName = profile.displayName.isNotEmpty
@@ -19119,6 +20366,58 @@ class _ProfilePageState extends State<ProfilePage> {
           final medalCollectionGroup = _medalCollectionAchievementGroupFor(
             unlockedAchievementCount,
           );
+
+          final selectedDisplayNameColorId =
+    achievementCosmetics
+        .selectedTierId(
+  'display_name_color',
+);
+
+_Achievement?
+    selectedDisplayNameColorAchievement;
+
+if (selectedDisplayNameColorId !=
+    null) {
+  for (final tier
+      in medalCollectionGroup.tiers) {
+    if (tier.id ==
+            selectedDisplayNameColorId &&
+        tier.unlocked) {
+      selectedDisplayNameColorAchievement =
+          tier;
+
+      break;
+    }
+  }
+}
+
+final displayNameColors =
+    _achievementTierColors(
+  selectedDisplayNameColorAchievement,
+);
+
+final Color displayNameColor =
+    selectedDisplayNameColorAchievement
+                ?.visualTier ==
+            4
+        ? const Color(0xFFFFC857)
+        : displayNameColors.isNotEmpty
+        ? displayNameColors.first
+        : Colors.white;
+
+          final profileTitleGroups =
+    <_AchievementGroup>[
+  ...profileAchievementGroups,
+  medalCollectionGroup,
+];
+
+final selectedProfileTitle =
+    _findProfileTitleAchievement(
+  profileTitleGroups,
+  ProfileTitleService
+      .instance
+      .achievementId,
+);
 
           final selectedMedalCollectionStyle =
               achievementCosmetics.selectedAchievement(medalCollectionGroup) ??
@@ -19325,11 +20624,21 @@ class _ProfilePageState extends State<ProfilePage> {
 
                                 const SizedBox(height: 9),
 
-                                Stack(
-                                  clipBehavior: Clip.none,
-                                  alignment: Alignment.center,
-                                  children: [
-                                    _DisplayNameFrame(
+if (selectedProfileTitle !=
+    null) ...[
+  _ProfileTitleLabel(
+    achievement:
+        selectedProfileTitle,
+  ),
+
+  const SizedBox(height: 5),
+],
+
+Stack(
+  clipBehavior: Clip.none,
+  alignment: Alignment.center,
+  children: [
+    _DisplayNameFrame(
                                       frameId: DisplayNameFrameService
                                           .instance
                                           .frameId,
@@ -19359,15 +20668,29 @@ class _ProfilePageState extends State<ProfilePage> {
 
                                           overflow: TextOverflow.ellipsis,
 
-                                          style: const TextStyle(
-                                            color: Colors.white,
+                                          style: TextStyle(
+  color: displayNameColor,
 
-                                            fontSize: 18,
+  fontSize: 18,
 
-                                            fontWeight: FontWeight.bold,
+  fontWeight: FontWeight.bold,
 
-                                            letterSpacing: 0.3,
-                                          ),
+  letterSpacing: 0.3,
+
+  shadows:
+      selectedDisplayNameColorAchievement !=
+              null
+          ? [
+              Shadow(
+                color: displayNameColor
+                    .withValues(
+                  alpha: 0.25,
+                ),
+                blurRadius: 6,
+              ),
+            ]
+          : null,
+),
                                         ),
                                       ),
                                     ),
@@ -21396,7 +22719,10 @@ class _WatchStatCard extends StatelessWidget {
 
     final bool hasAchievement = frameColors.isNotEmpty;
 
-    final Color achievementColor = hasAchievement
+    final Color achievementColor =
+    frameAchievement?.visualTier == 4
+        ? const Color(0xFFFFC857)
+        : hasAchievement
         ? frameColors.first
         : const Color(0xFFBFC9D4);
 
@@ -21652,6 +22978,7 @@ class _RatingStatCard extends StatelessWidget {
   }
 }
 
+
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
 
@@ -21674,6 +23001,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   final achievementCosmeticService = _AchievementCosmeticService.instance;
 
+  final titleService =
+    ProfileTitleService.instance;
+
   late final TextEditingController displayNameController;
 
   bool saving = false;
@@ -21686,9 +23016,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   bool loadingAchievementCosmetics = true;
 
+  bool loadingTitle = true;
+
   String? selectedAvatarFrameId;
 
   String? selectedFrameId;
+
+  String? selectedTitleId;
 
   Map<String, String?> selectedAchievementCosmetics = {};
 
@@ -21713,7 +23047,185 @@ class _EditProfilePageState extends State<EditProfilePage> {
     unawaited(_loadAvatarFrame());
 
     unawaited(_loadAchievementCosmetics());
+
+    unawaited(
+  _loadProfileTitle(),
+);
   }
+
+  Future<void>
+    _loadProfileTitle() async {
+  await Future.wait([
+    titleService.load(),
+
+    critic.refresh(),
+
+    DailyLoginService
+        .instance
+        .load(),
+
+    PublicProfileViewService
+        .instance
+        .load(),
+
+    FollowerCountService
+        .instance
+        .load(),
+  ]);
+
+  if (!mounted) {
+    return;
+  }
+
+  String? loadedId =
+      titleService.achievementId;
+
+  if (loadedId != null) {
+    final achievement =
+        _findProfileTitleAchievement(
+      _currentUserProfileTitleGroups(),
+      loadedId,
+    );
+
+    if (achievement == null) {
+      loadedId = null;
+    }
+  }
+
+  setState(() {
+    selectedTitleId =
+        loadedId;
+
+    loadingTitle = false;
+  });
+}
+
+Widget buildProfileTitlePicker() {
+  if (loadingTitle) {
+    return const SizedBox(
+      height: 100,
+
+      child: Center(
+        child:
+            CircularProgressIndicator(),
+      ),
+    );
+  }
+
+  final groups =
+      _currentUserProfileTitleGroups();
+
+  final unlocked =
+      <_Achievement>[];
+
+  for (final group in groups) {
+    for (final tier in group.tiers) {
+      if (tier.unlocked) {
+        unlocked.add(tier);
+      }
+    }
+  }
+
+  return Column(
+    crossAxisAlignment:
+        CrossAxisAlignment.start,
+
+    children: [
+      const Text(
+        'Profile Title',
+
+        style: TextStyle(
+          fontSize: 17,
+          fontWeight:
+              FontWeight.bold,
+        ),
+      ),
+
+      const SizedBox(height: 5),
+
+      const Text(
+        'Use any unlocked achievement milestone as the title shown above your display name.',
+
+        style: TextStyle(
+          color: Colors.white54,
+          fontSize: 12,
+        ),
+      ),
+
+      const SizedBox(height: 12),
+
+      SizedBox(
+        height: 88,
+
+        child: ListView.separated(
+          scrollDirection:
+              Axis.horizontal,
+
+          itemCount:
+              unlocked.length + 1,
+
+          separatorBuilder:
+              (context, index) =>
+                  const SizedBox(
+            width: 8,
+          ),
+
+          itemBuilder:
+              (context, index) {
+            if (index == 0) {
+              return _ProfileTitleOption(
+                achievement: null,
+
+                selected:
+                    selectedTitleId ==
+                        null,
+
+                onTap: () {
+                  setState(() {
+                    selectedTitleId =
+                        null;
+                  });
+                },
+              );
+            }
+
+            final achievement =
+                unlocked[index - 1];
+
+            return _ProfileTitleOption(
+              achievement:
+                  achievement,
+
+              selected:
+                  selectedTitleId ==
+                      achievement.id,
+
+              onTap: () {
+                setState(() {
+                  selectedTitleId =
+                      achievement.id;
+                });
+              },
+            );
+          },
+        ),
+      ),
+
+      if (unlocked.isEmpty) ...[
+        const SizedBox(height: 8),
+
+        const Text(
+          'Unlock an achievement milestone to earn your first title.',
+
+          style: TextStyle(
+            color: Colors.white38,
+            fontSize: 11,
+          ),
+        ),
+      ],
+    ],
+  );
+}
 
   Future<void> _loadFrame() async {
     await Future.wait([frameService.load(), DailyLoginService.instance.load()]);
@@ -21815,10 +23327,20 @@ class _EditProfilePageState extends State<EditProfilePage> {
       unlockedMilestones,
     );
 
-    final groups = <_AchievementGroup>[
-      medalCollectionGroup,
+    final displayNameColorGroup =
+    _displayNameColorAchievementGroupFor(
+  unlockedMilestones,
+);
 
-      _runtimeLevelAchievementGroupFor(runtimeLevel),
+    final groups =
+    <_AchievementGroup>[
+  medalCollectionGroup,
+
+  displayNameColorGroup,
+
+  _runtimeLevelAchievementGroupFor(
+    runtimeLevel,
+  ),
 
       _followersAchievementGroupFor(
         FollowerCountService.instance.peakFollowerCount,
@@ -22010,6 +23532,23 @@ class _EditProfilePageState extends State<EditProfilePage> {
       return;
     }
 
+    if (selectedTitleId != null) {
+  final selectedTitle =
+      _findProfileTitleAchievement(
+    _currentUserProfileTitleGroups(),
+    selectedTitleId,
+  );
+
+  if (selectedTitle == null) {
+    setState(() {
+      errorMessage =
+          'That profile title is still locked.';
+    });
+
+    return;
+  }
+}
+
     setState(() {
       saving = true;
 
@@ -22057,6 +23596,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
       await frameService.apply(selectedFrameId);
 
       await avatarFrameService.apply(selectedAvatarFrameId);
+
+      await titleService.apply(
+  selectedTitleId,
+);
 
       await achievementCosmeticService.applyAll(selectedAchievementCosmetics);
 
@@ -22384,6 +23927,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
     final medalCollectionGroup = groups['medal_collection']!;
 
+    final displayNameColorGroup =
+    groups['display_name_color']!;
+
     if (loadingAchievementCosmetics) {
       return const SizedBox(
         height: 100,
@@ -22414,21 +23960,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
       crossAxisAlignment: CrossAxisAlignment.start,
 
       children: [
-        const Text(
-          'Achievement Styles',
-
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-        ),
-
-        const SizedBox(height: 5),
-
-        const Text(
-          'Choose which unlocked achievement reward style appears on your profile.',
-
-          style: TextStyle(color: Colors.white54, fontSize: 12),
-        ),
-
-        const SizedBox(height: 22),
+const SizedBox(height: 8),
 
         buildAchievementCosmeticPicker(
           title: 'Achievement Button',
@@ -22439,6 +23971,18 @@ class _EditProfilePageState extends State<EditProfilePage> {
         ),
 
         const SizedBox(height: 22),
+
+        buildAchievementCosmeticPicker(
+  title: 'Display Name Color',
+
+  description:
+      'Choose a color unlocked through your Medal Collection achievements.',
+
+  group:
+      displayNameColorGroup,
+),
+
+const SizedBox(height: 22),
 
         buildAchievementCosmeticPicker(
           title: 'Runtime Level',
@@ -22644,7 +24188,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
             const SizedBox(height: 12),
 
-            buildFramePicker(),
+buildProfileTitlePicker(),
+
+const SizedBox(height: 24),
+
+buildFramePicker(),
 
             const SizedBox(height: 24),
 
