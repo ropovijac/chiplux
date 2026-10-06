@@ -202,18 +202,28 @@ class CriticService extends ChangeNotifier {
   final Map<int, int> ratingDistribution = {for (int i = 1; i <= 5; i++) i: 0};
 
   Future<void> saveEpisodeRating({
-    required int showId,
-    required int seasonNumber,
-    required int episodeNumber,
-    required int rating,
-  }) async {
-    final user = client.auth.currentUser;
+  required int showId,
+  required int seasonNumber,
+  required int episodeNumber,
+  required int rating,
+}) async {
+  final user = client.auth.currentUser;
 
-    if (user == null) {
-      throw Exception('You must be signed in.');
-    }
+  if (user == null) {
+    throw Exception('You must be signed in.');
+  }
 
-    _episodeRatings[_episodeKey(showId, seasonNumber, episodeNumber)] = rating;
+  final bool watched = LibraryService.instance.isEpisodeWatched(
+    showId,
+    seasonNumber,
+    episodeNumber,
+  );
+
+  if (!watched) {
+    throw Exception('Mark this episode as watched before rating it.');
+  }
+
+  _episodeRatings[_episodeKey(showId, seasonNumber, episodeNumber)] = rating;
 
     notifyListeners();
 

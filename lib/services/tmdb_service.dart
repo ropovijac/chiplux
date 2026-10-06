@@ -36,7 +36,13 @@ class TmdbService {
   }
 
   Future<Map<String, dynamic>> getDetails(int id, String mediaType) async {
-    final url = Uri.parse('$baseUrl/$mediaType/$id?api_key=$apiKey');
+    final append = mediaType == 'movie' ? 'release_dates' : 'content_ratings';
+
+    final url = Uri.parse(
+      '$baseUrl/$mediaType/$id'
+      '?api_key=$apiKey'
+      '&append_to_response=$append',
+    );
 
     final response = await http.get(url);
 

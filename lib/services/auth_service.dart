@@ -208,6 +208,40 @@ class AuthService {
   }
 
   // =====================================================
+// CHANGE PASSWORD
+// =====================================================
+
+Future<void> changePassword({
+  required String currentPassword,
+  required String newPassword,
+}) async {
+  final user = currentUser;
+
+  if (user == null) {
+    throw const AuthException('You must be signed in.');
+  }
+
+  final email = user.email?.trim();
+
+  if (email == null || email.isEmpty) {
+    throw const AuthException('Could not find your account email.');
+  }
+
+  // Verify the user's current password first.
+  await client.auth.signInWithPassword(
+    email: email,
+    password: currentPassword,
+  );
+
+  // Change to the new password.
+  await client.auth.updateUser(
+    UserAttributes(
+      password: newPassword,
+    ),
+  );
+}
+
+  // =====================================================
   // SIGN OUT
   // =====================================================
 

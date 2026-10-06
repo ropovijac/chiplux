@@ -19,6 +19,7 @@ class CommentsPage extends StatefulWidget {
   final Future<void> Function(String userId)? onProfileTap;
   final int? seasonNumber;
   final int? episodeNumber;
+  final String? targetCommentId;
 
   final String title;
   final String? subtitle;
@@ -28,16 +29,17 @@ class CommentsPage extends StatefulWidget {
   final String? imagePath;
 
   const CommentsPage({
-    super.key,
-    required this.mediaType,
-    required this.tmdbId,
-    required this.title,
-    this.subtitle,
-    this.imagePath,
-    this.seasonNumber,
-    this.episodeNumber,
-    this.onProfileTap,
-  });
+  super.key,
+  required this.mediaType,
+  required this.tmdbId,
+  required this.title,
+  this.subtitle,
+  this.imagePath,
+  this.seasonNumber,
+  this.episodeNumber,
+  this.onProfileTap,
+  this.targetCommentId,
+});
 
   @override
   State<CommentsPage> createState() => _CommentsPageState();
@@ -168,7 +170,18 @@ class _CommentsPageState extends State<CommentsPage> {
 
   Timer? _realtimeDebounce;
 
-  String _sortMode = 'mostLiked';
+  final ScrollController _scrollController =
+    ScrollController();
+
+final Map<String, GlobalKey> _commentKeys =
+    <String, GlobalKey>{};
+
+Timer? _highlightTimer;
+
+String? _highlightedCommentId;
+
+bool _didFocusTargetComment = false;
+
 
   Future<void> _openProfile(Map<String, dynamic> comment) async {
     final userId = comment['user_id']?.toString();
@@ -181,6 +194,232 @@ class _CommentsPageState extends State<CommentsPage> {
   }
 
   final Set<String> _expandedReplies = <String>{};
+
+  GlobalKey _commentKey(String commentId) {
+  return _commentKeys.putIfAbsent(
+    commentId,
+    () => GlobalKey(),
+  );
+}
+
+void _prepareTargetComment(
+  List<Map<String, dynamic>> loadedComments,
+) {
+  final targetId =
+      widget.targetCommentId;
+
+  if (targetId == null ||
+      targetId.isEmpty ||
+      _didFocusTargetComment) {
+    return;
+  }
+
+  for (final comment in loadedComments) {
+    final commentId =
+        comment['id']?.toString();
+
+    // Target itself is a main comment.
+    if (commentId == targetId) {
+      return;
+    }
+
+    final rawReplies =
+        comment['replies'];
+
+    if (rawReplies is! List) {
+      continue;
+    }
+
+    for (final rawReply in rawReplies) {
+      if (rawReply is! Map) {
+        continue;
+      }
+
+      final replyId =
+          rawReply['id']?.toString();
+
+      if (replyId == targetId) {
+        // The target is a reply,
+        // so automatically open its parent.
+        if (commentId != null &&
+            commentId.isNotEmpty) {
+          _expandedReplies.add(
+            commentId,
+          );
+        }
+
+        return;
+      }
+    }
+  }
+}
+
+int? _targetMainCommentIndex() {
+  final targetId =
+      widget.targetCommentId;
+
+  if (targetId == null ||
+      targetId.isEmpty) {
+    return null;
+  }
+
+  final sorted =
+      _sortedComments;
+
+  for (int i = 0;
+      i < sorted.length;
+      i++) {
+    final comment = sorted[i];
+
+    if (comment['id']?.toString() ==
+        targetId) {
+      return i;
+    }
+
+    final rawReplies =
+        comment['replies'];
+
+    if (rawReplies is! List) {
+      continue;
+    }
+
+    for (final rawReply in rawReplies) {
+      if (rawReply is Map &&
+          rawReply['id']?.toString() ==
+              targetId) {
+        return i;
+      }
+    }
+  }
+
+  return null;
+}
+
+Future<void> _focusTargetComment() async {
+  if (_didFocusTargetComment) {
+    return;
+  }
+
+  final targetId =
+      widget.targetCommentId;
+
+  if (targetId == null ||
+      targetId.isEmpty) {
+    return;
+  }
+
+  final key =
+      _commentKey(targetId);
+
+  // Try several frames because a comment
+  // far down the list may not be built yet.
+  for (int attempt = 0;
+      attempt < 5;
+      attempt++) {
+    await WidgetsBinding
+        .instance.endOfFrame;
+
+    if (!mounted) {
+      return;
+    }
+
+    final targetContext =
+    key.currentContext;
+
+if (targetContext != null) {
+  if (!targetContext.mounted) {
+    continue;
+  }
+
+  _didFocusTargetComment = true;
+
+  await Scrollable.ensureVisible(
+    targetContext,
+
+        duration:
+            const Duration(
+          milliseconds: 550,
+        ),
+
+        curve:
+            Curves.easeOutCubic,
+
+        alignment: 0.30,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _highlightedCommentId =
+            targetId;
+      });
+
+      _highlightTimer?.cancel();
+
+      _highlightTimer = Timer(
+        const Duration(
+          milliseconds: 2200,
+        ),
+        () {
+          if (!mounted) {
+            return;
+          }
+
+          setState(() {
+            _highlightedCommentId =
+                null;
+          });
+        },
+      );
+
+      return;
+    }
+
+    // If Flutter has not built the target
+    // yet, move approximately to its
+    // position so it enters the viewport.
+    if (_scrollController.hasClients) {
+      final index =
+          _targetMainCommentIndex();
+
+      final count =
+          _sortedComments.length;
+
+      if (index != null &&
+          count > 0) {
+        final position =
+            _scrollController.position;
+
+        final double fraction =
+            count <= 1
+            ? 0
+            : index / (count - 1);
+
+        final double offset =
+            position.maxScrollExtent *
+                fraction;
+
+        await _scrollController
+            .animateTo(
+          offset.clamp(
+            position.minScrollExtent,
+            position.maxScrollExtent,
+          ),
+
+          duration:
+              const Duration(
+            milliseconds: 220,
+          ),
+
+          curve:
+              Curves.easeOut,
+        );
+      }
+    }
+  }
+}
 
   // =====================================================
   // INIT
@@ -303,14 +542,30 @@ class _CommentsPageState extends State<CommentsPage> {
       }
 
       setState(() {
-        canAccess = true;
+  canAccess = true;
 
-        comments = loadedComments;
+  comments = loadedComments;
 
-        loading = false;
+  _prepareTargetComment(
+    loadedComments,
+  );
 
-        errorMessage = null;
-      });
+  loading = false;
+
+  errorMessage = null;
+});
+
+if (!_didFocusTargetComment &&
+    widget.targetCommentId != null) {
+  WidgetsBinding.instance
+      .addPostFrameCallback(
+    (_) {
+      unawaited(
+        _focusTargetComment(),
+      );
+    },
+  );
+}
     } catch (e) {
       debugPrint('Could not load comments: $e');
 
@@ -332,12 +587,6 @@ class _CommentsPageState extends State<CommentsPage> {
     return value is num ? value.toInt() : 0;
   }
 
-  int _commentReplyCount(Map<String, dynamic> comment) {
-    final replies = comment['replies'];
-
-    return replies is List ? replies.length : 0;
-  }
-
   DateTime _commentDate(Map<String, dynamic> comment) {
     return DateTime.tryParse(comment['created_at']?.toString() ?? '') ??
         DateTime(1970);
@@ -347,55 +596,18 @@ class _CommentsPageState extends State<CommentsPage> {
     final sorted = List<Map<String, dynamic>>.from(comments);
 
     sorted.sort((a, b) {
-      switch (_sortMode) {
-        case 'newest':
-          return _commentDate(b).compareTo(_commentDate(a));
+      final likeCompare = _commentLikes(b).compareTo(_commentLikes(a));
 
-        case 'oldest':
-          return _commentDate(a).compareTo(_commentDate(b));
-
-        case 'mostReplies':
-          final replyCompare = _commentReplyCount(b)
-              .compareTo(_commentReplyCount(a));
-
-          if (replyCompare != 0) {
-            return replyCompare;
-          }
-
-          return _commentDate(b).compareTo(_commentDate(a));
-
-        case 'mostLiked':
-        default:
-          final likeCompare = _commentLikes(b).compareTo(_commentLikes(a));
-
-          if (likeCompare != 0) {
-            return likeCompare;
-          }
-
-          // Same number of likes:
-          // newest one first.
-          return _commentDate(b).compareTo(_commentDate(a));
+      if (likeCompare != 0) {
+        return likeCompare;
       }
+
+      // Same number of likes:
+      // newest one first.
+      return _commentDate(b).compareTo(_commentDate(a));
     });
 
     return sorted;
-  }
-
-  String get _sortLabel {
-    switch (_sortMode) {
-      case 'newest':
-        return 'Newest';
-
-      case 'oldest':
-        return 'Oldest';
-
-      case 'mostReplies':
-        return 'Most replies';
-
-      case 'mostLiked':
-      default:
-        return 'Most liked';
-    }
   }
 
   // =====================================================
@@ -995,9 +1207,16 @@ class _CommentsPageState extends State<CommentsPage> {
         ? rawReplies.whereType<Map<String, dynamic>>().toList()
         : <Map<String, dynamic>>[];
 
-    final commentId = comment['id']?.toString() ?? '';
+    final commentId =
+    comment['id']?.toString() ?? '';
 
-    final repliesExpanded = _expandedReplies.contains(commentId);
+final bool isHighlighted =
+    commentId.isNotEmpty &&
+    _highlightedCommentId ==
+        commentId;
+
+final repliesExpanded =
+    _expandedReplies.contains(commentId);
 
     final canOpenProfile = widget.onProfileTap != null;
 
@@ -1032,18 +1251,66 @@ class _CommentsPageState extends State<CommentsPage> {
     return Padding(
       padding: EdgeInsets.only(left: isReply ? 20 : 0, bottom: isReply ? 5 : 9),
 
-      child: Container(
-        padding: EdgeInsets.all(isReply ? 9 : 11),
+      child: AnimatedContainer(
+  key: commentId.isEmpty
+      ? null
+      : _commentKey(commentId),
 
-        decoration: BoxDecoration(
-          color: isReply
-              ? _commentsSurfaceLight.withValues(alpha: 0.55)
-              : _commentsSurface,
+  duration:
+      const Duration(
+    milliseconds: 300,
+  ),
 
-          borderRadius: BorderRadius.circular(14),
+  curve:
+      Curves.easeOutCubic,
 
-          border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
-        ),
+  padding: EdgeInsets.all(
+    isReply ? 9 : 11,
+  ),
+
+  decoration: BoxDecoration(
+    color: isHighlighted
+        ? _commentsCyan.withValues(
+            alpha: 0.08,
+          )
+        : isReply
+        ? _commentsSurfaceLight
+            .withValues(
+              alpha: 0.55,
+            )
+        : _commentsSurface,
+
+    borderRadius:
+        BorderRadius.circular(14),
+
+    border: Border.all(
+      color: isHighlighted
+          ? _commentsCyan
+          : Colors.white.withValues(
+              alpha: 0.06,
+            ),
+
+      width:
+          isHighlighted
+          ? 1.6
+          : 1,
+    ),
+
+    boxShadow: isHighlighted
+        ? [
+            BoxShadow(
+              color: _commentsCyan
+                  .withValues(
+                alpha: 0.28,
+              ),
+
+              blurRadius: 20,
+
+              spreadRadius: 1,
+            ),
+          ]
+        : const [],
+  ),
 
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1459,47 +1726,6 @@ class _CommentsPageState extends State<CommentsPage> {
       }
     }
 
-    PopupMenuItem<String> buildSortMenuItem({
-      required String value,
-      required String label,
-      required IconData icon,
-    }) {
-      final selected = _sortMode == value;
-
-      return PopupMenuItem<String>(
-        value: value,
-
-        child: Row(
-          children: [
-            Icon(
-              icon,
-
-              size: 19,
-
-              color: selected ? _commentsCyan : Colors.white54,
-            ),
-
-            const SizedBox(width: 11),
-
-            Expanded(
-              child: Text(
-                label,
-
-                style: TextStyle(
-                  color: selected ? Colors.white : Colors.white70,
-
-                  fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-                ),
-              ),
-            ),
-
-            if (selected)
-              const Icon(Icons.check_rounded, color: _commentsCyan, size: 19),
-          ],
-        ),
-      );
-    }
-
     return Column(
       children: [
         ClipRRect(
@@ -1584,88 +1810,6 @@ class _CommentsPageState extends State<CommentsPage> {
               ),
             ),
 
-            PopupMenuButton<String>(
-              initialValue: _sortMode,
-
-              color: _commentsSurfaceLight,
-
-              onSelected: (value) {
-                setState(() {
-                  _sortMode = value;
-                });
-              },
-
-              itemBuilder: (context) => [
-                buildSortMenuItem(
-                  value: 'mostLiked',
-                  label: 'Most liked',
-                  icon: Icons.favorite_rounded,
-                ),
-
-                buildSortMenuItem(
-                  value: 'newest',
-                  label: 'Newest',
-                  icon: Icons.new_releases_outlined,
-                ),
-
-                buildSortMenuItem(
-                  value: 'oldest',
-                  label: 'Oldest',
-                  icon: Icons.history_rounded,
-                ),
-
-                buildSortMenuItem(
-                  value: 'mostReplies',
-                  label: 'Most replies',
-                  icon: Icons.forum_outlined,
-                ),
-              ],
-
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 11,
-                  vertical: 8,
-                ),
-
-                decoration: BoxDecoration(
-                  color: _commentsSurface,
-
-                  borderRadius: BorderRadius.circular(12),
-
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.08),
-                  ),
-                ),
-
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-
-                  children: [
-                    const Icon(
-                      Icons.sort_rounded,
-
-                      color: Colors.white54,
-
-                      size: 18,
-                    ),
-
-                    const SizedBox(width: 6),
-
-                    Text(
-                      _sortLabel,
-
-                      style: const TextStyle(
-                        color: Colors.white70,
-
-                        fontSize: 12,
-
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
           ],
         ),
 
@@ -1783,7 +1927,11 @@ class _CommentsPageState extends State<CommentsPage> {
               onRefresh: _load,
 
               child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
+  controller:
+      _scrollController,
+
+  physics:
+      const AlwaysScrollableScrollPhysics(),
 
                 padding: const EdgeInsets.fromLTRB(18, 14, 18, 100),
 
@@ -1862,6 +2010,9 @@ class _CommentsPageState extends State<CommentsPage> {
 
   @override
   void dispose() {
+    _highlightTimer?.cancel();
+
+_scrollController.dispose();
     _realtimeDebounce?.cancel();
 
     if (_commentsChannel != null) {
