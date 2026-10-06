@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "249764986412",
+    "project_id": "chiplux-c485a",
+    "storage_bucket": "chiplux-c485a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:249764986412:android:4454f0584ade5f5b259b89",
+        "android_client_info": {
+          "package_name": "com.example.flutter_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCOc5csPnw7RwdbgpODFp6WnBXwPcxOt_M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

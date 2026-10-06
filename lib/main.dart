@@ -9,7 +9,9 @@ import 'services/auth_service.dart';
 import 'services/profile_service.dart';
 import 'services/notification_service.dart';
 import 'dart:typed_data';
-
+import 'package:firebase_core/firebase_core.dart';
+import 'services/push_notification_service.dart';
+import 'firebase_options.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'services/avatar_service.dart';
@@ -42,6 +44,7 @@ const Color chipluxPurple = Color(0xFFD65CFF);
 
 Future<void> _loadCurrentAccountAchievementState() async {
   await Future.wait([
+
     CriticService.instance.refresh(),
 
     DailyLoginService.instance.load(),
@@ -61,7 +64,11 @@ Future<void> _loadCurrentAccountAchievementState() async {
     ProfileTitleService.instance.load(),
 
     NotificationService.instance.load(),
-  ]);
+    
+    PushNotificationService
+    .instance
+    .registerCurrentToken(),
+      ]);
 
   await _MedalCollectionUnlockTracker.instance.initialize();
 }
@@ -69,7 +76,16 @@ Future<void> _loadCurrentAccountAchievementState() async {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
+  await Firebase.initializeApp(
+    options:
+        DefaultFirebaseOptions
+            .currentPlatform,
+  );
+
+  const supabaseUrl =
+      String.fromEnvironment(
+    'SUPABASE_URL',
+  );
 
   const supabasePublishableKey = String.fromEnvironment('SUPABASE_ANON_KEY');
 
@@ -77,6 +93,10 @@ Future<void> main() async {
     url: supabaseUrl,
     publishableKey: supabasePublishableKey,
   );
+
+  await PushNotificationService
+    .instance
+    .initialize();
 
   await LibraryService.instance.init();
 
@@ -22400,6 +22420,86 @@ Future<void> _openNewEpisodeNotification(
   }
 }
 
+Future<void> _openChipluxUpdate(
+  ChipluxNotification notification,
+) async {
+  await showDialog<void>(
+    context: context,
+
+    builder: (dialogContext) {
+      return AlertDialog(
+        backgroundColor:
+            chipluxSurface,
+
+        shape:
+            RoundedRectangleBorder(
+          borderRadius:
+              BorderRadius.circular(
+            22,
+          ),
+        ),
+
+        title: Row(
+          children: [
+            const Icon(
+              Icons
+                  .auto_awesome_rounded,
+              color: chipluxCyan,
+            ),
+
+            const SizedBox(
+              width: 10,
+            ),
+
+            Expanded(
+              child: Text(
+                notification.title,
+
+                style:
+                    const TextStyle(
+                  color: Colors.white,
+                  fontWeight:
+                      FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+
+        content: Text(
+          notification.body,
+
+          style:
+              const TextStyle(
+            color: Colors.white70,
+            fontSize: 14,
+            height: 1.5,
+          ),
+        ),
+
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(
+                dialogContext,
+              );
+            },
+
+            child: const Text(
+              'Got it',
+              style: TextStyle(
+                color: chipluxCyan,
+                fontWeight:
+                    FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      );
+    },
+  );
+}
+
   Future<void> _openNotification(
   ChipluxNotification notification,
 ) async {
@@ -22524,6 +22624,18 @@ if (notification.type ==
 if (notification.type ==
     'new_episode') {
   await _openNewEpisodeNotification(
+    notification,
+  );
+
+  return;
+}
+
+// ===================================================
+// CHIPLUX UPDATE
+// ===================================================
+if (notification.type ==
+    'chiplux_update') {
+  await _openChipluxUpdate(
     notification,
   );
 
@@ -22828,10 +22940,14 @@ if (!opensDiscussion) {
         return Icons.tv_rounded;
 
       case 'release':
-        return Icons
-            .calendar_month_rounded;
+  return Icons
+      .calendar_month_rounded;
 
-      default:
+case 'chiplux_update':
+  return Icons
+      .auto_awesome_rounded;
+
+default:
         return Icons
             .notifications_rounded;
     }
@@ -24812,7 +24928,13 @@ class _ProfileSettingsTab extends StatelessWidget {
   Future<void> _signOut(BuildContext context) async {
     final library = LibraryService.instance;
 
-await NotificationService.instance.clear();
+await PushNotificationService
+    .instance
+    .unregisterCurrentToken();
+
+await NotificationService
+    .instance
+    .clear();
 
 await AuthService.instance.signOut();
 
