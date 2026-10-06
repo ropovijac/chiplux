@@ -9,8 +9,10 @@ class ProfileService extends ChangeNotifier {
   SupabaseClient get client => Supabase.instance.client;
 
   String displayName = '';
-  String username = '';
-  String? avatarUrl;
+String username = '';
+String? avatarUrl;
+
+bool isDeveloper = false;
 
   int? bannerTmdbId;
   String? bannerMediaType;
@@ -32,8 +34,9 @@ class ProfileService extends ChangeNotifier {
     final user = client.auth.currentUser;
 
     if (user == null) {
-      return;
-    }
+  clear();
+  return;
+}
 
     isLoading = true;
     notifyListeners();
@@ -54,6 +57,9 @@ class ProfileService extends ChangeNotifier {
       username = data?['username']?.toString() ?? '';
 
       avatarUrl = data?['avatar_url']?.toString();
+
+      isDeveloper =
+    data?['is_developer'] == true;
 
       final rawBannerId = data?['banner_tmdb_id'];
 
@@ -155,19 +161,21 @@ class ProfileService extends ChangeNotifier {
   }
 
   void clear() {
-    displayName = '';
-    username = '';
+  displayName = '';
+  username = '';
 
-    avatarUrl = null;
+  avatarUrl = null;
 
-    bannerTmdbId = null;
+  isDeveloper = false;
 
-    bannerMediaType = null;
+  bannerTmdbId = null;
 
-    bannerPath = null;
+  bannerMediaType = null;
 
-    isLoading = false;
+  bannerPath = null;
 
-    notifyListeners();
-  }
+  isLoading = false;
+
+  notifyListeners();
+}
 }

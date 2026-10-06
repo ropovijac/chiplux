@@ -196,13 +196,14 @@ class CommentService {
     }
 
     final profileFuture = client
-        .from('profiles')
-        .select(
-          'id, '
-          'display_name, '
-          'username, '
-          'avatar_url',
-        )
+    .from('profiles')
+    .select(
+      'id, '
+      'display_name, '
+      'username, '
+      'avatar_url, '
+      'is_developer',
+    )
         .eq('id', userId)
         .maybeSingle();
 

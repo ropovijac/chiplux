@@ -10,12 +10,14 @@ import 'services/profile_service.dart';
 import 'services/notification_service.dart';
 import 'dart:typed_data';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'services/push_notification_service.dart';
 import 'firebase_options.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'services/avatar_service.dart';
 import 'services/media_user_data_service.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import 'dart:async';
 import 'dart:convert';
@@ -42,6 +44,12 @@ const Color chipluxViolet = Color(0xFF8B7CFF);
 
 const Color chipluxPurple = Color(0xFFD65CFF);
 
+const String developerProfileTitleId =
+    'developer';
+
+    const String developerProfilePageFrameId =
+    'developer';
+
 Future<void> _loadCurrentAccountAchievementState() async {
   await Future.wait([
 
@@ -63,6 +71,10 @@ Future<void> _loadCurrentAccountAchievementState() async {
 
     ProfileTitleService.instance.load(),
 
+    ProfilePageFrameService
+    .instance
+    .load(),
+
     NotificationService.instance.load(),
     
     PushNotificationService
@@ -81,6 +93,8 @@ Future<void> main() async {
         DefaultFirebaseOptions
             .currentPlatform,
   );
+
+  await _initializeForegroundNotifications();
 
   const supabaseUrl =
       String.fromEnvironment(
@@ -2184,29 +2198,1364 @@ class _ChipluxBackgroundPainter extends CustomPainter {
   }
 }
 
-class ChipluxApp extends StatelessWidget {
-  const ChipluxApp({super.key});
+final GlobalKey<NavigatorState>
+    chipluxNavigatorKey =
+    GlobalKey<NavigatorState>();
 
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Chiplux',
-      theme: ThemeData(
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: chipluxBackground,
-        colorScheme: const ColorScheme.dark(
-          primary: chipluxCyan,
-          secondary: chipluxViolet,
-          surface: chipluxSurface,
+    final FlutterLocalNotificationsPlugin
+    chipluxLocalNotifications =
+    FlutterLocalNotificationsPlugin();
+
+
+const AndroidNotificationChannel
+    chipluxNotificationChannel =
+    AndroidNotificationChannel(
+  'chiplux_notifications',
+  'Chiplux Notifications',
+
+  description:
+      'Notifications from Chiplux.',
+
+  importance:
+      Importance.high,
+);
+
+Future<void>
+    _initializeForegroundNotifications()
+    async {
+  const initializationSettings =
+      InitializationSettings(
+    android:
+        AndroidInitializationSettings(
+      '@mipmap/ic_launcher',
+    ),
+
+    iOS:
+        DarwinInitializationSettings(
+      requestAlertPermission:
+          false,
+
+      requestBadgePermission:
+          false,
+
+      requestSoundPermission:
+          false,
+    ),
+  );
+
+
+  await chipluxLocalNotifications
+      .initialize(
+    settings:
+        initializationSettings,
+
+    onDidReceiveNotificationResponse:
+        (response) {
+      final payload =
+          response.payload;
+
+      if (payload == null ||
+          payload.isEmpty) {
+        return;
+      }
+
+      try {
+        final decoded =
+            jsonDecode(
+          payload,
+        );
+
+        if (decoded is! Map) {
+          return;
+        }
+
+        final data =
+            Map<String, dynamic>.from(
+          decoded,
+        );
+
+        final message =
+            RemoteMessage(
+          data: data,
+        );
+
+        unawaited(
+          _openPushWhenReady(
+            message,
+          ),
+        );
+      } catch (e) {
+        debugPrint(
+          'Could not open foreground notification: $e',
+        );
+      }
+    },
+  );
+
+
+  await chipluxLocalNotifications
+      .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>()
+      ?.createNotificationChannel(
+    chipluxNotificationChannel,
+  );
+}
+
+Future<void>
+    _showForegroundPush(
+  RemoteMessage message,
+) async {
+  final title =
+      message.notification
+              ?.title ??
+          message.data['title']
+              ?.toString() ??
+          'Chiplux';
+
+
+  final body =
+      message.notification
+              ?.body ??
+          message.data['body']
+              ?.toString() ??
+          '';
+
+
+  final notificationId =
+      (message.messageId ??
+              DateTime.now()
+                  .microsecondsSinceEpoch
+                  .toString())
+          .hashCode &
+      0x7fffffff;
+
+
+  await chipluxLocalNotifications
+      .show(
+    id: notificationId,
+
+    title: title,
+
+    body: body,
+
+    notificationDetails:
+        const NotificationDetails(
+      android:
+          AndroidNotificationDetails(
+        'chiplux_notifications',
+
+        'Chiplux Notifications',
+
+        channelDescription:
+            'Notifications from Chiplux.',
+
+        importance:
+            Importance.high,
+
+        priority:
+            Priority.high,
+
+        playSound:
+            true,
+      ),
+    ),
+
+    // Keep all FCM routing data.
+    payload:
+        jsonEncode(
+      message.data,
+    ),
+  );
+}
+
+    String? _pushString(
+  Map<String, dynamic> data,
+  String key,
+) {
+  final value = data[key];
+
+  if (value == null) {
+    return null;
+  }
+
+  final text =
+      value.toString().trim();
+
+  return text.isEmpty
+      ? null
+      : text;
+}
+
+
+int? _pushInt(
+  Map<String, dynamic> data,
+  String key,
+) {
+  final value =
+      _pushString(
+    data,
+    key,
+  );
+
+  if (value == null) {
+    return null;
+  }
+
+  return int.tryParse(value);
+}
+
+
+int _pushAchievementTabIndex(
+  String? achievementId,
+) {
+  if (achievementId == null ||
+      achievementId.isEmpty) {
+    return 0;
+  }
+
+  if (achievementId.startsWith(
+        'movies_',
+      ) ||
+      achievementId.startsWith(
+        'movies_rated_',
+      )) {
+    return 0;
+  }
+
+  if (achievementId.startsWith(
+        'tv_',
+      ) ||
+      achievementId.startsWith(
+        'episodes_',
+      ) ||
+      achievementId.startsWith(
+        'tv_rated_',
+      ) ||
+      achievementId.startsWith(
+        'episodes_rated_',
+      )) {
+    return 1;
+  }
+
+  if (achievementId.startsWith(
+        'followers_',
+      ) ||
+      achievementId.startsWith(
+        'profile_views_',
+      )) {
+    return 2;
+  }
+
+  if (achievementId.startsWith(
+        'login_',
+      ) ||
+      achievementId.startsWith(
+        'runtime_level_',
+      ) ||
+      achievementId.startsWith(
+        'ratings_level_',
+      ) ||
+      achievementId.startsWith(
+        'medal_collection_',
+      )) {
+    return 3;
+  }
+
+  return 0;
+}
+
+
+Future<void> _showChipluxUpdateDialog({
+  required BuildContext context,
+  required String title,
+  required String body,
+}) async {
+  await showDialog<void>(
+    context: context,
+    barrierColor: Colors.black.withValues(
+      alpha: 0.82,
+    ),
+    builder: (dialogContext) {
+      return Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        insetPadding: const EdgeInsets.symmetric(
+          horizontal: 22,
+          vertical: 24,
         ),
-        useMaterial3: true,
-        navigationBarTheme: const NavigationBarThemeData(
-          backgroundColor: Color(0xFF091521),
-          indicatorColor: Color(0xFF173A50),
+        child: Container(
+          constraints: const BoxConstraints(
+            maxWidth: 460,
+          ),
+          padding: const EdgeInsets.all(1.2),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(26),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                chipluxCyan.withValues(
+                  alpha: 0.90,
+                ),
+                chipluxViolet.withValues(
+                  alpha: 0.75,
+                ),
+                chipluxPurple.withValues(
+                  alpha: 0.88,
+                ),
+              ],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: chipluxViolet.withValues(
+                  alpha: 0.20,
+                ),
+                blurRadius: 34,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(
+              20,
+              20,
+              20,
+              18,
+            ),
+            decoration: BoxDecoration(
+              color: chipluxSurface,
+              borderRadius: BorderRadius.circular(25),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 50,
+                      height: 50,
+                      padding: const EdgeInsets.all(1.2),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            chipluxCyan,
+                            chipluxViolet,
+                            chipluxPurple,
+                          ],
+                        ),
+                      ),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: chipluxBackground,
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        child: const Icon(
+                          Icons.auto_awesome_rounded,
+                          color: chipluxCyan,
+                          size: 25,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 13),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Wrap(
+                            spacing: 7,
+                            runSpacing: 6,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 9,
+                                  vertical: 5,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: chipluxCyan.withValues(
+                                    alpha: 0.08,
+                                  ),
+                                  borderRadius: BorderRadius.circular(999),
+                                  border: Border.all(
+                                    color: chipluxCyan.withValues(
+                                      alpha: 0.40,
+                                    ),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'CHIPLUX UPDATE',
+                                  style: TextStyle(
+                                    color: chipluxCyan,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 1.1,
+                                  ),
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 9,
+                                  vertical: 5,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: chipluxViolet.withValues(
+                                    alpha: 0.08,
+                                  ),
+                                  borderRadius: BorderRadius.circular(999),
+                                  border: Border.all(
+                                    color: chipluxViolet.withValues(
+                                      alpha: 0.38,
+                                    ),
+                                  ),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.verified_rounded,
+                                      color: chipluxViolet,
+                                      size: 11,
+                                    ),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'OFFICIAL',
+                                      style: TextStyle(
+                                        color: chipluxViolet,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 1.0,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 11),
+                          ShaderMask(
+                            shaderCallback: (bounds) {
+                              return const LinearGradient(
+                                colors: [
+                                  Colors.white,
+                                  chipluxCyan,
+                                  chipluxViolet,
+                                ],
+                              ).createShader(bounds);
+                            },
+                            child: Text(
+                              title,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                height: 1.15,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.35,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                Container(
+                  height: 1,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        chipluxCyan.withValues(alpha: 0.55),
+                        chipluxViolet.withValues(alpha: 0.35),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 17),
+                const Text(
+                  "WHAT'S NEW",
+                  style: TextStyle(
+                    color: Colors.white38,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(15),
+                  decoration: BoxDecoration(
+                    color: chipluxBackground.withValues(
+                      alpha: 0.72,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: Colors.white.withValues(
+                        alpha: 0.07,
+                      ),
+                    ),
+                  ),
+                  child: Text(
+                    body,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14,
+                      height: 1.55,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 13),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.lock_outline_rounded,
+                      color: chipluxCyan.withValues(
+                        alpha: 0.65,
+                      ),
+                      size: 13,
+                    ),
+                    const SizedBox(width: 6),
+                    const Expanded(
+                      child: Text(
+                        'Official announcement from Chiplux',
+                        style: TextStyle(
+                          color: Colors.white38,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () {
+                      Navigator.pop(dialogContext);
+                    },
+                    borderRadius: BorderRadius.circular(14),
+                    child: Ink(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 13,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14),
+                        gradient: const LinearGradient(
+                          colors: [
+                            chipluxCyan,
+                            chipluxViolet,
+                            chipluxPurple,
+                          ],
+                        ),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'GOT IT',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 1.0,
+                            ),
+                          ),
+                          SizedBox(width: 7),
+                          Icon(
+                            Icons.arrow_forward_rounded,
+                            color: Colors.white,
+                            size: 17,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    },
+  );
+}
+
+
+Future<void> _openPushMessage(
+  RemoteMessage message,
+) async {
+  final navigator =
+      chipluxNavigatorKey
+          .currentState;
+
+  if (navigator == null) {
+    return;
+  }
+
+  final data = message.data;
+
+  final type =
+      _pushString(
+    data,
+    'type',
+  );
+
+  if (type == null) {
+    return;
+  }
+
+  // Mark the matching in-app
+  // notification as read.
+  final notificationId =
+      _pushString(
+    data,
+    'notification_id',
+  );
+
+  if (notificationId != null) {
+    try {
+      await NotificationService
+          .instance
+          .markRead(
+        notificationId,
+      );
+    } catch (e) {
+      debugPrint(
+        'Could not mark push notification read: $e',
+      );
+    }
+  }
+
+  // ==========================================
+  // NEW FOLLOWER
+  // ==========================================
+
+  if (type == 'new_follower') {
+    final userId =
+        _pushString(
+      data,
+      'actor_user_id',
+    );
+
+    if (userId == null) {
+      return;
+    }
+
+    await navigator.push(
+      MaterialPageRoute(
+        builder: (_) =>
+            PublicProfilePage(
+          userId: userId,
         ),
       ),
-      home: const AuthGate(),
+    );
+
+    return;
+  }
+
+
+  // ==========================================
+  // ACHIEVEMENT
+  // ==========================================
+
+  if (type == 'achievement') {
+    final achievementId =
+        _pushString(
+      data,
+      'achievement_id',
+    );
+
+    await navigator.push(
+      MaterialPageRoute(
+        builder: (_) =>
+            AchievementsPage(
+          initialTabIndex:
+              _pushAchievementTabIndex(
+            achievementId,
+          ),
+
+          initialAchievementId:
+              achievementId,
+        ),
+      ),
+    );
+
+    return;
+  }
+
+
+  // ==========================================
+  // RELEASE
+  // ==========================================
+
+  if (type == 'release') {
+    final tmdbId =
+        _pushInt(
+      data,
+      'tmdb_id',
+    );
+
+    final mediaType =
+        _pushString(
+      data,
+      'media_type',
+    );
+
+    if (tmdbId == null ||
+        mediaType == null ||
+        (mediaType != 'movie' &&
+            mediaType != 'tv')) {
+      return;
+    }
+
+    await navigator.push(
+      MaterialPageRoute(
+        builder: (_) =>
+            MediaDetailsPage(
+          id: tmdbId,
+          mediaType:
+              mediaType,
+        ),
+      ),
+    );
+
+    return;
+  }
+
+
+  // ==========================================
+  // NEW EPISODE
+  // ==========================================
+
+  if (type == 'new_episode') {
+    final showId =
+        _pushInt(
+      data,
+      'tmdb_id',
+    );
+
+    final seasonNumber =
+        _pushInt(
+      data,
+      'season_number',
+    );
+
+    final episodeNumber =
+        _pushInt(
+      data,
+      'episode_number',
+    );
+
+    if (showId == null ||
+        seasonNumber == null ||
+        episodeNumber == null) {
+      return;
+    }
+
+    try {
+      final tmdb =
+          TmdbService();
+
+      final episodes =
+          await tmdb
+              .getSeasonEpisodes(
+        showId,
+        seasonNumber,
+      );
+
+      Map<String, dynamic>?
+          foundEpisode;
+
+      for (final raw
+          in episodes) {
+        if (raw is! Map) {
+          continue;
+        }
+
+        final episode =
+            Map<String, dynamic>.from(
+          raw,
+        );
+
+        final rawNumber =
+            episode[
+                'episode_number'];
+
+        if (rawNumber is num &&
+            rawNumber.toInt() ==
+                episodeNumber) {
+          foundEpisode =
+              episode;
+
+          break;
+        }
+      }
+
+      if (foundEpisode == null) {
+        return;
+      }
+
+      final rawRuntime =
+          foundEpisode[
+              'runtime'];
+
+      final rawRating =
+          foundEpisode[
+              'vote_average'];
+
+      await navigator.push(
+        MaterialPageRoute(
+          builder: (_) =>
+              SwipeableEpisodePage(
+            showId:
+                showId,
+
+            seasonNumber:
+                seasonNumber,
+
+            episodeNumber:
+                episodeNumber,
+
+            title:
+                foundEpisode?[
+                            'name']
+                        ?.toString() ??
+                    'Episode $episodeNumber',
+
+            stillPath:
+                foundEpisode?[
+                        'still_path']
+                    ?.toString(),
+
+            runtime:
+                rawRuntime
+                        is num
+                    ? rawRuntime
+                        .toInt()
+                    : null,
+
+            rating:
+                rawRating is num &&
+                        rawRating
+                                .toDouble() >
+                            0
+                    ? rawRating
+                        .toDouble()
+                    : null,
+
+            overview:
+                foundEpisode?[
+                            'overview']
+                        ?.toString() ??
+                    '',
+
+            airDate:
+                foundEpisode?[
+                        'air_date']
+                    ?.toString(),
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint(
+        'Could not open push episode: $e',
+      );
+    }
+
+    return;
+  }
+
+
+  // ==========================================
+  // COMMENT / LIKE MILESTONE
+  // ==========================================
+
+  if (type ==
+          'comment_reply' ||
+      type ==
+          'comment_like_milestone') {
+    final mediaType =
+        _pushString(
+      data,
+      'media_type',
+    );
+
+    final tmdbId =
+        _pushInt(
+      data,
+      'tmdb_id',
+    );
+
+    final targetCommentId =
+        _pushString(
+      data,
+      'comment_id',
+    );
+
+    if (mediaType == null ||
+        tmdbId == null) {
+      return;
+    }
+
+    final tmdb =
+        TmdbService();
+
+    try {
+      // ======================================
+      // EPISODE COMMENT
+      // ======================================
+
+      if (mediaType ==
+          'episode') {
+        final seasonNumber =
+            _pushInt(
+          data,
+          'season_number',
+        );
+
+        final episodeNumber =
+            _pushInt(
+          data,
+          'episode_number',
+        );
+
+        if (seasonNumber ==
+                null ||
+            episodeNumber ==
+                null) {
+          return;
+        }
+
+        final showDetails =
+            await tmdb
+                .getDetails(
+          tmdbId,
+          'tv',
+        );
+
+        final episodes =
+            await tmdb
+                .getSeasonEpisodes(
+          tmdbId,
+          seasonNumber,
+        );
+
+        Map<String, dynamic>?
+            episodeDetails;
+
+        for (final raw
+            in episodes) {
+          if (raw is! Map) {
+            continue;
+          }
+
+          final episode =
+              Map<String, dynamic>.from(
+            raw,
+          );
+
+          final rawNumber =
+              episode[
+                  'episode_number'];
+
+          if (rawNumber is num &&
+              rawNumber.toInt() ==
+                  episodeNumber) {
+            episodeDetails =
+                episode;
+
+            break;
+          }
+        }
+
+        final showTitle =
+            (showDetails[
+                        'name'] ??
+                    'TV Show')
+                .toString();
+
+        final episodeTitle =
+            (episodeDetails?[
+                        'name'] ??
+                    'Episode $episodeNumber')
+                .toString();
+
+        final episodeCode =
+            'S${seasonNumber.toString().padLeft(2, '0')}'
+            'E${episodeNumber.toString().padLeft(2, '0')}';
+
+        await navigator.push(
+          MaterialPageRoute(
+            builder: (_) =>
+                CommentsPage(
+              mediaType:
+                  'episode',
+
+              tmdbId:
+                  tmdbId,
+
+              seasonNumber:
+                  seasonNumber,
+
+              episodeNumber:
+                  episodeNumber,
+
+              title:
+                  episodeTitle,
+
+              subtitle:
+                  '$showTitle • $episodeCode',
+
+              imagePath:
+                  episodeDetails?[
+                          'still_path']
+                      ?.toString(),
+
+              targetCommentId:
+                  targetCommentId,
+
+              onProfileTap:
+                  (userId) async {
+                await chipluxNavigatorKey
+                    .currentState
+                    ?.push(
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        PublicProfilePage(
+                      userId:
+                          userId,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+
+        return;
+      }
+
+
+      // ======================================
+      // MOVIE / TV COMMENT
+      // ======================================
+
+      if (mediaType ==
+              'movie' ||
+          mediaType ==
+              'tv') {
+        final details =
+            await tmdb
+                .getDetails(
+          tmdbId,
+          mediaType,
+        );
+
+        final title =
+            (details['title'] ??
+                    details['name'] ??
+                    'Discussion')
+                .toString();
+
+        await navigator.push(
+          MaterialPageRoute(
+            builder: (_) =>
+                CommentsPage(
+              mediaType:
+                  mediaType,
+
+              tmdbId:
+                  tmdbId,
+
+              title:
+                  title,
+
+              imagePath:
+                  details[
+                          'backdrop_path']
+                      ?.toString(),
+
+              targetCommentId:
+                  targetCommentId,
+
+              onProfileTap:
+                  (userId) async {
+                await chipluxNavigatorKey
+                    .currentState
+                    ?.push(
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        PublicProfilePage(
+                      userId:
+                          userId,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+
+        return;
+      }
+    } catch (e) {
+      debugPrint(
+        'Could not open push discussion: $e',
+      );
+    }
+
+    return;
+  }
+
+
+  // ==========================================
+  // CHIPLUX UPDATE
+  // ==========================================
+
+  if (type ==
+      'chiplux_update') {
+
+
+    final title =
+        _pushString(
+          data,
+          'title',
+        ) ??
+        message.notification
+            ?.title ??
+        'Chiplux Update';
+
+    final body =
+        _pushString(
+          data,
+          'body',
+        ) ??
+        message.notification
+            ?.body ??
+        '';
+
+    final dialogContext =
+        chipluxNavigatorKey.currentContext;
+
+    if (dialogContext == null ||
+        !dialogContext.mounted) {
+      return;
+    }
+
+    await _showChipluxUpdateDialog(
+      context: dialogContext,
+      title: title,
+      body: body,
+    );
+
+    return;
+  }
+}
+
+Future<void> _openPushWhenReady(
+  RemoteMessage message,
+) async {
+  // Cold start can take a moment before
+  // MaterialApp/AuthGate has a navigator.
+
+  for (int attempt = 0;
+      attempt < 30;
+      attempt++) {
+    final navigatorReady =
+        chipluxNavigatorKey
+                .currentState !=
+            null;
+
+    final userReady =
+        AuthService.instance
+                .currentUser !=
+            null;
+
+    if (navigatorReady &&
+        userReady) {
+      await _openPushMessage(
+        message,
+      );
+
+      return;
+    }
+
+    await Future<void>.delayed(
+      const Duration(
+        milliseconds: 150,
+      ),
+    );
+  }
+
+  debugPrint(
+    'Push tap could not be routed because the app was not ready.',
+  );
+}
+
+class ChipluxApp
+    extends StatefulWidget {
+  const ChipluxApp({
+    super.key,
+  });
+
+  @override
+  State<ChipluxApp>
+      createState() =>
+          _ChipluxAppState();
+}
+
+
+class _ChipluxAppState
+    extends State<ChipluxApp> {
+  StreamSubscription<
+      RemoteMessage>?
+      _pushTapSubscription;
+
+  StreamSubscription<
+      RemoteMessage>?
+      _foregroundPushSubscription;
+
+
+  @override
+  void initState() {
+    super.initState();
+
+    // =========================================
+    // APP IS OPEN / FOREGROUND
+    // =========================================
+
+    _foregroundPushSubscription =
+        FirebaseMessaging
+            .onMessage
+            .listen(
+      (message) {
+        unawaited(
+          _showForegroundPush(
+            message,
+          ),
+        );
+      },
+    );
+
+    // =========================================
+    // APP WAS IN BACKGROUND
+    // =========================================
+
+    _pushTapSubscription =
+        FirebaseMessaging
+            .onMessageOpenedApp
+            .listen(
+      (message) {
+        unawaited(
+          _openPushWhenReady(
+            message,
+          ),
+        );
+      },
+    );
+
+
+    // =========================================
+    // APP WAS COMPLETELY CLOSED
+    // =========================================
+
+    WidgetsBinding.instance
+        .addPostFrameCallback(
+      (_) {
+        unawaited(
+          _checkInitialPush(),
+        );
+      },
+    );
+  }
+
+
+  Future<void>
+      _checkInitialPush() async {
+    final message =
+        await FirebaseMessaging
+            .instance
+            .getInitialMessage();
+
+    if (message == null) {
+      return;
+    }
+
+    await _openPushWhenReady(
+      message,
+    );
+  }
+
+
+  @override
+  void dispose() {
+    _pushTapSubscription
+        ?.cancel();
+
+    _foregroundPushSubscription
+        ?.cancel();
+
+    super.dispose();
+  }
+
+
+  @override
+  Widget build(
+    BuildContext context,
+  ) {
+    return MaterialApp(
+      navigatorKey:
+          chipluxNavigatorKey,
+
+      debugShowCheckedModeBanner:
+          false,
+
+      title: 'Chiplux',
+
+      theme: ThemeData(
+        brightness:
+            Brightness.dark,
+
+        scaffoldBackgroundColor:
+            chipluxBackground,
+
+        colorScheme:
+            const ColorScheme.dark(
+          primary:
+              chipluxCyan,
+
+          secondary:
+              chipluxViolet,
+
+          surface:
+              chipluxSurface,
+        ),
+
+        useMaterial3: true,
+
+        navigationBarTheme:
+            const NavigationBarThemeData(
+          backgroundColor:
+              Color(
+            0xFF091521,
+          ),
+
+          indicatorColor:
+              Color(
+            0xFF173A50,
+          ),
+        ),
+      ),
+
+      home:
+          const AuthGate(),
     );
   }
 }
@@ -6453,6 +7802,8 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
             'display_name_frame_id, '
             'avatar_frame_id, '
             'profile_title_id, '
+            'is_developer, '
+            'profile_page_frame_id, '
             'achievement_cosmetics',
           )
           .eq('id', widget.userId)
@@ -6718,6 +8069,23 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
         ?.toString()
         .trim();
 
+    final bool publicIsDeveloper =
+        profile!['is_developer'] == true;
+
+        final publicProfilePageFrameId =
+    profile!['profile_page_frame_id']
+        ?.toString()
+        .trim();
+
+final bool developerPublicPageFrameActive =
+    publicIsDeveloper &&
+    publicProfilePageFrameId ==
+        developerProfilePageFrameId;
+
+    final bool developerPublicTitleActive =
+        publicIsDeveloper &&
+        selectedPublicTitleId == developerProfileTitleId;
+
     final selectedPublicTitle = _findProfileTitleAchievement(
       publicTitleGroups,
       selectedPublicTitleId,
@@ -6898,9 +8266,18 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
 
-              padding: const EdgeInsets.fromLTRB(18, 12, 18, 35),
+              padding: const EdgeInsets.fromLTRB(7, 6, 7, 20),
 
               children: [
+                Stack(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(11, 6, 11, 15),
+
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+
+                        children: [
                 // =========================
 // PUBLIC PROFILE HEADER
 // =========================
@@ -7101,7 +8478,11 @@ const SizedBox(
 
                       const SizedBox(height: 10),
 
-                      if (selectedPublicTitle != null) ...[
+                      if (developerPublicTitleActive) ...[
+                        const _DeveloperTitleLabel(),
+
+                        const SizedBox(height: 5),
+                      ] else if (selectedPublicTitle != null) ...[
                         _ProfileTitleLabel(achievement: selectedPublicTitle),
 
                         const SizedBox(height: 5),
@@ -7499,7 +8880,19 @@ const SizedBox(
                     distribution: ratingDistribution,
                   ),
                 ],
+              
+                        ],
+                      ),
+                    ),
+
+                    if (developerPublicPageFrameActive)
+  const Positioned.fill(
+    child: _DeveloperProfilePageFrame(),
+  ),
+                  ],
+                ),
               ],
+
             ),
           ),
         ),
@@ -7507,6 +8900,7 @@ const SizedBox(
     );
   }
 }
+
 
 List<_AchievementGroup> _currentUserProfileTitleGroups() {
   final library = LibraryService.instance;
@@ -17856,6 +19250,120 @@ _AchievementGroup _publicProfileViewAchievementGroupFor(int viewedProfiles) {
   );
 }
 
+class ProfilePageFrameService
+    extends ChangeNotifier {
+  ProfilePageFrameService._();
+
+  static final ProfilePageFrameService
+      instance =
+      ProfilePageFrameService._();
+
+  String? _frameId;
+
+  String? get frameId =>
+      _frameId;
+
+  Future<void> load() async {
+    final client =
+        Supabase.instance.client;
+
+    final user =
+        client.auth.currentUser;
+
+    if (user == null) {
+      _frameId = null;
+
+      notifyListeners();
+
+      return;
+    }
+
+    try {
+      final row = await client
+          .from('profiles')
+          .select(
+            'profile_page_frame_id',
+          )
+          .eq(
+            'id',
+            user.id,
+          )
+          .maybeSingle();
+
+      final rawId =
+          row?['profile_page_frame_id']
+              ?.toString()
+              .trim();
+
+      _frameId =
+          rawId != null &&
+                  rawId.isNotEmpty
+              ? rawId
+              : null;
+
+      notifyListeners();
+    } catch (e) {
+      debugPrint(
+        'Could not load profile page frame: $e',
+      );
+    }
+  }
+
+  Future<void> apply(
+    String? frameId,
+  ) async {
+    final client =
+        Supabase.instance.client;
+
+    final user =
+        client.auth.currentUser;
+
+    if (user == null) {
+      throw Exception(
+        'No signed in user.',
+      );
+    }
+
+    final cleanId =
+        frameId?.trim();
+
+    final value =
+        cleanId == null ||
+                cleanId.isEmpty
+            ? null
+            : cleanId;
+
+    if (value != null &&
+        value !=
+            developerProfilePageFrameId) {
+      throw Exception(
+        'Unknown profile page frame.',
+      );
+    }
+
+    await client
+        .from('profiles')
+        .update({
+          'profile_page_frame_id':
+              value,
+        })
+        .eq(
+          'id',
+          user.id,
+        );
+
+    _frameId = value;
+
+    notifyListeners();
+  }
+
+  void clear() {
+    _frameId = null;
+
+    notifyListeners();
+  }
+}
+
 class ProfileTitleService extends ChangeNotifier {
   ProfileTitleService._();
 
@@ -18282,6 +19790,486 @@ class _ProfileTitleLabel extends StatelessWidget {
   }
 }
 
+class _DeveloperProfilePageFrame
+    extends StatefulWidget {
+  const _DeveloperProfilePageFrame();
+
+  @override
+  State<_DeveloperProfilePageFrame>
+      createState() =>
+          _DeveloperProfilePageFrameState();
+}
+
+class _DeveloperProfilePageFrameState
+    extends State<_DeveloperProfilePageFrame>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController
+      _controller;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _controller =
+        AnimationController(
+      vsync: this,
+      duration:
+          const Duration(
+        seconds: 5,
+      ),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+
+    super.dispose();
+  }
+
+  @override
+  Widget build(
+    BuildContext context,
+  ) {
+    return IgnorePointer(
+      child: CustomPaint(
+        painter:
+            _DeveloperProfileFramePainter(
+          animation: _controller,
+        ),
+        child:
+            const SizedBox.expand(),
+      ),
+    );
+  }
+}
+
+class _DeveloperProfileFramePainter
+    extends CustomPainter {
+  final Animation<double> animation;
+
+  _DeveloperProfileFramePainter({
+    required this.animation,
+  }) : super(
+          repaint: animation,
+        );
+
+  @override
+  void paint(
+    Canvas canvas,
+    Size size,
+  ) {
+    if (size.width <= 0 ||
+        size.height <= 0) {
+      return;
+    }
+
+    final rect =
+        Rect.fromLTWH(
+      5,
+      5,
+      size.width - 10,
+      size.height - 10,
+    );
+
+    final roundedRect =
+        RRect.fromRectAndRadius(
+      rect,
+      const Radius.circular(
+        24,
+      ),
+    );
+
+    final rotation =
+        animation.value *
+            6.28318530718;
+
+    final shader =
+        SweepGradient(
+      colors: const [
+        Color(0xFF00E5FF),
+        Color(0xFF875CFF),
+        Color(0xFFFF4FD8),
+        Color(0xFFFFD166),
+        Color(0xFF00E5FF),
+      ],
+      transform:
+          GradientRotation(
+        rotation,
+      ),
+    ).createShader(
+      rect,
+    );
+
+    // =========================
+    // SOFT OUTER GLOW
+    // =========================
+
+    final glowPaint =
+        Paint()
+          ..style =
+              PaintingStyle.stroke
+          ..strokeWidth = 6
+          ..shader = shader
+          ..maskFilter =
+              const MaskFilter.blur(
+            BlurStyle.normal,
+            6,
+          );
+
+    canvas.drawRRect(
+      roundedRect,
+      glowPaint,
+    );
+
+    // =========================
+    // MAIN DEVELOPER FRAME
+    // =========================
+
+    final framePaint =
+        Paint()
+          ..style =
+              PaintingStyle.stroke
+          ..strokeWidth = 2.2
+          ..shader = shader;
+
+    canvas.drawRRect(
+      roundedRect,
+      framePaint,
+    );
+
+    // =========================
+    // SUBTLE INNER LINE
+    // =========================
+
+    final innerRect =
+        Rect.fromLTWH(
+      8,
+      8,
+      size.width - 16,
+      size.height - 16,
+    );
+
+    final innerRoundedRect =
+        RRect.fromRectAndRadius(
+      innerRect,
+      const Radius.circular(
+        21,
+      ),
+    );
+
+    final innerPaint =
+        Paint()
+          ..style =
+              PaintingStyle.stroke
+          ..strokeWidth = 0.7
+          ..color =
+              Colors.white.withValues(
+            alpha: 0.16,
+          );
+
+    canvas.drawRRect(
+      innerRoundedRect,
+      innerPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(
+    covariant
+        _DeveloperProfileFramePainter
+        oldDelegate,
+  ) {
+    return false;
+  }
+}
+
+class _DeveloperTitleLabel
+    extends StatefulWidget {
+  const _DeveloperTitleLabel();
+
+  @override
+  State<_DeveloperTitleLabel>
+      createState() =>
+          _DeveloperTitleLabelState();
+}
+
+class _DeveloperTitleLabelState
+    extends State<_DeveloperTitleLabel>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController
+      _controller;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _controller =
+        AnimationController(
+      vsync: this,
+      duration:
+          const Duration(
+        seconds: 4,
+      ),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+
+    super.dispose();
+  }
+
+  @override
+  Widget build(
+    BuildContext context,
+  ) {
+    return AnimatedBuilder(
+      animation: _controller,
+
+      builder: (
+        context,
+        child,
+      ) {
+        final t =
+            _controller.value;
+
+        final pulseValue =
+            t <= 0.5
+                ? t * 2
+                : (1 - t) * 2;
+
+        final pulse =
+            Curves.easeInOut
+                .transform(
+          pulseValue,
+        );
+
+        final glowColor =
+            Color.lerp(
+              const Color(
+                0xFF00E5FF,
+              ),
+              const Color(
+                0xFFFFD166,
+              ),
+              pulse,
+            ) ??
+            chipluxCyan;
+
+        return Container(
+          constraints:
+              const BoxConstraints(
+            maxWidth: 220,
+          ),
+
+          padding:
+              const EdgeInsets.all(
+            1.4,
+          ),
+
+          decoration:
+              BoxDecoration(
+            borderRadius:
+                BorderRadius.circular(
+              20,
+            ),
+
+            gradient:
+                LinearGradient(
+              colors: const [
+                Color(
+                  0xFF00E5FF,
+                ),
+                Color(
+                  0xFF875CFF,
+                ),
+                Color(
+                  0xFFFF4FD8,
+                ),
+                Color(
+                  0xFFFFD166,
+                ),
+                Color(
+                  0xFF00E5FF,
+                ),
+              ],
+
+              transform:
+                  GradientRotation(
+                t * 6.28318,
+              ),
+            ),
+
+            boxShadow: [
+              BoxShadow(
+                color:
+                    glowColor
+                        .withValues(
+                  alpha:
+                      0.18 +
+                      (0.12 *
+                          pulse),
+                ),
+
+                blurRadius:
+                    10 +
+                    (8 * pulse),
+
+                spreadRadius:
+                    0.2 +
+                    (0.5 *
+                        pulse),
+              ),
+            ],
+          ),
+
+          child: Container(
+            padding:
+                const EdgeInsets
+                    .symmetric(
+              horizontal: 14,
+              vertical: 5,
+            ),
+
+            decoration:
+                BoxDecoration(
+              color:
+                  chipluxBackground
+                      .withValues(
+                alpha: 0.90,
+              ),
+
+              borderRadius:
+                  BorderRadius
+                      .circular(
+                18.5,
+              ),
+
+              border:
+                  Border.all(
+                color:
+                    Colors.white
+                        .withValues(
+                  alpha: 0.06,
+                ),
+              ),
+            ),
+
+            child: ShaderMask(
+              blendMode:
+                  BlendMode.srcIn,
+
+              shaderCallback:
+                  (bounds) {
+                return LinearGradient(
+                  begin:
+                      Alignment(
+                    -1.5 +
+                        (t * 2),
+                    0,
+                  ),
+
+                  end:
+                      Alignment(
+                    0.5 +
+                        (t * 2),
+                    0,
+                  ),
+
+                  colors:
+                      const [
+                    Color(
+                      0xFF00E5FF,
+                    ),
+                    Color(
+                      0xFFB388FF,
+                    ),
+                    Color(
+                      0xFFFFD166,
+                    ),
+                    Color(
+                      0xFFFF4FD8,
+                    ),
+                    Color(
+                      0xFF00E5FF,
+                    ),
+                  ],
+                ).createShader(
+                  bounds,
+                );
+              },
+
+              child:
+                  const Row(
+                mainAxisSize:
+                    MainAxisSize
+                        .min,
+
+                mainAxisAlignment:
+                    MainAxisAlignment
+                        .center,
+
+                children: [
+                  Icon(
+                    Icons
+                        .code_rounded,
+
+                    color:
+                        Colors.white,
+
+                    size: 14,
+                  ),
+
+                  SizedBox(
+                    width: 6,
+                  ),
+
+                  Text(
+                    'DEVELOPER',
+
+                    style:
+                        TextStyle(
+                      color:
+                          Colors.white,
+
+                      fontSize:
+                          10.5,
+
+                      fontWeight:
+                          FontWeight
+                              .w900,
+
+                      letterSpacing:
+                          1.4,
+                    ),
+                  ),
+
+                  SizedBox(
+                    width: 5,
+                  ),
+
+                  Icon(
+                    Icons
+                        .auto_awesome_rounded,
+
+                    color:
+                        Colors.white,
+
+                    size: 10,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+
 class _DisplayNameFrame extends StatelessWidget {
   final String? frameId;
   final Widget child;
@@ -18695,6 +20683,10 @@ class _ProfilePageState extends State<ProfilePage> {
     unawaited(_AchievementCosmeticService.instance.load());
 
     unawaited(_backfillStatsInBackground());
+
+    unawaited(
+  ProfilePageFrameService.instance.load(),
+);
   }
 
   Future<void> _backfillStatsInBackground() async {
@@ -18720,6 +20712,8 @@ class _ProfilePageState extends State<ProfilePage> {
       AvatarFrameService.instance.load(),
 
       _AchievementCosmeticService.instance.load(),
+
+      ProfilePageFrameService.instance.load(),
 
       library.backfillMissingRuntimes(),
 
@@ -19341,6 +21335,7 @@ class _ProfilePageState extends State<ProfilePage> {
           PublicProfileViewService.instance,
           FollowerCountService.instance,
           ProfileTitleService.instance,
+          ProfilePageFrameService.instance,
         ]),
         builder: (context, _) {
           final shownName = profile.displayName.isNotEmpty
@@ -19461,6 +21456,11 @@ class _ProfilePageState extends State<ProfilePage> {
             ProfileTitleService.instance.achievementId,
           );
 
+          final bool developerTitleActive =
+              profile.isDeveloper &&
+              ProfileTitleService.instance.achievementId ==
+                  developerProfileTitleId;
+
           final selectedMedalCollectionStyle =
               achievementCosmetics.selectedAchievement(medalCollectionGroup) ??
               medalCollectionGroup.highestUnlockedTier;
@@ -19502,8 +21502,16 @@ class _ProfilePageState extends State<ProfilePage> {
               // mounted for ensureVisible().
               scrollCacheExtent: const ScrollCacheExtent.pixels(3000),
 
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 30),
+              // The developer frame now belongs to the scrollable
+              // profile content instead of the visible screen.
+              padding: EdgeInsets.zero,
               children: [
+                Stack(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 30),
+                      child: Column(
+                        children: [
                 // PROFILE HEADER
                 Stack(
                   clipBehavior: Clip.none,
@@ -19576,33 +21584,74 @@ class _ProfilePageState extends State<ProfilePage> {
 
                             const Spacer(),
 
-if (Supabase.instance.client.auth.currentUser != null) ...[
-  const _NotificationBellButton(),
-
-  const SizedBox(width: 2),
-],
-
-// =========================
-// PROFILE MENU
-// =========================
-IconButton(
-                              tooltip: 'Profile Menu',
-                              onPressed: () async {
-                                await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => const ProfileMenuPage(),
+                            Container(
+                              padding: const EdgeInsets.all(1),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(18),
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    chipluxCyan.withValues(alpha: 0.42),
+                                    chipluxViolet.withValues(alpha: 0.30),
+                                    chipluxPurple.withValues(alpha: 0.20),
+                                  ],
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.28),
+                                    blurRadius: 14,
+                                    offset: const Offset(0, 5),
                                   ),
-                                );
+                                ],
+                              ),
+                              child: Container(
+                                height: 46,
+                                padding: const EdgeInsets.symmetric(horizontal: 3),
+                                decoration: BoxDecoration(
+                                  color: chipluxBackground.withValues(alpha: 0.62),
+                                  borderRadius: BorderRadius.circular(17),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (Supabase.instance.client.auth.currentUser !=
+                                        null)
+                                      const _NotificationBellButton(),
 
-                                if (!mounted) {
-                                  return;
-                                }
+                                    Container(
+                                      width: 1,
+                                      height: 22,
+                                      color: Colors.white.withValues(alpha: 0.10),
+                                    ),
 
-                                await profile.loadProfile();
-                              },
-                              icon: const Icon(Icons.menu_rounded, size: 29),
-                              color: Colors.white,
+                                    IconButton(
+                                      tooltip: 'Profile Menu',
+                                      visualDensity: VisualDensity.compact,
+                                      onPressed: () async {
+                                        await Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) =>
+                                                const ProfileMenuPage(),
+                                          ),
+                                        );
+
+                                        if (!mounted) {
+                                          return;
+                                        }
+
+                                        await profile.loadProfile();
+                                      },
+                                      icon: const Icon(
+                                        Icons.menu_rounded,
+                                        size: 27,
+                                      ),
+                                      color: Colors.white,
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
                           ],
                         ),
@@ -19672,7 +21721,11 @@ IconButton(
 
                                 const SizedBox(height: 9),
 
-                                if (selectedProfileTitle != null) ...[
+                                if (developerTitleActive) ...[
+                                  const _DeveloperTitleLabel(),
+
+                                  const SizedBox(height: 5),
+                                ] else if (selectedProfileTitle != null) ...[
                                   _ProfileTitleLabel(
                                     achievement: selectedProfileTitle,
                                   ),
@@ -19927,7 +21980,23 @@ IconButton(
                   key: _ratingDistributionKey,
                   child: _buildRatingDistributionSection(),
                 ),
+                        ],
+                      ),
+                    ),
 
+                    // This frame is part of the scrollable profile content.
+                    // It starts at the top of the profile and ends at the
+                    // bottom of the full profile, so it scrolls naturally.
+                    if (profile.isDeveloper &&
+    ProfilePageFrameService
+            .instance
+            .frameId ==
+        developerProfilePageFrameId)
+  const Positioned.fill(
+    child: _DeveloperProfilePageFrame(),
+  ),
+                  ],
+                ),
               ],
             ),
           );
@@ -19936,6 +22005,7 @@ IconButton(
     );
   }
 }
+
 
 class _AchievementCollectionButton
     extends StatelessWidget {
@@ -22065,6 +24135,8 @@ class _NotificationBellButtonState
     setState(() {});
   }
 
+
+
   @override
   void dispose() {
     service.removeListener(_handleChange);
@@ -22111,9 +24183,7 @@ class _NotificationBellButtonState
                     : Icons
                         .notifications_none_rounded,
 
-                color: unread > 0
-                    ? chipluxCyan
-                    : Colors.white,
+                color: Colors.white,
 
                 size: 27,
               ),
@@ -22423,80 +24493,10 @@ Future<void> _openNewEpisodeNotification(
 Future<void> _openChipluxUpdate(
   ChipluxNotification notification,
 ) async {
-  await showDialog<void>(
+  await _showChipluxUpdateDialog(
     context: context,
-
-    builder: (dialogContext) {
-      return AlertDialog(
-        backgroundColor:
-            chipluxSurface,
-
-        shape:
-            RoundedRectangleBorder(
-          borderRadius:
-              BorderRadius.circular(
-            22,
-          ),
-        ),
-
-        title: Row(
-          children: [
-            const Icon(
-              Icons
-                  .auto_awesome_rounded,
-              color: chipluxCyan,
-            ),
-
-            const SizedBox(
-              width: 10,
-            ),
-
-            Expanded(
-              child: Text(
-                notification.title,
-
-                style:
-                    const TextStyle(
-                  color: Colors.white,
-                  fontWeight:
-                      FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        ),
-
-        content: Text(
-          notification.body,
-
-          style:
-              const TextStyle(
-            color: Colors.white70,
-            fontSize: 14,
-            height: 1.5,
-          ),
-        ),
-
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(
-                dialogContext,
-              );
-            },
-
-            child: const Text(
-              'Got it',
-              style: TextStyle(
-                color: chipluxCyan,
-                fontWeight:
-                    FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      );
-    },
+    title: notification.title,
+    body: notification.body,
   );
 }
 
@@ -22953,6 +24953,36 @@ default:
     }
   }
 
+  String _labelFor(
+    ChipluxNotification notification,
+  ) {
+    switch (notification.type) {
+      case 'comment_reply':
+        return 'REPLY';
+
+      case 'comment_like_milestone':
+        return 'LIKE MILESTONE';
+
+      case 'new_follower':
+        return 'NEW FOLLOWER';
+
+      case 'achievement':
+        return 'ACHIEVEMENT';
+
+      case 'new_episode':
+        return 'NEW EPISODE';
+
+      case 'release':
+        return 'RELEASE';
+
+      case 'chiplux_update':
+        return 'CHIPLUX UPDATE';
+
+      default:
+        return 'ACTIVITY';
+    }
+  }
+
   @override
   void dispose() {
     service.removeListener(_handleChange);
@@ -22965,8 +24995,44 @@ default:
     final notifications =
         service.notifications;
 
+    final unreadCount =
+        service.unreadCount;
+
+    Widget typeBadge(
+      ChipluxNotification notification,
+    ) {
+      return Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 8,
+          vertical: 4,
+        ),
+        decoration: BoxDecoration(
+          color: chipluxCyan.withValues(
+            alpha: 0.07,
+          ),
+          borderRadius:
+              BorderRadius.circular(999),
+          border: Border.all(
+            color: chipluxCyan.withValues(
+              alpha: 0.30,
+            ),
+          ),
+        ),
+        child: Text(
+          _labelFor(notification),
+          style: const TextStyle(
+            color: chipluxCyan,
+            fontSize: 8,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 0.9,
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
-      backgroundColor: chipluxBackground,
+      backgroundColor:
+          chipluxBackground,
 
       appBar: AppBar(
         backgroundColor:
@@ -22974,29 +25040,111 @@ default:
 
         elevation: 0,
 
-        title: const Text(
-          'Notifications',
+        toolbarHeight: 78,
 
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-          ),
+        titleSpacing: 0,
+        leadingWidth: 44,
+
+        title: const Column(
+          crossAxisAlignment:
+              CrossAxisAlignment.start,
+          mainAxisSize:
+              MainAxisSize.min,
+          children: [
+            Text(
+              'CHIPLUX INBOX',
+              style: TextStyle(
+                color: Colors.white38,
+                fontSize: 9,
+                fontWeight:
+                    FontWeight.w800,
+                letterSpacing: 1.6,
+              ),
+            ),
+            SizedBox(height: 2),
+            GradientText(
+              'Notifications',
+              style: TextStyle(
+                fontSize: 25,
+                fontWeight:
+                    FontWeight.w900,
+                letterSpacing: -0.6,
+              ),
+            ),
+          ],
         ),
 
         actions: [
-          if (service.unreadCount > 0)
-            TextButton(
-              onPressed: () {
-                service.markAllRead();
-              },
-
-              child: const Text(
-                'Read all',
-
-                style: TextStyle(
-                  color: chipluxCyan,
-
-                  fontWeight:
-                      FontWeight.w600,
+          if (unreadCount > 0)
+            Padding(
+              padding:
+                  const EdgeInsets.only(
+                right: 12,
+              ),
+              child: Center(
+                child: Material(
+                  color:
+                      Colors.transparent,
+                  child: InkWell(
+                    onTap: () {
+                      service.markAllRead();
+                    },
+                    borderRadius:
+                        BorderRadius.circular(
+                      999,
+                    ),
+                    child: Container(
+                      padding:
+                          const EdgeInsets.symmetric(
+                        horizontal: 11,
+                        vertical: 7,
+                      ),
+                      decoration:
+                          BoxDecoration(
+                        color: chipluxViolet
+                            .withValues(
+                          alpha: 0.07,
+                        ),
+                        borderRadius:
+                            BorderRadius.circular(
+                          999,
+                        ),
+                        border: Border.all(
+                          color: chipluxViolet
+                              .withValues(
+                            alpha: 0.32,
+                          ),
+                        ),
+                      ),
+                      child: const Row(
+                        mainAxisSize:
+                            MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons
+                                .done_all_rounded,
+                            color:
+                                chipluxViolet,
+                            size: 14,
+                          ),
+                          SizedBox(width: 5),
+                          Text(
+                            'READ ALL',
+                            style: TextStyle(
+                              color:
+                                  chipluxViolet,
+                              fontSize: 9,
+                              fontWeight:
+                                  FontWeight
+                                      .w900,
+                              letterSpacing:
+                                  0.8,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -23005,7 +25153,8 @@ default:
 
       body: ChipluxBackground(
         style:
-            ChipluxBackgroundStyle.profile,
+            ChipluxBackgroundStyle
+                .profile,
 
         child: RefreshIndicator(
           color: chipluxCyan,
@@ -23013,7 +25162,8 @@ default:
           backgroundColor:
               chipluxSurface,
 
-          onRefresh: service.refresh,
+          onRefresh:
+              service.refresh,
 
           child: service.loading &&
                   notifications.isEmpty
@@ -23027,62 +25177,198 @@ default:
                       const AlwaysScrollableScrollPhysics(),
 
                   padding:
-                      const EdgeInsets.all(
-                    25,
+                      const EdgeInsets.fromLTRB(
+                    20,
+                    34,
+                    20,
+                    30,
                   ),
 
                   children: [
-                    const SizedBox(
-                      height: 90,
-                    ),
-
-                    Icon(
-                      Icons
-                          .notifications_none_rounded,
-
-                      color: Colors.white
-                          .withValues(
-                        alpha: 0.18,
+                    Container(
+                      padding:
+                          const EdgeInsets.all(
+                        1,
                       ),
-
-                      size: 64,
-                    ),
-
-                    const SizedBox(
-                      height: 15,
-                    ),
-
-                    const Text(
-                      'No notifications yet',
-
-                      textAlign:
-                          TextAlign.center,
-
-                      style: TextStyle(
-                        color: Colors.white,
-
-                        fontSize: 20,
-
-                        fontWeight:
-                            FontWeight.bold,
+                      decoration:
+                          BoxDecoration(
+                        borderRadius:
+                            BorderRadius.circular(
+                          24,
+                        ),
+                        gradient:
+                            LinearGradient(
+                          begin:
+                              Alignment.topLeft,
+                          end:
+                              Alignment.bottomRight,
+                          colors: [
+                            chipluxCyan
+                                .withValues(
+                              alpha: 0.65,
+                            ),
+                            chipluxViolet
+                                .withValues(
+                              alpha: 0.45,
+                            ),
+                            chipluxPurple
+                                .withValues(
+                              alpha: 0.30,
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
+                      child: Container(
+                        padding:
+                            const EdgeInsets
+                                .fromLTRB(
+                          22,
+                          28,
+                          22,
+                          27,
+                        ),
+                        decoration:
+                            BoxDecoration(
+                          color:
+                              chipluxSurface,
+                          borderRadius:
+                              BorderRadius
+                                  .circular(
+                            23,
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            Container(
+                              width: 62,
+                              height: 62,
+                              padding:
+                                  const EdgeInsets
+                                      .all(
+                                1.2,
+                              ),
+                              decoration:
+                                  BoxDecoration(
+                                shape:
+                                    BoxShape
+                                        .circle,
+                                gradient:
+                                    const LinearGradient(
+                                  colors: [
+                                    chipluxCyan,
+                                    chipluxViolet,
+                                    chipluxPurple,
+                                  ],
+                                ),
+                              ),
+                              child: Container(
+                                decoration:
+                                    const BoxDecoration(
+                                  color:
+                                      chipluxBackground,
+                                  shape:
+                                      BoxShape
+                                          .circle,
+                                ),
+                                child:
+                                    const Icon(
+                                  Icons
+                                      .notifications_none_rounded,
+                                  color:
+                                      chipluxCyan,
+                                  size: 29,
+                                ),
+                              ),
+                            ),
 
-                    const SizedBox(
-                      height: 7,
-                    ),
+                            const SizedBox(
+                              height: 16,
+                            ),
 
-                    const Text(
-                      'Replies, followers and other Chiplux activity will appear here.',
+                            Container(
+                              padding:
+                                  const EdgeInsets
+                                      .symmetric(
+                                horizontal: 10,
+                                vertical: 5,
+                              ),
+                              decoration:
+                                  BoxDecoration(
+                                color:
+                                    chipluxCyan
+                                        .withValues(
+                                  alpha:
+                                      0.07,
+                                ),
+                                borderRadius:
+                                    BorderRadius
+                                        .circular(
+                                  999,
+                                ),
+                                border:
+                                    Border.all(
+                                  color:
+                                      chipluxCyan
+                                          .withValues(
+                                    alpha:
+                                        0.30,
+                                  ),
+                                ),
+                              ),
+                              child:
+                                  const Text(
+                                'ALL CAUGHT UP',
+                                style:
+                                    TextStyle(
+                                  color:
+                                      chipluxCyan,
+                                  fontSize: 9,
+                                  fontWeight:
+                                      FontWeight
+                                          .w900,
+                                  letterSpacing:
+                                      1.2,
+                                ),
+                              ),
+                            ),
 
-                      textAlign:
-                          TextAlign.center,
+                            const SizedBox(
+                              height: 12,
+                            ),
 
-                      style: TextStyle(
-                        color:
-                            Colors.white38,
+                            const GradientText(
+                              'No notifications yet',
+                              style:
+                                  TextStyle(
+                                fontSize: 21,
+                                fontWeight:
+                                    FontWeight
+                                        .w900,
+                                letterSpacing:
+                                    -0.35,
+                              ),
+                            ),
 
-                        fontSize: 12,
+                            const SizedBox(
+                              height: 8,
+                            ),
+
+                            const Text(
+                              'Replies, followers, achievements and Chiplux activity will appear here.',
+                              textAlign:
+                                  TextAlign
+                                      .center,
+                              style:
+                                  TextStyle(
+                                color:
+                                    Colors
+                                        .white54,
+                                fontSize: 12,
+                                height: 1.45,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
@@ -23094,24 +25380,145 @@ default:
                   padding:
                       const EdgeInsets.fromLTRB(
                     16,
-                    16,
+                    10,
                     16,
                     30,
                   ),
 
                   itemCount:
-                      notifications.length,
+                      notifications.length +
+                          1,
 
                   separatorBuilder:
                       (context, index) =>
-                          const SizedBox(
-                    height: 9,
+                          SizedBox(
+                    height:
+                        index == 0
+                            ? 12
+                            : 9,
                   ),
 
                   itemBuilder:
                       (context, index) {
+                    if (index == 0) {
+                      return Container(
+                        padding:
+                            const EdgeInsets
+                                .fromLTRB(
+                          3,
+                          2,
+                          3,
+                          0,
+                        ),
+                        child: Row(
+                          children: [
+                            const Text(
+                              'RECENT ACTIVITY',
+                              style:
+                                  TextStyle(
+                                color:
+                                    Colors
+                                        .white38,
+                                fontSize: 9,
+                                fontWeight:
+                                    FontWeight
+                                        .w900,
+                                letterSpacing:
+                                    1.5,
+                              ),
+                            ),
+
+                            const SizedBox(
+                              width: 9,
+                            ),
+
+                            Expanded(
+                              child: Container(
+                                height: 1,
+                                decoration:
+                                    BoxDecoration(
+                                  gradient:
+                                      LinearGradient(
+                                    colors: [
+                                      chipluxCyan
+                                          .withValues(
+                                        alpha:
+                                            0.35,
+                                      ),
+                                      chipluxViolet
+                                          .withValues(
+                                        alpha:
+                                            0.18,
+                                      ),
+                                      Colors
+                                          .transparent,
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            if (unreadCount >
+                                0) ...[
+                              const SizedBox(
+                                width: 9,
+                              ),
+                              Container(
+                                padding:
+                                    const EdgeInsets
+                                        .symmetric(
+                                  horizontal:
+                                      8,
+                                  vertical:
+                                      4,
+                                ),
+                                decoration:
+                                    BoxDecoration(
+                                  color:
+                                      chipluxViolet
+                                          .withValues(
+                                    alpha:
+                                        0.08,
+                                  ),
+                                  borderRadius:
+                                      BorderRadius
+                                          .circular(
+                                    999,
+                                  ),
+                                  border:
+                                      Border.all(
+                                    color:
+                                        chipluxViolet
+                                            .withValues(
+                                      alpha:
+                                          0.28,
+                                    ),
+                                  ),
+                                ),
+                                child: Text(
+                                  '$unreadCount UNREAD',
+                                  style:
+                                      const TextStyle(
+                                    color:
+                                        chipluxViolet,
+                                    fontSize: 8,
+                                    fontWeight:
+                                        FontWeight
+                                            .w900,
+                                    letterSpacing:
+                                        0.8,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      );
+                    }
+
                     final notification =
-                        notifications[index];
+                        notifications[
+                            index - 1];
 
                     return Dismissible(
                       key: ValueKey(
@@ -23124,11 +25531,13 @@ default:
 
                       background: Container(
                         alignment:
-                            Alignment.centerRight,
+                            Alignment
+                                .centerRight,
 
                         padding:
-                            const EdgeInsets.only(
-                          right: 22,
+                            const EdgeInsets
+                                .only(
+                          right: 20,
                         ),
 
                         decoration:
@@ -23136,21 +25545,55 @@ default:
                           color: Colors
                               .redAccent
                               .withValues(
-                            alpha: 0.18,
+                            alpha: 0.12,
                           ),
-
                           borderRadius:
-                              BorderRadius.circular(
-                            17,
+                              BorderRadius
+                                  .circular(
+                            19,
+                          ),
+                          border:
+                              Border.all(
+                            color: Colors
+                                .redAccent
+                                .withValues(
+                              alpha: 0.22,
+                            ),
                           ),
                         ),
 
-                        child: const Icon(
-                          Icons
-                              .delete_outline_rounded,
-
-                          color:
-                              Colors.redAccent,
+                        child: const Row(
+                          mainAxisAlignment:
+                              MainAxisAlignment
+                                  .end,
+                          mainAxisSize:
+                              MainAxisSize.min,
+                          children: [
+                            Text(
+                              'REMOVE',
+                              style:
+                                  TextStyle(
+                                color: Colors
+                                    .redAccent,
+                                fontSize: 9,
+                                fontWeight:
+                                    FontWeight
+                                        .w900,
+                                letterSpacing:
+                                    0.9,
+                              ),
+                            ),
+                            SizedBox(
+                              width: 7,
+                            ),
+                            Icon(
+                              Icons
+                                  .delete_outline_rounded,
+                              color: Colors
+                                  .redAccent,
+                              size: 19,
+                            ),
+                          ],
                         ),
                       ),
 
@@ -23161,225 +25604,314 @@ default:
                         );
                       },
 
-                      child: InkWell(
-                        onTap: () {
-  unawaited(
-    _openNotification(
-      notification,
-    ),
-  );
-},
+                      child: Material(
+                        color:
+                            Colors.transparent,
+                        child: InkWell(
+                          onTap: () {
+                            unawaited(
+                              _openNotification(
+                                notification,
+                              ),
+                            );
+                          },
 
-                        borderRadius:
-                            BorderRadius.circular(
-                          17,
-                        ),
-
-                        child: Container(
-                          padding:
-                              const EdgeInsets.all(
-                            1,
+                          borderRadius:
+                              BorderRadius
+                                  .circular(
+                            19,
                           ),
 
-                          decoration:
-                              BoxDecoration(
-                            borderRadius:
-                                BorderRadius.circular(
-                              17,
-                            ),
-
-                            gradient: !notification
-                                    .isRead
-                                ? LinearGradient(
-                                    begin:
-                                        Alignment.topLeft,
-
-                                    end: Alignment
-                                        .bottomRight,
-
-                                    colors: [
-                                      chipluxCyan
-                                          .withValues(
-                                        alpha: 0.65,
-                                      ),
-
-                                      chipluxViolet
-                                          .withValues(
-                                        alpha: 0.40,
-                                      ),
-
-                                      chipluxPurple
-                                          .withValues(
-                                        alpha: 0.35,
-                                      ),
-                                    ],
-                                  )
-                                : null,
-
-                            border: notification
-                                    .isRead
-                                ? Border.all(
-                                    color: Colors
-                                        .white
-                                        .withValues(
-                                      alpha: 0.06,
-                                    ),
-                                  )
-                                : null,
-                          ),
-
-                          child: Container(
+                          child: Ink(
                             padding:
-                                const EdgeInsets.all(
-                              14,
+                                const EdgeInsets
+                                    .all(
+                              1,
                             ),
-
                             decoration:
                                 BoxDecoration(
-                              color:
-                                  chipluxSurface,
-
                               borderRadius:
-                                  BorderRadius.circular(
-                                16,
+                                  BorderRadius
+                                      .circular(
+                                19,
                               ),
+                              gradient: notification
+                                      .isRead
+                                  ? LinearGradient(
+                                      colors: [
+                                        Colors
+                                            .white
+                                            .withValues(
+                                          alpha:
+                                              0.08,
+                                        ),
+                                        Colors
+                                            .white
+                                            .withValues(
+                                          alpha:
+                                              0.035,
+                                        ),
+                                      ],
+                                    )
+                                  : LinearGradient(
+                                      begin:
+                                          Alignment
+                                              .topLeft,
+                                      end:
+                                          Alignment
+                                              .bottomRight,
+                                      colors: [
+                                        chipluxCyan
+                                            .withValues(
+                                          alpha:
+                                              0.72,
+                                        ),
+                                        chipluxViolet
+                                            .withValues(
+                                          alpha:
+                                              0.50,
+                                        ),
+                                        chipluxPurple
+                                            .withValues(
+                                          alpha:
+                                              0.36,
+                                        ),
+                                      ],
+                                    ),
                             ),
-
-                            child: Row(
-                              crossAxisAlignment:
-                                  CrossAxisAlignment
-                                      .start,
-
-                              children: [
-                                Container(
-                                  width: 42,
-                                  height: 42,
-
-                                  decoration:
-                                      BoxDecoration(
-                                    color: chipluxCyan
-                                        .withValues(
-                                      alpha: 0.09,
-                                    ),
-
-                                    borderRadius:
-                                        BorderRadius.circular(
-                                      12,
-                                    ),
-                                  ),
-
-                                  child: Icon(
-                                    _iconFor(
-                                      notification,
-                                    ),
-
-                                    color:
-                                        chipluxCyan,
-
-                                    size: 22,
-                                  ),
+                            child: Container(
+                              padding:
+                                  const EdgeInsets
+                                      .all(
+                                14,
+                              ),
+                              decoration:
+                                  BoxDecoration(
+                                color:
+                                    chipluxSurface,
+                                borderRadius:
+                                    BorderRadius
+                                        .circular(
+                                  18,
                                 ),
-
-                                const SizedBox(
-                                  width: 12,
-                                ),
-
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment
-                                            .start,
-
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                            child:
-                                                Text(
-                                              notification
-                                                  .title,
-
-                                              style:
-                                                  TextStyle(
-                                                color:
-                                                    Colors.white,
-
-                                                fontSize:
-                                                    14,
-
-                                                fontWeight:
-                                                    notification.isRead
-                                                    ? FontWeight.w600
-                                                    : FontWeight.bold,
-                                              ),
-                                            ),
+                              ),
+                              child: Row(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment
+                                        .start,
+                                children: [
+                                  Container(
+                                    width: 46,
+                                    height: 46,
+                                    padding:
+                                        const EdgeInsets
+                                            .all(
+                                      1,
+                                    ),
+                                    decoration:
+                                        BoxDecoration(
+                                      borderRadius:
+                                          BorderRadius
+                                              .circular(
+                                        14,
+                                      ),
+                                      gradient:
+                                          LinearGradient(
+                                        begin:
+                                            Alignment
+                                                .topLeft,
+                                        end:
+                                            Alignment
+                                                .bottomRight,
+                                        colors: [
+                                          chipluxCyan
+                                              .withValues(
+                                            alpha: notification
+                                                    .isRead
+                                                ? 0.22
+                                                : 0.75,
                                           ),
-
-                                          if (!notification
-                                              .isRead)
-                                            Container(
-                                              width:
-                                                  7,
-
-                                              height:
-                                                  7,
-
-                                              decoration:
-                                                  const BoxDecoration(
-                                                color:
-                                                    chipluxCyan,
-
-                                                shape:
-                                                    BoxShape.circle,
-                                              ),
-                                            ),
+                                          chipluxViolet
+                                              .withValues(
+                                            alpha: notification
+                                                    .isRead
+                                                ? 0.14
+                                                : 0.48,
+                                          ),
+                                          chipluxPurple
+                                              .withValues(
+                                            alpha: notification
+                                                    .isRead
+                                                ? 0.10
+                                                : 0.28,
+                                          ),
                                         ],
                                       ),
-
-                                      const SizedBox(
-                                        height: 4,
-                                      ),
-
-                                      Text(
-                                        notification
-                                            .body,
-
-                                        style:
-                                            const TextStyle(
-                                          color: Colors
-                                              .white60,
-
-                                          fontSize:
-                                              12,
-
-                                          height:
-                                              1.35,
+                                    ),
+                                    child: Container(
+                                      decoration:
+                                          BoxDecoration(
+                                        color:
+                                            chipluxBackground,
+                                        borderRadius:
+                                            BorderRadius
+                                                .circular(
+                                          13,
                                         ),
                                       ),
-
-                                      const SizedBox(
-                                        height: 7,
-                                      ),
-
-                                      Text(
-                                        _timeAgo(
-                                          notification
-                                              .createdAt,
+                                      child: Icon(
+                                        _iconFor(
+                                          notification,
                                         ),
-
-                                        style:
-                                            const TextStyle(
-                                          color: Colors
-                                              .white30,
-
-                                          fontSize:
-                                              10,
-                                        ),
+                                        color:
+                                            chipluxCyan,
+                                        size: 22,
                                       ),
-                                    ],
+                                    ),
                                   ),
-                                ),
-                              ],
+
+                                  const SizedBox(
+                                    width: 12,
+                                  ),
+
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment
+                                              .start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            typeBadge(
+                                              notification,
+                                            ),
+
+                                            if (!notification
+                                                .isRead) ...[
+                                              const SizedBox(
+                                                width: 6,
+                                              ),
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets
+                                                        .symmetric(
+                                                  horizontal:
+                                                      7,
+                                                  vertical:
+                                                      4,
+                                                ),
+                                                decoration:
+                                                    BoxDecoration(
+                                                  color:
+                                                      chipluxViolet
+                                                          .withValues(
+                                                    alpha:
+                                                        0.10,
+                                                  ),
+                                                  borderRadius:
+                                                      BorderRadius
+                                                          .circular(
+                                                    999,
+                                                  ),
+                                                  border:
+                                                      Border.all(
+                                                    color:
+                                                        chipluxViolet
+                                                            .withValues(
+                                                      alpha:
+                                                          0.33,
+                                                    ),
+                                                  ),
+                                                ),
+                                                child:
+                                                    const Text(
+                                                  'NEW',
+                                                  style:
+                                                      TextStyle(
+                                                    color:
+                                                        chipluxViolet,
+                                                    fontSize:
+                                                        8,
+                                                    fontWeight:
+                                                        FontWeight
+                                                            .w900,
+                                                    letterSpacing:
+                                                        0.8,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+
+                                            const Spacer(),
+
+                                            Text(
+                                              _timeAgo(
+                                                notification
+                                                    .createdAt,
+                                              ),
+                                              style:
+                                                  const TextStyle(
+                                                color:
+                                                    Colors
+                                                        .white30,
+                                                fontSize:
+                                                    9,
+                                                fontWeight:
+                                                    FontWeight
+                                                        .w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+
+                                        const SizedBox(
+                                          height: 9,
+                                        ),
+
+                                        Text(
+                                          notification
+                                              .title,
+                                          style:
+                                              TextStyle(
+                                            color:
+                                                Colors
+                                                    .white,
+                                            fontSize:
+                                                14,
+                                            height:
+                                                1.2,
+                                            fontWeight: notification
+                                                    .isRead
+                                                ? FontWeight
+                                                    .w600
+                                                : FontWeight
+                                                    .w800,
+                                          ),
+                                        ),
+
+                                        const SizedBox(
+                                          height: 5,
+                                        ),
+
+                                        Text(
+                                          notification
+                                              .body,
+                                          style:
+                                              const TextStyle(
+                                            color:
+                                                Colors
+                                                    .white60,
+                                            fontSize:
+                                                12,
+                                            height:
+                                                1.4,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -23394,39 +25926,257 @@ default:
 }
 
 class ProfileMenuPage extends StatelessWidget {
-  const ProfileMenuPage({super.key});
+  const ProfileMenuPage({
+    super.key,
+  });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(
+    BuildContext context,
+  ) {
     return DefaultTabController(
       length: 3,
+
       child: Scaffold(
-        backgroundColor: chipluxBackground,
+        backgroundColor:
+            chipluxBackground,
+
         appBar: AppBar(
-          backgroundColor: chipluxBackground,
+          backgroundColor:
+              chipluxBackground,
+
           elevation: 0,
-          title: const Text(
-            'Profile',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          bottom: const TabBar(
-            indicatorColor: chipluxCyan,
-            labelColor: chipluxCyan,
-            unselectedLabelColor: Colors.white54,
-            labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-            tabs: [
-              Tab(text: 'Customization'),
-              Tab(text: 'Settings'),
-              Tab(text: 'Help'),
-            ],
+
+          toolbarHeight: 78,
+
+          title: const Row(
+  mainAxisSize:
+      MainAxisSize.min,
+
+  crossAxisAlignment:
+      CrossAxisAlignment.end,
+
+  children: [
+    GradientText(
+      'Profile',
+      style: TextStyle(
+        fontSize: 25,
+        fontWeight: FontWeight.w900,
+        letterSpacing: -0.6,
+      ),
+    ),
+
+    SizedBox(width: 8),
+
+    Padding(
+      padding: EdgeInsets.only(
+        bottom: 3,
+      ),
+
+      child: Text(
+        'HUB',
+        style: TextStyle(
+          color: Colors.white38,
+          fontSize: 8,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 1.3,
+        ),
+      ),
+    ),
+  ],
+),
+
+          bottom: PreferredSize(
+            preferredSize:
+                const Size.fromHeight(
+              62,
+            ),
+
+            child: Padding(
+              padding:
+                  const EdgeInsets.fromLTRB(
+                14,
+                3,
+                14,
+                12,
+              ),
+
+              child: Container(
+                padding:
+                    const EdgeInsets.all(
+                  4,
+                ),
+
+                decoration:
+                    BoxDecoration(
+                  color: chipluxSurface
+                      .withValues(
+                    alpha: 0.75,
+                  ),
+
+                  borderRadius:
+                      BorderRadius.circular(
+                    18,
+                  ),
+
+                  border: Border.all(
+                    color: chipluxCyan
+                        .withValues(
+                      alpha: 0.16,
+                    ),
+                  ),
+
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black
+                          .withValues(
+                        alpha: 0.18,
+                      ),
+
+                      blurRadius: 12,
+
+                      offset:
+                          const Offset(
+                        0,
+                        4,
+                      ),
+                    ),
+                  ],
+                ),
+
+                child: TabBar(
+                  dividerColor:
+                      Colors.transparent,
+
+                  indicatorSize:
+                      TabBarIndicatorSize.tab,
+
+                  indicator:
+                      BoxDecoration(
+                    borderRadius:
+                        BorderRadius.circular(
+                      14,
+                    ),
+
+                    gradient:
+                        LinearGradient(
+                      begin:
+                          Alignment.topLeft,
+
+                      end:
+                          Alignment.bottomRight,
+
+                      colors: [
+                        chipluxCyan
+                            .withValues(
+                          alpha: 0.20,
+                        ),
+
+                        chipluxViolet
+                            .withValues(
+                          alpha: 0.18,
+                        ),
+
+                        chipluxPurple
+                            .withValues(
+                          alpha: 0.12,
+                        ),
+                      ],
+                    ),
+
+                    border: Border.all(
+                      color: chipluxCyan
+                          .withValues(
+                        alpha: 0.35,
+                      ),
+                    ),
+                  ),
+
+                  labelColor:
+                      chipluxCyan,
+
+                  unselectedLabelColor:
+                      Colors.white54,
+
+                  labelStyle:
+                      const TextStyle(
+                    fontSize: 11,
+
+                    fontWeight:
+                        FontWeight.w900,
+
+                    letterSpacing:
+                        0.7,
+                  ),
+
+                  unselectedLabelStyle:
+                      const TextStyle(
+                    fontSize: 11,
+
+                    fontWeight:
+                        FontWeight.w700,
+
+                    letterSpacing:
+                        0.5,
+                  ),
+
+                  tabs: const [
+                    Tab(
+                      icon: Icon(
+                        Icons
+                            .auto_awesome_rounded,
+
+                        size: 17,
+                      ),
+
+                      text:
+                          'CUSTOMIZE',
+                    ),
+
+                    Tab(
+                      icon: Icon(
+                        Icons
+                            .tune_rounded,
+
+                        size: 17,
+                      ),
+
+                      text:
+                          'SETTINGS',
+                    ),
+
+                    Tab(
+                      icon: Icon(
+                        Icons
+                            .help_outline_rounded,
+
+                        size: 17,
+                      ),
+
+                      text:
+                          'HELP',
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
         ),
+
         body: ChipluxBackground(
-          style: ChipluxBackgroundStyle.profile,
-          child: const TabBarView(
+          style:
+              ChipluxBackgroundStyle
+                  .profile,
+
+          child:
+              const TabBarView(
             children: [
-              EditProfilePage(embedded: true),
+              EditProfilePage(
+                embedded: true,
+              ),
+
               _ProfileSettingsTab(),
+
               _ProfileHelpTab(),
             ],
           ),
@@ -24948,6 +27698,10 @@ await AuthService.instance.signOut();
 
     MedalPinService.instance.clear();
 
+    ProfilePageFrameService.instance.clear();
+
+await ProfileTitleService.instance.load();
+
     await DisplayNameFrameService.instance.load();
 
     await AvatarFrameService.instance.load();
@@ -25148,7 +27902,8 @@ class _ProfileHelpTab extends StatelessWidget {
   }
 }
 
-class _ProfileMenuSectionTitle extends StatelessWidget {
+class _ProfileMenuSectionTitle
+    extends StatelessWidget {
   final String title;
   final String subtitle;
 
@@ -25158,25 +27913,34 @@ class _ProfileMenuSectionTitle extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(
+    BuildContext context,
+  ) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment:
+          CrossAxisAlignment.start,
+
       children: [
-        Text(
+        GradientText(
           title,
           style: const TextStyle(
-            color: Colors.white,
-            fontSize: 19,
-            fontWeight: FontWeight.bold,
+            fontSize: 20,
+            fontWeight:
+                FontWeight.w900,
+            letterSpacing: -0.3,
           ),
         ),
-        const SizedBox(height: 4),
+
+        const SizedBox(
+          height: 5,
+        ),
+
         Text(
           subtitle,
           style: const TextStyle(
             color: Colors.white54,
             fontSize: 12,
-            height: 1.35,
+            height: 1.4,
           ),
         ),
       ],
@@ -25184,20 +27948,94 @@ class _ProfileMenuSectionTitle extends StatelessWidget {
   }
 }
 
-class _ProfileMenuCard extends StatelessWidget {
+class _ProfileMenuCard
+    extends StatelessWidget {
   final List<Widget> children;
 
-  const _ProfileMenuCard({required this.children});
+  const _ProfileMenuCard({
+    required this.children,
+  });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(
+    BuildContext context,
+  ) {
     return Container(
-      decoration: BoxDecoration(
-        color: chipluxSurface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+      padding:
+          const EdgeInsets.all(
+        1,
       ),
-      child: Column(children: children),
+
+      decoration:
+          BoxDecoration(
+        borderRadius:
+            BorderRadius.circular(
+          19,
+        ),
+
+        gradient:
+            LinearGradient(
+          begin:
+              Alignment.topLeft,
+
+          end:
+              Alignment.bottomRight,
+
+          colors: [
+            chipluxCyan
+                .withValues(
+              alpha: 0.38,
+            ),
+
+            chipluxViolet
+                .withValues(
+              alpha: 0.25,
+            ),
+
+            chipluxPurple
+                .withValues(
+              alpha: 0.15,
+            ),
+          ],
+        ),
+
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black
+                .withValues(
+              alpha: 0.18,
+            ),
+
+            blurRadius: 14,
+
+            offset:
+                const Offset(
+              0,
+              5,
+            ),
+          ),
+        ],
+      ),
+
+      child: Container(
+        decoration:
+            BoxDecoration(
+          color: chipluxSurface
+              .withValues(
+            alpha: 0.94,
+          ),
+
+          borderRadius:
+              BorderRadius.circular(
+            18,
+          ),
+        ),
+
+        child: Column(
+          children:
+              children,
+        ),
+      ),
     );
   }
 }
@@ -25221,14 +28059,70 @@ class _ProfileMenuRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: chipluxCyan.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(11),
-            ),
-            child: Icon(icon, color: chipluxCyan, size: 21),
-          ),
+  width: 40,
+  height: 40,
+
+  padding:
+      const EdgeInsets.all(
+    1,
+  ),
+
+  decoration:
+      BoxDecoration(
+    borderRadius:
+        BorderRadius.circular(
+      12,
+    ),
+
+    gradient:
+        LinearGradient(
+      begin:
+          Alignment.topLeft,
+
+      end:
+          Alignment.bottomRight,
+
+      colors: [
+        chipluxCyan
+            .withValues(
+          alpha: 0.60,
+        ),
+
+        chipluxViolet
+            .withValues(
+          alpha: 0.35,
+        ),
+
+        chipluxPurple
+            .withValues(
+          alpha: 0.20,
+        ),
+      ],
+    ),
+  ),
+
+  child: Container(
+    decoration:
+        BoxDecoration(
+      color:
+          chipluxBackground,
+
+      borderRadius:
+          BorderRadius.circular(
+        11,
+      ),
+    ),
+
+    child: Icon(
+      icon,
+
+      color:
+          chipluxCyan,
+
+      size: 20,
+    ),
+  ),
+),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -25273,6 +28167,7 @@ class _ProfileMenuDivider extends StatelessWidget {
   }
 }
 
+
 class EditProfilePage extends StatefulWidget {
   final bool embedded;
 
@@ -25299,6 +28194,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   final titleService = ProfileTitleService.instance;
 
+  final profilePageFrameService = ProfilePageFrameService.instance;
+
   late final TextEditingController displayNameController;
 
   bool saving = false;
@@ -25313,11 +28210,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   bool loadingTitle = true;
 
+  bool loadingProfilePageFrame = true;
+
   String? selectedAvatarFrameId;
 
   String? selectedFrameId;
 
   String? selectedTitleId;
+
+  String? selectedProfilePageFrameId;
 
   Map<String, String?> selectedAchievementCosmetics = {};
 
@@ -25337,6 +28238,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
     selectedAvatarFrameId = avatarFrameService.frameId;
 
+    selectedProfilePageFrameId = profilePageFrameService.frameId;
+
     unawaited(_loadFrame());
 
     unawaited(_loadAvatarFrame());
@@ -25344,10 +28247,14 @@ class _EditProfilePageState extends State<EditProfilePage> {
     unawaited(_loadAchievementCosmetics());
 
     unawaited(_loadProfileTitle());
+
+    unawaited(_loadProfilePageFrame());
   }
 
   Future<void> _loadProfileTitle() async {
     await Future.wait([
+      profile.loadProfile(),
+
       titleService.load(),
 
       critic.refresh(),
@@ -25366,13 +28273,19 @@ class _EditProfilePageState extends State<EditProfilePage> {
     String? loadedId = titleService.achievementId;
 
     if (loadedId != null) {
-      final achievement = _findProfileTitleAchievement(
-        _currentUserProfileTitleGroups(),
-        loadedId,
-      );
+      if (loadedId == developerProfileTitleId) {
+        if (!profile.isDeveloper) {
+          loadedId = null;
+        }
+      } else {
+        final achievement = _findProfileTitleAchievement(
+          _currentUserProfileTitleGroups(),
+          loadedId,
+        );
 
-      if (achievement == null) {
-        loadedId = null;
+        if (achievement == null) {
+          loadedId = null;
+        }
       }
     }
 
@@ -25383,17 +28296,93 @@ class _EditProfilePageState extends State<EditProfilePage> {
     });
   }
 
+  Widget _buildDeveloperTitleOption() {
+    final selected = selectedTitleId == developerProfileTitleId;
+
+    return SizedBox(
+      width: 132,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            setState(() {
+              selectedTitleId = developerProfileTitleId;
+            });
+          },
+          borderRadius: BorderRadius.circular(15),
+          child: Container(
+            padding: const EdgeInsets.all(1.3),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(15),
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFF00E5FF),
+                  Color(0xFF875CFF),
+                  Color(0xFFFF4FD8),
+                  Color(0xFFFFD166),
+                ],
+              ),
+              boxShadow: selected
+                  ? [
+                      BoxShadow(
+                        color: chipluxCyan.withValues(alpha: 0.20),
+                        blurRadius: 10,
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Container(
+              decoration: BoxDecoration(
+                color: chipluxBackground,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.code_rounded,
+                    color: Color(0xFF00E5FF),
+                    size: 24,
+                  ),
+                  SizedBox(height: 7),
+                  Text(
+                    'Developer',
+                    style: TextStyle(
+                      color: Color(0xFFFFD166),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'EXCLUSIVE',
+                    style: TextStyle(
+                      color: Colors.white38,
+                      fontSize: 7,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.1,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget buildProfileTitlePicker() {
     if (loadingTitle) {
       return const SizedBox(
         height: 100,
-
         child: Center(child: CircularProgressIndicator()),
       );
     }
 
     final groups = _currentUserProfileTitleGroups();
-
     final unlocked = <_Achievement>[];
 
     for (final group in groups) {
@@ -25406,41 +28395,29 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-
       children: [
         const Text(
           'Profile Title',
-
           style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
         ),
-
         const SizedBox(height: 5),
-
         const Text(
           'Use any unlocked achievement milestone as the title shown above your display name.',
-
           style: TextStyle(color: Colors.white54, fontSize: 12),
         ),
-
         const SizedBox(height: 12),
-
         SizedBox(
           height: 88,
-
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
-
-            itemCount: unlocked.length + 1,
-
+            itemCount:
+                unlocked.length + 1 + (profile.isDeveloper ? 1 : 0),
             separatorBuilder: (context, index) => const SizedBox(width: 8),
-
             itemBuilder: (context, index) {
               if (index == 0) {
                 return _ProfileTitleOption(
                   achievement: null,
-
                   selected: selectedTitleId == null,
-
                   onTap: () {
                     setState(() {
                       selectedTitleId = null;
@@ -25449,13 +28426,17 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 );
               }
 
-              final achievement = unlocked[index - 1];
+              if (profile.isDeveloper && index == 1) {
+                return _buildDeveloperTitleOption();
+              }
+
+              final achievement = unlocked[
+                index - 1 - (profile.isDeveloper ? 1 : 0)
+              ];
 
               return _ProfileTitleOption(
                 achievement: achievement,
-
                 selected: selectedTitleId == achievement.id,
-
                 onTap: () {
                   setState(() {
                     selectedTitleId = achievement.id;
@@ -25465,16 +28446,187 @@ class _EditProfilePageState extends State<EditProfilePage> {
             },
           ),
         ),
-
-        if (unlocked.isEmpty) ...[
+        if (unlocked.isEmpty && !profile.isDeveloper) ...[
           const SizedBox(height: 8),
-
           const Text(
             'Unlock an achievement milestone to earn your first title.',
-
             style: TextStyle(color: Colors.white38, fontSize: 11),
           ),
         ],
+      ],
+    );
+  }
+
+  Future<void> _loadProfilePageFrame() async {
+    await Future.wait([
+      profilePageFrameService.load(),
+      profile.loadProfile(),
+    ]);
+
+    if (!mounted) {
+      return;
+    }
+
+    String? loadedId = profilePageFrameService.frameId;
+
+    if (loadedId == developerProfilePageFrameId && !profile.isDeveloper) {
+      loadedId = null;
+    }
+
+    if (loadedId != null && loadedId != developerProfilePageFrameId) {
+      loadedId = null;
+    }
+
+    setState(() {
+      selectedProfilePageFrameId = loadedId;
+      loadingProfilePageFrame = false;
+    });
+  }
+
+  Widget _profilePageFrameOption({
+    required String label,
+    required String? frameId,
+  }) {
+    final selected = selectedProfilePageFrameId == frameId;
+    final isDeveloperFrame = frameId == developerProfilePageFrameId;
+
+    return SizedBox(
+      width: 132,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            setState(() {
+              selectedProfilePageFrameId = frameId;
+            });
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            padding: const EdgeInsets.all(7),
+            decoration: BoxDecoration(
+              color: selected
+                  ? Colors.white.withValues(alpha: 0.055)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: selected
+                    ? chipluxCyan.withValues(alpha: 0.65)
+                    : Colors.white.withValues(alpha: 0.07),
+                width: selected ? 1.3 : 1,
+              ),
+            ),
+            child: Column(
+              children: [
+                SizedBox(
+                  height: 67,
+                  width: double.infinity,
+                  child: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: Container(
+                          margin: const EdgeInsets.all(5),
+                          decoration: BoxDecoration(
+                            color: chipluxBackground,
+                            borderRadius: BorderRadius.circular(14),
+                            border: isDeveloperFrame
+                                ? null
+                                : Border.all(
+                                    color: Colors.white.withValues(alpha: 0.18),
+                                  ),
+                          ),
+                          child: const Center(
+                            child: Icon(
+                              Icons.person_outline_rounded,
+                              color: Colors.white38,
+                              size: 23,
+                            ),
+                          ),
+                        ),
+                      ),
+                      if (isDeveloperFrame)
+                        const Positioned.fill(
+                          child: _DeveloperProfilePageFrame(),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (isDeveloperFrame) ...[
+                      const Icon(
+                        Icons.code_rounded,
+                        size: 11,
+                        color: chipluxCyan,
+                      ),
+                      const SizedBox(width: 4),
+                    ],
+                    Flexible(
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: isDeveloperFrame
+                              ? const Color(0xFFFFD166)
+                              : Colors.white70,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget buildProfilePageFramePicker() {
+    final options = <Widget>[
+      _profilePageFrameOption(
+        label: 'None',
+        frameId: null,
+      ),
+      if (profile.isDeveloper)
+        _profilePageFrameOption(
+          label: 'Developer',
+          frameId: developerProfilePageFrameId,
+        ),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Profile Page Frame',
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 5),
+        const Text(
+          'Choose the frame surrounding your full profile page.',
+          style: TextStyle(color: Colors.white54, fontSize: 12),
+        ),
+        const SizedBox(height: 12),
+        if (loadingProfilePageFrame)
+          const SizedBox(
+            height: 108,
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else
+          SizedBox(
+            height: 108,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: options.length,
+              separatorBuilder: (context, index) => const SizedBox(width: 8),
+              itemBuilder: (context, index) => options[index],
+            ),
+          ),
       ],
     );
   }
@@ -25780,7 +28932,16 @@ class _EditProfilePageState extends State<EditProfilePage> {
       return;
     }
 
-    if (selectedTitleId != null) {
+    if (selectedTitleId == developerProfileTitleId) {
+      if (!profile.isDeveloper) {
+        setState(() {
+          errorMessage =
+              'Developer title is not available for this account.';
+        });
+
+        return;
+      }
+    } else if (selectedTitleId != null) {
       final selectedTitle = _findProfileTitleAchievement(
         _currentUserProfileTitleGroups(),
         selectedTitleId,
@@ -25793,6 +28954,23 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
         return;
       }
+    }
+
+    if (selectedProfilePageFrameId == developerProfilePageFrameId) {
+      if (!profile.isDeveloper) {
+        setState(() {
+          errorMessage =
+              'Developer profile frame is not available for this account.';
+        });
+
+        return;
+      }
+    } else if (selectedProfilePageFrameId != null) {
+      setState(() {
+        errorMessage = 'That profile page frame is not available.';
+      });
+
+      return;
     }
 
     setState(() {
@@ -25844,6 +29022,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
       await avatarFrameService.apply(selectedAvatarFrameId);
 
       await titleService.apply(selectedTitleId);
+
+      await profilePageFrameService.apply(selectedProfilePageFrameId);
 
       await achievementCosmeticService.applyAll(selectedAchievementCosmetics);
 
@@ -26423,6 +29603,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
         buildAvatarFramePicker(),
 
+        const SizedBox(height: 24),
+
+        buildProfilePageFramePicker(),
+
         const SizedBox(height: 30),
 
         buildAchievementCosmetics(),
@@ -26486,6 +29670,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     super.dispose();
   }
 }
+
 
 class _AvatarFrameOption extends StatelessWidget {
   final String label;
@@ -26748,6 +29933,7 @@ class _EpisodeRatingCardState extends State<_EpisodeRatingCard> {
   @override
   void initState() {
     super.initState();
+    
 
     _load();
   }

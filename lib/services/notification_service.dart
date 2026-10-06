@@ -306,14 +306,32 @@ class NotificationService extends ChangeNotifier {
   // =====================================================
 
   Future<void> deleteNotification(
-    String notificationId,
-  ) async {
-    final user = client.auth.currentUser;
+  String notificationId,
+) async {
+  final user = client.auth.currentUser;
 
-    if (user == null) {
-      return;
-    }
+  if (user == null) {
+    return;
+  }
 
+  final previousNotifications =
+      List<ChipluxNotification>.from(
+    _notifications,
+  );
+
+  // Remove immediately from the UI.
+  _notifications =
+      _notifications
+          .where(
+            (notification) =>
+                notification.id !=
+                notificationId,
+          )
+          .toList();
+
+  notifyListeners();
+
+  try {
     await client
         .from('notifications')
         .delete()
@@ -325,9 +343,21 @@ class NotificationService extends ChangeNotifier {
           'recipient_user_id',
           user.id,
         );
+  } catch (e) {
+    // Restore it if the database delete failed.
+    _notifications =
+        previousNotifications;
 
-    await refresh();
+    _errorMessage =
+        'Could not delete notification.';
+
+    notifyListeners();
+
+    debugPrint(
+      'Could not delete notification: $e',
+    );
   }
+}
 
   // =====================================================
   // REALTIME

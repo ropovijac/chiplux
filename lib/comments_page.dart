@@ -1082,6 +1082,20 @@ if (!_didFocusTargetComment &&
   // PROFILE HELPERS
   // =====================================================
 
+  bool _isDeveloper(
+  Map<String, dynamic> comment,
+) {
+  final profile =
+      comment['profile'];
+
+  if (profile is! Map) {
+    return false;
+  }
+
+  return profile['is_developer'] ==
+      true;
+}
+
   String _displayName(Map<String, dynamic>? comment) {
     if (comment == null) {
       return 'Chiplux User';
@@ -1193,9 +1207,12 @@ if (!_didFocusTargetComment &&
 
     final name = _displayName(comment);
 
-    final username = _username(comment);
+final username = _username(comment);
 
-    final avatarUrl = _avatarUrl(comment);
+final avatarUrl = _avatarUrl(comment);
+
+final isDeveloper =
+    _isDeveloper(comment);
 
     final body = comment['body']?.toString() ?? '';
 
@@ -1371,6 +1388,12 @@ final repliesExpanded =
                                 ),
                               ),
                             ),
+
+                            if (isDeveloper) ...[
+  const SizedBox(width: 7),
+
+  const _DeveloperCommentBadge(),
+],
 
                             if (isOwn) ...[
                               const SizedBox(width: 7),
@@ -2113,6 +2136,225 @@ class _ExpandableCommentTextState extends State<_ExpandableCommentText> {
               ),
             ],
           ],
+        );
+      },
+    );
+  }
+}
+
+class _DeveloperCommentBadge
+    extends StatefulWidget {
+  const _DeveloperCommentBadge();
+
+  @override
+  State<_DeveloperCommentBadge>
+      createState() =>
+          _DeveloperCommentBadgeState();
+}
+
+class _DeveloperCommentBadgeState
+    extends State<_DeveloperCommentBadge>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController
+      _controller;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _controller =
+        AnimationController(
+      vsync: this,
+
+      duration:
+          const Duration(
+        seconds: 4,
+      ),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+
+    super.dispose();
+  }
+
+  @override
+  Widget build(
+    BuildContext context,
+  ) {
+    return AnimatedBuilder(
+      animation: _controller,
+
+      builder: (
+        context,
+        child,
+      ) {
+        final t =
+            _controller.value;
+
+        return Container(
+          padding:
+              const EdgeInsets.all(
+            1,
+          ),
+
+          decoration:
+              BoxDecoration(
+            borderRadius:
+                BorderRadius.circular(
+              999,
+            ),
+
+            gradient:
+                LinearGradient(
+              colors: const [
+                Color(
+                  0xFF00E5FF,
+                ),
+                Color(
+                  0xFF875CFF,
+                ),
+                Color(
+                  0xFFFF4FD8,
+                ),
+                Color(
+                  0xFFFFD166,
+                ),
+                Color(
+                  0xFF00E5FF,
+                ),
+              ],
+
+              transform:
+                  GradientRotation(
+                t * 6.283185,
+              ),
+            ),
+
+            boxShadow: [
+              BoxShadow(
+                color:
+                    const Color(
+                      0xFF00E5FF,
+                    ).withValues(
+                  alpha: 0.12,
+                ),
+
+                blurRadius: 6,
+              ),
+            ],
+          ),
+
+          child: Container(
+            padding:
+                const EdgeInsets
+                    .symmetric(
+              horizontal: 7,
+              vertical: 3,
+            ),
+
+            decoration:
+                BoxDecoration(
+              color:
+                  _commentsBackground
+                      .withValues(
+                alpha: 0.94,
+              ),
+
+              borderRadius:
+                  BorderRadius.circular(
+                999,
+              ),
+            ),
+
+            child: ShaderMask(
+              blendMode:
+                  BlendMode.srcIn,
+
+              shaderCallback:
+                  (bounds) {
+                return LinearGradient(
+                  begin:
+                      Alignment(
+                    -1.5 +
+                        (t * 2),
+                    0,
+                  ),
+
+                  end:
+                      Alignment(
+                    0.5 +
+                        (t * 2),
+                    0,
+                  ),
+
+                  colors:
+                      const [
+                    Color(
+                      0xFF00E5FF,
+                    ),
+                    Color(
+                      0xFFB388FF,
+                    ),
+                    Color(
+                      0xFFFFD166,
+                    ),
+                    Color(
+                      0xFFFF4FD8,
+                    ),
+                    Color(
+                      0xFF00E5FF,
+                    ),
+                  ],
+                ).createShader(
+                  bounds,
+                );
+              },
+
+              child:
+                  const Row(
+                mainAxisSize:
+                    MainAxisSize.min,
+
+                children: [
+                  Icon(
+                    Icons
+                        .code_rounded,
+
+                    color:
+                        Colors.white,
+
+                    size: 10,
+                  ),
+
+                  SizedBox(
+                    width: 4,
+                  ),
+
+                  Text(
+                    'DEVELOPER',
+
+                    style:
+                        TextStyle(
+                      color:
+                          Colors.white,
+
+                      fontSize: 8,
+
+                      fontWeight:
+                          FontWeight
+                              .w900,
+
+                      letterSpacing:
+                          0.8,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         );
       },
     );
