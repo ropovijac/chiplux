@@ -14,7 +14,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'services/push_notification_service.dart';
 import 'firebase_options.dart';
 import 'package:image_picker/image_picker.dart';
-
+import 'services/privacy_settings_service.dart';
 import 'services/avatar_service.dart';
 import 'services/media_user_data_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -50,6 +50,12 @@ const String developerProfileTitleId =
     const String developerProfilePageFrameId =
     'developer';
 
+    const String followDeveloperAchievementId =
+    'follow_developer_achievement';
+
+const String followDeveloperProfilePageFrameId =
+    'follow_developer_tier3';
+
 Future<void> _loadCurrentAccountAchievementState() async {
   await Future.wait([
 
@@ -74,6 +80,8 @@ Future<void> _loadCurrentAccountAchievementState() async {
     ProfilePageFrameService
     .instance
     .load(),
+
+    PrivacySettingsService.instance.load(),
 
     NotificationService.instance.load(),
     
@@ -844,6 +852,55 @@ _AchievementGroup _ratingsLevelAchievementGroupFor(int ratingsLevel) {
   );
 }
 
+_AchievementGroup
+    _followDeveloperAchievementGroupFor(
+  bool unlocked,
+) {
+  final current =
+      unlocked ? 1 : 0;
+
+  return _AchievementGroup(
+    id: 'follow_developer',
+
+    title:
+        'Follow the Developer',
+
+    description:
+        'Follow the Chiplux developer to unlock a special Profile Page Frame.',
+
+    icon:
+        Icons.code_rounded,
+
+    current: current,
+
+    tiers: [
+      _Achievement(
+        id:
+            followDeveloperAchievementId,
+
+        title:
+            'Follow the Developer',
+
+        description:
+            'Follow the Chiplux developer',
+
+        icon:
+            Icons.code_rounded,
+
+        current:
+            current,
+
+        target: 1,
+
+        rarity:
+            _AchievementRarity.rare,
+
+        visualTier: 3,
+      ),
+    ],
+  );
+}
+
 _AchievementGroup _dailyLoginAchievementGroupFor(int loginDays) {
   return _AchievementGroup(
     id: 'daily_logins',
@@ -1475,6 +1532,17 @@ Future<void> _checkPublicProfileViewAchievementUnlock(
 Future<void> _autoApplyAchievementReward(_Achievement achievement) async {
   try {
     final id = achievement.id;
+
+    if (achievement.id ==
+    followDeveloperAchievementId) {
+  await ProfilePageFrameService
+      .instance
+      .apply(
+    followDeveloperProfilePageFrameId,
+  );
+
+  return;
+}
 
     if (id.startsWith('medal_collection_')) {
       // Achievement Button reward.
@@ -5449,101 +5517,27 @@ class _FindFriendsTabState extends State<_FindFriendsTab> {
     try {
       final client = Supabase.instance.client;
 
-      final ownUserId = client.auth.currentUser?.id;
-
-      // Search display name.
-      final displayResults = await client
-          .from('profiles')
-          .select('id, display_name, username, avatar_url')
-          .ilike('display_name', '%$query%')
-          .limit(20);
-
-      // Search username.
-      final usernameResults = await client
-          .from('profiles')
-          .select('id, display_name, username, avatar_url')
-          .ilike('username', '%$query%')
-          .limit(20);
+      final result = await client.rpc(
+        'search_visible_profiles',
+        params: {
+          'p_query': query,
+          'p_limit': 20,
+        },
+      );
 
       if (!mounted || generation != _searchGeneration) {
         return;
       }
 
-      // Merge both searches without
-      // showing the same user twice.
-      final Map<String, Map<String, dynamic>> usersById = {};
+      final results = <Map<String, dynamic>>[];
 
-      for (final raw in displayResults) {
-        final user = Map<String, dynamic>.from(raw);
-
-        final id = user['id']?.toString();
-
-        if (id == null || id.isEmpty || id == ownUserId) {
-          continue;
+      if (result is List) {
+        for (final raw in result) {
+          if (raw is Map) {
+            results.add(Map<String, dynamic>.from(raw));
+          }
         }
-
-        usersById[id] = user;
       }
-
-      for (final raw in usernameResults) {
-        final user = Map<String, dynamic>.from(raw);
-
-        final id = user['id']?.toString();
-
-        if (id == null || id.isEmpty || id == ownUserId) {
-          continue;
-        }
-
-        usersById[id] = user;
-      }
-
-      final results = usersById.values.toList();
-
-      final lowerQuery = query.toLowerCase();
-
-      int rank(Map<String, dynamic> user) {
-        final displayName =
-            user['display_name']?.toString().toLowerCase() ?? '';
-
-        final username = user['username']?.toString().toLowerCase() ?? '';
-
-        // Exact matches first.
-        if (username == lowerQuery || displayName == lowerQuery) {
-          return 0;
-        }
-
-        // Then usernames beginning
-        // with the query.
-        if (username.startsWith(lowerQuery)) {
-          return 1;
-        }
-
-        // Then display names beginning
-        // with the query.
-        if (displayName.startsWith(lowerQuery)) {
-          return 2;
-        }
-
-        return 3;
-      }
-
-      results.sort((a, b) {
-        final rankCompare = rank(a).compareTo(rank(b));
-
-        if (rankCompare != 0) {
-          return rankCompare;
-        }
-
-        final aName = (a['display_name'] ?? a['username'] ?? '')
-            .toString()
-            .toLowerCase();
-
-        final bName = (b['display_name'] ?? b['username'] ?? '')
-            .toString()
-            .toLowerCase();
-
-        return aName.compareTo(bName);
-      });
 
       setState(() {
         _results = results;
@@ -6586,6 +6580,29 @@ class _PublicCompletedTvShowsPageState
       errorMessage = null;
     });
 
+    final allowed = await Supabase.instance.client.rpc(
+      'can_view_public_media_list',
+      params: {
+        'p_target_user_id': widget.userId,
+        'p_require_ratings': widget.sortByRated,
+      },
+    );
+
+    if (allowed != true) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        loading = false;
+        shows = [];
+        errorMessage =
+            'This user is not sharing this profile information.';
+      });
+
+      return;
+    }
+
     try {
       final result = await Supabase.instance.client.rpc(
         'get_public_completed_tv_shows',
@@ -7013,6 +7030,29 @@ class _PublicWatchedMoviesPageState extends State<_PublicWatchedMoviesPage> {
       loading = true;
       errorMessage = null;
     });
+
+    final allowed = await Supabase.instance.client.rpc(
+      'can_view_public_media_list',
+      params: {
+        'p_target_user_id': widget.userId,
+        'p_require_ratings': widget.sortByRated,
+      },
+    );
+
+    if (allowed != true) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        loading = false;
+        movies = [];
+        errorMessage =
+            'This user is not sharing this profile information.';
+      });
+
+      return;
+    }
 
     try {
       final result = await Supabase.instance.client.rpc(
@@ -7762,6 +7802,10 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
       return;
     }
 
+    if (profile?['can_view_details'] != true) {
+      return;
+    }
+
     final ownUserId = Supabase.instance.client.auth.currentUser?.id;
 
     if (ownUserId == null || ownUserId == widget.userId) {
@@ -7789,39 +7833,27 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     try {
       final client = Supabase.instance.client;
 
-      final rawProfile = await client
-          .from('profiles')
-          .select(
-            'id, '
-            'display_name, '
-            'username, '
-            'avatar_url, '
-            'banner_path, '
-            'public_stats, '
-            'pinned_achievement_id, '
-            'display_name_frame_id, '
-            'avatar_frame_id, '
-            'profile_title_id, '
-            'is_developer, '
-            'profile_page_frame_id, '
-            'achievement_cosmetics',
-          )
-          .eq('id', widget.userId)
-          .maybeSingle();
+      final raw = await client.rpc(
+        'get_public_profile',
+        params: {
+          'p_user_id': widget.userId,
+        },
+      );
 
-      final isFollowing = await community.isFollowing(widget.userId);
+      final rawProfile = raw is Map
+          ? Map<String, dynamic>.from(raw)
+          : null;
+
+      final isFollowing =
+          await community.isFollowing(widget.userId);
 
       if (!mounted) {
         return;
       }
 
       setState(() {
-        profile = rawProfile != null
-            ? Map<String, dynamic>.from(rawProfile)
-            : null;
-
+        profile = rawProfile;
         following = isFollowing;
-
         loading = false;
       });
     } catch (e) {
@@ -7832,6 +7864,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
       }
 
       setState(() {
+        profile = null;
         loading = false;
       });
     }
@@ -7842,12 +7875,17 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
       return;
     }
 
+    final bool wasFollowing = following;
+
+    final bool targetIsDeveloper =
+        profile?['is_developer'] == true;
+
     setState(() {
       changingFollow = true;
     });
 
     try {
-      if (following) {
+      if (wasFollowing) {
         await community.unfollowUser(widget.userId);
       } else {
         await community.followUser(widget.userId);
@@ -7858,10 +7896,63 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
       }
 
       setState(() {
-        following = !following;
+        following = !wasFollowing;
       });
+
+      // =========================
+      // FOLLOW THE DEVELOPER
+      // =========================
+      if (!wasFollowing &&
+          targetIsDeveloper &&
+          !ProfileService.instance.isDeveloper) {
+        final newlyUnlocked = await ProfileService.instance
+            .claimFollowDeveloperAchievement();
+
+        if (newlyUnlocked && mounted) {
+          final achievement =
+              _followDeveloperAchievementGroupFor(true).tiers.first;
+
+          try {
+            await CommunityService.instance.deleteActivity(
+              activityType: 'achievement_unlocked',
+              achievementId: achievement.id,
+            );
+
+            await CommunityService.instance.tryCreateActivity(
+              activityType: 'achievement_unlocked',
+              achievementId: achievement.id,
+              achievementTitle: achievement.title,
+            );
+          } catch (e) {
+            debugPrint(
+              'Could not create Follow Developer achievement activity: $e',
+            );
+          }
+
+          if (!mounted) {
+            return;
+          }
+
+          await _showAchievementUnlocked(
+            context,
+            achievement,
+          );
+        }
+      }
+
+      if (mounted) {
+        await _load();
+      }
     } catch (e) {
       debugPrint('Could not change follow state: $e');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not change follow state.'),
+          ),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -7870,6 +7961,170 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
       }
     }
   }
+
+Future<void> _blockCurrentPublicUser() async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) {
+      return AlertDialog(
+        backgroundColor: chipluxSurface,
+        title: const Text('Block user?'),
+        content: const Text(
+          'You will stop following each other and will no longer be able to interact.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialogContext, false);
+            },
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialogContext, true);
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.redAccent,
+            ),
+            child: const Text('Block'),
+          ),
+        ],
+      );
+    },
+  );
+
+  if (confirmed != true) {
+    return;
+  }
+
+  try {
+    await PrivacySettingsService.instance.blockUser(widget.userId);
+
+    if (!mounted) {
+      return;
+    }
+
+    Navigator.pop(context);
+  } catch (e) {
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Could not block user.'),
+      ),
+    );
+  }
+}
+
+Future<void> _reportCurrentPublicUser() async {
+  final reason = await showModalBottomSheet<String>(
+    context: context,
+    backgroundColor: chipluxSurface,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(
+        top: Radius.circular(22),
+      ),
+    ),
+    builder: (sheetContext) {
+      Widget option(
+        String value,
+        String label,
+        IconData icon,
+      ) {
+        return ListTile(
+          leading: Icon(icon, color: chipluxCyan),
+          title: Text(label),
+          onTap: () {
+            Navigator.pop(sheetContext, value);
+          },
+        );
+      }
+
+      return SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(8, 10, 8, 14),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const ListTile(
+                title: Text(
+                  'Report user',
+                  style: TextStyle(
+                    fontSize: 19,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                subtitle: Text(
+                  'Choose the reason for this report.',
+                  style: TextStyle(color: Colors.white54),
+                ),
+              ),
+              option(
+                'spam',
+                'Spam or misleading content',
+                Icons.report_gmailerrorred_rounded,
+              ),
+              option(
+                'harassment',
+                'Harassment or abusive behavior',
+                Icons.warning_amber_rounded,
+              ),
+              option(
+                'impersonation',
+                'Impersonation',
+                Icons.badge_outlined,
+              ),
+              option(
+                'inappropriate',
+                'Inappropriate content',
+                Icons.visibility_off_outlined,
+              ),
+              option(
+                'other',
+                'Other',
+                Icons.more_horiz_rounded,
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+
+  if (reason == null) {
+    return;
+  }
+
+  try {
+    await PrivacySettingsService.instance.reportUser(
+      userId: widget.userId,
+      reason: reason,
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Report submitted. Thank you.'),
+      ),
+    );
+  } catch (e) {
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Could not submit report.'),
+      ),
+    );
+  }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -7913,6 +8168,27 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     final ownUserId = Supabase.instance.client.auth.currentUser?.id;
 
     final isOwnProfile = ownUserId == widget.userId;
+
+    final bool canViewDetails =
+        isOwnProfile || profile!['can_view_details'] == true;
+
+    final bool canFollow =
+        profile!['can_follow'] == true;
+
+    final bool showConnections =
+        isOwnProfile || profile!['show_connections'] == true;
+
+    final bool showProfileAchievements =
+        isOwnProfile || profile!['show_profile_achievements'] == true;
+
+    final bool showWatchStats =
+        isOwnProfile || profile!['show_watch_stats'] == true;
+
+    final bool showGenreStats =
+        isOwnProfile || profile!['show_genre_stats'] == true;
+
+    final bool showRatingStats =
+        isOwnProfile || profile!['show_rating_stats'] == true;
 
     // =========================
     // PUBLIC STATS
@@ -8077,10 +8353,10 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
         ?.toString()
         .trim();
 
-final bool developerPublicPageFrameActive =
-    publicIsDeveloper &&
-    publicProfilePageFrameId ==
-        developerProfilePageFrameId;
+final publicPageFrame =
+    _profilePageFrameWidget(
+  publicProfilePageFrameId,
+);
 
     final bool developerPublicTitleActive =
         publicIsDeveloper &&
@@ -8310,89 +8586,116 @@ SizedBox(
         top: 10,
         child: Row(
           children: [
-            _AchievementCollectionButton(
-              unlockedCount:
-                  publicUnlockedAchievements,
-
-              totalCount:
-                  publicTotalAchievements,
-
-              styleAchievement:
-                  publicMedalCollectionStyle,
-
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        _PublicAchievementsPage(
-                      displayName:
-                          displayName.isNotEmpty
-                              ? displayName
-                              : username.isNotEmpty
-                              ? username
-                              : 'Chiplux User',
-
-                      achievementGroups:
-                          List<
-                            _AchievementGroup
-                          >.from(
-                        publicAchievementGroups,
+            if (showProfileAchievements)
+              _AchievementCollectionButton(
+                unlockedCount: publicUnlockedAchievements,
+                totalCount: publicTotalAchievements,
+                styleAchievement: publicMedalCollectionStyle,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => _PublicAchievementsPage(
+                        displayName: displayName.isNotEmpty
+                            ? displayName
+                            : username.isNotEmpty
+                            ? username
+                            : 'Chiplux User',
+                        achievementGroups: List<_AchievementGroup>.from(
+                          publicAchievementGroups,
+                        ),
                       ),
                     ),
-                  ),
-                );
-              },
-            ),
+                  );
+                },
+              ),
 
-            const SizedBox(
-              width: 8,
-            ),
+            if (showProfileAchievements && showConnections)
+              const SizedBox(width: 8),
 
-            _FollowerCountBadge(
-              userId:
-                  widget.userId,
-
-              selectedTierId:
-                  achievementCosmetics[
-                      'followers'],
-
-              achievementCount:
-                  followerAchievementCount,
-
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        _PublicFollowersPage(
-                      userId:
-                          widget.userId,
-
-                      displayName:
-                          name,
+            if (showConnections)
+              _FollowerCountBadge(
+                userId: widget.userId,
+                selectedTierId: achievementCosmetics['followers'],
+                achievementCount: followerAchievementCount,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => _PublicFollowersPage(
+                        userId: widget.userId,
+                        displayName: name,
+                      ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+                onCountChanged: (count) {
+                  if (!mounted || publicFollowerCount == count) {
+                    return;
+                  }
 
-              onCountChanged:
-                  (count) {
-                if (!mounted ||
-                    publicFollowerCount ==
-                        count) {
-                  return;
-                }
-
-                setState(() {
-                  publicFollowerCount =
-                      count;
-                });
-              },
-            ),
+                  setState(() {
+                    publicFollowerCount = count;
+                  });
+                },
+              ),
           ],
         ),
       ),
+
+      // =====================
+      // PROFILE OPTIONS
+      // =====================
+      if (!isOwnProfile)
+        Positioned(
+          right: 48,
+          top: 6,
+          child: PopupMenuButton<String>(
+            tooltip: 'Profile options',
+            color: chipluxSurface,
+            icon: const Icon(
+              Icons.more_horiz_rounded,
+              color: Colors.white,
+            ),
+            onSelected: (value) {
+              if (value == 'block') {
+                unawaited(_blockCurrentPublicUser());
+              } else if (value == 'report') {
+                unawaited(_reportCurrentPublicUser());
+              }
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem<String>(
+                value: 'block',
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.block_rounded,
+                      color: Colors.redAccent,
+                      size: 19,
+                    ),
+                    SizedBox(width: 10),
+                    Text('Block user'),
+                  ],
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'report',
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.flag_outlined,
+                      color: Colors.white70,
+                      size: 19,
+                    ),
+                    SizedBox(width: 10),
+                    Text('Report user'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
 
       // =====================
       // BACK BUTTON
@@ -8578,7 +8881,10 @@ const SizedBox(
                           height: 46,
 
                           child: ElevatedButton.icon(
-                            onPressed: changingFollow ? null : _toggleFollow,
+                            onPressed:
+                                changingFollow || (!following && !canFollow)
+                                    ? null
+                                    : _toggleFollow,
 
                             icon: changingFollow
                                 ? const SizedBox(
@@ -8594,7 +8900,13 @@ const SizedBox(
                                         : Icons.person_add_alt_1_rounded,
                                   ),
 
-                            label: Text(following ? 'Following' : 'Follow'),
+                            label: Text(
+                              following
+                                  ? 'Following'
+                                  : canFollow
+                                  ? 'Follow'
+                                  : 'Follow unavailable',
+                            ),
 
                             style: ElevatedButton.styleFrom(
                               backgroundColor: following
@@ -8616,16 +8928,56 @@ const SizedBox(
 
                 const SizedBox(height: 2),
 
-                if (publicStats.isEmpty)
+                if (!canViewDetails)
                   Container(
-                    padding: const EdgeInsets.all(20),
-
+                    padding: const EdgeInsets.all(22),
                     decoration: BoxDecoration(
                       color: chipluxSurface,
-
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.06),
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        const Icon(
+                          Icons.lock_outline_rounded,
+                          color: chipluxCyan,
+                          size: 36,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          profile!['profile_visibility'] == 'followers'
+                              ? 'Followers-only profile'
+                              : 'Private profile',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          profile!['profile_visibility'] == 'followers'
+                              ? 'Follow this user to see the profile details they share.'
+                              : 'This user only shares their basic profile information.',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white54,
+                            fontSize: 12,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else if (publicStats.isEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: chipluxSurface,
                       borderRadius: BorderRadius.circular(20),
                     ),
-
                     child: const Column(
                       children: [
                         Icon(
@@ -8633,16 +8985,12 @@ const SizedBox(
                           color: Colors.white38,
                           size: 34,
                         ),
-
                         SizedBox(height: 10),
-
                         Text(
                           'No public stats yet.',
                           style: TextStyle(fontWeight: FontWeight.bold),
                         ),
-
                         SizedBox(height: 5),
-
                         Text(
                           'Stats will appear after this user syncs their profile.',
                           textAlign: TextAlign.center,
@@ -8652,242 +9000,211 @@ const SizedBox(
                     ),
                   )
                 else ...[
-
-
-                  // =========================
-                  // RUNTIME LEVEL
-                  // =========================
-                  _LevelCard(
-                    totalMinutes: totalWatchedMinutes,
-
-                    title: viewerTitle,
-
-                    frameAchievement: selectedPublicCosmetic(runtimeLevelGroup),
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  // =========================
-                  // WATCHED STATS
-                  // =========================
-                  Column(
-                    children: [
-                      _WatchStatCard(
-                        value: completedTvShows,
-
-                        label: 'TV Shows Watched',
-
-                        icon: Icons.tv_rounded,
-
-                        frameAchievement: selectedPublicCosmetic(tvGroup),
-
-                        onTap: () {
-                          Navigator.push(
-                            context,
-
-                            MaterialPageRoute(
-                              builder: (_) => _PublicCompletedTvShowsPage(
-                                userId: widget.userId,
-                                displayName: name,
-                              ),
-                            ),
-                          );
-                        },
+                  if (!showWatchStats &&
+                      !showGenreStats &&
+                      !showRatingStats)
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: chipluxSurface,
+                        borderRadius: BorderRadius.circular(20),
                       ),
-
-                      const SizedBox(height: 7),
-
-                      _WatchStatCard(
-                        value: episodesWatched,
-
-                        label: 'Episodes Watched',
-
-                        runtimeMinutes: episodeWatchedMinutes,
-
-                        icon: Icons.playlist_add_check_rounded,
-
-                        frameAchievement: selectedPublicCosmetic(episodeGroup),
-
-                        onTap: () {
-                          Navigator.push(
-                            context,
-
-                            MaterialPageRoute(
-                              builder: (_) => _PublicCompletedTvShowsPage(
-                                userId: widget.userId,
-                                displayName: name,
-                              ),
-                            ),
-                          );
-                        },
+                      child: const Text(
+                        'This user chose not to share profile statistics.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.white54),
                       ),
+                    ),
 
-                      const SizedBox(height: 7),
+                  if (showWatchStats) ...[
+                    // =========================
+                    // RUNTIME LEVEL
+                    // =========================
+                    _LevelCard(
+                      totalMinutes: totalWatchedMinutes,
+                      title: viewerTitle,
+                      frameAchievement:
+                          selectedPublicCosmetic(runtimeLevelGroup),
+                    ),
 
-                      _WatchStatCard(
-                        value: moviesWatched,
+                    const SizedBox(height: 12),
 
-                        label: 'Movies Watched',
-
-                        runtimeMinutes: movieWatchedMinutes,
-
-                        icon: Icons.movie_outlined,
-
-                        frameAchievement: selectedPublicCosmetic(movieGroup),
-
-                        onTap: () {
-                          Navigator.push(
-                            context,
-
-                            MaterialPageRoute(
-                              builder: (_) => _PublicWatchedMoviesPage(
-                                userId: widget.userId,
-                                displayName: name,
+                    // =========================
+                    // WATCHED STATS
+                    // =========================
+                    Column(
+                      children: [
+                        _WatchStatCard(
+                          value: completedTvShows,
+                          label: 'TV Shows Watched',
+                          icon: Icons.tv_rounded,
+                          frameAchievement: selectedPublicCosmetic(tvGroup),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => _PublicCompletedTvShowsPage(
+                                  userId: widget.userId,
+                                  displayName: name,
+                                ),
                               ),
-                            ),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // =========================
-                  // RATING LEVEL
-                  // =========================
-                  _CriticReputationCard(
-                    level: criticLevel <= 0 ? 1 : criticLevel,
-
-                    title: criticTitle,
-
-                    xp: criticXp,
-
-                    requiredXp: criticRequiredXp <= 0 ? 10 : criticRequiredXp,
-
-                    totalRatings: totalRatings,
-
-                    titleCoverage: titleCoverage,
-
-                    episodeCoverage: episodeCoverage,
-
-                    frameAchievement: selectedPublicCosmetic(ratingsLevelGroup),
-
-                    averageStars: averageStars,
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  // =========================
-                  // RATED STATS
-                  // =========================
-                  Column(
-                    children: [
-                      _RatingStatCard(
-                        value: episodeRatings,
-
-                        label: 'Episodes Rated',
-
-                        icon: Icons.tv_outlined,
-
-                        frameAchievement: selectedPublicCosmetic(
-                          episodeRatedGroup,
+                            );
+                          },
                         ),
-
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => _PublicCompletedTvShowsPage(
-                                userId: widget.userId,
-                                displayName: name,
-                                sortByRated: true,
+                        const SizedBox(height: 7),
+                        _WatchStatCard(
+                          value: episodesWatched,
+                          label: 'Episodes Watched',
+                          runtimeMinutes: episodeWatchedMinutes,
+                          icon: Icons.playlist_add_check_rounded,
+                          frameAchievement:
+                              selectedPublicCosmetic(episodeGroup),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => _PublicCompletedTvShowsPage(
+                                  userId: widget.userId,
+                                  displayName: name,
+                                ),
                               ),
-                            ),
-                          );
-                        },
-                      ),
-
-                      const SizedBox(height: 7),
-
-                      _RatingStatCard(
-                        value: tvRatings,
-
-                        label: 'TV Shows Rated',
-
-                        icon: Icons.live_tv_rounded,
-
-                        frameAchievement: selectedPublicCosmetic(
-                          tvShowsRatedGroup,
+                            );
+                          },
                         ),
-
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => _PublicCompletedTvShowsPage(
-                                userId: widget.userId,
-                                displayName: name,
-                                sortByRated: true,
+                        const SizedBox(height: 7),
+                        _WatchStatCard(
+                          value: moviesWatched,
+                          label: 'Movies Watched',
+                          runtimeMinutes: movieWatchedMinutes,
+                          icon: Icons.movie_outlined,
+                          frameAchievement:
+                              selectedPublicCosmetic(movieGroup),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => _PublicWatchedMoviesPage(
+                                  userId: widget.userId,
+                                  displayName: name,
+                                ),
                               ),
-                            ),
-                          );
-                        },
-                      ),
-
-                      const SizedBox(height: 7),
-
-                      _RatingStatCard(
-                        value: movieRatings,
-
-                        label: 'Movies Rated',
-
-                        icon: Icons.movie_filter_outlined,
-
-                        frameAchievement: selectedPublicCosmetic(
-                          moviesRatedGroup,
+                            );
+                          },
                         ),
+                      ],
+                    ),
+                  ],
 
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => _PublicWatchedMoviesPage(
-                                userId: widget.userId,
-                                displayName: name,
-                                sortByRated: true,
+                  if (showRatingStats) ...[
+                    if (showWatchStats) const SizedBox(height: 16),
+
+                    // =========================
+                    // RATING LEVEL
+                    // =========================
+                    _CriticReputationCard(
+                      level: criticLevel <= 0 ? 1 : criticLevel,
+                      title: criticTitle,
+                      xp: criticXp,
+                      requiredXp:
+                          criticRequiredXp <= 0 ? 10 : criticRequiredXp,
+                      totalRatings: totalRatings,
+                      titleCoverage: titleCoverage,
+                      episodeCoverage: episodeCoverage,
+                      frameAchievement:
+                          selectedPublicCosmetic(ratingsLevelGroup),
+                      averageStars: averageStars,
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // =========================
+                    // RATED STATS
+                    // =========================
+                    Column(
+                      children: [
+                        _RatingStatCard(
+                          value: episodeRatings,
+                          label: 'Episodes Rated',
+                          icon: Icons.tv_outlined,
+                          frameAchievement:
+                              selectedPublicCosmetic(episodeRatedGroup),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => _PublicCompletedTvShowsPage(
+                                  userId: widget.userId,
+                                  displayName: name,
+                                  sortByRated: true,
+                                ),
                               ),
-                            ),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 7),
+                        _RatingStatCard(
+                          value: tvRatings,
+                          label: 'TV Shows Rated',
+                          icon: Icons.live_tv_rounded,
+                          frameAchievement:
+                              selectedPublicCosmetic(tvShowsRatedGroup),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => _PublicCompletedTvShowsPage(
+                                  userId: widget.userId,
+                                  displayName: name,
+                                  sortByRated: true,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 7),
+                        _RatingStatCard(
+                          value: movieRatings,
+                          label: 'Movies Rated',
+                          icon: Icons.movie_filter_outlined,
+                          frameAchievement:
+                              selectedPublicCosmetic(moviesRatedGroup),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => _PublicWatchedMoviesPage(
+                                  userId: widget.userId,
+                                  displayName: name,
+                                  sortByRated: true,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
 
-                  const SizedBox(height: 24),
+                  if (showGenreStats) ...[
+                    const SizedBox(height: 24),
+                    _PublicGenreRuntimeCard(stats: genreRuntime),
+                  ],
 
-                  // =========================
-                  // GENRE RUNTIME
-                  // =========================
-                  _PublicGenreRuntimeCard(stats: genreRuntime),
-
-                  const SizedBox(height: 24),
-
-                  // =========================
-                  // RATING DISTRIBUTION
-                  // =========================
-                  _PublicRatingDistributionCard(
-                    distribution: ratingDistribution,
-                  ),
+                  if (showRatingStats) ...[
+                    const SizedBox(height: 24),
+                    _PublicRatingDistributionCard(
+                      distribution: ratingDistribution,
+                    ),
+                  ],
                 ],
               
                         ],
                       ),
                     ),
 
-                    if (developerPublicPageFrameActive)
-  const Positioned.fill(
-    child: _DeveloperProfilePageFrame(),
+                    if (publicPageFrame != null)
+  Positioned.fill(
+    child: publicPageFrame,
   ),
                   ],
                 ),
@@ -17033,11 +17350,24 @@ class _AchievementsPageState
                 followerGroup,
               ];
 
-              final chipluxGroups = <_AchievementGroup>[
-                dailyLoginGroup,
-                runtimeLevelGroup,
-                ratingsLevelGroup,
-              ];
+              final followDeveloperGroup =
+    _followDeveloperAchievementGroupFor(
+  ProfileService
+      .instance
+      .followedDeveloperAchievement,
+);
+
+final chipluxGroups =
+    <_AchievementGroup>[
+  if (!ProfileService
+      .instance
+      .isDeveloper)
+    followDeveloperGroup,
+
+  dailyLoginGroup,
+  runtimeLevelGroup,
+  ratingsLevelGroup,
+];
 
               // =========================
               // ALL NORMAL ACHIEVEMENTS
@@ -18949,6 +19279,14 @@ int _totalUnlockedAchievementMilestones() {
     _moviesRatedAchievementGroupFor(critic.movieRatingCount),
     _runtimeLevelAchievementGroupFor(runtimeLevel),
     _ratingsLevelAchievementGroupFor(critic.level),
+    if (!ProfileService
+    .instance
+    .isDeveloper)
+  _followDeveloperAchievementGroupFor(
+    ProfileService
+        .instance
+        .followedDeveloperAchievement,
+  ),
   ];
 
   return groups
@@ -19334,12 +19672,37 @@ class ProfilePageFrameService
             : cleanId;
 
     if (value != null &&
-        value !=
-            developerProfilePageFrameId) {
-      throw Exception(
-        'Unknown profile page frame.',
-      );
-    }
+    value !=
+        developerProfilePageFrameId &&
+    value !=
+        followDeveloperProfilePageFrameId) {
+  throw Exception(
+    'Unknown profile page frame.',
+  );
+}
+
+if (value ==
+        developerProfilePageFrameId &&
+    !ProfileService
+        .instance
+        .isDeveloper) {
+  throw Exception(
+    'Developer frame is not available.',
+  );
+}
+
+if (value ==
+        followDeveloperProfilePageFrameId &&
+    !ProfileService
+        .instance
+        .isDeveloper &&
+    !ProfileService
+        .instance
+        .followedDeveloperAchievement) {
+  throw Exception(
+    'Follow Developer frame is still locked.',
+  );
+}
 
     await client
         .from('profiles')
@@ -19787,6 +20150,157 @@ class _ProfileTitleLabel extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _Tier3ProfilePageFrame
+    extends StatelessWidget {
+  const _Tier3ProfilePageFrame();
+
+  @override
+  Widget build(
+    BuildContext context,
+  ) {
+    return const IgnorePointer(
+      child: CustomPaint(
+        painter:
+            _Tier3ProfilePageFramePainter(),
+
+        child:
+            SizedBox.expand(),
+      ),
+    );
+  }
+}
+
+class _Tier3ProfilePageFramePainter
+    extends CustomPainter {
+  const _Tier3ProfilePageFramePainter();
+
+  @override
+  void paint(
+    Canvas canvas,
+    Size size,
+  ) {
+    if (size.width <= 0 ||
+        size.height <= 0) {
+      return;
+    }
+
+    final rect =
+        Rect.fromLTWH(
+      5,
+      5,
+      size.width - 10,
+      size.height - 10,
+    );
+
+    final rrect =
+        RRect.fromRectAndRadius(
+      rect,
+      const Radius.circular(
+        24,
+      ),
+    );
+
+    final shader =
+        const LinearGradient(
+      begin:
+          Alignment.topLeft,
+
+      end:
+          Alignment.bottomRight,
+
+      colors: [
+        Color(0xFFA855F7),
+        Color(0xFFD946EF),
+        Color(0xFF6366F1),
+        Color(0xFFA855F7),
+      ],
+    ).createShader(
+      rect,
+    );
+
+    final glow =
+        Paint()
+          ..style =
+              PaintingStyle.stroke
+          ..strokeWidth = 5
+          ..shader = shader
+          ..maskFilter =
+              const MaskFilter.blur(
+            BlurStyle.normal,
+            5,
+          );
+
+    canvas.drawRRect(
+      rrect,
+      glow,
+    );
+
+    final frame =
+        Paint()
+          ..style =
+              PaintingStyle.stroke
+          ..strokeWidth = 2.1
+          ..shader = shader;
+
+    canvas.drawRRect(
+      rrect,
+      frame,
+    );
+
+    final innerRect =
+        Rect.fromLTWH(
+      8,
+      8,
+      size.width - 16,
+      size.height - 16,
+    );
+
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        innerRect,
+        const Radius.circular(
+          21,
+        ),
+      ),
+      Paint()
+        ..style =
+            PaintingStyle.stroke
+        ..strokeWidth = 0.7
+        ..color =
+            Colors.white
+                .withValues(
+          alpha: 0.12,
+        ),
+    );
+  }
+
+  @override
+  bool shouldRepaint(
+    covariant
+        _Tier3ProfilePageFramePainter
+        oldDelegate,
+  ) {
+    return false;
+  }
+}
+
+Widget? _profilePageFrameWidget(
+  String? frameId,
+) {
+  switch (frameId) {
+    case developerProfilePageFrameId:
+      return const
+          _DeveloperProfilePageFrame();
+
+    case followDeveloperProfilePageFrameId:
+      return const
+          _Tier3ProfilePageFrame();
+
+    default:
+      return null;
   }
 }
 
@@ -21324,19 +21838,19 @@ class _ProfilePageState extends State<ProfilePage> {
     return SafeArea(
       child: AnimatedBuilder(
         animation: Listenable.merge([
-          library,
-          profile,
-          critic,
-          MedalPinService.instance,
-          DisplayNameFrameService.instance,
-          AvatarFrameService.instance,
-          _AchievementCosmeticService.instance,
-          DailyLoginService.instance,
-          PublicProfileViewService.instance,
-          FollowerCountService.instance,
-          ProfileTitleService.instance,
-          ProfilePageFrameService.instance,
-        ]),
+  library,
+  profile,
+  critic,
+  MedalPinService.instance,
+  DisplayNameFrameService.instance,
+  AvatarFrameService.instance,
+  _AchievementCosmeticService.instance,
+  DailyLoginService.instance,
+  PublicProfileViewService.instance,
+  FollowerCountService.instance,
+  ProfileTitleService.instance,
+  ProfilePageFrameService.instance,
+]),
         builder: (context, _) {
           final shownName = profile.displayName.isNotEmpty
               ? profile.displayName
@@ -21460,6 +21974,11 @@ class _ProfilePageState extends State<ProfilePage> {
               profile.isDeveloper &&
               ProfileTitleService.instance.achievementId ==
                   developerProfileTitleId;
+
+                  final selectedPageFrame =
+    _profilePageFrameWidget(
+  ProfilePageFrameService.instance.frameId,
+);
 
           final selectedMedalCollectionStyle =
               achievementCosmetics.selectedAchievement(medalCollectionGroup) ??
@@ -21987,13 +22506,9 @@ class _ProfilePageState extends State<ProfilePage> {
                     // This frame is part of the scrollable profile content.
                     // It starts at the top of the profile and ends at the
                     // bottom of the full profile, so it scrolls naturally.
-                    if (profile.isDeveloper &&
-    ProfilePageFrameService
-            .instance
-            .frameId ==
-        developerProfilePageFrameId)
-  const Positioned.fill(
-    child: _DeveloperProfilePageFrame(),
+                    if (selectedPageFrame != null)
+  Positioned.fill(
+    child: selectedPageFrame,
   ),
                   ],
                 ),
@@ -26576,6 +27091,929 @@ class _NotificationSettingsPageState
   }
 }
 
+class PrivacySettingsPage extends StatefulWidget {
+  const PrivacySettingsPage({super.key});
+
+  @override
+  State<PrivacySettingsPage> createState() =>
+      _PrivacySettingsPageState();
+}
+
+class _PrivacySettingsPageState
+    extends State<PrivacySettingsPage> {
+  final settings = PrivacySettingsService.instance;
+
+  bool loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      await settings.load();
+    } catch (e) {
+      debugPrint('Could not load privacy settings: $e');
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      loading = false;
+    });
+  }
+
+  Future<void> _changeBool({
+    required bool value,
+    required Future<void> Function(bool value) save,
+  }) async {
+    try {
+      await save(value);
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {});
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not update privacy setting.'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _changeString({
+    required String value,
+    required Future<void> Function(String value) save,
+  }) async {
+    try {
+      await save(value);
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {});
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not update privacy setting.'),
+        ),
+      );
+    }
+  }
+
+  Widget _sectionLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 8),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: chipluxCyan,
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 1.2,
+        ),
+      ),
+    );
+  }
+
+  String _profileVisibilityLabel(String value) {
+    switch (value) {
+      case 'followers':
+        return 'Followers';
+      case 'private':
+        return 'Private';
+      case 'everyone':
+      default:
+        return 'Everyone';
+    }
+  }
+
+  String _followPermissionLabel(String value) {
+    switch (value) {
+      case 'people_i_follow':
+        return 'People I Follow';
+      case 'nobody':
+        return 'Nobody';
+      case 'everyone':
+      default:
+        return 'Everyone';
+    }
+  }
+
+  Future<void> _chooseProfileVisibility() async {
+    final value = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: chipluxSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(24),
+        ),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Profile visibility',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Choose who can see the detailed contents of your profile.',
+                  style: TextStyle(
+                    color: Colors.white54,
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                _PrivacyChoiceSheetTile(
+                  icon: Icons.public_rounded,
+                  title: 'Everyone',
+                  subtitle: 'Anyone can see your full profile.',
+                  selected:
+                      settings.profileVisibility == 'everyone',
+                  onTap: () {
+                    Navigator.pop(sheetContext, 'everyone');
+                  },
+                ),
+                _PrivacyChoiceSheetTile(
+                  icon: Icons.group_rounded,
+                  title: 'Followers',
+                  subtitle:
+                      'Only people following you can see your full profile.',
+                  selected:
+                      settings.profileVisibility == 'followers',
+                  onTap: () {
+                    Navigator.pop(sheetContext, 'followers');
+                  },
+                ),
+                _PrivacyChoiceSheetTile(
+                  icon: Icons.lock_rounded,
+                  title: 'Private',
+                  subtitle:
+                      'Other users only see your basic identity.',
+                  selected:
+                      settings.profileVisibility == 'private',
+                  onTap: () {
+                    Navigator.pop(sheetContext, 'private');
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (value == null || value == settings.profileVisibility) {
+      return;
+    }
+
+    await _changeString(
+      value: value,
+      save: settings.setProfileVisibility,
+    );
+  }
+
+  Future<void> _chooseFollowPermission() async {
+    final value = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: chipluxSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(24),
+        ),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Who can follow me',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                _PrivacyChoiceSheetTile(
+                  icon: Icons.public_rounded,
+                  title: 'Everyone',
+                  subtitle: 'Any Chiplux user can follow you.',
+                  selected:
+                      settings.followPermission == 'everyone',
+                  onTap: () {
+                    Navigator.pop(sheetContext, 'everyone');
+                  },
+                ),
+                _PrivacyChoiceSheetTile(
+                  icon: Icons.swap_horiz_rounded,
+                  title: 'People I Follow',
+                  subtitle:
+                      'Only people you already follow can follow you.',
+                  selected:
+                      settings.followPermission == 'people_i_follow',
+                  onTap: () {
+                    Navigator.pop(sheetContext, 'people_i_follow');
+                  },
+                ),
+                _PrivacyChoiceSheetTile(
+                  icon: Icons.person_off_rounded,
+                  title: 'Nobody',
+                  subtitle: 'New follows are disabled.',
+                  selected:
+                      settings.followPermission == 'nobody',
+                  onTap: () {
+                    Navigator.pop(sheetContext, 'nobody');
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (value == null || value == settings.followPermission) {
+      return;
+    }
+
+    await _changeString(
+      value: value,
+      save: settings.setFollowPermission,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: chipluxBackground,
+      appBar: AppBar(
+        backgroundColor: chipluxBackground,
+        elevation: 0,
+        title: const Text('Privacy'),
+      ),
+      body: ChipluxBackground(
+        style: ChipluxBackgroundStyle.profile,
+        child: loading
+            ? const Center(
+                child: CircularProgressIndicator(),
+              )
+            : ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(18, 22, 18, 35),
+                children: [
+                  const _ProfileMenuSectionTitle(
+                    title: 'Privacy',
+                    subtitle:
+                        'Control who can find you, see your profile and interact with you.',
+                  ),
+
+                  const SizedBox(height: 22),
+
+                  _sectionLabel('PROFILE'),
+                  _ProfileMenuCard(
+                    children: [
+                      _PrivacyValueRow(
+                        icon: Icons.visibility_outlined,
+                        title: 'Profile visibility',
+                        subtitle:
+                            'Choose who can see your full public profile.',
+                        value: _profileVisibilityLabel(
+                          settings.profileVisibility,
+                        ),
+                        onTap: _chooseProfileVisibility,
+                      ),
+                      const _ProfileMenuDivider(),
+                      _NotificationSettingRow(
+                        icon: Icons.manage_search_rounded,
+                        title: 'Appear in user search',
+                        subtitle:
+                            'Allow other users to find you in Find Friends.',
+                        value: settings.appearInSearch,
+                        onChanged: (value) {
+                          _changeBool(
+                            value: value,
+                            save: settings.setAppearInSearch,
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  _sectionLabel('ACTIVITY'),
+                  _ProfileMenuCard(
+                    children: [
+                      _NotificationSettingRow(
+                        icon: Icons.dynamic_feed_rounded,
+                        title: 'Show my activity',
+                        subtitle:
+                            'Master switch for your Friends Watch activity.',
+                        value: settings.showActivity,
+                        onChanged: (value) {
+                          _changeBool(
+                            value: value,
+                            save: settings.setShowActivity,
+                          );
+                        },
+                      ),
+                      const _ProfileMenuDivider(),
+                      _NotificationSettingRow(
+                        icon: Icons.movie_outlined,
+                        title: 'Show watch activity',
+                        subtitle:
+                            'Watched, started, planned, dropped and favorite activity.',
+                        value: settings.showWatchActivity,
+                        onChanged: (value) {
+                          _changeBool(
+                            value: value,
+                            save: settings.setShowWatchActivity,
+                          );
+                        },
+                      ),
+                      const _ProfileMenuDivider(),
+                      _NotificationSettingRow(
+                        icon: Icons.star_outline_rounded,
+                        title: 'Show ratings',
+                        subtitle:
+                            'Allow ratings to appear in Friends Watch.',
+                        value: settings.showRatingsActivity,
+                        onChanged: (value) {
+                          _changeBool(
+                            value: value,
+                            save: settings.setShowRatingsActivity,
+                          );
+                        },
+                      ),
+                      const _ProfileMenuDivider(),
+                      _NotificationSettingRow(
+                        icon: Icons.workspace_premium_outlined,
+                        title: 'Show achievements',
+                        subtitle:
+                            'Allow achievement unlocks to appear in Friends Watch.',
+                        value: settings.showAchievementsActivity,
+                        onChanged: (value) {
+                          _changeBool(
+                            value: value,
+                            save: settings.setShowAchievementsActivity,
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  _sectionLabel('PUBLIC PROFILE'),
+                  _ProfileMenuCard(
+                    children: [
+                      _NotificationSettingRow(
+                        icon: Icons.query_stats_rounded,
+                        title: 'Show watch statistics',
+                        subtitle:
+                            'Movies, TV shows, episodes and watched runtime.',
+                        value: settings.showWatchStats,
+                        onChanged: (value) {
+                          _changeBool(
+                            value: value,
+                            save: settings.setShowWatchStats,
+                          );
+                        },
+                      ),
+                      const _ProfileMenuDivider(),
+                      _NotificationSettingRow(
+                        icon: Icons.category_outlined,
+                        title: 'Show genre statistics',
+                        subtitle:
+                            'Allow other users to see your genre runtime.',
+                        value: settings.showGenreStats,
+                        onChanged: (value) {
+                          _changeBool(
+                            value: value,
+                            save: settings.setShowGenreStats,
+                          );
+                        },
+                      ),
+                      const _ProfileMenuDivider(),
+                      _NotificationSettingRow(
+                        icon: Icons.bar_chart_rounded,
+                        title: 'Show rating statistics',
+                        subtitle:
+                            'Ratings Level, averages and rating distribution.',
+                        value: settings.showRatingStats,
+                        onChanged: (value) {
+                          _changeBool(
+                            value: value,
+                            save: settings.setShowRatingStats,
+                          );
+                        },
+                      ),
+                      const _ProfileMenuDivider(),
+                      _NotificationSettingRow(
+                        icon: Icons.emoji_events_outlined,
+                        title: 'Show achievements',
+                        subtitle:
+                            'Show achievement collection and pinned achievement.',
+                        value: settings.showProfileAchievements,
+                        onChanged: (value) {
+                          _changeBool(
+                            value: value,
+                            save: settings.setShowProfileAchievements,
+                          );
+                        },
+                      ),
+                      const _ProfileMenuDivider(),
+                      _NotificationSettingRow(
+                        icon: Icons.groups_outlined,
+                        title: 'Show followers/following',
+                        subtitle:
+                            'Allow other users to open your social connections.',
+                        value: settings.showConnections,
+                        onChanged: (value) {
+                          _changeBool(
+                            value: value,
+                            save: settings.setShowConnections,
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  _sectionLabel('INTERACTIONS'),
+                  _ProfileMenuCard(
+                    children: [
+                      _PrivacyValueRow(
+                        icon: Icons.person_add_alt_1_rounded,
+                        title: 'Who can follow me',
+                        subtitle:
+                            'Control who is allowed to start following you.',
+                        value: _followPermissionLabel(
+                          settings.followPermission,
+                        ),
+                        onTap: _chooseFollowPermission,
+                      ),
+                      const _ProfileMenuDivider(),
+                      _NotificationSettingRow(
+                        icon: Icons.reply_rounded,
+                        title: 'Allow replies to my comments',
+                        subtitle:
+                            'When off, other users cannot reply to your comments.',
+                        value: settings.allowCommentReplies,
+                        onChanged: (value) {
+                          _changeBool(
+                            value: value,
+                            save: settings.setAllowCommentReplies,
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  _sectionLabel('SAFETY'),
+                  _ProfileMenuCard(
+                    children: [
+                      _PrivacyValueRow(
+                        icon: Icons.block_rounded,
+                        title: 'Blocked users',
+                        subtitle:
+                            'Review and unblock people you have blocked.',
+                        value: 'Manage',
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  const BlockedUsersPage(),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+}
+
+class _PrivacyValueRow extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final String value;
+  final VoidCallback onTap;
+
+  const _PrivacyValueRow({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 15,
+            vertical: 14,
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(13),
+                  gradient: LinearGradient(
+                    colors: [
+                      chipluxCyan.withValues(alpha: 0.18),
+                      chipluxViolet.withValues(alpha: 0.12),
+                    ],
+                  ),
+                  border: Border.all(
+                    color: chipluxCyan.withValues(alpha: 0.20),
+                  ),
+                ),
+                child: Icon(
+                  icon,
+                  color: chipluxCyan,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        color: Colors.white54,
+                        fontSize: 11,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                value,
+                style: const TextStyle(
+                  color: chipluxCyan,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(width: 4),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: Colors.white38,
+                size: 20,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PrivacyChoiceSheetTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _PrivacyChoiceSheetTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(15),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 7),
+          padding: const EdgeInsets.symmetric(
+            horizontal: 13,
+            vertical: 12,
+          ),
+          decoration: BoxDecoration(
+            color: selected
+                ? chipluxCyan.withValues(alpha: 0.06)
+                : Colors.white.withValues(alpha: 0.025),
+            borderRadius: BorderRadius.circular(15),
+            border: Border.all(
+              color: selected
+                  ? chipluxCyan.withValues(alpha: 0.38)
+                  : Colors.white.withValues(alpha: 0.05),
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                color: selected ? chipluxCyan : Colors.white54,
+                size: 21,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: selected ? chipluxCyan : Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        color: Colors.white54,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (selected)
+                const Icon(
+                  Icons.check_circle_rounded,
+                  color: chipluxCyan,
+                  size: 20,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class BlockedUsersPage extends StatefulWidget {
+  const BlockedUsersPage({super.key});
+
+  @override
+  State<BlockedUsersPage> createState() =>
+      _BlockedUsersPageState();
+}
+
+class _BlockedUsersPageState extends State<BlockedUsersPage> {
+  final settings = PrivacySettingsService.instance;
+
+  bool loading = true;
+  List<Map<String, dynamic>> users = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final loaded = await settings.getBlockedUsers();
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        users = loaded;
+        loading = false;
+      });
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        users = [];
+        loading = false;
+      });
+    }
+  }
+
+  Future<void> _unblock(Map<String, dynamic> user) async {
+    final id = user['id']?.toString();
+
+    if (id == null || id.isEmpty) {
+      return;
+    }
+
+    try {
+      await settings.unblockUser(id);
+      await _load();
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not unblock user.'),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: chipluxBackground,
+      appBar: AppBar(
+        backgroundColor: chipluxBackground,
+        title: const Text('Blocked users'),
+      ),
+      body: ChipluxBackground(
+        style: ChipluxBackgroundStyle.profile,
+        child: loading
+            ? const Center(
+                child: CircularProgressIndicator(),
+              )
+            : users.isEmpty
+            ? const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(28),
+                  child: Text(
+                    'You have not blocked anyone.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white54,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              )
+            : ListView.separated(
+                padding: const EdgeInsets.fromLTRB(18, 18, 18, 30),
+                itemCount: users.length,
+                separatorBuilder: (_, _) =>
+                    const SizedBox(height: 9),
+                itemBuilder: (context, index) {
+                  final user = users[index];
+
+                  final displayName =
+                      user['display_name']?.toString().trim() ?? '';
+
+                  final username =
+                      user['username']?.toString().trim() ?? '';
+
+                  final avatarUrl = user['avatar_url']?.toString();
+
+                  final name = displayName.isNotEmpty
+                      ? displayName
+                      : username.isNotEmpty
+                      ? username
+                      : 'Chiplux User';
+
+                  final initial = name.isNotEmpty
+                      ? name[0].toUpperCase()
+                      : 'C';
+
+                  return Container(
+                    padding: const EdgeInsets.all(13),
+                    decoration: BoxDecoration(
+                      color: chipluxSurface.withValues(alpha: 0.92),
+                      borderRadius: BorderRadius.circular(17),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.06),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 22,
+                          backgroundColor: chipluxSurfaceLight,
+                          backgroundImage:
+                              avatarUrl != null && avatarUrl.isNotEmpty
+                              ? NetworkImage(avatarUrl)
+                              : null,
+                          child: avatarUrl == null || avatarUrl.isEmpty
+                              ? Text(
+                                  initial,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                )
+                              : null,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              if (username.isNotEmpty) ...[
+                                const SizedBox(height: 2),
+                                Text(
+                                  '@$username',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Colors.white38,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        OutlinedButton(
+                          onPressed: () {
+                            _unblock(user);
+                          },
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: chipluxCyan,
+                            side: BorderSide(
+                              color: chipluxCyan.withValues(alpha: 0.42),
+                            ),
+                          ),
+                          child: const Text('Unblock'),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+      ),
+    );
+  }
+}
+
+
 class _NotificationSettingRow
     extends StatelessWidget {
   final IconData icon;
@@ -27700,6 +29138,8 @@ await AuthService.instance.signOut();
 
     ProfilePageFrameService.instance.clear();
 
+    PrivacySettingsService.instance.clear();
+
 await ProfileTitleService.instance.load();
 
     await DisplayNameFrameService.instance.load();
@@ -27792,10 +29232,21 @@ await ProfileTitleService.instance.load();
   ),
 ),
             _ProfileMenuDivider(),
-            _ProfileMenuRow(
-              icon: Icons.visibility_outlined,
-              title: 'Privacy',
-              subtitle: 'Coming soon',
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const PrivacySettingsPage(),
+                  ),
+                );
+              },
+              child: const _ProfileMenuRow(
+                icon: Icons.visibility_outlined,
+                title: 'Privacy',
+                subtitle: 'Profile, activity and interaction controls',
+              ),
             ),
             _ProfileMenuDivider(),
             _ProfileMenuRow(
@@ -28469,13 +29920,24 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
     String? loadedId = profilePageFrameService.frameId;
 
-    if (loadedId == developerProfilePageFrameId && !profile.isDeveloper) {
-      loadedId = null;
-    }
+    if (loadedId ==
+        developerProfilePageFrameId &&
+    !profile.isDeveloper) {
+  loadedId = null;
+}
 
-    if (loadedId != null && loadedId != developerProfilePageFrameId) {
-      loadedId = null;
-    }
+if (loadedId ==
+        followDeveloperProfilePageFrameId &&
+    !profile.isDeveloper &&
+    !profile.followedDeveloperAchievement) {
+  loadedId = null;
+}
+
+if (loadedId != null &&
+    loadedId != developerProfilePageFrameId &&
+    loadedId != followDeveloperProfilePageFrameId) {
+  loadedId = null;
+}
 
     setState(() {
       selectedProfilePageFrameId = loadedId;
@@ -28484,120 +29946,274 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   Widget _profilePageFrameOption({
-    required String label,
-    required String? frameId,
-  }) {
-    final selected = selectedProfilePageFrameId == frameId;
-    final isDeveloperFrame = frameId == developerProfilePageFrameId;
+  required String label,
+  required String? frameId,
+}) {
+  final selected =
+      selectedProfilePageFrameId ==
+          frameId;
 
-    return SizedBox(
-      width: 132,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            setState(() {
-              selectedProfilePageFrameId = frameId;
-            });
-          },
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
-            padding: const EdgeInsets.all(7),
-            decoration: BoxDecoration(
-              color: selected
-                  ? Colors.white.withValues(alpha: 0.055)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: selected
-                    ? chipluxCyan.withValues(alpha: 0.65)
-                    : Colors.white.withValues(alpha: 0.07),
-                width: selected ? 1.3 : 1,
-              ),
+  final isDeveloperFrame =
+      frameId ==
+          developerProfilePageFrameId;
+
+  final isFollowDeveloperFrame =
+      frameId ==
+          followDeveloperProfilePageFrameId;
+
+  Widget? previewFrame;
+
+  if (isDeveloperFrame) {
+    previewFrame =
+        const _DeveloperProfilePageFrame();
+  } else if (isFollowDeveloperFrame) {
+    previewFrame =
+        const _Tier3ProfilePageFrame();
+  }
+
+  return SizedBox(
+    width: 132,
+
+    child: Material(
+      color: Colors.transparent,
+
+      child: InkWell(
+        onTap: () {
+          setState(() {
+            selectedProfilePageFrameId =
+                frameId;
+          });
+        },
+
+        borderRadius:
+            BorderRadius.circular(
+          16,
+        ),
+
+        child: Container(
+          padding:
+              const EdgeInsets.all(
+            7,
+          ),
+
+          decoration:
+              BoxDecoration(
+            color:
+                selected
+                    ? Colors.white
+                        .withValues(
+                          alpha:
+                              0.055,
+                        )
+                    : Colors
+                        .transparent,
+
+            borderRadius:
+                BorderRadius.circular(
+              16,
             ),
-            child: Column(
-              children: [
-                SizedBox(
-                  height: 67,
-                  width: double.infinity,
-                  child: Stack(
-                    children: [
-                      Positioned.fill(
-                        child: Container(
-                          margin: const EdgeInsets.all(5),
-                          decoration: BoxDecoration(
-                            color: chipluxBackground,
-                            borderRadius: BorderRadius.circular(14),
-                            border: isDeveloperFrame
-                                ? null
-                                : Border.all(
-                                    color: Colors.white.withValues(alpha: 0.18),
-                                  ),
+
+            border:
+                Border.all(
+              color:
+                  selected
+                      ? chipluxCyan
+                          .withValues(
+                            alpha:
+                                0.65,
+                          )
+                      : Colors.white
+                          .withValues(
+                            alpha:
+                                0.07,
                           ),
-                          child: const Center(
-                            child: Icon(
-                              Icons.person_outline_rounded,
-                              color: Colors.white38,
-                              size: 23,
-                            ),
-                          ),
-                        ),
-                      ),
-                      if (isDeveloperFrame)
-                        const Positioned.fill(
-                          child: _DeveloperProfilePageFrame(),
-                        ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+
+              width:
+                  selected
+                      ? 1.3
+                      : 1,
+            ),
+          ),
+
+          child: Column(
+            children: [
+              SizedBox(
+                height: 67,
+
+                width:
+                    double.infinity,
+
+                child: Stack(
                   children: [
-                    if (isDeveloperFrame) ...[
-                      const Icon(
-                        Icons.code_rounded,
-                        size: 11,
-                        color: chipluxCyan,
-                      ),
-                      const SizedBox(width: 4),
-                    ],
-                    Flexible(
-                      child: Text(
-                        label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: isDeveloperFrame
-                              ? const Color(0xFFFFD166)
-                              : Colors.white70,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
+                    Positioned.fill(
+                      child:
+                          Container(
+                        margin:
+                            const EdgeInsets
+                                .all(
+                          5,
+                        ),
+
+                        decoration:
+                            BoxDecoration(
+                          color:
+                              chipluxBackground,
+
+                          borderRadius:
+                              BorderRadius
+                                  .circular(
+                            14,
+                          ),
+
+                          border:
+                              previewFrame ==
+                                      null
+                                  ? Border.all(
+                                      color:
+                                          Colors.white.withValues(
+                                        alpha:
+                                            0.18,
+                                      ),
+                                    )
+                                  : null,
+                        ),
+
+                        child:
+                            const Center(
+                          child: Icon(
+                            Icons
+                                .person_outline_rounded,
+
+                            color:
+                                Colors.white38,
+
+                            size: 23,
+                          ),
                         ),
                       ),
                     ),
+
+                    if (previewFrame !=
+                        null)
+                      Positioned.fill(
+                        child:
+                            previewFrame,
+                      ),
                   ],
                 ),
-              ],
-            ),
+              ),
+
+              const SizedBox(
+                height: 5,
+              ),
+
+              Row(
+                mainAxisAlignment:
+                    MainAxisAlignment
+                        .center,
+
+                children: [
+                  if (isDeveloperFrame) ...[
+                    const Icon(
+                      Icons
+                          .code_rounded,
+
+                      size: 11,
+
+                      color:
+                          chipluxCyan,
+                    ),
+
+                    const SizedBox(
+                      width: 4,
+                    ),
+                  ] else if (isFollowDeveloperFrame) ...[
+                    const Icon(
+                      Icons
+                          .workspace_premium_rounded,
+
+                      size: 11,
+
+                      color:
+                          Color(
+                        0xFFA855F7,
+                      ),
+                    ),
+
+                    const SizedBox(
+                      width: 4,
+                    ),
+                  ],
+
+                  Flexible(
+                    child: Text(
+                      label,
+
+                      maxLines: 1,
+
+                      overflow:
+                          TextOverflow
+                              .ellipsis,
+
+                      style:
+                          TextStyle(
+                        color:
+                            isDeveloperFrame
+                                ? const Color(
+                                    0xFFFFD166,
+                                  )
+                                : isFollowDeveloperFrame
+                                ? const Color(
+                                    0xFFD946EF,
+                                  )
+                                : Colors
+                                    .white70,
+
+                        fontSize:
+                            10,
+
+                        fontWeight:
+                            FontWeight
+                                .w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget buildProfilePageFramePicker() {
-    final options = <Widget>[
-      _profilePageFrameOption(
-        label: 'None',
-        frameId: null,
-      ),
-      if (profile.isDeveloper)
-        _profilePageFrameOption(
-          label: 'Developer',
-          frameId: developerProfilePageFrameId,
-        ),
-    ];
+    final options =
+    <Widget>[
+  _profilePageFrameOption(
+    label: 'None',
+    frameId: null,
+  ),
+
+  if (profile.isDeveloper ||
+      profile
+          .followedDeveloperAchievement)
+    _profilePageFrameOption(
+      label:
+          'Follow Developer',
+      frameId:
+          followDeveloperProfilePageFrameId,
+    ),
+
+  if (profile.isDeveloper)
+    _profilePageFrameOption(
+      label:
+          'Developer',
+      frameId:
+          developerProfilePageFrameId,
+    ),
+];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -28956,22 +30572,35 @@ class _EditProfilePageState extends State<EditProfilePage> {
       }
     }
 
-    if (selectedProfilePageFrameId == developerProfilePageFrameId) {
-      if (!profile.isDeveloper) {
-        setState(() {
-          errorMessage =
-              'Developer profile frame is not available for this account.';
-        });
+    if (selectedProfilePageFrameId ==
+    developerProfilePageFrameId) {
+  if (!profile.isDeveloper) {
+    setState(() {
+      errorMessage =
+          'Developer profile frame is not available for this account.';
+    });
 
-        return;
-      }
-    } else if (selectedProfilePageFrameId != null) {
-      setState(() {
-        errorMessage = 'That profile page frame is not available.';
-      });
+    return;
+  }
+} else if (selectedProfilePageFrameId ==
+    followDeveloperProfilePageFrameId) {
+  if (!profile.isDeveloper &&
+      !profile.followedDeveloperAchievement) {
+    setState(() {
+      errorMessage =
+          'Follow Developer profile frame is still locked.';
+    });
 
-      return;
-    }
+    return;
+  }
+} else if (selectedProfilePageFrameId != null) {
+  setState(() {
+    errorMessage =
+        'That profile page frame is not available.';
+  });
+
+  return;
+}
 
     setState(() {
       saving = true;

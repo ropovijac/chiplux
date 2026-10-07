@@ -13,6 +13,7 @@ String username = '';
 String? avatarUrl;
 
 bool isDeveloper = false;
+bool followedDeveloperAchievement = false;
 
   int? bannerTmdbId;
   String? bannerMediaType;
@@ -60,6 +61,10 @@ bool isDeveloper = false;
 
       isDeveloper =
     data?['is_developer'] == true;
+
+    followedDeveloperAchievement =
+    data?['followed_developer_achievement'] ==
+        true;
 
       final rawBannerId = data?['banner_tmdb_id'];
 
@@ -160,6 +165,58 @@ bool isDeveloper = false;
         .eq('id', user.id);
   }
 
+  Future<bool>
+    claimFollowDeveloperAchievement() async {
+  final user =
+      client.auth.currentUser;
+
+  if (user == null) {
+    return false;
+  }
+
+  if (isDeveloper ||
+      followedDeveloperAchievement) {
+    return false;
+  }
+
+  await client
+      .from('profiles')
+      .update({
+        'followed_developer_achievement':
+            true,
+      })
+      .eq(
+        'id',
+        user.id,
+      );
+
+  final data = await client
+      .from('profiles')
+      .select(
+        'followed_developer_achievement',
+      )
+      .eq(
+        'id',
+        user.id,
+      )
+      .maybeSingle();
+
+  final unlocked =
+      data?['followed_developer_achievement'] ==
+          true;
+
+  if (!unlocked) {
+    return false;
+  }
+
+  followedDeveloperAchievement =
+      true;
+
+  notifyListeners();
+
+  return true;
+}
+
   void clear() {
   displayName = '';
   username = '';
@@ -176,6 +233,9 @@ bool isDeveloper = false;
 
   isLoading = false;
 
+  followedDeveloperAchievement = false;
+
   notifyListeners();
 }
+
 }
