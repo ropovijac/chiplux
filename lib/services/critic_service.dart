@@ -405,10 +405,13 @@ class CriticService extends ChangeNotifier {
 
       totalRatings = allRatings.length;
 
-      // Episode = 1 XP
-      // Movie = 5 XP
-      // Overall TV show rating = 5 XP
-      totalXp = episodeRatingCount + movieRatingCount * 5 + tvRatingCount * 5;
+      // Episode = 5 XP
+      // Movie = 10 XP
+      // Overall TV show rating = 10 XP
+      totalXp =
+          episodeRatingCount * 5 +
+          movieRatingCount * 10 +
+          tvRatingCount * 10;
 
       for (int i = 1; i <= 5; i++) {
         ratingDistribution[i] = 0;

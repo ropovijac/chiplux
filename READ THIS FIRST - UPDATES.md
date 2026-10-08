@@ -36,3 +36,4 @@ Rules of implementation:
 
 1. I will provide you with all the current scripts.
 2. If easier, or many changes are part of a bigger construct, change that whole construct. For example, if easier, change whole main.dart. If not nesscescary, change whole classes or whole functions instead. 
+3. Go one request by one, don't get yourself too much requests error. 

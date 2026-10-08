@@ -12891,17 +12891,27 @@ class SearchPage extends StatefulWidget {
 }
 
 class _SearchPageState extends State<SearchPage> {
-  final TextEditingController controller = TextEditingController();
+  final TextEditingController controller =
+      TextEditingController();
+
   final TmdbService tmdbService = TmdbService();
 
   Timer? _searchDebounce;
-  List<dynamic> results = [];
-  bool isLoading = false;
-  String? errorMessage;
-  _SearchCategory category = _SearchCategory.titles;
 
-  Future<void> performSearch([String? value]) async {
-    final query = (value ?? controller.text).trim();
+  List<dynamic> results = [];
+
+  bool isLoading = false;
+
+  String? errorMessage;
+
+  _SearchCategory category =
+    _SearchCategory.titles;
+
+  Future<void> performSearch([
+    String? value,
+  ]) async {
+    final query =
+        (value ?? controller.text).trim();
 
     if (query.length < 2) {
       setState(() {
@@ -12909,6 +12919,7 @@ class _SearchPageState extends State<SearchPage> {
         errorMessage = null;
         isLoading = false;
       });
+
       return;
     }
 
@@ -12920,11 +12931,14 @@ class _SearchPageState extends State<SearchPage> {
     });
 
     try {
-      final searchResults = requestedCategory == _SearchCategory.people
-          ? await tmdbService.searchPeople(query)
-          : await tmdbService.search(query);
+      final List<dynamic> searchResults =
+    requestedCategory == _SearchCategory.people
+        ? await tmdbService.searchPeople(query)
+        : await tmdbService.search(query);
 
-      if (!mounted || controller.text.trim() != query || category != requestedCategory) {
+      if (!mounted ||
+          controller.text.trim() != query ||
+          category != requestedCategory) {
         return;
       }
 
@@ -12932,12 +12946,17 @@ class _SearchPageState extends State<SearchPage> {
         results = searchResults;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
+
       setState(() {
         errorMessage = 'Search failed';
       });
     } finally {
-      if (mounted && controller.text.trim() == query && category == requestedCategory) {
+      if (mounted &&
+          controller.text.trim() == query &&
+          category == requestedCategory) {
         setState(() {
           isLoading = false;
         });
@@ -12945,8 +12964,11 @@ class _SearchPageState extends State<SearchPage> {
     }
   }
 
-  void onSearchChanged(String value) {
+  void onSearchChanged(
+    String value,
+  ) {
     _searchDebounce?.cancel();
+
     final query = value.trim();
 
     if (query.length < 2) {
@@ -12955,84 +12977,103 @@ class _SearchPageState extends State<SearchPage> {
         errorMessage = null;
         isLoading = false;
       });
+
       return;
     }
 
-    _searchDebounce = Timer(const Duration(milliseconds: 300), () {
-      performSearch(query);
-    });
+    _searchDebounce = Timer(
+      const Duration(milliseconds: 300),
+      () {
+        performSearch(query);
+      },
+    );
   }
 
-  void _changeCategory(_SearchCategory value) {
-    if (category == value) return;
+  void _changeCategory(
+    _SearchCategory value,
+  ) {
+    if (category == value) {
+      return;
+    }
+
     _searchDebounce?.cancel();
+
     setState(() {
       category = value;
       results = [];
       errorMessage = null;
     });
+
     if (controller.text.trim().length >= 2) {
       performSearch();
     }
   }
 
-  void _showPerson(Map<String, dynamic> person) {
-    final name = person['name']?.toString() ?? 'Unknown';
-    final department = person['known_for_department']?.toString() ?? 'Person';
-    final profilePath = person['profile_path']?.toString();
-    final knownForRaw = person['known_for'];
-    final knownFor = knownForRaw is List
-        ? knownForRaw
-            .whereType<Map>()
-            .map((item) => item['title'] ?? item['name'])
-            .whereType<String>()
-            .take(5)
-            .toList()
-        : <String>[];
+  void _openPersonProjects(
+    Map<String, dynamic> person,
+  ) {
+    final rawId = person['id'];
 
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: chipluxSurface,
-      isScrollControlled: true,
-      builder: (sheetContext) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(22),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircleAvatar(
-                radius: 48,
-                backgroundColor: chipluxSurfaceLight,
-                backgroundImage: profilePath == null
-                    ? null
-                    : NetworkImage('https://image.tmdb.org/t/p/w185$profilePath'),
-                child: profilePath == null
-                    ? const Icon(Icons.person_rounded, size: 44, color: Colors.white38)
-                    : null,
-              ),
-              const SizedBox(height: 14),
-              Text(name, textAlign: TextAlign.center, style: const TextStyle(fontSize: 21, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 4),
-              Text(department, style: const TextStyle(color: chipluxCyan)),
-              if (knownFor.isNotEmpty) ...[
-                const SizedBox(height: 18),
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text('Known for', style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-                const SizedBox(height: 7),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(knownFor.join(' · '), style: const TextStyle(color: Colors.white60, height: 1.4)),
-                ),
-              ],
-              const SizedBox(height: 12),
-            ],
-          ),
+    if (rawId is! num) {
+      return;
+    }
+
+    final name =
+        person['name']?.toString() ??
+            'Unknown';
+
+    final department =
+        person['known_for_department']
+                ?.toString() ??
+            '';
+
+    final profilePath =
+        person['profile_path']?.toString();
+
+    String role;
+
+    switch (department) {
+      case 'Acting':
+        role = 'Actor';
+        break;
+
+      case 'Directing':
+        role = 'Director';
+        break;
+
+      case 'Production':
+        role = 'Producer';
+        break;
+
+      default:
+        // For writers, creators and other
+        // departments, show all combined credits.
+        role = 'All';
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            PersonProjectsPage(
+          personId: rawId.toInt(),
+          personName: name,
+          role: role,
+          profilePath: profilePath,
         ),
       ),
     );
   }
+
+  String get _hintText {
+  switch (category) {
+    case _SearchCategory.titles:
+      return 'Search movies and TV shows';
+
+    case _SearchCategory.people:
+      return 'Actors, directors and producers';
+  }
+}
 
   @override
   void dispose() {
@@ -13042,137 +13083,566 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(
+    BuildContext context,
+  ) {
     return SafeArea(
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+            padding:
+                const EdgeInsets.fromLTRB(
+              20,
+              20,
+              20,
+              10,
+            ),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
               children: [
-                const BrandedTitle(whitePart: 'Se', gradientPart: 'arch', fontSize: 30),
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ChoiceChip(
-                        label: const Text('Movies & TV'),
-                        selected: category == _SearchCategory.titles,
-                        onSelected: (_) => _changeCategory(_SearchCategory.titles),
-                        selectedColor: chipluxCyan.withValues(alpha: 0.14),
-                        side: BorderSide(color: category == _SearchCategory.titles ? chipluxCyan : Colors.white12),
-                      ),
-                    ),
-                    const SizedBox(width: 9),
-                    Expanded(
-                      child: ChoiceChip(
-                        label: const Text('People'),
-                        selected: category == _SearchCategory.people,
-                        onSelected: (_) => _changeCategory(_SearchCategory.people),
-                        selectedColor: chipluxViolet.withValues(alpha: 0.14),
-                        side: BorderSide(color: category == _SearchCategory.people ? chipluxViolet : Colors.white12),
-                      ),
-                    ),
-                  ],
+                const BrandedTitle(
+                  whitePart: 'Se',
+                  gradientPart: 'arch',
+                  fontSize: 30,
                 ),
-                const SizedBox(height: 12),
+
+                const SizedBox(height: 14),
+
+                Row(
+  children: [
+    Expanded(
+      child: _SearchTabPill(
+        icon: Icons.movie_filter_rounded,
+        label: 'Movies & TV',
+        selected:
+            category == _SearchCategory.titles,
+        onTap: () {
+          _changeCategory(
+            _SearchCategory.titles,
+          );
+        },
+      ),
+    ),
+
+    const SizedBox(width: 10),
+
+    Expanded(
+      child: _SearchTabPill(
+        icon: Icons.person_search_rounded,
+        label: 'People',
+        selected:
+            category == _SearchCategory.people,
+        onTap: () {
+          _changeCategory(
+            _SearchCategory.people,
+          );
+        },
+      ),
+    ),
+  ],
+),
+
+                const SizedBox(height: 13),
+
                 TextField(
                   controller: controller,
                   onChanged: onSearchChanged,
-                  onSubmitted: (_) => performSearch(),
+                  onSubmitted: (_) {
+                    performSearch();
+                  },
                   decoration: InputDecoration(
-                    hintText: category == _SearchCategory.people ? 'Actors, directors and producers' : 'Movies and TV shows',
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: IconButton(icon: const Icon(Icons.arrow_forward), onPressed: performSearch),
+                    hintText: _hintText,
+                    prefixIcon:
+                        const Icon(
+                      Icons.search_rounded,
+                    ),
+                    suffixIcon: IconButton(
+                      icon: const Icon(
+                        Icons
+                            .arrow_forward_rounded,
+                      ),
+                      onPressed: performSearch,
+                    ),
                     filled: true,
-                    fillColor: chipluxSurface,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none),
+                    fillColor:
+                        chipluxSurface,
+                    enabledBorder:
+                        OutlineInputBorder(
+                      borderRadius:
+                          BorderRadius.circular(
+                        18,
+                      ),
+                      borderSide: BorderSide(
+                        color: Colors.white
+                            .withValues(
+                          alpha: 0.07,
+                        ),
+                      ),
+                    ),
+                    focusedBorder:
+                        OutlineInputBorder(
+                      borderRadius:
+                          BorderRadius.circular(
+                        18,
+                      ),
+                      borderSide:
+                          const BorderSide(
+                        color: chipluxCyan,
+                        width: 1.3,
+                      ),
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          if (isLoading) const Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator()),
-          if (errorMessage != null) Text(errorMessage!, style: const TextStyle(color: Colors.redAccent)),
+
+          if (isLoading)
+            const Padding(
+              padding:
+                  EdgeInsets.all(20),
+              child:
+                  CircularProgressIndicator(),
+            ),
+
+          if (errorMessage != null)
+            Text(
+              errorMessage!,
+              style: const TextStyle(
+                color: Colors.redAccent,
+              ),
+            ),
+
           if (!isLoading)
             Expanded(
               child: ListView.separated(
-                padding: const EdgeInsets.all(20),
+                padding:
+                    const EdgeInsets.all(20),
                 itemCount: results.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final item = Map<String, dynamic>.from(results[index] as Map);
+                separatorBuilder:
+                    (_, _) =>
+                        const SizedBox(
+                  height: 12,
+                ),
+                itemBuilder:
+                    (context, index) {
+                  final item =
+                      Map<String, dynamic>.from(
+                    results[index] as Map,
+                  );
 
-                  if (category == _SearchCategory.people) {
-                    final name = item['name']?.toString() ?? 'Unknown';
-                    final department = item['known_for_department']?.toString() ?? 'Person';
-                    final imagePath = item['profile_path']?.toString();
-                    final popularity = item['popularity'] is num ? (item['popularity'] as num).toDouble() : 0.0;
+                  if (category ==
+                      _SearchCategory.people) {
+                    final name =
+                        item['name']
+                                ?.toString() ??
+                            'Unknown';
+
+                    final department =
+                        item['known_for_department']
+                                ?.toString() ??
+                            'Person';
+
+                    final imagePath =
+                        item['profile_path']
+                            ?.toString();
+
+                    final popularity =
+                        item['popularity']
+                                is num
+                            ? (item['popularity']
+                                    as num)
+                                .toDouble()
+                            : 0.0;
 
                     return InkWell(
-                      borderRadius: BorderRadius.circular(16),
-                      onTap: () => _showPerson(item),
+                      borderRadius:
+                          BorderRadius.circular(
+                        17,
+                      ),
+                      onTap: () {
+                        _openPersonProjects(
+                          item,
+                        );
+                      },
                       child: Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(color: chipluxSurface, borderRadius: BorderRadius.circular(16)),
-                        child: Row(
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: imagePath != null
-                                  ? Image.network('https://image.tmdb.org/t/p/w185$imagePath', width: 72, height: 92, fit: BoxFit.cover,
-                                      errorBuilder: (_, _, _) => Container(width: 72, height: 92, color: chipluxSurfaceLight, child: const Icon(Icons.person_rounded, color: Colors.white38)))
-                                  : Container(width: 72, height: 92, color: chipluxSurfaceLight, child: const Icon(Icons.person_rounded, color: Colors.white38)),
+                        padding:
+                            const EdgeInsets.all(
+                          1.1,
+                        ),
+                        decoration:
+                            BoxDecoration(
+                          borderRadius:
+                              BorderRadius.circular(
+                            17,
+                          ),
+                          gradient:
+                              LinearGradient(
+                            begin: Alignment
+                                .topLeft,
+                            end: Alignment
+                                .bottomRight,
+                            colors: [
+                              chipluxCyan
+                                  .withValues(
+                                alpha: 0.34,
+                              ),
+                              chipluxViolet
+                                  .withValues(
+                                alpha: 0.22,
+                              ),
+                              chipluxPurple
+                                  .withValues(
+                                alpha: 0.28,
+                              ),
+                            ],
+                          ),
+                        ),
+                        child: Container(
+                          padding:
+                              const EdgeInsets.all(
+                            10,
+                          ),
+                          decoration:
+                              BoxDecoration(
+                            color:
+                                chipluxSurface,
+                            borderRadius:
+                                BorderRadius.circular(
+                              16,
                             ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                Text(name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                                const SizedBox(height: 6),
-                                Text(department, style: const TextStyle(color: chipluxViolet)),
-                                const SizedBox(height: 5),
-                                Text('Popularity ${popularity.toStringAsFixed(1)}', style: const TextStyle(color: Colors.white38, fontSize: 11)),
-                              ]),
-                            ),
-                            const Icon(Icons.chevron_right, color: Colors.white38),
-                          ],
+                          ),
+                          child: Row(
+                            children: [
+                              ClipRRect(
+                                borderRadius:
+                                    BorderRadius.circular(
+                                  12,
+                                ),
+                                child: imagePath !=
+                                        null
+                                    ? Image.network(
+                                        'https://image.tmdb.org/t/p/w185$imagePath',
+                                        width: 72,
+                                        height: 92,
+                                        fit: BoxFit
+                                            .cover,
+                                        errorBuilder:
+                                            (_, _, _) =>
+                                                Container(
+                                          width: 72,
+                                          height: 92,
+                                          color:
+                                              chipluxSurfaceLight,
+                                          child:
+                                              const Icon(
+                                            Icons
+                                                .person_rounded,
+                                            color:
+                                                Colors.white38,
+                                          ),
+                                        ),
+                                      )
+                                    : Container(
+                                        width: 72,
+                                        height: 92,
+                                        color:
+                                            chipluxSurfaceLight,
+                                        child:
+                                            const Icon(
+                                          Icons
+                                              .person_rounded,
+                                          color: Colors
+                                              .white38,
+                                        ),
+                                      ),
+                              ),
+
+                              const SizedBox(
+                                width: 14,
+                              ),
+
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment
+                                          .start,
+                                  children: [
+                                    Text(
+                                      name,
+                                      style:
+                                          const TextStyle(
+                                        fontSize:
+                                            16,
+                                        fontWeight:
+                                            FontWeight
+                                                .bold,
+                                      ),
+                                    ),
+                                    const SizedBox(
+                                      height: 6,
+                                    ),
+                                    Text(
+                                      department,
+                                      style:
+                                          const TextStyle(
+                                        color:
+                                            chipluxViolet,
+                                        fontWeight:
+                                            FontWeight
+                                                .w600,
+                                      ),
+                                    ),
+                                    const SizedBox(
+                                      height: 5,
+                                    ),
+                                    Text(
+                                      'Popularity ${popularity.toStringAsFixed(1)}',
+                                      style:
+                                          const TextStyle(
+                                        color: Colors
+                                            .white38,
+                                        fontSize:
+                                            11,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              const Icon(
+                                Icons
+                                    .chevron_right_rounded,
+                                color:
+                                    Colors.white38,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     );
                   }
 
-                  final mediaType = item['media_type'];
-                  final title = item['title'] ?? item['name'] ?? 'Unknown';
-                  final date = item['release_date'] ?? item['first_air_date'] ?? '';
-                  final year = date.toString().length >= 4 ? date.toString().substring(0, 4) : '';
-                  final posterPath = item['poster_path'];
-                  final posterUrl = posterPath != null ? 'https://image.tmdb.org/t/p/w185$posterPath' : null;
+                  final mediaType =
+                      item['media_type']
+                          ?.toString();
+
+                  final title =
+                      item['title'] ??
+                          item['name'] ??
+                          'Unknown';
+
+                  final date =
+                      item['release_date'] ??
+                          item['first_air_date'] ??
+                          '';
+
+                  final year =
+                      date.toString().length >= 4
+                          ? date
+                              .toString()
+                              .substring(0, 4)
+                          : '';
+
+                  final posterPath =
+                      item['poster_path'];
+
+                  final posterUrl =
+                      posterPath != null
+                          ? 'https://image.tmdb.org/t/p/w185$posterPath'
+                          : null;
 
                   return InkWell(
-                    borderRadius: BorderRadius.circular(16),
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => MediaDetailsPage(id: item['id'], mediaType: mediaType))),
-                    child: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(color: chipluxSurface, borderRadius: BorderRadius.circular(16)),
-                      child: Row(
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: posterUrl != null
-                                ? Image.network(posterUrl, width: 72, height: 105, fit: BoxFit.cover,
-                                    errorBuilder: (_, _, _) => Container(width: 72, height: 105, color: chipluxSurfaceLight, child: const Icon(Icons.movie_outlined, color: Colors.white38)))
-                                : Container(width: 72, height: 105, color: chipluxSurfaceLight, child: const Icon(Icons.movie_outlined, color: Colors.white38)),
+                    borderRadius:
+                        BorderRadius.circular(
+                      17,
+                    ),
+                    onTap: () {
+                      final rawId =
+                          item['id'];
+
+                      if (rawId is! num ||
+                          mediaType == null) {
+                        return;
+                      }
+
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              MediaDetailsPage(
+                            id: rawId.toInt(),
+                            mediaType:
+                                mediaType,
                           ),
-                          const SizedBox(width: 14),
-                          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                            const SizedBox(height: 7),
-                            Text(mediaType == 'tv' ? 'TV Show' : 'Movie', style: const TextStyle(color: chipluxCyan)),
-                            if (year.isNotEmpty) ...[const SizedBox(height: 4), Text(year, style: const TextStyle(color: Colors.white54))],
-                          ])),
-                          const Icon(Icons.chevron_right, color: Colors.white38),
-                        ],
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding:
+                          const EdgeInsets.all(
+                        1.1,
+                      ),
+                      decoration:
+                          BoxDecoration(
+                        borderRadius:
+                            BorderRadius.circular(
+                          17,
+                        ),
+                        gradient:
+                            LinearGradient(
+                          begin:
+                              Alignment.topLeft,
+                          end: Alignment
+                              .bottomRight,
+                          colors: [
+                            chipluxCyan
+                                .withValues(
+                              alpha: 0.32,
+                            ),
+                            chipluxViolet
+                                .withValues(
+                              alpha: 0.20,
+                            ),
+                            chipluxPurple
+                                .withValues(
+                              alpha: 0.24,
+                            ),
+                          ],
+                        ),
+                      ),
+                      child: Container(
+                        padding:
+                            const EdgeInsets.all(
+                          10,
+                        ),
+                        decoration:
+                            BoxDecoration(
+                          color:
+                              chipluxSurface,
+                          borderRadius:
+                              BorderRadius.circular(
+                            16,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            ClipRRect(
+                              borderRadius:
+                                  BorderRadius.circular(
+                                12,
+                              ),
+                              child:
+                                  posterUrl != null
+                                      ? Image.network(
+                                          posterUrl,
+                                          width:
+                                              72,
+                                          height:
+                                              105,
+                                          fit: BoxFit
+                                              .cover,
+                                          errorBuilder:
+                                              (_, _, _) =>
+                                                  Container(
+                                            width:
+                                                72,
+                                            height:
+                                                105,
+                                            color:
+                                                chipluxSurfaceLight,
+                                            child:
+                                                const Icon(
+                                              Icons
+                                                  .movie_outlined,
+                                              color:
+                                                  Colors.white38,
+                                            ),
+                                          ),
+                                        )
+                                      : Container(
+                                          width:
+                                              72,
+                                          height:
+                                              105,
+                                          color:
+                                              chipluxSurfaceLight,
+                                          child:
+                                              const Icon(
+                                            Icons
+                                                .movie_outlined,
+                                            color:
+                                                Colors.white38,
+                                          ),
+                                        ),
+                            ),
+
+                            const SizedBox(
+                              width: 14,
+                            ),
+
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment
+                                        .start,
+                                children: [
+                                  Text(
+                                    title
+                                        .toString(),
+                                    style:
+                                        const TextStyle(
+                                      fontSize:
+                                          16,
+                                      fontWeight:
+                                          FontWeight
+                                              .bold,
+                                    ),
+                                  ),
+                                  const SizedBox(
+                                    height: 7,
+                                  ),
+                                  Text(
+                                    mediaType ==
+                                            'tv'
+                                        ? 'TV Show'
+                                        : 'Movie',
+                                    style:
+                                        const TextStyle(
+                                      color:
+                                          chipluxCyan,
+                                      fontWeight:
+                                          FontWeight
+                                              .w600,
+                                    ),
+                                  ),
+                                  if (year
+                                      .isNotEmpty) ...[
+                                    const SizedBox(
+                                      height: 4,
+                                    ),
+                                    Text(
+                                      year,
+                                      style:
+                                          const TextStyle(
+                                        color: Colors
+                                            .white54,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+
+                            const Icon(
+                              Icons
+                                  .chevron_right_rounded,
+                              color:
+                                  Colors.white38,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   );
@@ -13180,6 +13650,112 @@ class _SearchPageState extends State<SearchPage> {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+class _SearchTabPill extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _SearchTabPill({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(
+    BuildContext context,
+  ) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius:
+            BorderRadius.circular(14),
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration:
+              const Duration(
+            milliseconds: 180,
+          ),
+          curve: Curves.easeOut,
+          padding:
+              const EdgeInsets.symmetric(
+            vertical: 11,
+            horizontal: 8,
+          ),
+          decoration: BoxDecoration(
+            borderRadius:
+                BorderRadius.circular(14),
+            gradient: selected
+                ? const LinearGradient(
+                    begin:
+                        Alignment.topLeft,
+                    end: Alignment
+                        .bottomRight,
+                    colors: [
+                      chipluxCyan,
+                      chipluxViolet,
+                      chipluxPurple,
+                    ],
+                  )
+                : null,
+            color:
+                selected ? null : chipluxSurface,
+            border: Border.all(
+              color: selected
+                  ? Colors.transparent
+                  : Colors.white.withValues(
+                      alpha: 0.08,
+                    ),
+            ),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: chipluxViolet
+                          .withValues(
+                        alpha: 0.16,
+                      ),
+                      blurRadius: 14,
+                    ),
+                  ]
+                : null,
+          ),
+          child: Row(
+            mainAxisAlignment:
+                MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 17,
+                color: selected
+                    ? chipluxBackground
+                    : Colors.white54,
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  label,
+                  overflow:
+                      TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: selected
+                        ? chipluxBackground
+                        : Colors.white70,
+                    fontSize: 12,
+                    fontWeight:
+                        FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -26842,9 +27418,8 @@ class _NotificationSettingsPageState
       backgroundColor: chipluxBackground,
 
       appBar: AppBar(
-        title: const Text(
-          'Notifications',
-        ),
+        backgroundColor: chipluxBackground,
+        elevation: 0,
       ),
 
       body: ChipluxBackground(
@@ -27427,7 +28002,6 @@ class _PrivacySettingsPageState
       appBar: AppBar(
         backgroundColor: chipluxBackground,
         elevation: 0,
-        title: const Text('Privacy'),
       ),
       body: ChipluxBackground(
         style: ChipluxBackgroundStyle.profile,
@@ -29441,9 +30015,9 @@ class _ProfileHelpTab extends StatelessWidget {
             const _ProfileMenuDivider(),
             row(Icons.mail_outline_rounded, 'Contact', 'Contact details and support', const _SimpleHelpPage(title: 'Contact', body: 'Chiplux contact details will be added before release.')),
             const _ProfileMenuDivider(),
-            row(Icons.privacy_tip_outlined, 'Privacy Policy', 'How Chiplux handles data', const _SimpleHelpPage(title: 'Privacy Policy', body: 'The final Chiplux Privacy Policy will be published here before release.')),
+            row(Icons.privacy_tip_outlined, 'Privacy Policy', 'How Chiplux handles data', const _PrivacyPolicyPage()),
             const _ProfileMenuDivider(),
-            row(Icons.description_outlined, 'Terms', 'Terms of use', const _SimpleHelpPage(title: 'Terms', body: 'The final Chiplux Terms of Use will be published here before release.')),
+            row(Icons.description_outlined, 'Terms', 'Terms of use', const _TermsOfUsePage()),
             const _ProfileMenuDivider(),
             row(Icons.bug_report_outlined, 'Report a Bug', 'Send a problem directly to Chiplux', const _ReportBugPage()),
           ],
@@ -29456,81 +30030,748 @@ class _ProfileHelpTab extends StatelessWidget {
 class _SimpleHelpPage extends StatelessWidget {
   final String title;
   final String body;
-  const _SimpleHelpPage({required this.title, required this.body});
+
+  const _SimpleHelpPage({
+    required this.title,
+    required this.body,
+  });
+
   @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: chipluxBackground,
-    appBar: AppBar(backgroundColor: chipluxBackground, title: Text(title)),
-    body: Padding(
-      padding: const EdgeInsets.all(20),
-      child: Text(body, style: const TextStyle(color: Colors.white70, height: 1.55)),
-    ),
-  );
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: chipluxBackground,
+      appBar: AppBar(
+        backgroundColor: chipluxBackground,
+        elevation: 0,
+      ),
+      body: ChipluxBackground(
+        style: ChipluxBackgroundStyle.profile,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(
+            18,
+            8,
+            18,
+            35,
+          ),
+          children: [
+            _HelpPageHeader(
+              title: title,
+              description: 'Information and support for Chiplux.',
+            ),
+            const SizedBox(height: 18),
+            _HelpGradientCard(
+              child: Text(
+                body,
+                style: const TextStyle(
+                  color: Colors.white70,
+                  height: 1.55,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HelpPageHeader extends StatelessWidget {
+  final String title;
+  final String description;
+
+  const _HelpPageHeader({
+    required this.title,
+    required this.description,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment:
+          CrossAxisAlignment.start,
+      children: [
+        GradientText(
+          title,
+          style: const TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.w900,
+            letterSpacing: -0.6,
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          description,
+          style: const TextStyle(
+            color: Colors.white54,
+            fontSize: 12,
+            height: 1.4,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HelpGradientCard extends StatelessWidget {
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+
+  const _HelpGradientCard({
+    required this.child,
+    this.padding = const EdgeInsets.all(16),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(1.1),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            chipluxCyan.withValues(alpha: 0.42),
+            chipluxViolet.withValues(alpha: 0.25),
+            chipluxPurple.withValues(alpha: 0.30),
+          ],
+        ),
+      ),
+      child: Container(
+        padding: padding,
+        decoration: BoxDecoration(
+          color: chipluxSurface,
+          borderRadius: BorderRadius.circular(17),
+        ),
+        child: child,
+      ),
+    );
+  }
 }
 
 class _FaqPage extends StatelessWidget {
   const _FaqPage();
+
   @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: chipluxBackground,
-    appBar: AppBar(backgroundColor: chipluxBackground, title: const Text('FAQ')),
-    body: ListView(
-      padding: const EdgeInsets.all(16),
-      children: const [
-        ExpansionTile(title: Text('How do I track a movie or TV show?'), children: [Padding(padding: EdgeInsets.fromLTRB(16,0,16,16), child: Text('Open a title and add it to your library. Movies can be marked watched, while TV shows track episodes and completion.'))]),
-        ExpansionTile(title: Text('When can I rate or comment?'), children: [Padding(padding: EdgeInsets.fromLTRB(16,0,16,16), child: Text('Ratings and comments unlock after the related movie, show or episode has been watched.'))]),
-        ExpansionTile(title: Text('What are achievements for?'), children: [Padding(padding: EdgeInsets.fromLTRB(16,0,16,16), child: Text('Achievements track your Chiplux progress and unlock profile cosmetics such as frames, colors and titles.'))]),
-        ExpansionTile(title: Text('Can I control what other users see?'), children: [Padding(padding: EdgeInsets.fromLTRB(16,0,16,16), child: Text('Yes. Open Settings → Privacy to control profile visibility, activity, statistics, follows and blocked users.'))]),
+  Widget build(BuildContext context) {
+    const items = <({String question, String answer})>[
+      (
+        question: 'How do I track a movie or TV show?',
+        answer:
+            'Open a title and add it to your library. Movies can be marked watched, while TV shows track individual episodes and completion.',
+      ),
+      (
+        question: 'When can I rate or comment?',
+        answer:
+            'Ratings and comments unlock after the related movie, show or episode has been watched.',
+      ),
+      (
+        question: 'What are achievements for?',
+        answer:
+            'Achievements track your Chiplux progress and unlock profile cosmetics such as frames, colors and titles.',
+      ),
+      (
+        question: 'Can I control what other users see?',
+        answer:
+            'Yes. Open Settings → Privacy to control profile visibility, activity, statistics, follows and blocked users.',
+      ),
+      (
+        question: 'Can I export my Chiplux data?',
+        answer:
+            'Yes. Open Settings → Data & Export to create a JSON backup. You can also enable automatic local backups.',
+      ),
+      (
+        question: 'How do notifications work?',
+        answer:
+            'Open Settings → Notifications to choose which episode, release, community, achievement and Chiplux update notifications you want to receive.',
+      ),
+    ];
+
+    return Scaffold(
+      backgroundColor: chipluxBackground,
+      appBar: AppBar(
+        backgroundColor: chipluxBackground,
+        elevation: 0,
+      ),
+      body: ChipluxBackground(
+        style: ChipluxBackgroundStyle.profile,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(
+            18,
+            8,
+            18,
+            35,
+          ),
+          children: [
+            const _HelpPageHeader(
+              title: 'FAQ',
+              description:
+                  'Quick answers to common questions about using Chiplux.',
+            ),
+            const SizedBox(height: 18),
+            for (int i = 0;
+                i < items.length;
+                i++) ...[
+              _FaqCard(
+                question: items[i].question,
+                answer: items[i].answer,
+              ),
+              if (i < items.length - 1)
+                const SizedBox(height: 10),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FaqCard extends StatelessWidget {
+  final String question;
+  final String answer;
+
+  const _FaqCard({
+    required this.question,
+    required this.answer,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _HelpGradientCard(
+      padding: EdgeInsets.zero,
+      child: Theme(
+        data: Theme.of(context).copyWith(
+          dividerColor: Colors.transparent,
+        ),
+        child: ExpansionTile(
+          tilePadding:
+              const EdgeInsets.symmetric(
+            horizontal: 15,
+            vertical: 2,
+          ),
+          childrenPadding:
+              const EdgeInsets.fromLTRB(
+            15,
+            0,
+            15,
+            15,
+          ),
+          iconColor: chipluxCyan,
+          collapsedIconColor:
+              Colors.white38,
+          title: Text(
+            question,
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+            ),
+          ),
+          children: [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                answer,
+                style: const TextStyle(
+                  color: Colors.white60,
+                  height: 1.5,
+                  fontSize: 12.5,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PrivacyPolicyPage
+    extends StatelessWidget {
+  const _PrivacyPolicyPage();
+
+  @override
+  Widget build(BuildContext context) {
+    return const _LegalPage(
+      title: 'Privacy Policy',
+      description:
+          'How Chiplux collects, uses and protects information.',
+      effectiveDate: '8 October 2026',
+      sections: [
+        _LegalSection(
+          title: '1. About this policy',
+          body:
+              'This Privacy Policy explains how Chiplux handles personal information when you create an account, use movie and TV tracking features, participate in community features, receive notifications, submit reports or otherwise use the Chiplux app.',
+        ),
+        _LegalSection(
+          title: '2. Information we collect',
+          body:
+              'Account information may include your email address, account identifier and authentication information handled through our authentication provider. Profile information may include your username, display name, avatar, banner and profile settings.\n\n'
+              'Usage information may include your library, watched movies and episodes, ratings, reviews, favorites, achievements, comments, likes, follows, blocks and notification preferences. If you submit a bug or moderation report, we store the information you provide with that report.\n\n'
+              'For push notifications, Chiplux may store a device registration token associated with your account. Service providers may also process technical information such as device, network, diagnostic and security data as necessary to provide their services.',
+        ),
+        _LegalSection(
+          title: '3. How we use information',
+          body:
+              'We use information to provide and synchronize your account and library, personalize your Chiplux experience, calculate statistics and achievements, operate community features, deliver notifications, process reports, prevent abuse, troubleshoot problems, secure the service and comply with applicable legal obligations.',
+        ),
+        _LegalSection(
+          title: '4. Service providers and third-party data',
+          body:
+              'Chiplux uses service providers to operate the app. Supabase is used for services such as authentication, database, storage and server-side functions. Firebase Cloud Messaging is used to deliver push notifications. The Movie Database (TMDB) provides movie, TV and person metadata and images; searches and content requests may therefore be sent to TMDB.\n\n'
+              'These providers process information under their own terms and privacy practices. Chiplux does not sell your personal information.',
+        ),
+        _LegalSection(
+          title: '5. Community content',
+          body:
+              'Comments, reviews, profile information and other content you choose to make public may be visible to other users according to your privacy settings. You should not post personal information that you do not want other people to see.',
+        ),
+        _LegalSection(
+          title: '6. Your controls and choices',
+          body:
+              'Chiplux provides controls for profile visibility, search visibility, activity visibility, statistics, follows, comment interactions, blocked users and notification categories. You can also use Data & Export to create a copy of supported account data and can request account deletion through the app.',
+        ),
+        _LegalSection(
+          title: '7. Retention and deletion',
+          body:
+              'We retain information for as long as reasonably necessary to provide Chiplux, maintain security, resolve disputes and meet legal obligations. When an account is deleted, associated account data is deleted or de-identified where reasonably possible, subject to limited retention that may be required for security, backups, fraud prevention or law.',
+        ),
+        _LegalSection(
+          title: '8. European privacy rights',
+          body:
+              'If the GDPR or similar privacy law applies to you, you may have rights to access, correct, delete, restrict or object to certain processing, receive a portable copy of your data, and withdraw consent where processing is based on consent. You may also have the right to complain to your local data protection authority.',
+        ),
+        _LegalSection(
+          title: '9. Security',
+          body:
+              'We use reasonable technical and organizational measures intended to protect account information. No online service can guarantee absolute security, so you should use a strong password and keep access to your account and devices secure.',
+        ),
+        _LegalSection(
+          title: '10. Children',
+          body:
+              'Chiplux is not intended to knowingly collect personal information from children who are below the minimum age permitted to use an online service without parental authorization under applicable law. If you believe a child has provided personal information unlawfully, contact Chiplux so the issue can be reviewed.',
+        ),
+        _LegalSection(
+          title: '11. Changes to this policy',
+          body:
+              'We may update this Privacy Policy as Chiplux changes. Material changes may be communicated in the app or through another appropriate notice. The effective date shown above indicates the current version.',
+        ),
+        _LegalSection(
+          title: '12. Contact',
+          body:
+              'For privacy questions or requests, use the Contact option in Chiplux. Before public release, the developer should also publish a monitored privacy or support email address here.',
+        ),
       ],
-    ),
-  );
+    );
+  }
+}
+
+class _TermsOfUsePage
+    extends StatelessWidget {
+  const _TermsOfUsePage();
+
+  @override
+  Widget build(BuildContext context) {
+    return const _LegalPage(
+      title: 'Terms of Use',
+      description:
+          'The rules for using Chiplux and its community features.',
+      effectiveDate: '8 October 2026',
+      sections: [
+        _LegalSection(
+          title: '1. Acceptance',
+          body:
+              'By creating an account or using Chiplux, you agree to these Terms of Use. If you do not agree, do not use the service. If local law requires a parent or guardian to authorize your use, you may use Chiplux only with that authorization.',
+        ),
+        _LegalSection(
+          title: '2. Your account',
+          body:
+              'You are responsible for the accuracy of information you provide, for keeping your login credentials secure and for activity performed through your account. You may not impersonate another person, misrepresent your identity or use another user’s account without permission.',
+        ),
+        _LegalSection(
+          title: '3. Acceptable use',
+          body:
+              'You may not use Chiplux to harass or threaten others, post unlawful or abusive material, spam users, manipulate ratings or engagement, distribute malware, attempt unauthorized access, interfere with the service, scrape or harvest data in a prohibited manner, or otherwise use Chiplux in a way that harms users or the service.',
+        ),
+        _LegalSection(
+          title: '4. Your content',
+          body:
+              'You retain ownership of content you create, such as comments and reviews. By posting content to Chiplux, you grant Chiplux a non-exclusive, worldwide, royalty-free license to host, store, reproduce and display that content only as reasonably necessary to operate, moderate and improve the service. You represent that you have the right to post the content you submit.',
+        ),
+        _LegalSection(
+          title: '5. Moderation and reports',
+          body:
+              'Chiplux may review reports and may remove content, restrict features, suspend accounts or take other reasonable moderation action when content or behavior violates these Terms, applicable law or community safety rules. Moderation decisions may be made using automated signals and human review.',
+        ),
+        _LegalSection(
+          title: '6. Movie and TV information',
+          body:
+              'Chiplux uses third-party movie, TV and person information, including data and images supplied through TMDB. Chiplux does not own that third-party content and cannot guarantee that all metadata, release dates, ratings or images are complete or error-free. This product uses the TMDB API but is not endorsed or certified by TMDB.',
+        ),
+        _LegalSection(
+          title: '7. Service availability',
+          body:
+              'We may add, change or discontinue features and may perform maintenance or suspend access when reasonably necessary. Chiplux is provided on an as-available basis, and uninterrupted or error-free operation is not guaranteed.',
+        ),
+        _LegalSection(
+          title: '8. Account suspension and termination',
+          body:
+              'You may stop using Chiplux and may delete your account through the available account controls. Chiplux may suspend or terminate access when reasonably necessary for serious or repeated violations, security risks, fraud, unlawful conduct or protection of other users.',
+        ),
+        _LegalSection(
+          title: '9. Disclaimers and liability',
+          body:
+              'To the maximum extent permitted by applicable law, Chiplux is provided without warranties beyond those that cannot legally be excluded. Chiplux is not responsible for decisions made solely on the basis of third-party entertainment metadata or user-generated content. Nothing in these Terms limits rights or remedies that cannot be limited under applicable consumer law.',
+        ),
+        _LegalSection(
+          title: '10. Changes to these terms',
+          body:
+              'We may update these Terms as the service changes. If a change materially affects users, Chiplux may provide notice in the app or by another appropriate method. Continued use after the updated Terms take effect constitutes acceptance where permitted by law.',
+        ),
+        _LegalSection(
+          title: '11. Governing law',
+          body:
+              'These Terms are governed by the laws of Croatia, except where mandatory consumer or other laws in your country require a different result. Any mandatory rights available to consumers remain unaffected.',
+        ),
+        _LegalSection(
+          title: '12. Contact',
+          body:
+              'Questions about these Terms can be sent through the Contact option in Chiplux. Before public release, the developer should also publish a monitored support email address here.',
+        ),
+      ],
+    );
+  }
+}
+
+class _LegalSection {
+  final String title;
+  final String body;
+
+  const _LegalSection({
+    required this.title,
+    required this.body,
+  });
+}
+
+class _LegalPage extends StatelessWidget {
+  final String title;
+  final String description;
+  final String effectiveDate;
+  final List<_LegalSection> sections;
+
+  const _LegalPage({
+    required this.title,
+    required this.description,
+    required this.effectiveDate,
+    required this.sections,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: chipluxBackground,
+      appBar: AppBar(
+        backgroundColor: chipluxBackground,
+        elevation: 0,
+      ),
+      body: ChipluxBackground(
+        style: ChipluxBackgroundStyle.profile,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(
+            18,
+            8,
+            18,
+            35,
+          ),
+          children: [
+            _HelpPageHeader(
+              title: title,
+              description: description,
+            ),
+            const SizedBox(height: 7),
+            Text(
+              'Effective $effectiveDate',
+              style: const TextStyle(
+                color: chipluxCyan,
+                fontSize: 10.5,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.4,
+              ),
+            ),
+            const SizedBox(height: 18),
+            for (int i = 0;
+                i < sections.length;
+                i++) ...[
+              _HelpGradientCard(
+                child: Column(
+                  crossAxisAlignment:
+                      CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      sections[i].title,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight:
+                            FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      sections[i].body,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12.5,
+                        height: 1.55,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (i < sections.length - 1)
+                const SizedBox(height: 10),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _ReportBugPage extends StatefulWidget {
   const _ReportBugPage();
+
   @override
-  State<_ReportBugPage> createState() => _ReportBugPageState();
+  State<_ReportBugPage> createState() =>
+      _ReportBugPageState();
 }
 
-class _ReportBugPageState extends State<_ReportBugPage> {
-  final controller = TextEditingController();
+class _ReportBugPageState
+    extends State<_ReportBugPage> {
+  final controller =
+      TextEditingController();
+
   bool sending = false;
 
   Future<void> _send() async {
-    final text = controller.text.trim();
+    final text =
+        controller.text.trim();
+
     if (text.length < 10) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please describe the problem in a little more detail.')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Please describe the problem in a little more detail.',
+          ),
+        ),
+      );
+
       return;
     }
-    setState(() => sending = true);
+
+    setState(() {
+      sending = true;
+    });
+
     try {
-      final user = Supabase.instance.client.auth.currentUser;
-      await Supabase.instance.client.from('bug_reports').insert({'user_id': user?.id, 'description': text});
-      if (!mounted) return;
+      final user =
+          Supabase.instance.client.auth
+              .currentUser;
+
+      await Supabase.instance.client
+          .from('bug_reports')
+          .insert({
+        'user_id': user?.id,
+        'description': text,
+      });
+
+      if (!mounted) {
+        return;
+      }
+
       controller.clear();
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bug report sent. Thank you.')));
+
+      ScaffoldMessenger.of(context)
+          .showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Bug report sent. Thank you.',
+          ),
+        ),
+      );
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not send bug report: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(
+          SnackBar(
+            content: Text(
+              'Could not send bug report: $e',
+            ),
+          ),
+        );
+      }
     } finally {
-      if (mounted) setState(() => sending = false);
+      if (mounted) {
+        setState(() {
+          sending = false;
+        });
+      }
     }
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: chipluxBackground,
-    appBar: AppBar(backgroundColor: chipluxBackground, title: const Text('Report a Bug')),
-    body: ListView(padding: const EdgeInsets.all(20), children: [
-      const Text('Describe what happened, what you expected to happen, and what you were doing just before the problem appeared.', style: TextStyle(color: Colors.white70, height: 1.45)),
-      const SizedBox(height: 16),
-      TextField(controller: controller, minLines: 7, maxLines: 14, maxLength: 5000, textCapitalization: TextCapitalization.sentences, decoration: const InputDecoration(hintText: 'Describe the problem...')),
-      const SizedBox(height: 12),
-      FilledButton.icon(onPressed: sending ? null : _send, icon: sending ? const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2)) : const Icon(Icons.send_rounded), label: const Text('Send Bug Report')),
-    ]),
-  );
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: chipluxBackground,
+      appBar: AppBar(
+        backgroundColor: chipluxBackground,
+        elevation: 0,
+      ),
+      body: ChipluxBackground(
+        style: ChipluxBackgroundStyle.profile,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(
+            18,
+            8,
+            18,
+            35,
+          ),
+          children: [
+            const _HelpPageHeader(
+              title: 'Report a Bug',
+              description:
+                  'Tell us what happened so the issue can be reproduced and fixed.',
+            ),
+
+            const SizedBox(height: 18),
+
+            _HelpGradientCard(
+              child: Column(
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(
+                        Icons
+                            .bug_report_outlined,
+                        color: chipluxCyan,
+                        size: 20,
+                      ),
+                      SizedBox(width: 9),
+                      Expanded(
+                        child: Text(
+                          'Describe what happened, what you expected and what you were doing just before the problem appeared.',
+                          style: TextStyle(
+                            color:
+                                Colors.white70,
+                            fontSize: 12,
+                            height: 1.45,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 15),
+
+                  TextField(
+                    controller: controller,
+                    minLines: 7,
+                    maxLines: 14,
+                    maxLength: 5000,
+                    textCapitalization:
+                        TextCapitalization
+                            .sentences,
+                    decoration:
+                        InputDecoration(
+                      hintText:
+                          'Describe the problem...',
+                      filled: true,
+                      fillColor:
+                          chipluxSurfaceLight,
+                      enabledBorder:
+                          OutlineInputBorder(
+                        borderRadius:
+                            BorderRadius
+                                .circular(14),
+                        borderSide:
+                            BorderSide(
+                          color: Colors.white
+                              .withValues(
+                            alpha: 0.07,
+                          ),
+                        ),
+                      ),
+                      focusedBorder:
+                          OutlineInputBorder(
+                        borderRadius:
+                            BorderRadius
+                                .circular(14),
+                        borderSide:
+                            const BorderSide(
+                          color:
+                              chipluxCyan,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 14),
+
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed:
+                    sending ? null : _send,
+                icon: sending
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child:
+                            CircularProgressIndicator(
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Icon(
+                        Icons.send_rounded,
+                      ),
+                label: const Text(
+                  'Send Bug Report',
+                ),
+                style: FilledButton
+                    .styleFrom(
+                  backgroundColor:
+                      chipluxCyan,
+                  foregroundColor:
+                      chipluxBackground,
+                  padding:
+                      const EdgeInsets.symmetric(
+                    vertical: 14,
+                  ),
+                  shape:
+                      RoundedRectangleBorder(
+                    borderRadius:
+                        BorderRadius.circular(
+                      14,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
-  void dispose() { controller.dispose(); super.dispose(); }
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
 }
 
 class _ProfileMenuSectionTitle
@@ -34943,26 +36184,55 @@ class _PersonProjectsPageState extends State<PersonProjectsPage> {
 
   Future<void> _load() async {
     try {
-      final result = await tmdb.getPersonCombinedCredits(widget.personId);
+      final result =
+          await tmdb.getPersonCombinedCredits(
+        widget.personId,
+      );
 
-      final bool isActor = widget.role == 'Actor';
+      final bool isActor =
+          widget.role == 'Actor';
 
-      final List<dynamic> rawCredits = isActor
-          ? result['cast'] ?? []
-          : result['crew'] ?? [];
+      final bool showAll =
+          widget.role == 'All';
 
-      final allCredits = <Map<String, dynamic>>[];
+      final List<dynamic> castCredits =
+          List<dynamic>.from(
+        result['cast'] ?? const [],
+      );
+
+      final List<dynamic> crewCredits =
+          List<dynamic>.from(
+        result['crew'] ?? const [],
+      );
+
+      final List<dynamic> rawCredits =
+          isActor
+              ? castCredits
+              : showAll
+                  ? [
+                      ...castCredits,
+                      ...crewCredits,
+                    ]
+                  : crewCredits;
+
+      final allCredits =
+          <Map<String, dynamic>>[];
 
       for (final raw in rawCredits) {
         if (raw is! Map) {
           continue;
         }
 
-        final item = Map<String, dynamic>.from(raw);
+        final item =
+            Map<String, dynamic>.from(
+          raw,
+        );
 
-        final mediaType = item['media_type'];
+        final mediaType =
+            item['media_type'];
 
-        if (mediaType != 'movie' && mediaType != 'tv') {
+        if (mediaType != 'movie' &&
+            mediaType != 'tv') {
           continue;
         }
 
@@ -34971,21 +36241,40 @@ class _PersonProjectsPageState extends State<PersonProjectsPage> {
 
       List<Map<String, dynamic>> filtered;
 
-      if (isActor) {
-        // Acting credits.
+      if (isActor || showAll) {
         filtered = allCredits;
-      } else if (widget.role == 'Director') {
-        filtered = allCredits.where((item) {
-          return item['job']?.toString() == 'Director';
-        }).toList();
-      } else if (widget.role.contains('Producer')) {
-        filtered = allCredits.where((item) {
-          return item['job']?.toString().contains('Producer') ?? false;
-        }).toList();
+      } else if (
+          widget.role == 'Director') {
+        filtered = allCredits.where(
+          (item) {
+            return item['job']
+                    ?.toString() ==
+                'Director';
+          },
+        ).toList();
+      } else if (
+          widget.role.contains(
+        'Producer',
+      )) {
+        filtered = allCredits.where(
+          (item) {
+            final job =
+                item['job']
+                    ?.toString() ??
+                '';
+
+            return job.contains(
+              'Producer',
+            );
+          },
+        ).toList();
       } else {
         filtered = allCredits;
       }
 
+      // If TMDB did not return credits
+      // matching the person's main role,
+      // still show their available projects.
       if (filtered.isEmpty) {
         filtered = allCredits;
       }
@@ -34993,29 +36282,43 @@ class _PersonProjectsPageState extends State<PersonProjectsPage> {
       // Remove duplicate projects.
       final seen = <String>{};
 
-      filtered = filtered.where((item) {
-        final rawId = item['id'];
+      filtered = filtered.where(
+        (item) {
+          final rawId = item['id'];
 
-        final mediaType = item['media_type']?.toString();
+          final mediaType =
+              item['media_type']
+                  ?.toString();
 
-        if (rawId is! num || mediaType == null) {
-          return false;
-        }
+          if (rawId is! num ||
+              mediaType == null) {
+            return false;
+          }
 
-        final key = '$mediaType:${rawId.toInt()}';
+          final key =
+              '$mediaType:${rawId.toInt()}';
 
-        return seen.add(key);
-      }).toList();
+          return seen.add(key);
+        },
+      ).toList();
 
       // Newest projects first.
       filtered.sort((a, b) {
-        final aDate = (a['release_date'] ?? a['first_air_date'] ?? '')
-            .toString();
+        final aDate =
+            (a['release_date'] ??
+                    a['first_air_date'] ??
+                    '')
+                .toString();
 
-        final bDate = (b['release_date'] ?? b['first_air_date'] ?? '')
-            .toString();
+        final bDate =
+            (b['release_date'] ??
+                    b['first_air_date'] ??
+                    '')
+                .toString();
 
-        return bDate.compareTo(aDate);
+        return bDate.compareTo(
+          aDate,
+        );
       });
 
       if (!mounted) {
@@ -35024,7 +36327,6 @@ class _PersonProjectsPageState extends State<PersonProjectsPage> {
 
       setState(() {
         projects = filtered;
-
         loading = false;
       });
     } catch (e) {
@@ -35034,8 +36336,8 @@ class _PersonProjectsPageState extends State<PersonProjectsPage> {
 
       setState(() {
         loading = false;
-
-        error = 'Could not load projects.';
+        error =
+            'Could not load projects.';
       });
     }
   }

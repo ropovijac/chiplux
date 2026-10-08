@@ -8,14 +8,3 @@ git push
 
 #RUN
 flutter run --dart-define-from-file=config.json
-
-
-#Query za updates
-insert into public.chiplux_updates (
-  title,
-  body
-)
-values (
-  'Chiplux Test Update',
-  'This is a test of the Chiplux update notification system.'
-);
