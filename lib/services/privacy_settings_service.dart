@@ -25,6 +25,7 @@ class PrivacySettingsService extends ChangeNotifier {
 
   String followPermission = 'everyone';
   bool allowCommentReplies = true;
+  bool featureSuggestionAttribution = true;
 
   bool loading = false;
 
@@ -72,7 +73,8 @@ class PrivacySettingsService extends ChangeNotifier {
             'privacy_show_profile_achievements, '
             'privacy_show_connections, '
             'privacy_follow_permission, '
-            'privacy_allow_comment_replies',
+            'privacy_allow_comment_replies, '
+            'privacy_feature_suggestion_attribution',
           )
           .eq('id', user.id)
           .maybeSingle();
@@ -107,6 +109,9 @@ class PrivacySettingsService extends ChangeNotifier {
 
       allowCommentReplies =
           row?['privacy_allow_comment_replies'] != false;
+
+      featureSuggestionAttribution =
+          row?['privacy_feature_suggestion_attribution'] != false;
 
       _loadedUserId = user.id;
     } finally {
@@ -214,6 +219,12 @@ class PrivacySettingsService extends ChangeNotifier {
   Future<void> setAllowCommentReplies(bool value) async {
     await _update('privacy_allow_comment_replies', value);
     allowCommentReplies = value;
+    notifyListeners();
+  }
+
+  Future<void> setFeatureSuggestionAttribution(bool value) async {
+    await _update('privacy_feature_suggestion_attribution', value);
+    featureSuggestionAttribution = value;
     notifyListeners();
   }
 
@@ -361,6 +372,7 @@ class PrivacySettingsService extends ChangeNotifier {
 
     followPermission = 'everyone';
     allowCommentReplies = true;
+    featureSuggestionAttribution = true;
 
     loading = false;
     _loadedUserId = null;

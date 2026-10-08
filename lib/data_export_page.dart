@@ -392,7 +392,7 @@ class _DataExportPageState extends State<DataExportPage> {
                         child: Text(
                           'Exports include your profile settings, library, '
                           'watched episodes, ratings, comments, activity, '
-                          'following list, notifications, reports and '
+                          'following list, notifications, reports, feature suggestions and '
                           'blocked-user list.',
                           style: TextStyle(
                             color: Colors.white70,

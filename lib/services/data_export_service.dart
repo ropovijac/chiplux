@@ -25,10 +25,12 @@ class DataExportService {
     final r=await Future.wait([
       rows('library_items','user_id'),rows('watched_episodes','user_id'),rows('media_user_data','user_id'),rows('episode_ratings','user_id'),
       rows('media_comments','user_id'),rows('comment_likes','user_id'),rows('community_activity','user_id'),rows('follows','follower_id'),rows('follows','following_id'),rows('user_blocks','blocker_id'),
-      rows('notifications','recipient_user_id'),rows('user_reports','reporter_id'),rows('comment_reports','reporter_id'),rows('bug_reports','user_id')]);
+      rows('notifications','recipient_user_id'),rows('user_reports','reporter_id'),rows('comment_reports','reporter_id'),rows('bug_reports','user_id'),
+      rows('feature_suggestions','user_id'),rows('feature_suggestion_likes','user_id'),rows('feature_suggestion_comments','user_id'),rows('feature_suggestion_submission_state','user_id')]);
     return {'format':'chiplux-export-v1','exported_at':DateTime.now().toUtc().toIso8601String(),'account':{'id':user.id,'email':user.email},'profile':profile,
       'library_items':r[0],'watched_episodes':r[1],'media_user_data':r[2],'episode_ratings':r[3],'my_comments':r[4],'my_comment_likes':r[5],'my_activity':r[6],
-      'following':r[7],'followers':r[8],'blocked_users':r[9],'notifications':r[10],'my_user_reports':r[11],'my_comment_reports':r[12],'my_bug_reports':r[13]};
+      'following':r[7],'followers':r[8],'blocked_users':r[9],'notifications':r[10],'my_user_reports':r[11],'my_comment_reports':r[12],'my_bug_reports':r[13],
+      'my_feature_suggestions':r[14],'my_feature_suggestion_likes':r[15],'my_feature_suggestion_updates':r[16],'feature_suggestion_submission_state':r[17]};
   }
 
   Future<File> createBackupFile() async {

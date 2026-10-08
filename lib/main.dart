@@ -34,6 +34,7 @@ import 'services/community_service.dart';
 import 'admin_moderation_page.dart';
 import 'data_export_page.dart';
 import 'services/data_export_service.dart';
+import 'services/feature_suggestion_service.dart';
 
 const Color chipluxBackground = Color(0xFF07111C);
 
@@ -3393,6 +3394,22 @@ Future<void> _openPushMessage(
 
 
   // ==========================================
+  // FEATURE SUGGESTION STATUS
+  // ==========================================
+
+  if (type ==
+      'feature_suggestion_status') {
+    await navigator.push(
+      MaterialPageRoute(
+        builder: (_) => const FeatureBoardPage(),
+      ),
+    );
+
+    return;
+  }
+
+
+  // ==========================================
   // CHIPLUX UPDATE
   // ==========================================
 
@@ -4900,8 +4917,8 @@ class _CommunityPageState extends State<CommunityPage>
     _lastCommunityTabIndex = widget.initialTabIndex;
 
     _tabController = TabController(
-      length: 4,
-      initialIndex: widget.initialTabIndex,
+      length: 5,
+      initialIndex: widget.initialTabIndex.clamp(0, 4).toInt(),
       vsync: this,
     );
 
@@ -4924,7 +4941,7 @@ class _CommunityPageState extends State<CommunityPage>
       return;
     }
 
-    final index = widget.initialTabIndex.clamp(0, 3).toInt();
+    final index = widget.initialTabIndex.clamp(0, 4).toInt();
 
     _lastCommunityTabIndex = index;
 
@@ -5406,6 +5423,11 @@ class _CommunityPageState extends State<CommunityPage>
                   ),
 
                   const Tab(text: 'Following'),
+
+                  const Tab(
+                    icon: Icon(Icons.lightbulb_outline_rounded, size: 18),
+                    text: 'Feature Board',
+                  ),
                 ],
               ),
             ),
@@ -5464,6 +5486,11 @@ class _CommunityPageState extends State<CommunityPage>
 
                   onRefresh: _loadFollowing,
                 ),
+
+                // =========================
+                // FEATURE BOARD
+                // =========================
+                const _FeatureBoardTab(),
               ],
             ),
           ),
@@ -5472,6 +5499,727 @@ class _CommunityPageState extends State<CommunityPage>
     );
   }
 }
+
+class FeatureBoardPage extends StatelessWidget {
+  const FeatureBoardPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: chipluxBackground,
+      appBar: AppBar(
+        backgroundColor: chipluxBackground,
+        elevation: 0,
+      ),
+      body: const ChipluxBackground(
+        style: ChipluxBackgroundStyle.community,
+        child: SafeArea(
+          top: false,
+          child: _FeatureBoardTab(),
+        ),
+      ),
+    );
+  }
+}
+
+class _FeatureBoardTab extends StatefulWidget {
+  const _FeatureBoardTab();
+
+  @override
+  State<_FeatureBoardTab> createState() => _FeatureBoardTabState();
+}
+
+class _FeatureBoardTabState extends State<_FeatureBoardTab> {
+  final FeatureSuggestionService service = FeatureSuggestionService.instance;
+
+  List<Map<String, dynamic>> suggestions = [];
+  bool loading = true;
+  String? errorMessage;
+  String filter = 'all';
+
+  RealtimeChannel? _channel;
+  Timer? _reloadTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+    _startRealtime();
+  }
+
+  Future<void> _load() async {
+    try {
+      final rows = await service.loadPublicSuggestions();
+
+      if (!mounted) return;
+
+      setState(() {
+        suggestions = rows;
+        loading = false;
+        errorMessage = null;
+      });
+    } catch (e) {
+      debugPrint('Could not load Feature Board: $e');
+
+      if (!mounted) return;
+
+      setState(() {
+        loading = false;
+        errorMessage = 'Could not load the Feature Board.';
+      });
+    }
+  }
+
+  void _scheduleReload() {
+    _reloadTimer?.cancel();
+    _reloadTimer = Timer(const Duration(milliseconds: 250), () {
+      if (mounted) {
+        unawaited(_load());
+      }
+    });
+  }
+
+  void _startRealtime() {
+    final client = Supabase.instance.client;
+
+    _channel = client.channel('feature_board_$hashCode');
+
+    _channel!
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'feature_suggestions',
+          callback: (_) => _scheduleReload(),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'feature_suggestion_likes',
+          callback: (_) => _scheduleReload(),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'feature_suggestion_comments',
+          callback: (_) => _scheduleReload(),
+        )
+        .subscribe();
+  }
+
+  List<Map<String, dynamic>> get _visibleSuggestions {
+    if (filter == 'all') {
+      return suggestions;
+    }
+
+    return suggestions.where((item) {
+      return item['status']?.toString() == filter;
+    }).toList();
+  }
+
+  Color _statusColor(String status) {
+    switch (status) {
+      case 'implemented':
+        return const Color(0xFF65E6A5);
+      case 'rejected':
+        return const Color(0xFFFF6B8A);
+      case 'in_progress':
+      default:
+        return chipluxViolet;
+    }
+  }
+
+  IconData _statusIcon(String status) {
+    switch (status) {
+      case 'implemented':
+        return Icons.task_alt_rounded;
+      case 'rejected':
+        return Icons.close_rounded;
+      case 'in_progress':
+      default:
+        return Icons.construction_rounded;
+    }
+  }
+
+  String _statusLabel(String status) {
+    switch (status) {
+      case 'implemented':
+        return 'Implemented';
+      case 'rejected':
+        return 'Rejected';
+      case 'in_progress':
+      default:
+        return 'In Progress';
+    }
+  }
+
+  String _timeAgo(Object? raw) {
+    final date = DateTime.tryParse(raw?.toString() ?? '')?.toLocal();
+
+    if (date == null) return '';
+
+    final difference = DateTime.now().difference(date);
+
+    if (difference.inMinutes < 1) return 'Just now';
+    if (difference.inHours < 1) return '${difference.inMinutes}m ago';
+    if (difference.inDays < 1) return '${difference.inHours}h ago';
+    if (difference.inDays < 7) return '${difference.inDays}d ago';
+
+    return '${date.day}.${date.month}.${date.year}';
+  }
+
+  Future<void> _toggleLike(Map<String, dynamic> suggestion) async {
+    final id = suggestion['id']?.toString();
+    if (id == null || id.isEmpty) return;
+
+    try {
+      await service.toggleLike(id);
+      await _load();
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: chipluxSurfaceLight,
+          content: Text('Could not update like: $e'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _openProfile(Map<String, dynamic> suggestion) async {
+    if (suggestion['show_attribution'] != true) return;
+
+    final userId = suggestion['suggested_by_user_id']?.toString();
+    if (userId == null || userId.isEmpty) return;
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PublicProfilePage(userId: userId),
+      ),
+    );
+  }
+
+  Widget _filterPill(String value, String label, IconData icon) {
+    final selected = filter == value;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(999),
+      onTap: () {
+        setState(() {
+          filter = value;
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(999),
+          gradient: selected
+              ? const LinearGradient(
+                  colors: [chipluxCyan, chipluxViolet, chipluxPurple],
+                )
+              : null,
+          color: selected ? null : chipluxSurface.withValues(alpha: 0.72),
+          border: Border.all(
+            color: selected
+                ? Colors.transparent
+                : Colors.white.withValues(alpha: 0.08),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: selected ? Colors.white : Colors.white54,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: selected ? Colors.white : Colors.white70,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _statusPill(String status) {
+    final color = _statusColor(status);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(99),
+        border: Border.all(color: color.withValues(alpha: 0.30)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(_statusIcon(status), size: 14, color: color),
+          const SizedBox(width: 5),
+          Text(
+            _statusLabel(status).toUpperCase(),
+            style: TextStyle(
+              color: color,
+              fontSize: 9,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.6,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _attribution(Map<String, dynamic> suggestion) {
+    if (suggestion['show_attribution'] != true) {
+      return const Row(
+        children: [
+          CircleAvatar(
+            radius: 14,
+            backgroundColor: chipluxSurfaceLight,
+            child: Icon(
+              Icons.person_outline_rounded,
+              size: 16,
+              color: Colors.white38,
+            ),
+          ),
+          SizedBox(width: 9),
+          Text(
+            'Suggested by a Chiplux user',
+            style: TextStyle(
+              color: Colors.white54,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      );
+    }
+
+    final username = suggestion['suggested_by_username']?.toString().trim() ?? '';
+    final displayName =
+        suggestion['suggested_by_display_name']?.toString().trim() ?? '';
+    final avatarUrl = suggestion['suggested_by_avatar_url']?.toString();
+
+    final label = username.isNotEmpty
+        ? '@$username'
+        : displayName.isNotEmpty
+            ? displayName
+            : 'Chiplux user';
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => _openProfile(suggestion),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 3),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 14,
+              backgroundColor: chipluxSurfaceLight,
+              backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
+                  ? NetworkImage(avatarUrl)
+                  : null,
+              child: avatarUrl == null || avatarUrl.isEmpty
+                  ? const Icon(
+                      Icons.person_outline_rounded,
+                      size: 16,
+                      color: Colors.white38,
+                    )
+                  : null,
+            ),
+            const SizedBox(width: 9),
+            Expanded(
+              child: Text.rich(
+                TextSpan(
+                  children: [
+                    const TextSpan(
+                      text: 'Suggested by ',
+                      style: TextStyle(color: Colors.white54),
+                    ),
+                    TextSpan(
+                      text: label,
+                      style: const TextStyle(
+                        color: chipluxCyan,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+                style: const TextStyle(fontSize: 11.5),
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: Colors.white30,
+              size: 18,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _developerUpdates(Map<String, dynamic> suggestion) {
+    final raw = suggestion['developer_updates'];
+
+    if (raw is! List || raw.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final updates = raw.whereType<Map>().map((item) {
+      return Map<String, dynamic>.from(item);
+    }).toList();
+
+    if (updates.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      children: [
+        const SizedBox(height: 13),
+        for (final update in updates) ...[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: chipluxViolet.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: chipluxViolet.withValues(alpha: 0.16),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.auto_awesome_rounded,
+                      color: chipluxViolet,
+                      size: 15,
+                    ),
+                    const SizedBox(width: 6),
+                    const Text(
+                      'CHIPLUX UPDATE',
+                      style: TextStyle(
+                        color: chipluxViolet,
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      _timeAgo(update['created_at']),
+                      style: const TextStyle(
+                        color: Colors.white30,
+                        fontSize: 10,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 7),
+                Text(
+                  update['body']?.toString() ?? '',
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    height: 1.42,
+                    fontSize: 12.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+      ],
+    );
+  }
+
+  Widget _featureCard(Map<String, dynamic> suggestion) {
+    final status = suggestion['status']?.toString() ?? 'in_progress';
+    final statusColor = _statusColor(status);
+    final liked = suggestion['liked_by_me'] == true;
+    final rawLikeCount = suggestion['like_count'];
+    final likeCount = rawLikeCount is num ? rawLikeCount.toInt() : 0;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 13),
+      padding: const EdgeInsets.all(1.1),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(21),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            statusColor.withValues(alpha: 0.55),
+            chipluxViolet.withValues(alpha: 0.24),
+            chipluxPurple.withValues(alpha: 0.30),
+          ],
+        ),
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: chipluxSurface,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                _statusPill(status),
+                const Spacer(),
+                Text(
+                  _timeAgo(suggestion['status_changed_at']),
+                  style: const TextStyle(
+                    color: Colors.white30,
+                    fontSize: 10.5,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 13),
+            Text(
+              suggestion['title']?.toString() ?? 'Feature suggestion',
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              suggestion['description']?.toString() ?? '',
+              style: const TextStyle(
+                color: Colors.white70,
+                height: 1.45,
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(height: 14),
+            _attribution(suggestion),
+            _developerUpdates(suggestion),
+            const SizedBox(height: 7),
+            Row(
+              children: [
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(999),
+                    onTap: () => _toggleLike(suggestion),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: liked
+                            ? chipluxPurple.withValues(alpha: 0.10)
+                            : Colors.white.withValues(alpha: 0.035),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(
+                          color: liked
+                              ? chipluxPurple.withValues(alpha: 0.30)
+                              : Colors.white.withValues(alpha: 0.07),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            liked
+                                ? Icons.favorite_rounded
+                                : Icons.favorite_border_rounded,
+                            color: liked ? chipluxPurple : Colors.white54,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 7),
+                          Text(
+                            '$likeCount',
+                            style: TextStyle(
+                              color: liked ? chipluxPurple : Colors.white70,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                const Text(
+                  'Developer updates only',
+                  style: TextStyle(
+                    color: Colors.white30,
+                    fontSize: 10.5,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final visible = _visibleSuggestions;
+
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(18, 6, 18, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const GradientText(
+                    'Feature Board',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'See which community ideas Chiplux is building, has shipped or has decided not to pursue.',
+                    style: TextStyle(
+                      color: Colors.white54,
+                      fontSize: 11.5,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 13),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _filterPill('all', 'All', Icons.grid_view_rounded),
+                        const SizedBox(width: 8),
+                        _filterPill(
+                          'in_progress',
+                          'In Progress',
+                          Icons.construction_rounded,
+                        ),
+                        const SizedBox(width: 8),
+                        _filterPill(
+                          'implemented',
+                          'Implemented',
+                          Icons.task_alt_rounded,
+                        ),
+                        const SizedBox(width: 8),
+                        _filterPill(
+                          'rejected',
+                          'Rejected',
+                          Icons.close_rounded,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (loading)
+            const SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(
+                child: CircularProgressIndicator(),
+              ),
+            )
+          else if (errorMessage != null)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.cloud_off_rounded,
+                        color: Colors.white30,
+                        size: 42,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        errorMessage!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.white54),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            )
+          else if (visible.isEmpty)
+            const SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(
+                child: Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.lightbulb_outline_rounded,
+                        color: Colors.white24,
+                        size: 44,
+                      ),
+                      SizedBox(height: 12),
+                      Text(
+                        'No feature suggestions in this category yet.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.white54),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(18, 2, 18, 35),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    return _featureCard(visible[index]);
+                  },
+                  childCount: visible.length,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _reloadTimer?.cancel();
+
+    if (_channel != null) {
+      unawaited(_channel!.unsubscribe());
+    }
+
+    super.dispose();
+  }
+}
+
 
 class _FindFriendsTab extends StatefulWidget {
   const _FindFriendsTab();
@@ -25769,6 +26517,21 @@ if (notification.type ==
 }
 
 // ===================================================
+// FEATURE SUGGESTION STATUS
+// ===================================================
+if (notification.type ==
+    'feature_suggestion_status') {
+  await Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => const FeatureBoardPage(),
+    ),
+  );
+
+  return;
+}
+
+// ===================================================
 // CHIPLUX UPDATE
 // ===================================================
 if (notification.type ==
@@ -26081,6 +26844,9 @@ if (!opensDiscussion) {
   return Icons
       .calendar_month_rounded;
 
+case 'feature_suggestion_status':
+  return Icons.lightbulb_rounded;
+
 case 'chiplux_update':
   return Icons
       .auto_awesome_rounded;
@@ -26112,6 +26878,9 @@ default:
 
       case 'release':
         return 'RELEASE';
+
+      case 'feature_suggestion_status':
+        return 'FEATURE UPDATE';
 
       case 'chiplux_update':
         return 'CHIPLUX UPDATE';
@@ -28225,6 +28994,27 @@ class _PrivacySettingsPageState
 
                   const SizedBox(height: 24),
 
+                  _sectionLabel('COMMUNITY CONTRIBUTIONS'),
+                  _ProfileMenuCard(
+                    children: [
+                      _NotificationSettingRow(
+                        icon: Icons.lightbulb_outline_rounded,
+                        title: 'Public suggestion attribution',
+                        subtitle:
+                            'Show your username and profile when one of your feature suggestions is published.',
+                        value: settings.featureSuggestionAttribution,
+                        onChanged: (value) {
+                          _changeBool(
+                            value: value,
+                            save: settings.setFeatureSuggestionAttribution,
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 24),
+
                   _sectionLabel('SAFETY'),
                   _ProfileMenuCard(
                     children: [
@@ -30019,6 +30809,13 @@ class _ProfileHelpTab extends StatelessWidget {
             const _ProfileMenuDivider(),
             row(Icons.description_outlined, 'Terms', 'Terms of use', const _TermsOfUsePage()),
             const _ProfileMenuDivider(),
+            row(
+              Icons.lightbulb_outline_rounded,
+              'Suggest a Feature',
+              'Share an idea with the Chiplux developer',
+              const _SuggestFeaturePage(),
+            ),
+            const _ProfileMenuDivider(),
             row(Icons.bug_report_outlined, 'Report a Bug', 'Send a problem directly to Chiplux', const _ReportBugPage()),
           ],
         ),
@@ -30306,7 +31103,7 @@ class _PrivacyPolicyPage
           title: '2. Information we collect',
           body:
               'Account information may include your email address, account identifier and authentication information handled through our authentication provider. Profile information may include your username, display name, avatar, banner and profile settings.\n\n'
-              'Usage information may include your library, watched movies and episodes, ratings, reviews, favorites, achievements, comments, likes, follows, blocks and notification preferences. If you submit a bug or moderation report, we store the information you provide with that report.\n\n'
+              'Usage information may include your library, watched movies and episodes, ratings, reviews, favorites, achievements, comments, likes, follows, blocks, feature suggestions and notification preferences. If you submit a bug, moderation report or feature suggestion, we store the information you provide with that submission.\n\n'
               'For push notifications, Chiplux may store a device registration token associated with your account. Service providers may also process technical information such as device, network, diagnostic and security data as necessary to provide their services.',
         ),
         _LegalSection(
@@ -30323,12 +31120,12 @@ class _PrivacyPolicyPage
         _LegalSection(
           title: '5. Community content',
           body:
-              'Comments, reviews, profile information and other content you choose to make public may be visible to other users according to your privacy settings. You should not post personal information that you do not want other people to see.',
+              'Comments, reviews, profile information and other content you choose to make public may be visible to other users according to your privacy settings. If a feature suggestion is published to the Feature Board, Chiplux may show your username and link to your profile when public suggestion attribution is enabled; otherwise the suggestion is shown without identifying you publicly. You should not post personal information that you do not want other people to see.',
         ),
         _LegalSection(
           title: '6. Your controls and choices',
           body:
-              'Chiplux provides controls for profile visibility, search visibility, activity visibility, statistics, follows, comment interactions, blocked users and notification categories. You can also use Data & Export to create a copy of supported account data and can request account deletion through the app.',
+              'Chiplux provides controls for profile visibility, search visibility, activity visibility, statistics, follows, comment interactions, public feature-suggestion attribution, blocked users and notification categories. You can also use Data & Export to create a copy of supported account data and can request account deletion through the app.',
         ),
         _LegalSection(
           title: '7. Retention and deletion',
@@ -30395,7 +31192,7 @@ class _TermsOfUsePage
         _LegalSection(
           title: '4. Your content',
           body:
-              'You retain ownership of content you create, such as comments and reviews. By posting content to Chiplux, you grant Chiplux a non-exclusive, worldwide, royalty-free license to host, store, reproduce and display that content only as reasonably necessary to operate, moderate and improve the service. You represent that you have the right to post the content you submit.',
+              'You retain ownership of content you create, such as comments, reviews and feature suggestions. By posting content to Chiplux, you grant Chiplux a non-exclusive, worldwide, royalty-free license to host, store, reproduce and display that content only as reasonably necessary to operate, moderate and improve the service. Feature suggestions may be reviewed, ignored, rejected, published or implemented at the developer’s discretion, and submitting an idea does not create an obligation to implement it or provide compensation. You represent that you have the right to post the content you submit.',
         ),
         _LegalSection(
           title: '5. Moderation and reports',
@@ -30535,6 +31332,508 @@ class _LegalPage extends StatelessWidget {
     );
   }
 }
+
+class _SuggestFeaturePage extends StatefulWidget {
+  const _SuggestFeaturePage();
+
+  @override
+  State<_SuggestFeaturePage> createState() => _SuggestFeaturePageState();
+}
+
+class _SuggestFeaturePageState extends State<_SuggestFeaturePage> {
+  final service = FeatureSuggestionService.instance;
+  final privacy = PrivacySettingsService.instance;
+
+  final titleController = TextEditingController();
+  final descriptionController = TextEditingController();
+
+  FeatureSubmissionAvailability? availability;
+  bool loading = true;
+  bool sending = false;
+  bool publicAttribution = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      await privacy.ensureLoaded();
+      final status = await service.getSubmissionAvailability();
+
+      if (!mounted) return;
+
+      setState(() {
+        availability = status;
+        publicAttribution = privacy.featureSuggestionAttribution;
+        loading = false;
+      });
+    } catch (e) {
+      debugPrint('Could not load feature suggestion page: $e');
+
+      if (!mounted) return;
+
+      setState(() {
+        loading = false;
+      });
+    }
+  }
+
+  String _dateLabel(DateTime? date) {
+    if (date == null) return 'Unavailable';
+
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+
+    return '$day.$month.${date.year}';
+  }
+
+  Future<void> _submit() async {
+    if (sending) return;
+
+    final title = titleController.text.trim();
+    final description = descriptionController.text.trim();
+
+    if (title.length < 4) {
+      _showMessage('Give your idea a title of at least 4 characters.');
+      return;
+    }
+
+    if (description.length < 20) {
+      _showMessage('Describe your idea in at least 20 characters.');
+      return;
+    }
+
+    if (availability?.allowed != true) {
+      _showMessage(
+        'Your next suggestion is available on ${_dateLabel(availability?.nextAllowedAt)}.',
+      );
+      return;
+    }
+
+    setState(() {
+      sending = true;
+    });
+
+    try {
+      await service.submitSuggestion(
+        title: title,
+        description: description,
+        publicAttribution:
+            privacy.featureSuggestionAttribution && publicAttribution,
+      );
+
+      final refreshed = await service.getSubmissionAvailability();
+
+      if (!mounted) return;
+
+      titleController.clear();
+      descriptionController.clear();
+
+      setState(() {
+        availability = refreshed;
+      });
+
+      await _showSentDialog();
+    } catch (e) {
+      if (!mounted) return;
+
+      _showMessage(
+        e.toString().replaceFirst('PostgrestException(message: ', ''),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          sending = false;
+        });
+      }
+    }
+  }
+
+  void _showMessage(String text) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: chipluxSurfaceLight,
+        content: Text(text),
+      ),
+    );
+  }
+
+  Future<void> _showSentDialog() async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.all(1.2),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(24),
+              gradient: const LinearGradient(
+                colors: [chipluxCyan, chipluxViolet, chipluxPurple],
+              ),
+            ),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.sizeOf(dialogContext).height * 0.82,
+              ),
+              child: SingleChildScrollView(
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: chipluxSurface,
+                    borderRadius: BorderRadius.circular(23),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 54,
+                        height: 54,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [chipluxCyan, chipluxViolet],
+                          ),
+                          borderRadius: BorderRadius.circular(17),
+                        ),
+                        child: const Icon(
+                          Icons.lightbulb_rounded,
+                          color: chipluxBackground,
+                          size: 29,
+                        ),
+                      ),
+                      const SizedBox(height: 15),
+                      const GradientText(
+                        'Suggestion Sent!',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Your idea is now waiting for developer review. If it is published, it will appear on the Community Feature Board.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12.5,
+                          height: 1.45,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Next suggestion: ${_dateLabel(availability?.nextAllowedAt)}',
+                        style: const TextStyle(
+                          color: chipluxCyan,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton(
+                          onPressed: () => Navigator.pop(dialogContext),
+                          child: const Text('Got it'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _field({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required IconData icon,
+    required int minLines,
+    required int maxLines,
+    required int maxLength,
+  }) {
+    return _HelpGradientCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: chipluxCyan, size: 19),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13.5,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 11),
+          TextField(
+            controller: controller,
+            minLines: minLines,
+            maxLines: maxLines,
+            maxLength: maxLength,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: InputDecoration(
+              hintText: hint,
+              filled: true,
+              fillColor: chipluxSurfaceLight,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(15),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(15),
+                borderSide: const BorderSide(color: chipluxCyan),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _cooldownCard() {
+    final allowed = availability?.allowed == true;
+
+    return Container(
+      padding: const EdgeInsets.all(1.1),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        gradient: LinearGradient(
+          colors: [
+            chipluxCyan.withValues(alpha: 0.40),
+            chipluxViolet.withValues(alpha: 0.26),
+            chipluxPurple.withValues(alpha: 0.28),
+          ],
+        ),
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: chipluxSurface,
+          borderRadius: BorderRadius.circular(17),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: (allowed ? chipluxCyan : chipluxViolet)
+                    .withValues(alpha: 0.09),
+                borderRadius: BorderRadius.circular(13),
+              ),
+              child: Icon(
+                allowed ? Icons.add_rounded : Icons.schedule_rounded,
+                color: allowed ? chipluxCyan : chipluxViolet,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    allowed ? 'Suggestion available' : 'Next suggestion',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13.5,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    allowed
+                        ? 'You can submit one feature idea now.'
+                        : 'Available ${_dateLabel(availability?.nextAllowedAt)}',
+                    style: const TextStyle(
+                      color: Colors.white54,
+                      fontSize: 11.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+              decoration: BoxDecoration(
+                color: chipluxCyan.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(99),
+              ),
+              child: const Text(
+                '30 DAYS',
+                style: TextStyle(
+                  color: chipluxCyan,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.7,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final globalAttributionEnabled = privacy.featureSuggestionAttribution;
+    final canSubmit = availability?.allowed == true;
+
+    return Scaffold(
+      backgroundColor: chipluxBackground,
+      appBar: AppBar(
+        backgroundColor: chipluxBackground,
+        elevation: 0,
+      ),
+      body: ChipluxBackground(
+        style: ChipluxBackgroundStyle.profile,
+        child: loading
+            ? const Center(child: CircularProgressIndicator())
+            : ListView(
+                padding: const EdgeInsets.fromLTRB(18, 8, 18, 35),
+                children: [
+                  const _HelpPageHeader(
+                    title: 'Suggest a Feature',
+                    description:
+                        'Share one meaningful idea every 30 days. Suggestions are reviewed before anything becomes public.',
+                  ),
+                  const SizedBox(height: 16),
+                  _cooldownCard(),
+                  const SizedBox(height: 13),
+                  _field(
+                    controller: titleController,
+                    label: 'Feature title',
+                    hint: 'e.g. Collaborative Lists',
+                    icon: Icons.title_rounded,
+                    minLines: 1,
+                    maxLines: 2,
+                    maxLength: 100,
+                  ),
+                  const SizedBox(height: 12),
+                  _field(
+                    controller: descriptionController,
+                    label: 'Describe your idea',
+                    hint:
+                        'What should Chiplux add, and how would you expect it to work?',
+                    icon: Icons.notes_rounded,
+                    minLines: 6,
+                    maxLines: 12,
+                    maxLength: 3000,
+                  ),
+                  const SizedBox(height: 12),
+                  _HelpGradientCard(
+                    padding: EdgeInsets.zero,
+                    child: _NotificationSettingRow(
+                      icon: Icons.person_pin_circle_outlined,
+                      title: 'Credit me if published',
+                      subtitle: globalAttributionEnabled
+                          ? 'Show “Suggested by @username” with a link to your public profile.'
+                          : 'Public suggestion attribution is disabled in Privacy.',
+                      value: globalAttributionEnabled && publicAttribution,
+                      onChanged: (value) {
+                        if (!globalAttributionEnabled) {
+                          _showMessage(
+                            'Enable Public suggestion attribution in Privacy first.',
+                          );
+                          return;
+                        }
+
+                        setState(() {
+                          publicAttribution = value;
+                        });
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 4),
+                    child: Text(
+                      'Your identity is still stored privately with the submission for moderation and the 30-day limit, even when public credit is off.',
+                      style: TextStyle(
+                        color: Colors.white38,
+                        fontSize: 10.5,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      gradient: canSubmit
+                          ? const LinearGradient(
+                              colors: [
+                                chipluxCyan,
+                                chipluxViolet,
+                                chipluxPurple,
+                              ],
+                            )
+                          : null,
+                      color: canSubmit ? null : chipluxSurfaceLight,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        foregroundColor: canSubmit ? Colors.white : Colors.white38,
+                        padding: const EdgeInsets.symmetric(vertical: 15),
+                      ),
+                      onPressed: canSubmit && !sending ? _submit : null,
+                      icon: sending
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.lightbulb_rounded),
+                      label: Text(
+                        canSubmit
+                            ? 'Submit Suggestion'
+                            : 'Available ${_dateLabel(availability?.nextAllowedAt)}',
+                        style: const TextStyle(fontWeight: FontWeight.w900),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'The developer can publish a suggestion as In Progress, Implemented or Rejected. Ignored duplicates or unsuitable submissions are deleted and never shown publicly.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white30,
+                      fontSize: 10.5,
+                      height: 1.45,
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    titleController.dispose();
+    descriptionController.dispose();
+    super.dispose();
+  }
+}
+
 
 class _ReportBugPage extends StatefulWidget {
   const _ReportBugPage();

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'services/feature_suggestion_service.dart';
 import 'services/profile_service.dart';
 
 const Color _adminBackground = Color(0xFF07111C);
@@ -9,6 +10,8 @@ const Color _adminSurfaceLight = Color(0xFF162536);
 const Color _adminCyan = Color(0xFF43E8FF);
 const Color _adminViolet = Color(0xFF8B7CFF);
 const Color _adminPurple = Color(0xFFD65CFF);
+const Color _adminGreen = Color(0xFF65E6A5);
+const Color _adminRed = Color(0xFFFF6B8A);
 
 class AdminModerationPage extends StatefulWidget {
   const AdminModerationPage({super.key});
@@ -20,6 +23,7 @@ class AdminModerationPage extends StatefulWidget {
 class _AdminModerationPageState extends State<AdminModerationPage>
     with SingleTickerProviderStateMixin {
   final client = Supabase.instance.client;
+  final featureService = FeatureSuggestionService.instance;
 
   late final TabController _tabs;
 
@@ -29,16 +33,19 @@ class _AdminModerationPageState extends State<AdminModerationPage>
   List<Map<String, dynamic>> userReports = [];
   List<Map<String, dynamic>> commentReports = [];
   List<Map<String, dynamic>> bugReports = [];
+  List<Map<String, dynamic>> featureSuggestions = [];
 
   final Map<String, Map<String, dynamic>> profiles = {};
   final Map<String, Map<String, dynamic>> comments = {};
+
+  String suggestionFilter = 'pending';
 
   bool get _allowed => ProfileService.instance.isDeveloper;
 
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 3, vsync: this);
+    _tabs = TabController(length: 4, vsync: this);
     _load();
   }
 
@@ -67,16 +74,20 @@ class _AdminModerationPageState extends State<AdminModerationPage>
             .from('bug_reports')
             .select()
             .order('created_at', ascending: false),
+        client
+            .from('feature_suggestions')
+            .select()
+            .order('created_at', ascending: false),
       ]);
 
       final users = List<Map<String, dynamic>>.from(raw[0] as List);
       final commentRows = List<Map<String, dynamic>>.from(raw[1] as List);
 
-      // Keep resolved bug reports in the database for history/audit,
-      // but remove them from the active moderation queue.
       final bugs = List<Map<String, dynamic>>.from(raw[2] as List)
           .where((row) => row['status']?.toString() != 'resolved')
           .toList();
+
+      final suggestions = List<Map<String, dynamic>>.from(raw[3] as List);
 
       final profileIds = <String>{};
 
@@ -84,21 +95,18 @@ class _AdminModerationPageState extends State<AdminModerationPage>
         final reporterId = report['reporter_id']?.toString();
         final reportedId = report['reported_user_id']?.toString();
 
-        if (reporterId != null) {
-          profileIds.add(reporterId);
-        }
-
-        if (reportedId != null) {
-          profileIds.add(reportedId);
-        }
+        if (reporterId != null) profileIds.add(reporterId);
+        if (reportedId != null) profileIds.add(reportedId);
       }
 
       for (final report in bugs) {
         final userId = report['user_id']?.toString();
+        if (userId != null) profileIds.add(userId);
+      }
 
-        if (userId != null) {
-          profileIds.add(userId);
-        }
+      for (final suggestion in suggestions) {
+        final userId = suggestion['user_id']?.toString();
+        if (userId != null) profileIds.add(userId);
       }
 
       final commentIds = commentRows
@@ -118,16 +126,11 @@ class _AdminModerationPageState extends State<AdminModerationPage>
             )
             .inFilter('id', commentIds);
 
-        loadedComments.addAll(
-          List<Map<String, dynamic>>.from(rows),
-        );
+        loadedComments.addAll(List<Map<String, dynamic>>.from(rows));
 
         for (final comment in loadedComments) {
           final userId = comment['user_id']?.toString();
-
-          if (userId != null) {
-            profileIds.add(userId);
-          }
+          if (userId != null) profileIds.add(userId);
         }
       }
 
@@ -136,24 +139,19 @@ class _AdminModerationPageState extends State<AdminModerationPage>
       if (profileIds.isNotEmpty) {
         final rows = await client
             .from('profiles')
-            .select(
-              'id, display_name, username, avatar_url',
-            )
+            .select('id, display_name, username, avatar_url')
             .inFilter('id', profileIds.toList());
 
-        loadedProfiles.addAll(
-          List<Map<String, dynamic>>.from(rows),
-        );
+        loadedProfiles.addAll(List<Map<String, dynamic>>.from(rows));
       }
 
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
 
       setState(() {
         userReports = users;
         commentReports = commentRows;
         bugReports = bugs;
+        featureSuggestions = suggestions;
 
         profiles
           ..clear()
@@ -185,120 +183,89 @@ class _AdminModerationPageState extends State<AdminModerationPage>
         errorMessage = null;
       });
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          loading = false;
-          errorMessage =
-              'Could not load moderation reports: $e';
-        });
-      }
+      if (!mounted) return;
+
+      setState(() {
+        loading = false;
+        errorMessage = 'Could not load moderation reports: $e';
+      });
     }
   }
 
   String _who(String? id) {
-    if (id == null) {
-      return 'Unknown user';
-    }
+    if (id == null) return 'Deleted user';
 
     final profile = profiles[id];
+    if (profile == null) return id;
 
-    if (profile == null) {
-      return id;
-    }
-
-    final displayName =
-        profile['display_name']?.toString().trim() ?? '';
-
-    final username =
-        profile['username']?.toString().trim() ?? '';
+    final displayName = profile['display_name']?.toString().trim() ?? '';
+    final username = profile['username']?.toString().trim() ?? '';
 
     if (displayName.isNotEmpty && username.isNotEmpty) {
       return '$displayName (@$username)';
     }
 
-    if (username.isNotEmpty) {
-      return '@$username';
-    }
-
-    if (displayName.isNotEmpty) {
-      return displayName;
-    }
-
+    if (username.isNotEmpty) return '@$username';
+    if (displayName.isNotEmpty) return displayName;
     return id;
   }
 
-  Future<void> _status(
-    String table,
-    Object id,
-    String value,
-  ) async {
-    try {
-      await client
-          .from(table)
-          .update({'status': value})
-          .eq('id', id);
+  String _dateLabel(Object? raw) {
+    final date = DateTime.tryParse(raw?.toString() ?? '')?.toLocal();
+    if (date == null) return '';
 
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    final hour = date.hour.toString().padLeft(2, '0');
+    final minute = date.minute.toString().padLeft(2, '0');
+
+    return '$day.$month.${date.year}. · $hour:$minute';
+  }
+
+  Future<void> _status(String table, Object id, String value) async {
+    try {
+      await client.from(table).update({'status': value}).eq('id', id);
       await _load();
     } catch (e) {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Could not update report: $e',
-          ),
+          backgroundColor: _adminSurfaceLight,
+          content: Text('Could not update report: $e'),
         ),
       );
     }
   }
 
-  Future<void> _resolveBug(
-    Map<String, dynamic> report,
-  ) async {
+  Future<void> _resolveBug(Map<String, dynamic> report) async {
     final id = report['id'];
-
-    if (id == null) {
-      return;
-    }
+    if (id == null) return;
 
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
           backgroundColor: _adminSurface,
-          title: const Text(
-            'Resolve this bug?',
-          ),
-          content: const Text(
-            'This will mark the bug as solved and remove it '
-            'from the active Bugs queue.',
-            style: TextStyle(
-              color: Colors.white70,
-              height: 1.4,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+            side: BorderSide(
+              color: _adminCyan.withValues(alpha: 0.28),
             ),
+          ),
+          title: _dialogGradientTitle('Resolve this bug?'),
+          content: const Text(
+            'This will mark the bug as solved and remove it from the active Bugs queue.',
+            style: TextStyle(color: Colors.white70, height: 1.4),
           ),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.pop(
-                  dialogContext,
-                  false,
-                );
-              },
+              onPressed: () => Navigator.pop(dialogContext, false),
               child: const Text('Cancel'),
             ),
             FilledButton.icon(
-              onPressed: () {
-                Navigator.pop(
-                  dialogContext,
-                  true,
-                );
-              },
-              icon: const Icon(
-                Icons.check_circle_outline_rounded,
-              ),
+              onPressed: () => Navigator.pop(dialogContext, true),
+              icon: const Icon(Icons.check_circle_outline_rounded),
               label: const Text('Resolve'),
             ),
           ],
@@ -306,62 +273,41 @@ class _AdminModerationPageState extends State<AdminModerationPage>
       },
     );
 
-    if (confirmed != true) {
-      return;
-    }
+    if (confirmed != true) return;
 
-    await _status(
-      'bug_reports',
-      id,
-      'resolved',
-    );
+    await _status('bug_reports', id, 'resolved');
   }
 
-  Future<void> _deleteComment(
-    Map<String, dynamic> report,
-  ) async {
+  Future<void> _deleteComment(Map<String, dynamic> report) async {
     final id = report['comment_id']?.toString();
-
-    if (id == null) {
-      return;
-    }
+    if (id == null) return;
 
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
           backgroundColor: _adminSurface,
-          title: const Text(
-            'Delete reported comment?',
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+            side: BorderSide(
+              color: _adminRed.withValues(alpha: 0.28),
+            ),
           ),
+          title: _dialogGradientTitle('Delete reported comment?'),
           content: const Text(
             'This permanently removes the comment.',
-            style: TextStyle(
-              color: Colors.white70,
-            ),
+            style: TextStyle(color: Colors.white70),
           ),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.pop(
-                  dialogContext,
-                  false,
-                );
-              },
+              onPressed: () => Navigator.pop(dialogContext, false),
               child: const Text('Cancel'),
             ),
             TextButton(
-              onPressed: () {
-                Navigator.pop(
-                  dialogContext,
-                  true,
-                );
-              },
+              onPressed: () => Navigator.pop(dialogContext, true),
               child: const Text(
                 'Delete',
-                style: TextStyle(
-                  color: Colors.redAccent,
-                ),
+                style: TextStyle(color: Colors.redAccent),
               ),
             ),
           ],
@@ -369,16 +315,287 @@ class _AdminModerationPageState extends State<AdminModerationPage>
       },
     );
 
-    if (confirmed != true) {
-      return;
-    }
+    if (confirmed != true) return;
 
-    await client
-        .from('media_comments')
-        .delete()
-        .eq('id', id);
-
+    await client.from('media_comments').delete().eq('id', id);
     await _load();
+  }
+
+  Future<void> _setSuggestionStatus(
+    Map<String, dynamic> suggestion,
+    String status,
+  ) async {
+    final id = suggestion['id']?.toString();
+    if (id == null) return;
+
+    final noteController = TextEditingController();
+
+    final result = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: _adminSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(
+              18,
+              18,
+              18,
+              MediaQuery.of(sheetContext).viewInsets.bottom + 20,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _dialogGradientTitle(
+                  'Set ${_suggestionStatusLabel(status)}',
+                ),
+                const SizedBox(height: 7),
+                const Text(
+                  'You can add an optional developer note. It will appear publicly on the Feature Board.',
+                  style: TextStyle(
+                    color: Colors.white54,
+                    fontSize: 12,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: noteController,
+                  minLines: 3,
+                  maxLines: 7,
+                  maxLength: 2000,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: InputDecoration(
+                    hintText: status == 'rejected'
+                        ? 'Why is this suggestion being rejected?'
+                        : 'Optional Chiplux update...',
+                    filled: true,
+                    fillColor: _adminSurfaceLight,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: const BorderSide(color: _adminCyan),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [_adminCyan, _adminViolet, _adminPurple],
+                    ),
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      shadowColor: Colors.transparent,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    onPressed: () {
+                      Navigator.pop(
+                        sheetContext,
+                        noteController.text.trim(),
+                      );
+                    },
+                    child: Text(
+                      'Publish as ${_suggestionStatusLabel(status)}',
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    noteController.dispose();
+
+    if (result == null) return;
+
+    try {
+      await featureService.setStatus(
+        featureId: id,
+        status: status,
+        developerNote: result.isEmpty ? null : result,
+      );
+
+      await _load();
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: _adminSurfaceLight,
+          content: Text('Could not update feature suggestion: $e'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _ignoreSuggestion(Map<String, dynamic> suggestion) async {
+    final id = suggestion['id']?.toString();
+    if (id == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: _adminSurface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+            side: BorderSide(
+              color: Colors.white.withValues(alpha: 0.10),
+            ),
+          ),
+          title: _dialogGradientTitle('Ignore suggestion?'),
+          content: const Text(
+            'This suggestion will not appear on the Feature Board and will be permanently deleted. The user will still keep their 30-day submission cooldown.',
+            style: TextStyle(color: Colors.white70, height: 1.45),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text(
+                'Ignore & Delete',
+                style: TextStyle(color: Colors.white54),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await featureService.ignoreSuggestion(id);
+      await _load();
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: _adminSurfaceLight,
+          content: Text('Could not ignore suggestion: $e'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _addSuggestionUpdate(Map<String, dynamic> suggestion) async {
+    final id = suggestion['id']?.toString();
+    if (id == null) return;
+
+    final controller = TextEditingController();
+
+    final body = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: _adminSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(
+              18,
+              18,
+              18,
+              MediaQuery.of(sheetContext).viewInsets.bottom + 20,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _dialogGradientTitle('Add Chiplux update'),
+                const SizedBox(height: 7),
+                const Text(
+                  'Only developer updates can appear below Feature Board posts.',
+                  style: TextStyle(color: Colors.white54, fontSize: 12),
+                ),
+                const SizedBox(height: 15),
+                TextField(
+                  controller: controller,
+                  autofocus: true,
+                  minLines: 3,
+                  maxLines: 8,
+                  maxLength: 2000,
+                  decoration: InputDecoration(
+                    hintText: 'Write a progress update...',
+                    filled: true,
+                    fillColor: _adminSurfaceLight,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: () {
+                      final value = controller.text.trim();
+                      if (value.isNotEmpty) {
+                        Navigator.pop(sheetContext, value);
+                      }
+                    },
+                    icon: const Icon(Icons.campaign_rounded),
+                    label: const Text('Publish Update'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    controller.dispose();
+
+    if (body == null || body.isEmpty) return;
+
+    try {
+      await featureService.addDeveloperUpdate(
+        featureId: id,
+        body: body,
+      );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: _adminSurfaceLight,
+          content: Text('Feature Board update published.'),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: _adminSurfaceLight,
+          content: Text('Could not publish update: $e'),
+        ),
+      );
+    }
   }
 
   Widget _actions(
@@ -391,33 +608,15 @@ class _AdminModerationPageState extends State<AdminModerationPage>
       runSpacing: 8,
       children: [
         OutlinedButton(
-          onPressed: () {
-            _status(
-              table,
-              id,
-              'reviewing',
-            );
-          },
+          onPressed: () => _status(table, id, 'reviewing'),
           child: const Text('Reviewing'),
         ),
         OutlinedButton(
-          onPressed: () {
-            _status(
-              table,
-              id,
-              'dismissed',
-            );
-          },
+          onPressed: () => _status(table, id, 'dismissed'),
           child: const Text('Dismiss'),
         ),
         FilledButton(
-          onPressed: () {
-            _status(
-              table,
-              id,
-              'resolved',
-            );
-          },
+          onPressed: () => _status(table, id, 'resolved'),
           child: const Text('Resolve'),
         ),
         if (deleteComment != null)
@@ -429,32 +628,22 @@ class _AdminModerationPageState extends State<AdminModerationPage>
             ),
             label: const Text(
               'Delete comment',
-              style: TextStyle(
-                color: Colors.redAccent,
-              ),
+              style: TextStyle(color: Colors.redAccent),
             ),
           ),
       ],
     );
   }
 
-  Widget _bugActions(
-    Map<String, dynamic> report,
-  ) {
+  Widget _bugActions(Map<String, dynamic> report) {
     return SizedBox(
       width: double.infinity,
       child: FilledButton.icon(
-        onPressed: () {
-          _resolveBug(report);
-        },
-        icon: const Icon(
-          Icons.check_circle_outline_rounded,
-        ),
+        onPressed: () => _resolveBug(report),
+        icon: const Icon(Icons.check_circle_outline_rounded),
         label: const Text('Resolve'),
         style: FilledButton.styleFrom(
-          padding: const EdgeInsets.symmetric(
-            vertical: 13,
-          ),
+          padding: const EdgeInsets.symmetric(vertical: 13),
           backgroundColor: _adminCyan,
           foregroundColor: _adminBackground,
           shape: RoundedRectangleBorder(
@@ -474,12 +663,7 @@ class _AdminModerationPageState extends State<AdminModerationPage>
     Widget actions,
   ) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(
-        14,
-        8,
-        14,
-        8,
-      ),
+      margin: const EdgeInsets.fromLTRB(14, 8, 14, 8),
       padding: const EdgeInsets.all(1.1),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(19),
@@ -514,28 +698,7 @@ class _AdminModerationPageState extends State<AdminModerationPage>
                   ),
                 ),
                 const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _adminCyan.withValues(
-                      alpha: .09,
-                    ),
-                    borderRadius: BorderRadius.circular(
-                      99,
-                    ),
-                  ),
-                  child: Text(
-                    status.toUpperCase(),
-                    style: const TextStyle(
-                      color: _adminCyan,
-                      fontSize: 9,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
+                _statusPill(status),
               ],
             ),
             const SizedBox(height: 12),
@@ -549,10 +712,7 @@ class _AdminModerationPageState extends State<AdminModerationPage>
             const SizedBox(height: 3),
             Text(
               subtitle,
-              style: const TextStyle(
-                color: Colors.white38,
-                fontSize: 11,
-              ),
+              style: const TextStyle(color: Colors.white38, fontSize: 11),
             ),
             const SizedBox(height: 12),
             Container(
@@ -560,16 +720,11 @@ class _AdminModerationPageState extends State<AdminModerationPage>
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: _adminSurfaceLight,
-                borderRadius: BorderRadius.circular(
-                  12,
-                ),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
                 body,
-                style: const TextStyle(
-                  color: Colors.white70,
-                  height: 1.4,
-                ),
+                style: const TextStyle(color: Colors.white70, height: 1.4),
               ),
             ),
             const SizedBox(height: 12),
@@ -580,94 +735,234 @@ class _AdminModerationPageState extends State<AdminModerationPage>
     );
   }
 
-  Widget _user(
-    Map<String, dynamic> report,
-  ) {
+  Widget _user(Map<String, dynamic> report) {
     final id = report['id'];
-
-    final status =
-        report['status']?.toString() ?? 'open';
-
-    final reason =
-        report['reason']?.toString() ?? 'No reason';
-
-    final details =
-        report['details']?.toString().trim() ?? '';
+    final status = report['status']?.toString() ?? 'open';
+    final reason = report['reason']?.toString() ?? 'No reason';
+    final details = report['details']?.toString().trim() ?? '';
 
     return _card(
       'USER REPORT',
       status,
-      _who(
-        report['reported_user_id']?.toString(),
-      ),
+      _who(report['reported_user_id']?.toString()),
       'Reported by ${_who(report['reporter_id']?.toString())}',
-      details.isEmpty
-          ? reason
-          : '$reason\n\n$details',
-      _actions(
-        'user_reports',
-        id,
-      ),
+      details.isEmpty ? reason : '$reason\n\n$details',
+      _actions('user_reports', id),
     );
   }
 
-  Widget _comment(
-    Map<String, dynamic> report,
-  ) {
+  Widget _comment(Map<String, dynamic> report) {
     final id = report['id'];
-
-    final status =
-        report['status']?.toString() ?? 'open';
-
-    final commentId =
-        report['comment_id']?.toString();
-
-    final comment = commentId == null
-        ? null
-        : comments[commentId];
-
-    final type =
-        report['report_type']?.toString() ??
-            'comment';
+    final status = report['status']?.toString() ?? 'open';
+    final commentId = report['comment_id']?.toString();
+    final comment = commentId == null ? null : comments[commentId];
+    final type = report['report_type']?.toString() ?? 'comment';
 
     return _card(
-      type == 'spoiler'
-          ? 'SPOILER REPORT'
-          : 'COMMENT REPORT',
+      type == 'spoiler' ? 'SPOILER REPORT' : 'COMMENT REPORT',
       status,
-      _who(
-        comment?['user_id']?.toString(),
-      ),
+      _who(comment?['user_id']?.toString()),
       'Reported by ${_who(report['reporter_id']?.toString())}',
-      comment?['body']?.toString() ??
-          'Comment no longer exists.',
+      comment?['body']?.toString() ?? 'Comment no longer exists.',
       _actions(
         'comment_reports',
         id,
-        deleteComment: commentId == null
-            ? null
-            : () {
-                _deleteComment(report);
-              },
+        deleteComment: commentId == null ? null : () => _deleteComment(report),
       ),
     );
   }
 
-  Widget _bug(
-    Map<String, dynamic> report,
-  ) {
+  Widget _bug(Map<String, dynamic> report) {
     return _card(
       'BUG REPORT',
-      report['status']?.toString() ??
-          'open',
-      _who(
-        report['user_id']?.toString(),
-      ),
-      report['created_at']?.toString() ??
-          '',
-      report['description']?.toString() ??
-          '',
+      report['status']?.toString() ?? 'open',
+      _who(report['user_id']?.toString()),
+      _dateLabel(report['created_at']),
+      report['description']?.toString() ?? '',
       _bugActions(report),
+    );
+  }
+
+  Widget _suggestion(Map<String, dynamic> suggestion) {
+    final status = suggestion['status']?.toString() ?? 'pending';
+    final title = suggestion['title']?.toString() ?? 'Untitled suggestion';
+    final description = suggestion['description']?.toString() ?? '';
+    final requestedAttribution = suggestion['public_attribution'] != false;
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(14, 8, 14, 8),
+      padding: const EdgeInsets.all(1.1),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: LinearGradient(
+          colors: [
+            _statusColor(status).withValues(alpha: 0.52),
+            _adminViolet.withValues(alpha: 0.24),
+            _adminPurple.withValues(alpha: 0.28),
+          ],
+        ),
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: _adminSurface,
+          borderRadius: BorderRadius.circular(19),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(
+                  Icons.lightbulb_outline_rounded,
+                  color: _adminCyan,
+                  size: 19,
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'FEATURE SUGGESTION',
+                  style: TextStyle(
+                    color: _adminCyan,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1,
+                  ),
+                ),
+                const Spacer(),
+                _statusPill(status),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 5),
+            Text(
+              '${_who(suggestion['user_id']?.toString())} · ${_dateLabel(suggestion['created_at'])}',
+              style: const TextStyle(color: Colors.white38, fontSize: 11),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(13),
+              decoration: BoxDecoration(
+                color: _adminSurfaceLight,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Text(
+                description,
+                style: const TextStyle(color: Colors.white70, height: 1.45),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Icon(
+                  requestedAttribution
+                      ? Icons.person_pin_circle_outlined
+                      : Icons.person_off_outlined,
+                  color: requestedAttribution ? _adminViolet : Colors.white38,
+                  size: 17,
+                ),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: Text(
+                    requestedAttribution
+                        ? 'User requested public credit if published.'
+                        : 'Publish without user attribution.',
+                    style: const TextStyle(
+                      color: Colors.white54,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            _suggestionActions(suggestion),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _suggestionActions(Map<String, dynamic> suggestion) {
+    final status = suggestion['status']?.toString() ?? 'pending';
+
+    Widget stateButton(String value, String text, IconData icon) {
+      final current = status == value;
+      final color = _statusColor(value);
+
+      return OutlinedButton.icon(
+        onPressed: current ? null : () => _setSuggestionStatus(suggestion, value),
+        icon: Icon(icon, size: 17),
+        label: Text(text),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: color,
+          side: BorderSide(color: color.withValues(alpha: 0.55)),
+          disabledForegroundColor: Colors.white38,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            stateButton(
+              'in_progress',
+              'In Progress',
+              Icons.construction_rounded,
+            ),
+            stateButton(
+              'implemented',
+              'Implemented',
+              Icons.task_alt_rounded,
+            ),
+            stateButton(
+              'rejected',
+              'Rejected',
+              Icons.close_rounded,
+            ),
+            if (status == 'pending')
+              TextButton.icon(
+                onPressed: () => _ignoreSuggestion(suggestion),
+                icon: const Icon(Icons.visibility_off_outlined, size: 17),
+                label: const Text('Ignore'),
+                style: TextButton.styleFrom(foregroundColor: Colors.white54),
+              ),
+          ],
+        ),
+        if (status != 'pending') ...[
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: () => _addSuggestionUpdate(suggestion),
+              icon: const Icon(Icons.campaign_outlined),
+              label: const Text('Add Developer Update'),
+              style: FilledButton.styleFrom(
+                backgroundColor: _adminViolet.withValues(alpha: 0.15),
+                foregroundColor: _adminViolet,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(13),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 
@@ -676,19 +971,14 @@ class _AdminModerationPageState extends State<AdminModerationPage>
     Widget Function(Map<String, dynamic>) builder,
   ) {
     if (loading) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
+      return const Center(child: CircularProgressIndicator());
     }
 
     if (errorMessage != null) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
-          child: Text(
-            errorMessage!,
-            textAlign: TextAlign.center,
-          ),
+          child: Text(errorMessage!, textAlign: TextAlign.center),
         ),
       );
     }
@@ -697,22 +987,13 @@ class _AdminModerationPageState extends State<AdminModerationPage>
       return RefreshIndicator(
         onRefresh: _load,
         child: ListView(
-          physics:
-              const AlwaysScrollableScrollPhysics(),
+          physics: const AlwaysScrollableScrollPhysics(),
           children: const [
-            SizedBox(height: 120),
-            Icon(
-              Icons.inbox_outlined,
-              color: Colors.white24,
-              size: 42,
-            ),
-            SizedBox(height: 12),
+            SizedBox(height: 160),
             Center(
               child: Text(
                 'No reports.',
-                style: TextStyle(
-                  color: Colors.white54,
-                ),
+                style: TextStyle(color: Colors.white54),
               ),
             ),
           ],
@@ -723,31 +1004,219 @@ class _AdminModerationPageState extends State<AdminModerationPage>
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView.builder(
-        physics:
-            const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.only(
-          bottom: 30,
-        ),
+        physics: const AlwaysScrollableScrollPhysics(),
         itemCount: rows.length,
-        itemBuilder: (context, index) {
-          return builder(rows[index]);
-        },
+        itemBuilder: (context, index) => builder(rows[index]),
       ),
     );
   }
 
-  Widget _gradientTitle(
-    String text,
-  ) {
+  Widget _suggestionsTab() {
+    if (loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (errorMessage != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(errorMessage!, textAlign: TextAlign.center),
+        ),
+      );
+    }
+
+    final filtered = featureSuggestions.where((suggestion) {
+      return suggestion['status']?.toString() == suggestionFilter;
+    }).toList();
+
+    return Column(
+      children: [
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.fromLTRB(14, 6, 14, 8),
+          child: Row(
+            children: [
+              _filterPill('pending', 'Pending'),
+              const SizedBox(width: 8),
+              _filterPill('in_progress', 'In Progress'),
+              const SizedBox(width: 8),
+              _filterPill('implemented', 'Implemented'),
+              const SizedBox(width: 8),
+              _filterPill('rejected', 'Rejected'),
+            ],
+          ),
+        ),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: _load,
+            child: filtered.isEmpty
+                ? ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: [
+                      const SizedBox(height: 135),
+                      Icon(
+                        Icons.lightbulb_outline_rounded,
+                        color: Colors.white.withValues(alpha: 0.18),
+                        size: 42,
+                      ),
+                      const SizedBox(height: 10),
+                      Center(
+                        child: Text(
+                          'No ${_suggestionStatusLabel(suggestionFilter).toLowerCase()} suggestions.',
+                          style: const TextStyle(color: Colors.white54),
+                        ),
+                      ),
+                    ],
+                  )
+                : ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    itemCount: filtered.length,
+                    itemBuilder: (context, index) => _suggestion(filtered[index]),
+                  ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _filterPill(String value, String label) {
+    final selected = suggestionFilter == value;
+    final count = featureSuggestions.where((item) {
+      return item['status']?.toString() == value;
+    }).length;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(999),
+      onTap: () {
+        setState(() {
+          suggestionFilter = value;
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(999),
+          gradient: selected
+              ? const LinearGradient(
+                  colors: [_adminCyan, _adminViolet, _adminPurple],
+                )
+              : null,
+          color: selected ? null : _adminSurface,
+          border: Border.all(
+            color: selected
+                ? Colors.transparent
+                : Colors.white.withValues(alpha: 0.08),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                color: selected ? Colors.white : Colors.white70,
+                fontWeight: FontWeight.w800,
+                fontSize: 12,
+              ),
+            ),
+            const SizedBox(width: 7),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: selected ? 0.20 : 0.16),
+                borderRadius: BorderRadius.circular(99),
+              ),
+              child: Text(
+                '$count',
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _statusPill(String status) {
+    final color = _statusColor(status);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(99),
+        border: Border.all(color: color.withValues(alpha: 0.28)),
+      ),
+      child: Text(
+        _suggestionStatusLabel(status).toUpperCase(),
+        style: TextStyle(
+          color: color,
+          fontSize: 9,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0.7,
+        ),
+      ),
+    );
+  }
+
+  Color _statusColor(String status) {
+    switch (status) {
+      case 'implemented':
+        return _adminGreen;
+      case 'rejected':
+        return _adminRed;
+      case 'in_progress':
+        return _adminViolet;
+      case 'pending':
+      default:
+        return _adminCyan;
+    }
+  }
+
+  String _suggestionStatusLabel(String status) {
+    switch (status) {
+      case 'in_progress':
+        return 'In Progress';
+      case 'implemented':
+        return 'Implemented';
+      case 'rejected':
+        return 'Rejected';
+      case 'pending':
+      default:
+        return 'Pending';
+    }
+  }
+
+  Widget _dialogGradientTitle(String text) {
     return ShaderMask(
       blendMode: BlendMode.srcIn,
       shaderCallback: (bounds) {
         return const LinearGradient(
-          colors: [
-            _adminCyan,
-            _adminViolet,
-            _adminPurple,
-          ],
+          colors: [_adminCyan, _adminViolet, _adminPurple],
+        ).createShader(bounds);
+      },
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 20,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+
+  Widget _gradientTitle(String text) {
+    return ShaderMask(
+      blendMode: BlendMode.srcIn,
+      shaderCallback: (bounds) {
+        return const LinearGradient(
+          colors: [_adminCyan, _adminViolet, _adminPurple],
         ).createShader(bounds);
       },
       child: Text(
@@ -766,42 +1235,27 @@ class _AdminModerationPageState extends State<AdminModerationPage>
     if (!_allowed) {
       return const Scaffold(
         backgroundColor: _adminBackground,
-        body: Center(
-          child: Text(
-            'Developer access required.',
-          ),
-        ),
+        body: Center(child: Text('Developer access required.')),
       );
     }
 
     return Scaffold(
       backgroundColor: _adminBackground,
-
-      // Back arrow only. The page title lives in the content area.
       appBar: AppBar(
         backgroundColor: _adminBackground,
         elevation: 0,
       ),
-
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(
-              18,
-              8,
-              18,
-              14,
-            ),
+            padding: const EdgeInsets.fromLTRB(18, 8, 18, 14),
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _gradientTitle(
-                  'Admin Moderation',
-                ),
+                _gradientTitle('Admin Moderation'),
                 const SizedBox(height: 5),
                 const Text(
-                  'Review reports, remove harmful content and resolve bug reports.',
+                  'Review reports, resolve bugs and decide which community feature ideas become public.',
                   style: TextStyle(
                     color: Colors.white54,
                     fontSize: 12,
@@ -813,59 +1267,42 @@ class _AdminModerationPageState extends State<AdminModerationPage>
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
                     color: _adminSurface,
-                    borderRadius:
-                        BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: Colors.white.withValues(
-                        alpha: 0.06,
-                      ),
+                      color: Colors.white.withValues(alpha: 0.06),
                     ),
                   ),
                   child: TabBar(
                     controller: _tabs,
+                    isScrollable: true,
+                    tabAlignment: TabAlignment.start,
                     dividerColor: Colors.transparent,
-                    indicatorSize:
-                        TabBarIndicatorSize.tab,
+                    indicatorSize: TabBarIndicatorSize.tab,
                     indicator: BoxDecoration(
-                      borderRadius:
-                          BorderRadius.circular(12),
-                      gradient:
-                          const LinearGradient(
-                        colors: [
-                          _adminCyan,
-                          _adminViolet,
-                          _adminPurple,
-                        ],
+                      borderRadius: BorderRadius.circular(12),
+                      gradient: const LinearGradient(
+                        colors: [_adminCyan, _adminViolet, _adminPurple],
                       ),
                     ),
                     labelColor: Colors.white,
-                    unselectedLabelColor:
-                        Colors.white54,
-                    labelStyle:
-                        const TextStyle(
-                      fontWeight: FontWeight.w800,
-                    ),
+                    unselectedLabelColor: Colors.white54,
+                    labelStyle: const TextStyle(fontWeight: FontWeight.w800),
                     tabs: const [
                       Tab(
-                        icon: Icon(
-                          Icons.person_outline_rounded,
-                          size: 18,
-                        ),
+                        icon: Icon(Icons.person_outline_rounded, size: 18),
                         text: 'Users',
                       ),
                       Tab(
-                        icon: Icon(
-                          Icons.forum_outlined,
-                          size: 18,
-                        ),
+                        icon: Icon(Icons.forum_outlined, size: 18),
                         text: 'Comments',
                       ),
                       Tab(
-                        icon: Icon(
-                          Icons.bug_report_outlined,
-                          size: 18,
-                        ),
+                        icon: Icon(Icons.bug_report_outlined, size: 18),
                         text: 'Bugs',
+                      ),
+                      Tab(
+                        icon: Icon(Icons.lightbulb_outline_rounded, size: 18),
+                        text: 'Suggestions',
                       ),
                     ],
                   ),
@@ -877,18 +1314,10 @@ class _AdminModerationPageState extends State<AdminModerationPage>
             child: TabBarView(
               controller: _tabs,
               children: [
-                _list(
-                  userReports,
-                  _user,
-                ),
-                _list(
-                  commentReports,
-                  _comment,
-                ),
-                _list(
-                  bugReports,
-                  _bug,
-                ),
+                _list(userReports, _user),
+                _list(commentReports, _comment),
+                _list(bugReports, _bug),
+                _suggestionsTab(),
               ],
             ),
           ),
