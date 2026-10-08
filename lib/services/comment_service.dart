@@ -73,62 +73,23 @@ class CommentService {
 
 
   Future<int> countComments({
-
     required String mediaType,
-
     required int tmdbId,
-
     int? seasonNumber,
-
     int? episodeNumber,
-
   }) async {
+    final result = await client.rpc(
+      'count_visible_media_comments',
+      params: {
+        'p_media_type': mediaType,
+        'p_tmdb_id': tmdbId,
+        'p_season_number': seasonNumber,
+        'p_episode_number': episodeNumber,
+      },
+    );
 
-    late final List<dynamic> rows;
-
-
-    if (mediaType == 'episode') {
-
-      if (seasonNumber == null || episodeNumber == null) {
-
-        return 0;
-
-      }
-
-
-      rows = await client
-
-          .from('media_comments')
-
-          .select('id')
-
-          .eq('media_type', 'episode')
-
-          .eq('tmdb_id', tmdbId)
-
-          .eq('season_number', seasonNumber)
-
-          .eq('episode_number', episodeNumber);
-
-    } else {
-
-      rows = await client
-
-          .from('media_comments')
-
-          .select('id')
-
-          .eq('media_type', mediaType)
-
-          .eq('tmdb_id', tmdbId);
-
-    }
-
-
-    return rows.length;
-
+    return result is num ? result.toInt() : 0;
   }
-
 
   // =====================================================
 
@@ -138,193 +99,79 @@ class CommentService {
 
 
   Future<List<Map<String, dynamic>>> loadComments({
-
     required String mediaType,
-
     required int tmdbId,
-
     int? seasonNumber,
-
     int? episodeNumber,
-
   }) async {
-
-    late final List<dynamic> rawComments;
-
-
-    if (mediaType == 'episode') {
-
-      rawComments = await client
-
-          .from('media_comments')
-
-          .select()
-
-          .eq('media_type', 'episode')
-
-          .eq('tmdb_id', tmdbId)
-
-          .eq('season_number', seasonNumber!)
-
-          .eq('episode_number', episodeNumber!)
-
-          .order('created_at', ascending: true);
-
-    } else {
-
-      rawComments = await client
-
-          .from('media_comments')
-
-          .select()
-
-          .eq('media_type', mediaType)
-
-          .eq('tmdb_id', tmdbId)
-
-          .order('created_at', ascending: true);
-
-    }
-
+    final raw = await client.rpc(
+      'get_visible_media_comments',
+      params: {
+        'p_media_type': mediaType,
+        'p_tmdb_id': tmdbId,
+        'p_season_number': seasonNumber,
+        'p_episode_number': episodeNumber,
+      },
+    );
 
     final comments = <Map<String, dynamic>>[];
 
-
-    for (final raw in rawComments) {
-
-      comments.add(Map<String, dynamic>.from(raw));
-
+    if (raw is List) {
+      for (final item in raw) {
+        if (item is Map) {
+          comments.add(Map<String, dynamic>.from(item));
+        }
+      }
     }
-
 
     await Future.wait(comments.map(_enrichComment));
 
-
     final byId = <String, Map<String, dynamic>>{};
 
-
     for (final comment in comments) {
-
       comment['replies'] = <Map<String, dynamic>>[];
-
-
       final id = comment['id']?.toString();
-
-
-      if (id != null) {
-
-        byId[id] = comment;
-
-      }
-
+      if (id != null) byId[id] = comment;
     }
-
 
     final mainComments = <Map<String, dynamic>>[];
 
-
     for (final comment in comments) {
-
       final parentId = comment['parent_comment_id']?.toString();
 
-
       if (parentId == null || parentId.isEmpty) {
-
         mainComments.add(comment);
-
-
         continue;
-
       }
-
 
       final parent = byId[parentId];
-
-
-      if (parent == null) {
-
-        continue;
-
-      }
-
+      if (parent == null) continue;
 
       final replies = parent['replies'];
-
-
       if (replies is List<Map<String, dynamic>>) {
-
         replies.add(comment);
-
       }
-
     }
-
-
-    // Main comments:
-
-    // newest first.
 
     mainComments.sort((a, b) {
-
-      final aDate =
-
-          DateTime.tryParse(a['created_at']?.toString() ?? '') ??
-
-          DateTime(1970);
-
-
-      final bDate =
-
-          DateTime.tryParse(b['created_at']?.toString() ?? '') ??
-
-          DateTime(1970);
-
-
+      final aDate = DateTime.tryParse(a['created_at']?.toString() ?? '') ?? DateTime(1970);
+      final bDate = DateTime.tryParse(b['created_at']?.toString() ?? '') ?? DateTime(1970);
       return bDate.compareTo(aDate);
-
     });
 
-
-    // Replies:
-
-    // oldest first.
-
     for (final comment in mainComments) {
-
       final replies = comment['replies'];
-
-
       if (replies is List<Map<String, dynamic>>) {
-
         replies.sort((a, b) {
-
-          final aDate =
-
-              DateTime.tryParse(a['created_at']?.toString() ?? '') ??
-
-              DateTime(1970);
-
-
-          final bDate =
-
-              DateTime.tryParse(b['created_at']?.toString() ?? '') ??
-
-              DateTime(1970);
-
-
+          final aDate = DateTime.tryParse(a['created_at']?.toString() ?? '') ?? DateTime(1970);
+          final bDate = DateTime.tryParse(b['created_at']?.toString() ?? '') ?? DateTime(1970);
           return aDate.compareTo(bDate);
-
         });
-
       }
-
     }
 
-
     return mainComments;
-
   }
-
 
   // =====================================================
 
@@ -706,6 +553,23 @@ class CommentService {
 
   }
 
+
+  Future<int> reportComment({
+    required String commentId,
+    required String reportType,
+    String? details,
+  }) async {
+    final result = await client.rpc(
+      'report_comment',
+      params: {
+        'p_comment_id': commentId,
+        'p_report_type': reportType,
+        'p_details': details,
+      },
+    );
+
+    return result is num ? result.toInt() : 0;
+  }
 
   // =====================================================
 

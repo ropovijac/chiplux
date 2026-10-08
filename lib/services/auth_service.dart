@@ -242,6 +242,56 @@ Future<void> changePassword({
 }
 
   // =====================================================
+  // DELETE ACCOUNT
+  // =====================================================
+
+  Future<void> deleteAccount({
+    required String username,
+    required String password,
+  }) async {
+    final user = currentUser;
+
+    if (user == null) {
+      throw const AuthException('You must be signed in.');
+    }
+
+    final enteredUsername = username.trim().toLowerCase();
+
+    final profile = await client
+        .from('profiles')
+        .select('username')
+        .eq('id', user.id)
+        .maybeSingle();
+
+    final actualUsername = profile?['username']?.toString().trim().toLowerCase() ?? '';
+
+    if (actualUsername.isEmpty || enteredUsername != actualUsername) {
+      throw const AuthException('Username does not match this account.');
+    }
+
+    final email = user.email?.trim() ?? '';
+
+    if (email.isEmpty) {
+      throw const AuthException('Could not verify this account.');
+    }
+
+    if (password.isEmpty) {
+      throw const AuthException('Enter your password.');
+    }
+
+    // Re-authenticate immediately before the destructive action.
+    await client.auth.signInWithPassword(
+      email: email,
+      password: password,
+    );
+
+    await client.rpc('delete_my_account');
+
+    // Remove the now-invalid local session.
+    await client.auth.signOut();
+  }
+
+  // =====================================================
   // SIGN OUT
   // =====================================================
 

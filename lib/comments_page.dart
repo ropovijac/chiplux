@@ -341,6 +341,8 @@ bool _didFocusTargetComment = false;
 
   final Set<String> _expandedReplies = <String>{};
 
+  final Set<String> _revealedSpoilers = <String>{};
+
 
   GlobalKey _commentKey(String commentId) {
 
@@ -1686,6 +1688,50 @@ if (!_didFocusTargetComment &&
   }
 
 
+  Future<void> _reportComment(
+    Map<String, dynamic> comment,
+    String reportType,
+  ) async {
+    final commentId = comment['id']?.toString();
+
+    if (commentId == null || commentId.isEmpty) {
+      return;
+    }
+
+    try {
+      final spoilerCount = await service.reportComment(
+        commentId: commentId,
+        reportType: reportType,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      final message = reportType == 'spoiler'
+          ? spoilerCount >= 3
+              ? 'Spoiler reported. This comment is now hidden by default.'
+              : 'Spoiler reported.'
+          : 'Comment reported.';
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+
+      await _load();
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not submit report.'),
+        ),
+      );
+    }
+  }
+
   // =====================================================
 
   // DELETE
@@ -2141,6 +2187,16 @@ final bool authorAllowsReplies =
 
 
     final body = comment['body']?.toString() ?? '';
+
+    final bool spoilerHidden = comment['spoiler_hidden'] == true;
+
+    final String spoilerCommentId = comment['id']?.toString() ?? '';
+
+    final bool spoilerRevealed =
+        spoilerCommentId.isNotEmpty &&
+        _revealedSpoilers.contains(spoilerCommentId);
+
+    final bool hideSpoilerBody = spoilerHidden && !spoilerRevealed;
 
 
     final edited = comment['edited_at'] != null;
@@ -2630,119 +2686,91 @@ final repliesExpanded =
 
                 // =================================
 
-                // OWN COMMENT MENU
+                // COMMENT OPTIONS
 
                 // =================================
 
                 if (isOwn)
-
                   PopupMenuButton<String>(
-
                     color: _commentsSurfaceLight,
-
-
                     icon: const Icon(
-
                       Icons.more_horiz_rounded,
-
-
                       color: Colors.white54,
-
                     ),
-
-
                     onSelected: (value) async {
-
                       if (value == 'edit') {
-
                         await _openComposer(editingComment: comment);
-
-                      }
-
-
-                      if (value == 'delete') {
-
+                      } else if (value == 'delete') {
                         await _deleteComment(comment);
-
                       }
-
                     },
-
-
-                    itemBuilder: (context) {
-
-                      return const [
-
-                        PopupMenuItem(
-
-                          value: 'edit',
-
-
-                          child: Row(
-
-                            children: [
-
-                              Icon(Icons.edit_outlined, size: 19),
-
-
-                              SizedBox(width: 10),
-
-
-                              Text('Edit'),
-
-                            ],
-
-                          ),
-
+                    itemBuilder: (context) => const [
+                      PopupMenuItem(
+                        value: 'edit',
+                        child: Row(
+                          children: [
+                            Icon(Icons.edit_outlined, size: 19),
+                            SizedBox(width: 10),
+                            Text('Edit'),
+                          ],
                         ),
-
-
-                        PopupMenuItem(
-
-                          value: 'delete',
-
-
-                          child: Row(
-
-                            children: [
-
-                              Icon(
-
-                                Icons.delete_outline_rounded,
-
-
-                                size: 19,
-
-
-                                color: Colors.redAccent,
-
-                              ),
-
-
-                              SizedBox(width: 10),
-
-
-                              Text(
-
-                                'Delete',
-
-
-                                style: TextStyle(color: Colors.redAccent),
-
-                              ),
-
-                            ],
-
-                          ),
-
+                      ),
+                      PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.delete_outline_rounded,
+                              size: 19,
+                              color: Colors.redAccent,
+                            ),
+                            SizedBox(width: 10),
+                            Text(
+                              'Delete',
+                              style: TextStyle(color: Colors.redAccent),
+                            ),
+                          ],
                         ),
-
-                      ];
-
+                      ),
+                    ],
+                  )
+                else
+                  PopupMenuButton<String>(
+                    color: _commentsSurfaceLight,
+                    icon: const Icon(
+                      Icons.more_horiz_rounded,
+                      color: Colors.white54,
+                    ),
+                    onSelected: (value) async {
+                      if (value == 'report') {
+                        await _reportComment(comment, 'comment');
+                      } else if (value == 'spoiler') {
+                        await _reportComment(comment, 'spoiler');
+                      }
                     },
-
+                    itemBuilder: (context) => const [
+                      PopupMenuItem(
+                        value: 'report',
+                        child: Row(
+                          children: [
+                            Icon(Icons.flag_outlined, size: 19),
+                            SizedBox(width: 10),
+                            Text('Report comment'),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: 'spoiler',
+                        child: Row(
+                          children: [
+                            Icon(Icons.visibility_off_outlined, size: 19),
+                            SizedBox(width: 10),
+                            Text('Report spoiler'),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-
               ],
 
             ),
@@ -2757,7 +2785,50 @@ final repliesExpanded =
 
             // =====================================
 
-            _ExpandableCommentText(text: body),
+            if (hideSpoilerBody)
+              InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () {
+                  setState(() {
+                    _revealedSpoilers.add(spoilerCommentId);
+                  });
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 13,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.035),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.07),
+                    ),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(
+                        Icons.visibility_off_outlined,
+                        color: Colors.white54,
+                        size: 18,
+                      ),
+                      SizedBox(width: 9),
+                      Expanded(
+                        child: Text(
+                          'Potential spoiler · Tap to reveal',
+                          style: TextStyle(
+                            color: Colors.white54,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              _ExpandableCommentText(text: body),
 
 
             const SizedBox(height: 6),

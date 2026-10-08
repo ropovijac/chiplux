@@ -31,6 +31,9 @@ import 'dart:math' as math;
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 
 import 'services/community_service.dart';
+import 'admin_moderation_page.dart';
+import 'data_export_page.dart';
+import 'services/data_export_service.dart';
 
 const Color chipluxBackground = Color(0xFF07111C);
 
@@ -91,6 +94,12 @@ Future<void> _loadCurrentAccountAchievementState() async {
       ]);
 
   await _MedalCollectionUnlockTracker.instance.initialize();
+
+  try {
+    await DataExportService.instance.maybeRunAutomaticBackup();
+  } catch (e) {
+    debugPrint('Automatic data backup skipped: $e');
+  }
 }
 
 Future<void> main() async {
@@ -11153,25 +11162,6 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
 
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: chipluxSurface,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: IconButton(
-                    tooltip: 'Menu',
-                    icon: const Icon(Icons.menu_rounded, size: 28),
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Chiplux menu coming soon.'),
-                        ),
-                      );
-                    },
-                  ),
-                ),
               ],
             ),
           ),
@@ -12891,6 +12881,8 @@ String _statusLabel(String status) {
   }
 }
 
+enum _SearchCategory { titles, people }
+
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
 
@@ -12900,16 +12892,13 @@ class SearchPage extends StatefulWidget {
 
 class _SearchPageState extends State<SearchPage> {
   final TextEditingController controller = TextEditingController();
-
   final TmdbService tmdbService = TmdbService();
 
   Timer? _searchDebounce;
-
   List<dynamic> results = [];
-
   bool isLoading = false;
-
   String? errorMessage;
+  _SearchCategory category = _SearchCategory.titles;
 
   Future<void> performSearch([String? value]) async {
     final query = (value ?? controller.text).trim();
@@ -12923,19 +12912,19 @@ class _SearchPageState extends State<SearchPage> {
       return;
     }
 
+    final requestedCategory = category;
+
     setState(() {
       isLoading = true;
       errorMessage = null;
     });
 
     try {
-      final searchResults = await tmdbService.search(query);
+      final searchResults = requestedCategory == _SearchCategory.people
+          ? await tmdbService.searchPeople(query)
+          : await tmdbService.search(query);
 
-      if (!mounted) return;
-
-      // Ignore results if the user has already
-      // typed something different.
-      if (controller.text.trim() != query) {
+      if (!mounted || controller.text.trim() != query || category != requestedCategory) {
         return;
       }
 
@@ -12944,12 +12933,11 @@ class _SearchPageState extends State<SearchPage> {
       });
     } catch (e) {
       if (!mounted) return;
-
       setState(() {
         errorMessage = 'Search failed';
       });
     } finally {
-      if (mounted && controller.text.trim() == query) {
+      if (mounted && controller.text.trim() == query && category == requestedCategory) {
         setState(() {
           isLoading = false;
         });
@@ -12959,7 +12947,6 @@ class _SearchPageState extends State<SearchPage> {
 
   void onSearchChanged(String value) {
     _searchDebounce?.cancel();
-
     final query = value.trim();
 
     if (query.length < 2) {
@@ -12976,6 +12963,77 @@ class _SearchPageState extends State<SearchPage> {
     });
   }
 
+  void _changeCategory(_SearchCategory value) {
+    if (category == value) return;
+    _searchDebounce?.cancel();
+    setState(() {
+      category = value;
+      results = [];
+      errorMessage = null;
+    });
+    if (controller.text.trim().length >= 2) {
+      performSearch();
+    }
+  }
+
+  void _showPerson(Map<String, dynamic> person) {
+    final name = person['name']?.toString() ?? 'Unknown';
+    final department = person['known_for_department']?.toString() ?? 'Person';
+    final profilePath = person['profile_path']?.toString();
+    final knownForRaw = person['known_for'];
+    final knownFor = knownForRaw is List
+        ? knownForRaw
+            .whereType<Map>()
+            .map((item) => item['title'] ?? item['name'])
+            .whereType<String>()
+            .take(5)
+            .toList()
+        : <String>[];
+
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: chipluxSurface,
+      isScrollControlled: true,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircleAvatar(
+                radius: 48,
+                backgroundColor: chipluxSurfaceLight,
+                backgroundImage: profilePath == null
+                    ? null
+                    : NetworkImage('https://image.tmdb.org/t/p/w185$profilePath'),
+                child: profilePath == null
+                    ? const Icon(Icons.person_rounded, size: 44, color: Colors.white38)
+                    : null,
+              ),
+              const SizedBox(height: 14),
+              Text(name, textAlign: TextAlign.center, style: const TextStyle(fontSize: 21, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 4),
+              Text(department, style: const TextStyle(color: chipluxCyan)),
+              if (knownFor.isNotEmpty) ...[
+                const SizedBox(height: 18),
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text('Known for', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+                const SizedBox(height: 7),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(knownFor.join(' · '), style: const TextStyle(color: Colors.white60, height: 1.4)),
+                ),
+              ],
+              const SizedBox(height: 12),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _searchDebounce?.cancel();
@@ -12989,53 +13047,54 @@ class _SearchPageState extends State<SearchPage> {
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 15),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const BrandedTitle(
-                  whitePart: 'Se',
-                  gradientPart: 'arch',
-                  fontSize: 30,
+                const BrandedTitle(whitePart: 'Se', gradientPart: 'arch', fontSize: 30),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ChoiceChip(
+                        label: const Text('Movies & TV'),
+                        selected: category == _SearchCategory.titles,
+                        onSelected: (_) => _changeCategory(_SearchCategory.titles),
+                        selectedColor: chipluxCyan.withValues(alpha: 0.14),
+                        side: BorderSide(color: category == _SearchCategory.titles ? chipluxCyan : Colors.white12),
+                      ),
+                    ),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: ChoiceChip(
+                        label: const Text('People'),
+                        selected: category == _SearchCategory.people,
+                        onSelected: (_) => _changeCategory(_SearchCategory.people),
+                        selectedColor: chipluxViolet.withValues(alpha: 0.14),
+                        side: BorderSide(color: category == _SearchCategory.people ? chipluxViolet : Colors.white12),
+                      ),
+                    ),
+                  ],
                 ),
-
-                const SizedBox(height: 15),
-
+                const SizedBox(height: 12),
                 TextField(
                   controller: controller,
                   onChanged: onSearchChanged,
                   onSubmitted: (_) => performSearch(),
                   decoration: InputDecoration(
-                    hintText: 'Movies and TV shows',
+                    hintText: category == _SearchCategory.people ? 'Actors, directors and producers' : 'Movies and TV shows',
                     prefixIcon: const Icon(Icons.search),
-                    suffixIcon: IconButton(
-                      icon: const Icon(Icons.arrow_forward),
-                      onPressed: performSearch,
-                    ),
+                    suffixIcon: IconButton(icon: const Icon(Icons.arrow_forward), onPressed: performSearch),
                     filled: true,
                     fillColor: chipluxSurface,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(18),
-                      borderSide: BorderSide.none,
-                    ),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none),
                   ),
                 ),
               ],
             ),
           ),
-
-          if (isLoading)
-            const Padding(
-              padding: EdgeInsets.all(20),
-              child: CircularProgressIndicator(),
-            ),
-
-          if (errorMessage != null)
-            Text(
-              errorMessage!,
-              style: const TextStyle(color: Colors.redAccent),
-            ),
-
+          if (isLoading) const Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator()),
+          if (errorMessage != null) Text(errorMessage!, style: const TextStyle(color: Colors.redAccent)),
           if (!isLoading)
             Expanded(
               child: ListView.separated(
@@ -13043,117 +13102,76 @@ class _SearchPageState extends State<SearchPage> {
                 itemCount: results.length,
                 separatorBuilder: (_, _) => const SizedBox(height: 12),
                 itemBuilder: (context, index) {
-                  final item = results[index];
+                  final item = Map<String, dynamic>.from(results[index] as Map);
+
+                  if (category == _SearchCategory.people) {
+                    final name = item['name']?.toString() ?? 'Unknown';
+                    final department = item['known_for_department']?.toString() ?? 'Person';
+                    final imagePath = item['profile_path']?.toString();
+                    final popularity = item['popularity'] is num ? (item['popularity'] as num).toDouble() : 0.0;
+
+                    return InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () => _showPerson(item),
+                      child: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(color: chipluxSurface, borderRadius: BorderRadius.circular(16)),
+                        child: Row(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: imagePath != null
+                                  ? Image.network('https://image.tmdb.org/t/p/w185$imagePath', width: 72, height: 92, fit: BoxFit.cover,
+                                      errorBuilder: (_, _, _) => Container(width: 72, height: 92, color: chipluxSurfaceLight, child: const Icon(Icons.person_rounded, color: Colors.white38)))
+                                  : Container(width: 72, height: 92, color: chipluxSurfaceLight, child: const Icon(Icons.person_rounded, color: Colors.white38)),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                Text(name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                const SizedBox(height: 6),
+                                Text(department, style: const TextStyle(color: chipluxViolet)),
+                                const SizedBox(height: 5),
+                                Text('Popularity ${popularity.toStringAsFixed(1)}', style: const TextStyle(color: Colors.white38, fontSize: 11)),
+                              ]),
+                            ),
+                            const Icon(Icons.chevron_right, color: Colors.white38),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
 
                   final mediaType = item['media_type'];
-
                   final title = item['title'] ?? item['name'] ?? 'Unknown';
-
-                  final date =
-                      item['release_date'] ?? item['first_air_date'] ?? '';
-
-                  final year = date.toString().length >= 4
-                      ? date.toString().substring(0, 4)
-                      : '';
-
+                  final date = item['release_date'] ?? item['first_air_date'] ?? '';
+                  final year = date.toString().length >= 4 ? date.toString().substring(0, 4) : '';
                   final posterPath = item['poster_path'];
-
-                  final posterUrl = posterPath != null
-                      ? 'https://image.tmdb.org/t/p/w185$posterPath'
-                      : null;
+                  final posterUrl = posterPath != null ? 'https://image.tmdb.org/t/p/w185$posterPath' : null;
 
                   return InkWell(
                     borderRadius: BorderRadius.circular(16),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => MediaDetailsPage(
-                            id: item['id'],
-                            mediaType: mediaType,
-                          ),
-                        ),
-                      );
-                    },
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => MediaDetailsPage(id: item['id'], mediaType: mediaType))),
                     child: Container(
                       padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: chipluxSurface,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
+                      decoration: BoxDecoration(color: chipluxSurface, borderRadius: BorderRadius.circular(16)),
                       child: Row(
                         children: [
                           ClipRRect(
                             borderRadius: BorderRadius.circular(12),
-
                             child: posterUrl != null
-                                ? Image.network(
-                                    posterUrl,
-                                    width: 72,
-                                    height: 105,
-                                    fit: BoxFit.cover,
-
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return Container(
-                                        width: 72,
-                                        height: 105,
-                                        color: chipluxSurfaceLight,
-                                        child: const Icon(
-                                          Icons.movie_outlined,
-                                          color: Colors.white38,
-                                        ),
-                                      );
-                                    },
-                                  )
-                                : Container(
-                                    width: 72,
-                                    height: 105,
-                                    color: chipluxSurfaceLight,
-                                    child: const Icon(
-                                      Icons.movie_outlined,
-                                      color: Colors.white38,
-                                    ),
-                                  ),
+                                ? Image.network(posterUrl, width: 72, height: 105, fit: BoxFit.cover,
+                                    errorBuilder: (_, _, _) => Container(width: 72, height: 105, color: chipluxSurfaceLight, child: const Icon(Icons.movie_outlined, color: Colors.white38)))
+                                : Container(width: 72, height: 105, color: chipluxSurfaceLight, child: const Icon(Icons.movie_outlined, color: Colors.white38)),
                           ),
-
                           const SizedBox(width: 14),
-
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  title,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-
-                                const SizedBox(height: 7),
-
-                                Text(
-                                  mediaType == 'tv' ? 'TV Show' : 'Movie',
-                                  style: const TextStyle(color: chipluxCyan),
-                                ),
-
-                                if (year.isNotEmpty) ...[
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    year,
-                                    style: const TextStyle(
-                                      color: Colors.white54,
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-
-                          const Icon(
-                            Icons.chevron_right,
-                            color: Colors.white38,
-                          ),
+                          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 7),
+                            Text(mediaType == 'tv' ? 'TV Show' : 'Movie', style: const TextStyle(color: chipluxCyan)),
+                            if (year.isNotEmpty) ...[const SizedBox(height: 4), Text(year, style: const TextStyle(color: Colors.white54))],
+                          ])),
+                          const Icon(Icons.chevron_right, color: Colors.white38),
                         ],
                       ),
                     ),
@@ -16774,6 +16792,8 @@ class _AchievementsPageState
 
     final bool isMedalCollectionGroup = group.id == 'medal_collection';
 
+    final bool isFollowDeveloperGroup = group.id == 'follow_developer';
+
     final String titleRatedRewardLabel = isTvShowsRatedGroup
         ? 'TV Shows Rated'
         : 'Movies Rated';
@@ -17046,6 +17066,33 @@ class _AchievementsPageState
                           group.highestUnlockedTier?.id == group.tiers[i].id,
                     ),
                     if (i < group.tiers.length - 1) const SizedBox(height: 8),
+                  ],
+
+                  if (isFollowDeveloperGroup) ...[
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          final result = await Supabase.instance.client.rpc(
+                            'get_developer_profile_id',
+                          );
+                          final developerId = result?.toString();
+                          if (developerId == null || developerId.isEmpty || !context.mounted) {
+                            return;
+                          }
+                          Navigator.pop(sheetContext);
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => PublicProfilePage(userId: developerId),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.person_search_rounded),
+                        label: const Text('View Developer Profile'),
+                      ),
+                    ),
                   ],
 
                   if (!isMedalCollectionGroup) ...[
@@ -29011,85 +29058,6 @@ class _ProfileSettingsTab extends StatelessWidget {
                 ),
 
                 // =====================================
-                // X DIRECTLY ON THE OUTER FRAME CORNER
-                // =====================================
-                Positioned(
-                  top: -18,
-                  right: -18,
-
-                  child: Container(
-                    padding: const EdgeInsets.all(1.4),
-
-                    decoration: BoxDecoration(
-                      borderRadius:
-                          BorderRadius.circular(15),
-
-                      gradient:
-                          const LinearGradient(
-                        begin:
-                            Alignment.topLeft,
-
-                        end:
-                            Alignment.bottomRight,
-
-                        colors: [
-                          chipluxCyan,
-                          chipluxViolet,
-                          chipluxPurple,
-                        ],
-                      ),
-
-                      boxShadow: [
-                        BoxShadow(
-                          color: chipluxViolet
-                              .withValues(
-                            alpha: 0.35,
-                          ),
-
-                          blurRadius: 16,
-                          spreadRadius: 1,
-                        ),
-                      ],
-                    ),
-
-                    child: Material(
-                      color: chipluxSurface,
-
-                      borderRadius:
-                          BorderRadius.circular(14),
-
-                      child: InkWell(
-                        onTap: saving
-                            ? null
-                            : () {
-                                Navigator.pop(
-                                  dialogContext,
-                                  false,
-                                );
-                              },
-
-                        borderRadius:
-                            BorderRadius.circular(
-                          14,
-                        ),
-
-                        child: const SizedBox(
-                          width: 40,
-                          height: 40,
-
-                          child: Icon(
-                            Icons.close_rounded,
-
-                            color:
-                                Colors.white70,
-
-                            size: 23,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
               ],
             ),
           );
@@ -29112,6 +29080,130 @@ class _ProfileSettingsTab extends StatelessWidget {
     );
   }
 }
+
+  Future<void> _deleteAccount(BuildContext context) async {
+    final usernameController = TextEditingController();
+    final passwordController = TextEditingController();
+    String? dialogError;
+    bool deleting = false;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            Future<void> submit() async {
+              if (deleting) return;
+
+              if (usernameController.text.trim().isEmpty ||
+                  passwordController.text.isEmpty) {
+                setDialogState(() {
+                  dialogError = 'Enter your full username and password.';
+                });
+                return;
+              }
+
+              setDialogState(() {
+                deleting = true;
+                dialogError = null;
+              });
+
+              try {
+                await PushNotificationService.instance.unregisterCurrentToken();
+                await AuthService.instance.deleteAccount(
+                  username: usernameController.text,
+                  password: passwordController.text,
+                );
+
+                if (!dialogContext.mounted) return;
+                Navigator.pop(dialogContext, true);
+              } catch (e) {
+                if (!dialogContext.mounted) return;
+                setDialogState(() {
+                  deleting = false;
+                  dialogError = e.toString().replaceFirst('AuthException(message: ', '').replaceFirst(', statusCode: 400, code: invalid_credentials)', '');
+                });
+              }
+            }
+
+            return AlertDialog(
+              backgroundColor: chipluxSurface,
+              title: const Text('Delete Chiplux account?'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'This permanently deletes your account and Chiplux data. This cannot be undone.',
+                      style: TextStyle(color: Colors.white70, height: 1.4),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: usernameController,
+                      enabled: !deleting,
+                      decoration: const InputDecoration(
+                        labelText: 'Full username',
+                        prefixIcon: Icon(Icons.alternate_email_rounded),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: passwordController,
+                      enabled: !deleting,
+                      obscureText: true,
+                      onSubmitted: (_) => submit(),
+                      decoration: const InputDecoration(
+                        labelText: 'Password',
+                        prefixIcon: Icon(Icons.lock_outline_rounded),
+                      ),
+                    ),
+                    if (dialogError != null) ...[
+                      const SizedBox(height: 12),
+                      Text(dialogError!, style: const TextStyle(color: Colors.redAccent)),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: deleting ? null : () => Navigator.pop(dialogContext, false),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: deleting ? null : submit,
+                  child: deleting
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Text('Delete account', style: TextStyle(color: Colors.redAccent)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    usernameController.dispose();
+    passwordController.dispose();
+
+    if (confirmed == true && context.mounted) {
+  _MedalCollectionUnlockTracker.instance.reset();
+
+  await NotificationService.instance.clear();
+  await LibraryService.instance.clearLocalData();
+
+  CriticService.instance.clear();
+  ProfileService.instance.clear();
+  PrivacySettingsService.instance.clear();
+
+  if (!context.mounted) {
+    return;
+  }
+
+  Navigator.of(context).popUntil((route) => route.isFirst);
+}
+  }
 
   Future<void> _signOut(BuildContext context) async {
     final library = LibraryService.instance;
@@ -29196,6 +29288,24 @@ await ProfileTitleService.instance.load();
         subtitle: 'Update your account password',
       ),
     ),
+    if (ProfileService.instance.isDeveloper) ...[
+      const _ProfileMenuDivider(),
+      InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const AdminModerationPage(),
+            ),
+          );
+        },
+        child: const _ProfileMenuRow(
+          icon: Icons.admin_panel_settings_outlined,
+          title: 'Admin Moderation',
+          subtitle: 'Review user, comment and bug reports',
+        ),
+      ),
+    ],
   ],
 ),
 
@@ -29248,11 +29358,22 @@ await ProfileTitleService.instance.load();
                 subtitle: 'Profile, activity and interaction controls',
               ),
             ),
-            _ProfileMenuDivider(),
-            _ProfileMenuRow(
-              icon: Icons.palette_outlined,
-              title: 'Appearance',
-              subtitle: 'Coming soon',
+            const _ProfileMenuDivider(),
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const DataExportPage(),
+                  ),
+                );
+              },
+              child: const _ProfileMenuRow(
+                icon: Icons.download_outlined,
+                title: 'Data & Export',
+                subtitle: 'Export your Chiplux data and schedule backups',
+              ),
             ),
           ],
         ),
@@ -29277,6 +29398,17 @@ await ProfileTitleService.instance.load();
             ),
           ),
         ),
+
+        const SizedBox(height: 14),
+        Center(
+          child: TextButton(
+            onPressed: () => _deleteAccount(context),
+            child: const Text(
+              'Delete account',
+              style: TextStyle(color: Colors.white30, fontSize: 11),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -29287,70 +29419,118 @@ class _ProfileHelpTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Widget row(IconData icon, String title, String subtitle, Widget page) {
+      return InkWell(
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => page)),
+        child: _ProfileMenuRow(icon: icon, title: title, subtitle: subtitle),
+      );
+    }
+
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(18, 22, 18, 32),
-      children: const [
-        _ProfileMenuSectionTitle(
+      children: [
+        const _ProfileMenuSectionTitle(
           title: 'Help',
-          subtitle: 'Quick information about using Chiplux.',
+          subtitle: 'Support, policies and answers about Chiplux.',
         ),
-
-        SizedBox(height: 10),
-
+        const SizedBox(height: 10),
         _ProfileMenuCard(
           children: [
-            _ProfileMenuRow(
-              icon: Icons.check_circle_outline_rounded,
-              title: 'Watching titles',
-              subtitle:
-                  'Mark movies as Watched and track TV episodes as you watch them.',
-            ),
-            _ProfileMenuDivider(),
-            _ProfileMenuRow(
-              icon: Icons.star_outline_rounded,
-              title: 'Ratings',
-              subtitle:
-                  'Movies, TV shows and episodes can be rated after they are watched.',
-            ),
-            _ProfileMenuDivider(),
-            _ProfileMenuRow(
-              icon: Icons.forum_outlined,
-              title: 'Comments',
-              subtitle:
-                  'Discussions unlock after you have watched the related title or episode.',
-            ),
-          ],
-        ),
-
-        SizedBox(height: 24),
-
-        _ProfileMenuSectionTitle(
-          title: 'About',
-          subtitle: 'Chiplux',
-        ),
-
-        SizedBox(height: 10),
-
-        _ProfileMenuCard(
-          children: [
-            _ProfileMenuRow(
-              icon: Icons.movie_filter_rounded,
-              title: 'Chiplux',
-              subtitle:
-                  'Track movies and TV, rate what you watch, build your profile and share activity with the community.',
-            ),
-            _ProfileMenuDivider(),
-            _ProfileMenuRow(
-              icon: Icons.info_outline_rounded,
-              title: 'More help options',
-              subtitle: 'FAQ, contact, privacy policy and terms can be added here.',
-            ),
+            row(Icons.quiz_outlined, 'FAQ', 'Common Chiplux questions', const _FaqPage()),
+            const _ProfileMenuDivider(),
+            row(Icons.mail_outline_rounded, 'Contact', 'Contact details and support', const _SimpleHelpPage(title: 'Contact', body: 'Chiplux contact details will be added before release.')),
+            const _ProfileMenuDivider(),
+            row(Icons.privacy_tip_outlined, 'Privacy Policy', 'How Chiplux handles data', const _SimpleHelpPage(title: 'Privacy Policy', body: 'The final Chiplux Privacy Policy will be published here before release.')),
+            const _ProfileMenuDivider(),
+            row(Icons.description_outlined, 'Terms', 'Terms of use', const _SimpleHelpPage(title: 'Terms', body: 'The final Chiplux Terms of Use will be published here before release.')),
+            const _ProfileMenuDivider(),
+            row(Icons.bug_report_outlined, 'Report a Bug', 'Send a problem directly to Chiplux', const _ReportBugPage()),
           ],
         ),
       ],
     );
   }
+}
+
+class _SimpleHelpPage extends StatelessWidget {
+  final String title;
+  final String body;
+  const _SimpleHelpPage({required this.title, required this.body});
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: chipluxBackground,
+    appBar: AppBar(backgroundColor: chipluxBackground, title: Text(title)),
+    body: Padding(
+      padding: const EdgeInsets.all(20),
+      child: Text(body, style: const TextStyle(color: Colors.white70, height: 1.55)),
+    ),
+  );
+}
+
+class _FaqPage extends StatelessWidget {
+  const _FaqPage();
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: chipluxBackground,
+    appBar: AppBar(backgroundColor: chipluxBackground, title: const Text('FAQ')),
+    body: ListView(
+      padding: const EdgeInsets.all(16),
+      children: const [
+        ExpansionTile(title: Text('How do I track a movie or TV show?'), children: [Padding(padding: EdgeInsets.fromLTRB(16,0,16,16), child: Text('Open a title and add it to your library. Movies can be marked watched, while TV shows track episodes and completion.'))]),
+        ExpansionTile(title: Text('When can I rate or comment?'), children: [Padding(padding: EdgeInsets.fromLTRB(16,0,16,16), child: Text('Ratings and comments unlock after the related movie, show or episode has been watched.'))]),
+        ExpansionTile(title: Text('What are achievements for?'), children: [Padding(padding: EdgeInsets.fromLTRB(16,0,16,16), child: Text('Achievements track your Chiplux progress and unlock profile cosmetics such as frames, colors and titles.'))]),
+        ExpansionTile(title: Text('Can I control what other users see?'), children: [Padding(padding: EdgeInsets.fromLTRB(16,0,16,16), child: Text('Yes. Open Settings → Privacy to control profile visibility, activity, statistics, follows and blocked users.'))]),
+      ],
+    ),
+  );
+}
+
+class _ReportBugPage extends StatefulWidget {
+  const _ReportBugPage();
+  @override
+  State<_ReportBugPage> createState() => _ReportBugPageState();
+}
+
+class _ReportBugPageState extends State<_ReportBugPage> {
+  final controller = TextEditingController();
+  bool sending = false;
+
+  Future<void> _send() async {
+    final text = controller.text.trim();
+    if (text.length < 10) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please describe the problem in a little more detail.')));
+      return;
+    }
+    setState(() => sending = true);
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      await Supabase.instance.client.from('bug_reports').insert({'user_id': user?.id, 'description': text});
+      if (!mounted) return;
+      controller.clear();
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bug report sent. Thank you.')));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not send bug report: $e')));
+    } finally {
+      if (mounted) setState(() => sending = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: chipluxBackground,
+    appBar: AppBar(backgroundColor: chipluxBackground, title: const Text('Report a Bug')),
+    body: ListView(padding: const EdgeInsets.all(20), children: [
+      const Text('Describe what happened, what you expected to happen, and what you were doing just before the problem appeared.', style: TextStyle(color: Colors.white70, height: 1.45)),
+      const SizedBox(height: 16),
+      TextField(controller: controller, minLines: 7, maxLines: 14, maxLength: 5000, textCapitalization: TextCapitalization.sentences, decoration: const InputDecoration(hintText: 'Describe the problem...')),
+      const SizedBox(height: 12),
+      FilledButton.icon(onPressed: sending ? null : _send, icon: sending ? const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2)) : const Icon(Icons.send_rounded), label: const Text('Send Bug Report')),
+    ]),
+  );
+
+  @override
+  void dispose() { controller.dispose(); super.dispose(); }
 }
 
 class _ProfileMenuSectionTitle
@@ -29702,6 +29882,66 @@ class _EditProfilePageState extends State<EditProfilePage> {
     unawaited(_loadProfilePageFrame());
   }
 
+  void _setAutoSaveError(Object error) {
+    if (!mounted) return;
+    setState(() {
+      saving = false;
+      uploadingAvatar = false;
+      errorMessage = 'Could not save change: $error';
+    });
+  }
+
+  Future<void> _saveDisplayName() async {
+    final value = displayNameController.text.trim();
+    if (value.isEmpty) {
+      if (mounted) setState(() => errorMessage = 'Display name cannot be empty.');
+      return;
+    }
+    if (value == profile.displayName.trim()) return;
+    try {
+      if (mounted) setState(() { saving = true; errorMessage = null; });
+      await profile.updateProfile(displayName: value, username: profile.username);
+      if (mounted) setState(() => saving = false);
+    } catch (e) { _setAutoSaveError(e); }
+  }
+
+  Future<void> _selectDisplayNameFrame(String? id) async {
+    try {
+      await frameService.apply(id);
+      if (mounted) setState(() { selectedFrameId = id; errorMessage = null; });
+    } catch (e) { _setAutoSaveError(e); }
+  }
+
+  Future<void> _selectAvatarFrame(String? id) async {
+    try {
+      await avatarFrameService.apply(id);
+      if (mounted) setState(() { selectedAvatarFrameId = id; errorMessage = null; });
+    } catch (e) { _setAutoSaveError(e); }
+  }
+
+  Future<void> _selectProfileTitle(String? id) async {
+    try {
+      await titleService.apply(id);
+      if (mounted) setState(() { selectedTitleId = id; errorMessage = null; });
+    } catch (e) { _setAutoSaveError(e); }
+  }
+
+  Future<void> _selectProfilePageFrame(String? id) async {
+    try {
+      await profilePageFrameService.apply(id);
+      if (mounted) setState(() { selectedProfilePageFrameId = id; errorMessage = null; });
+    } catch (e) { _setAutoSaveError(e); }
+  }
+
+  Future<void> _selectAchievementCosmetic(String groupId, String? tierId) async {
+    final updated = Map<String, String?>.from(selectedAchievementCosmetics);
+    updated[groupId] = tierId;
+    try {
+      await achievementCosmeticService.applyAll(updated);
+      if (mounted) setState(() { selectedAchievementCosmetics = updated; errorMessage = null; });
+    } catch (e) { _setAutoSaveError(e); }
+  }
+
   Future<void> _loadProfileTitle() async {
     await Future.wait([
       profile.loadProfile(),
@@ -29756,9 +29996,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         color: Colors.transparent,
         child: InkWell(
           onTap: () {
-            setState(() {
-              selectedTitleId = developerProfileTitleId;
-            });
+            unawaited(_selectProfileTitle(developerProfileTitleId));
           },
           borderRadius: BorderRadius.circular(15),
           child: Container(
@@ -29870,9 +30108,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   achievement: null,
                   selected: selectedTitleId == null,
                   onTap: () {
-                    setState(() {
-                      selectedTitleId = null;
-                    });
+                    unawaited(_selectProfileTitle(null));
                   },
                 );
               }
@@ -29889,9 +30125,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 achievement: achievement,
                 selected: selectedTitleId == achievement.id,
                 onTap: () {
-                  setState(() {
-                    selectedTitleId = achievement.id;
-                  });
+                  unawaited(_selectProfileTitle(achievement.id));
                 },
               );
             },
@@ -29979,10 +30213,7 @@ if (loadedId != null &&
 
       child: InkWell(
         onTap: () {
-          setState(() {
-            selectedProfilePageFrameId =
-                frameId;
-          });
+          unawaited(_selectProfilePageFrame(frameId));
         },
 
         borderRadius:
@@ -30420,17 +30651,30 @@ if (loadedId != null &&
 
       setState(() {
         selectedAvatarBytes = bytes;
-
         selectedAvatarExtension = extension;
-
+        uploadingAvatar = true;
         errorMessage = null;
       });
+
+      final avatarUrl = await avatarService.uploadAvatar(
+        bytes: bytes,
+        extension: extension,
+      );
+
+      await profile.updateAvatarUrl(avatarUrl);
+
+      if (mounted) {
+        setState(() {
+          uploadingAvatar = false;
+        });
+      }
     } catch (e) {
       if (!mounted) {
         return;
       }
 
       setState(() {
+        uploadingAvatar = false;
         errorMessage = 'Could not select image: $e';
       });
     }
@@ -30772,9 +31016,7 @@ if (loadedId != null &&
         unlocked: true,
         selected: selectedAvatarFrameId == null,
         onTap: () {
-          setState(() {
-            selectedAvatarFrameId = null;
-          });
+          unawaited(_selectAvatarFrame(null));
         },
       ),
 
@@ -30785,9 +31027,7 @@ if (loadedId != null &&
           unlocked: tier.unlocked,
           selected: selectedAvatarFrameId == tier.id,
           onTap: () {
-            setState(() {
-              selectedAvatarFrameId = tier.id;
-            });
+            unawaited(_selectAvatarFrame(tier.id));
           },
         ),
     ];
@@ -30845,9 +31085,7 @@ if (loadedId != null &&
         unlocked: true,
         selected: selectedFrameId == null,
         onTap: () {
-          setState(() {
-            selectedFrameId = null;
-          });
+          unawaited(_selectDisplayNameFrame(null));
         },
       ),
 
@@ -30858,9 +31096,7 @@ if (loadedId != null &&
           unlocked: tier.unlocked,
           selected: selectedFrameId == tier.id,
           onTap: () {
-            setState(() {
-              selectedFrameId = tier.id;
-            });
+            unawaited(_selectDisplayNameFrame(tier.id));
           },
         ),
     ];
@@ -30923,9 +31159,7 @@ if (loadedId != null &&
         unlocked: true,
         selected: selectedId == null,
         onTap: () {
-          setState(() {
-            selectedAchievementCosmetics[group.id] = null;
-          });
+          unawaited(_selectAchievementCosmetic(group.id, null));
         },
       ),
 
@@ -30937,9 +31171,7 @@ if (loadedId != null &&
           unlocked: tier.unlocked,
           selected: selectedId == tier.id,
           onTap: () {
-            setState(() {
-              selectedAchievementCosmetics[group.id] = tier.id;
-            });
+            unawaited(_selectAchievementCosmetic(group.id, tier.id));
           },
         ),
     ];
@@ -31214,6 +31446,10 @@ if (loadedId != null &&
         TextField(
           controller: displayNameController,
           maxLength: 40,
+          textInputAction: TextInputAction.done,
+          onSubmitted: (_) {
+            unawaited(_saveDisplayName());
+          },
           decoration: const InputDecoration(
             labelText: 'Display Name',
             prefixIcon: Icon(Icons.person_outline),
@@ -31250,26 +31486,11 @@ if (loadedId != null &&
 
         const SizedBox(height: 24),
 
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: saving ? null : saveProfile,
-            icon: saving
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.save_outlined),
-            label: Text(
-              uploadingAvatar
-                  ? 'Uploading Avatar...'
-                  : saving
-                  ? 'Saving...'
-                  : 'Save Profile',
-            ),
+        if (saving || uploadingAvatar)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: Center(child: CircularProgressIndicator()),
           ),
-        ),
 
         const SizedBox(height: 12),
       ],

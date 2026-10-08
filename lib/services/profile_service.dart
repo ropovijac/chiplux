@@ -91,22 +91,34 @@ bool followedDeveloperAchievement = false;
 
     final cleanUsername = username.trim().toLowerCase();
 
-    await client.from('profiles').upsert({
-      'id': user.id,
-      'display_name': displayName.trim(),
-      'username': cleanUsername.isEmpty ? null : cleanUsername,
-      'avatar_url': avatarUrl,
-
-      // Preserve banner information.
-      'banner_tmdb_id': bannerTmdbId,
-      'banner_media_type': bannerMediaType,
-      'banner_path': bannerPath,
-    });
+    await client
+        .from('profiles')
+        .update({
+          'display_name': displayName.trim(),
+          'username': cleanUsername.isEmpty ? null : cleanUsername,
+        })
+        .eq('id', user.id);
 
     this.displayName = displayName.trim();
 
     this.username = cleanUsername;
 
+    notifyListeners();
+  }
+
+  Future<void> updateAvatarUrl(String? value) async {
+    final user = client.auth.currentUser;
+
+    if (user == null) {
+      throw Exception('You must be signed in.');
+    }
+
+    await client
+        .from('profiles')
+        .update({'avatar_url': value})
+        .eq('id', user.id);
+
+    avatarUrl = value;
     notifyListeners();
   }
 

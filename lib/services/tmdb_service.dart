@@ -35,6 +35,44 @@ class TmdbService {
     throw Exception('Failed to search TMDB');
   }
 
+
+  Future<List<dynamic>> searchPeople(String query) async {
+    final clean = query.trim();
+
+    if (clean.isEmpty) {
+      return [];
+    }
+
+    final url = Uri.parse(
+      '$baseUrl/search/person'
+      '?api_key=$apiKey'
+      '&query=${Uri.encodeComponent(clean)}'
+      '&include_adult=false'
+      '&page=1',
+    );
+
+    final response = await http.get(url);
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to search people');
+    }
+
+    final data = jsonDecode(response.body);
+    final List<dynamic> results = List<dynamic>.from(data['results'] ?? const []);
+
+    results.sort((a, b) {
+      final aPopularity = a is Map && a['popularity'] is num
+          ? (a['popularity'] as num).toDouble()
+          : 0.0;
+      final bPopularity = b is Map && b['popularity'] is num
+          ? (b['popularity'] as num).toDouble()
+          : 0.0;
+      return bPopularity.compareTo(aPopularity);
+    });
+
+    return results;
+  }
+
   Future<Map<String, dynamic>> getDetails(int id, String mediaType) async {
     final append = mediaType == 'movie' ? 'release_dates' : 'content_ratings';
 
