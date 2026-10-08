@@ -1,29 +1,36 @@
 Things to implement:
 
-1. create an Admin Moderation page visible only to my Developer account for handling reports
+1. Make rating xp gained doubled. So 10 for tv shows and movies and 5 for episodes.
 
-2. when user is blocked, make him and the user who blocked him invisible totaly to eachoter, meaning comments dissappear also.
+2. Make chiplux ui changes, gradient colors, tabs and pills or custom icons and so on in this areas:
 
-3. In follow developer achievement. When tapping achievement to see it, make a link to my account there.
+Admin Moderation
+Data & Export
+FAQ
+Privacy Policy
+Terms of use
+Report a bug.
 
-4. Delete Appereance tab or put Reduce animations inside it. You decide if its worth in terms if animations would actually slow down users phone
+3. We have double page titles. For example tapping Privacy opens Privacy page and there is an back arrow 
+and white title "Privacy". Below the page starts again with gradient "Privacy" and description. Leave arrow, gradient title and description. 
+Do that in all pages that have the same principle.
 
-5. Improve comments. Add options for comments. If own user there would be edit or delete comment and for other users there would be report comment and report spoiler. If many users report comment as a spoiler, Make comment hidden so user can tap it if he wants to reveal the comment. 
+4. In admin moderation, in Bugs, give me only button for resolve. Tapping resolve will remove the notification and 
+consider tha bug solved. Asked me if i'm sure i want to resolve the bug after tapping it. 
 
-6. In settings, add option to export watchlist and all user profile related information, also include option for chiplux to do that automaticly on users phone every period user chooses. every day, every week, every month. 
+5. In Search page, make movies and tv and people tabs more chiplux like, gradient and better be seen. 
 
-7. In Help part remove everything there is and instead add FAQ, contact, privacy policy and terms. Also add report a bug feature where users could write the descripton of the problem and send it to the designated email or base or what do you think its the best. 
-   We will update contact details later. 
+6. When people have been searched in Search page, tapping that person should open all projects that they were in or produced if the
+person is producer. Same as Cast section in tv shows, movies or episodes. 
 
-8. In change passoword, remove X button for closing the windows. already introduced Cancel will do the job
+7. Add actuall privacy policy.
 
-9. In settings, introduce option to delete account, but make it less visible or not so big user will be easily promted to do so. Upon deleting request to write full username and password and verifying before deletion. 
+8. Add actually terms of use. 
 
-10. In Customize, remove "Save Profile" option and introduce automatic saving. When user changes display name and pressed "Done" on keyboard then when you automaticly update display name. For frames and titles, when user selects an option, automaticly change and save that option. Also currently there is an error when trying to save profile that states: "Could not save profile: PostgrestException(message: new row for relation "profiles" violates check constraint "profiles_display_name_frame_id_check", code: 23514, details: Bad Request, hint: null)
+9. Explain how to solve future reports, for example if i have 10 000 users and each of them reports something in a day.
+How to effectievly solve that. 
 
-11. In Search page, introduce searching by two categories, 1.movies and tv shows and 2. People - Actors and producers. People would be searched by most famous for the written word. If name is Kevin for example, search most popular Kevin.
-
-12. In Discover, there is Chiplux Menu button that does nothing, propose what to introduce there, if you have no proposal, delete that button for now. 
+10. Data exports gives an error 42703. 
 
 Rules of implementation:
 
