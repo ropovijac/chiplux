@@ -43,9 +43,12 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
 
   cupertino_icons: ^1.0.8
   http: ^1.6.0
+  intl: ^0.20.2
   shared_preferences: ^2.5.5
   supabase_flutter: ^2.17.2
   image_picker: ^1.2.3
@@ -73,6 +76,7 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
+  generate: true
   uses-material-design: true
 
   assets:

@@ -1,0 +1,162 @@
+{
+  "@@locale": "en",
+  "appName": "Chiplux",
+  "discover": "Discover",
+  "search": "Search",
+  "watch": "Watch",
+  "community": "Community",
+  "profile": "Profile",
+  "customize": "CUSTOMIZE",
+  "settings": "SETTINGS",
+  "help": "HELP",
+  "account": "Account",
+  "accountSubtitle": "Your Chiplux account and sign-in information.",
+  "email": "Email",
+  "notAvailable": "Not available",
+  "changePassword": "Change Password",
+  "changePasswordSubtitle": "Update your account password",
+  "adminModeration": "Admin Moderation",
+  "adminModerationSubtitle": "Review user, comment, bug and feature reports",
+  "preferences": "Preferences",
+  "preferencesSubtitle": "Choose how Chiplux behaves on this device.",
+  "notifications": "Notifications",
+  "notificationsSubtitle": "Episodes, releases and community activity",
+  "privacy": "Privacy",
+  "privacySubtitle": "Profile, activity and interaction controls",
+  "dataExport": "Data & Export",
+  "dataExportSubtitle": "Export your Chiplux data and schedule backups",
+  "language": "Language",
+  "languageSubtitle": "Choose the language used by the Chiplux interface.",
+  "systemDefault": "System default",
+  "english": "English",
+  "croatian": "Hrvatski",
+  "languagePageSubtitle": "Choose the language for Chiplux menus, buttons and messages. Media titles and user content are never translated by this setting.",
+  "languageChanged": "Language changed.",
+  "signOut": "Sign Out",
+  "deleteAccount": "Delete account",
+  "helpSubtitle": "Support, policies and answers about Chiplux.",
+  "faq": "FAQ",
+  "faqSubtitle": "Common Chiplux questions",
+  "contact": "Contact",
+  "contactSubtitle": "Contact details and support",
+  "privacyPolicy": "Privacy Policy",
+  "privacyPolicySubtitle": "How Chiplux handles data",
+  "terms": "Terms",
+  "termsSubtitle": "Terms of use",
+  "suggestFeature": "Suggest a Feature",
+  "suggestFeatureSubtitle": "Share an idea with the Chiplux developer",
+  "reportBug": "Report a Bug",
+  "reportBugSubtitle": "Send a problem directly to Chiplux",
+  "informationSupport": "Information and support for Chiplux.",
+  "commentsLockedEpisode": "Comments are locked until you watch this episode.",
+  "commentsLockedTitle": "Comments are locked until you finish this title.",
+  "couldNotLoadComments": "Could not load comments.",
+  "letsComment": "Let’s Comment",
+  "reply": "Reply",
+  "replies": "Replies",
+  "cancel": "Cancel",
+  "delete": "Delete",
+  "save": "Save",
+  "edit": "Edit",
+  "report": "Report",
+  "block": "Block",
+  "unblock": "Unblock",
+  "spoiler": "Spoiler",
+  "showSpoiler": "Show spoiler",
+  "dataExportPageSubtitle": "Back up your Chiplux account data or create an export whenever you want.",
+  "automaticBackup": "Automatic backup",
+  "automaticBackupDescription": "Choose how often Chiplux should create a local JSON backup.",
+  "everyDay": "Every day",
+  "everyWeek": "Every week",
+  "everyMonth": "Every month",
+  "off": "Off",
+  "exportNow": "Export now",
+  "exportNowSubtitle": "Create a JSON backup and choose where to save or share it.",
+  "automaticBackupInfo": "Automatic backups are checked when Chiplux opens. If an interval passed while the app was closed, the backup is created the next time the app starts.",
+  "exportIncludes": "Exports include your profile settings, library, watched episodes, ratings, comments, activity, following list, notifications, reports, feature suggestions and blocked-user list.",
+  "couldNotExportData": "Could not export data: {error}",
+  "whileChipluxUsed": "{cadence} while Chiplux is being used",
+  "users": "Users",
+  "comments": "Comments",
+  "bugs": "Bugs",
+  "suggestions": "Suggestions",
+  "pending": "Pending",
+  "inProgress": "In Progress",
+  "implemented": "Implemented",
+  "rejected": "Rejected",
+  "ignored": "Ignored",
+  "resolve": "Resolve",
+  "dismiss": "Dismiss",
+  "reviewing": "Reviewing",
+  "deleteComment": "Delete comment",
+  "developerAccessRequired": "Developer access required.",
+  "couldNotLoadModeration": "Could not load moderation reports: {error}",
+  "resolveBugQuestion": "Resolve this bug?",
+  "resolveBugBody": "This will mark the bug as solved and remove it from the active Bugs queue.",
+  "deleteReportedComment": "Delete reported comment?",
+  "deleteReportedCommentBody": "This permanently removes the comment.",
+  "ignoreSuggestionQuestion": "Ignore suggestion?",
+  "ignoreSuggestionBody": "This suggestion will not appear on the Feature Board and will be permanently deleted. The user’s 30-day submission cooldown stays active.",
+  "publishAs": "Publish as {status}",
+  "optionalDeveloperNote": "You can add an optional developer note. It will appear publicly on the Feature Board.",
+  "optionalChipluxUpdate": "Optional Chiplux update…",
+  "rejectionReasonHint": "Why is this suggestion being rejected?",
+  "couldNotUpdateSuggestion": "Could not update feature suggestion: {error}",
+  "couldNotIgnoreSuggestion": "Could not ignore feature suggestion: {error}",
+  "featureBoard": "Feature Board",
+  "all": "All",
+  "suggestedByUser": "Suggested by {user}",
+  "suggestedByCommunity": "Suggested by a Chiplux user",
+  "developerUpdate": "CHIPLUX UPDATE",
+  "noFeatureSuggestions": "No feature suggestions here yet.",
+  "languageMediaRule": "Movies, TV shows, episode titles and future music titles remain in their original form.",
+  "@couldNotExportData": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "@whileChipluxUsed": {
+    "placeholders": {
+      "cadence": {
+        "type": "String"
+      }
+    }
+  },
+  "@couldNotLoadModeration": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "@publishAs": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "@couldNotUpdateSuggestion": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "@couldNotIgnoreSuggestion": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "@suggestedByUser": {
+    "placeholders": {
+      "user": {
+        "type": "String"
+      }
+    }
+  }
+}

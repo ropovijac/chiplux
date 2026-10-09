@@ -1,5 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+
+import 'l10n/generated/app_localizations.dart';
+import 'l10n/ui_translations.dart';
+import 'services/locale_service.dart';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import 'services/notification_settings_service.dart';
 import 'services/library_service.dart';
 import 'services/cloud_sync_service.dart';
@@ -8,15 +15,21 @@ import 'services/tmdb_service.dart';
 import 'services/auth_service.dart';
 import 'services/profile_service.dart';
 import 'services/notification_service.dart';
+
 import 'dart:typed_data';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+
 import 'services/push_notification_service.dart';
 import 'firebase_options.dart';
+
 import 'package:image_picker/image_picker.dart';
+
 import 'services/privacy_settings_service.dart';
 import 'services/avatar_service.dart';
 import 'services/media_user_data_service.dart';
+
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import 'dart:async';
@@ -48,21 +61,16 @@ const Color chipluxViolet = Color(0xFF8B7CFF);
 
 const Color chipluxPurple = Color(0xFFD65CFF);
 
-const String developerProfileTitleId =
-    'developer';
+const String developerProfileTitleId = 'developer';
 
-    const String developerProfilePageFrameId =
-    'developer';
+const String developerProfilePageFrameId = 'developer';
 
-    const String followDeveloperAchievementId =
-    'follow_developer_achievement';
+const String followDeveloperAchievementId = 'follow_developer_achievement';
 
-const String followDeveloperProfilePageFrameId =
-    'follow_developer_tier3';
+const String followDeveloperProfilePageFrameId = 'follow_developer_tier3';
 
 Future<void> _loadCurrentAccountAchievementState() async {
   await Future.wait([
-
     CriticService.instance.refresh(),
 
     DailyLoginService.instance.load(),
@@ -81,18 +89,14 @@ Future<void> _loadCurrentAccountAchievementState() async {
 
     ProfileTitleService.instance.load(),
 
-    ProfilePageFrameService
-    .instance
-    .load(),
+    ProfilePageFrameService.instance.load(),
 
     PrivacySettingsService.instance.load(),
 
     NotificationService.instance.load(),
-    
-    PushNotificationService
-    .instance
-    .registerCurrentToken(),
-      ]);
+
+    PushNotificationService.instance.registerCurrentToken(),
+  ]);
 
   await _MedalCollectionUnlockTracker.instance.initialize();
 
@@ -106,18 +110,13 @@ Future<void> _loadCurrentAccountAchievementState() async {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options:
-        DefaultFirebaseOptions
-            .currentPlatform,
-  );
+  await LocaleService.instance.load();
+
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   await _initializeForegroundNotifications();
 
-  const supabaseUrl =
-      String.fromEnvironment(
-    'SUPABASE_URL',
-  );
+  const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
 
   const supabasePublishableKey = String.fromEnvironment('SUPABASE_ANON_KEY');
 
@@ -126,9 +125,7 @@ Future<void> main() async {
     publishableKey: supabasePublishableKey,
   );
 
-  await PushNotificationService
-    .instance
-    .initialize();
+  await PushNotificationService.instance.initialize();
 
   await LibraryService.instance.init();
 
@@ -862,48 +859,36 @@ _AchievementGroup _ratingsLevelAchievementGroupFor(int ratingsLevel) {
   );
 }
 
-_AchievementGroup
-    _followDeveloperAchievementGroupFor(
-  bool unlocked,
-) {
-  final current =
-      unlocked ? 1 : 0;
+_AchievementGroup _followDeveloperAchievementGroupFor(bool unlocked) {
+  final current = unlocked ? 1 : 0;
 
   return _AchievementGroup(
     id: 'follow_developer',
 
-    title:
-        'Follow the Developer',
+    title: 'Follow the Developer',
 
     description:
         'Follow the Chiplux developer to unlock a special Profile Page Frame.',
 
-    icon:
-        Icons.code_rounded,
+    icon: Icons.code_rounded,
 
     current: current,
 
     tiers: [
       _Achievement(
-        id:
-            followDeveloperAchievementId,
+        id: followDeveloperAchievementId,
 
-        title:
-            'Follow the Developer',
+        title: 'Follow the Developer',
 
-        description:
-            'Follow the Chiplux developer',
+        description: 'Follow the Chiplux developer',
 
-        icon:
-            Icons.code_rounded,
+        icon: Icons.code_rounded,
 
-        current:
-            current,
+        current: current,
 
         target: 1,
 
-        rarity:
-            _AchievementRarity.rare,
+        rarity: _AchievementRarity.rare,
 
         visualTier: 3,
       ),
@@ -1543,16 +1528,13 @@ Future<void> _autoApplyAchievementReward(_Achievement achievement) async {
   try {
     final id = achievement.id;
 
-    if (achievement.id ==
-    followDeveloperAchievementId) {
-  await ProfilePageFrameService
-      .instance
-      .apply(
-    followDeveloperProfilePageFrameId,
-  );
+    if (achievement.id == followDeveloperAchievementId) {
+      await ProfilePageFrameService.instance.apply(
+        followDeveloperProfilePageFrameId,
+      );
 
-  return;
-}
+      return;
+    }
 
     if (id.startsWith('medal_collection_')) {
       // Achievement Button reward.
@@ -1641,7 +1623,7 @@ Future<void> _showAchievementUnlocked(
 
     barrierDismissible: false,
 
-    barrierLabel: 'Achievement unlocked',
+    barrierLabel: trUi(context, 'Achievement unlocked'),
 
     barrierColor: Colors.black.withValues(alpha: 0.78),
 
@@ -1875,7 +1857,7 @@ class _AchievementUnlockDialogState extends State<_AchievementUnlockDialog>
                             // =========================
                             // TITLE
                             // =========================
-                            Text(
+                            UiText(
                               achievement.title,
 
                               textAlign: TextAlign.center,
@@ -1894,7 +1876,7 @@ class _AchievementUnlockDialogState extends State<_AchievementUnlockDialog>
                             // =========================
                             // DESCRIPTION
                             // =========================
-                            Text(
+                            UiText(
                               achievement.description,
 
                               textAlign: TextAlign.center,
@@ -1931,7 +1913,7 @@ class _AchievementUnlockDialogState extends State<_AchievementUnlockDialog>
                                   ),
                                 ),
 
-                                child: const Text(
+                                child: const UiText(
                                   'Great!',
 
                                   style: TextStyle(
@@ -2276,204 +2258,126 @@ class _ChipluxBackgroundPainter extends CustomPainter {
   }
 }
 
-final GlobalKey<NavigatorState>
-    chipluxNavigatorKey =
+final GlobalKey<NavigatorState> chipluxNavigatorKey =
     GlobalKey<NavigatorState>();
 
-    final FlutterLocalNotificationsPlugin
-    chipluxLocalNotifications =
+final FlutterLocalNotificationsPlugin chipluxLocalNotifications =
     FlutterLocalNotificationsPlugin();
 
-
-const AndroidNotificationChannel
-    chipluxNotificationChannel =
+const AndroidNotificationChannel chipluxNotificationChannel =
     AndroidNotificationChannel(
-  'chiplux_notifications',
-  'Chiplux Notifications',
+      'chiplux_notifications',
+      'Chiplux Notifications',
 
-  description:
-      'Notifications from Chiplux.',
+      description: 'Notifications from Chiplux.',
 
-  importance:
-      Importance.high,
-);
+      importance: Importance.high,
+    );
 
-Future<void>
-    _initializeForegroundNotifications()
-    async {
-  const initializationSettings =
-      InitializationSettings(
-    android:
-        AndroidInitializationSettings(
-      '@mipmap/ic_launcher',
-    ),
+Future<void> _initializeForegroundNotifications() async {
+  const initializationSettings = InitializationSettings(
+    android: AndroidInitializationSettings('@mipmap/ic_launcher'),
 
-    iOS:
-        DarwinInitializationSettings(
-      requestAlertPermission:
-          false,
+    iOS: DarwinInitializationSettings(
+      requestAlertPermission: false,
 
-      requestBadgePermission:
-          false,
+      requestBadgePermission: false,
 
-      requestSoundPermission:
-          false,
+      requestSoundPermission: false,
     ),
   );
 
+  await chipluxLocalNotifications.initialize(
+    settings: initializationSettings,
 
-  await chipluxLocalNotifications
-      .initialize(
-    settings:
-        initializationSettings,
+    onDidReceiveNotificationResponse: (response) {
+      final payload = response.payload;
 
-    onDidReceiveNotificationResponse:
-        (response) {
-      final payload =
-          response.payload;
-
-      if (payload == null ||
-          payload.isEmpty) {
+      if (payload == null || payload.isEmpty) {
         return;
       }
 
       try {
-        final decoded =
-            jsonDecode(
-          payload,
-        );
+        final decoded = jsonDecode(payload);
 
         if (decoded is! Map) {
           return;
         }
 
-        final data =
-            Map<String, dynamic>.from(
-          decoded,
-        );
+        final data = Map<String, dynamic>.from(decoded);
 
-        final message =
-            RemoteMessage(
-          data: data,
-        );
+        final message = RemoteMessage(data: data);
 
-        unawaited(
-          _openPushWhenReady(
-            message,
-          ),
-        );
+        unawaited(_openPushWhenReady(message));
       } catch (e) {
-        debugPrint(
-          'Could not open foreground notification: $e',
-        );
+        debugPrint('Could not open foreground notification: $e');
       }
     },
   );
 
-
   await chipluxLocalNotifications
       .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>()
-      ?.createNotificationChannel(
-    chipluxNotificationChannel,
-  );
+        AndroidFlutterLocalNotificationsPlugin
+      >()
+      ?.createNotificationChannel(chipluxNotificationChannel);
 }
 
-Future<void>
-    _showForegroundPush(
-  RemoteMessage message,
-) async {
+Future<void> _showForegroundPush(RemoteMessage message) async {
   final title =
-      message.notification
-              ?.title ??
-          message.data['title']
-              ?.toString() ??
-          'Chiplux';
-
+      message.notification?.title ??
+      message.data['title']?.toString() ??
+      'Chiplux';
 
   final body =
-      message.notification
-              ?.body ??
-          message.data['body']
-              ?.toString() ??
-          '';
-
+      message.notification?.body ?? message.data['body']?.toString() ?? '';
 
   final notificationId =
-      (message.messageId ??
-              DateTime.now()
-                  .microsecondsSinceEpoch
-                  .toString())
+      (message.messageId ?? DateTime.now().microsecondsSinceEpoch.toString())
           .hashCode &
       0x7fffffff;
 
-
-  await chipluxLocalNotifications
-      .show(
+  await chipluxLocalNotifications.show(
     id: notificationId,
 
     title: title,
 
     body: body,
 
-    notificationDetails:
-        const NotificationDetails(
-      android:
-          AndroidNotificationDetails(
+    notificationDetails: const NotificationDetails(
+      android: AndroidNotificationDetails(
         'chiplux_notifications',
 
         'Chiplux Notifications',
 
-        channelDescription:
-            'Notifications from Chiplux.',
+        channelDescription: 'Notifications from Chiplux.',
 
-        importance:
-            Importance.high,
+        importance: Importance.high,
 
-        priority:
-            Priority.high,
+        priority: Priority.high,
 
-        playSound:
-            true,
+        playSound: true,
       ),
     ),
 
     // Keep all FCM routing data.
-    payload:
-        jsonEncode(
-      message.data,
-    ),
+    payload: jsonEncode(message.data),
   );
 }
 
-    String? _pushString(
-  Map<String, dynamic> data,
-  String key,
-) {
+String? _pushString(Map<String, dynamic> data, String key) {
   final value = data[key];
 
   if (value == null) {
     return null;
   }
 
-  final text =
-      value.toString().trim();
+  final text = value.toString().trim();
 
-  return text.isEmpty
-      ? null
-      : text;
+  return text.isEmpty ? null : text;
 }
 
-
-int? _pushInt(
-  Map<String, dynamic> data,
-  String key,
-) {
-  final value =
-      _pushString(
-    data,
-    key,
-  );
+int? _pushInt(Map<String, dynamic> data, String key) {
+  final value = _pushString(data, key);
 
   if (value == null) {
     return null;
@@ -2482,66 +2386,37 @@ int? _pushInt(
   return int.tryParse(value);
 }
 
-
-int _pushAchievementTabIndex(
-  String? achievementId,
-) {
-  if (achievementId == null ||
-      achievementId.isEmpty) {
+int _pushAchievementTabIndex(String? achievementId) {
+  if (achievementId == null || achievementId.isEmpty) {
     return 0;
   }
 
-  if (achievementId.startsWith(
-        'movies_',
-      ) ||
-      achievementId.startsWith(
-        'movies_rated_',
-      )) {
+  if (achievementId.startsWith('movies_') ||
+      achievementId.startsWith('movies_rated_')) {
     return 0;
   }
 
-  if (achievementId.startsWith(
-        'tv_',
-      ) ||
-      achievementId.startsWith(
-        'episodes_',
-      ) ||
-      achievementId.startsWith(
-        'tv_rated_',
-      ) ||
-      achievementId.startsWith(
-        'episodes_rated_',
-      )) {
+  if (achievementId.startsWith('tv_') ||
+      achievementId.startsWith('episodes_') ||
+      achievementId.startsWith('tv_rated_') ||
+      achievementId.startsWith('episodes_rated_')) {
     return 1;
   }
 
-  if (achievementId.startsWith(
-        'followers_',
-      ) ||
-      achievementId.startsWith(
-        'profile_views_',
-      )) {
+  if (achievementId.startsWith('followers_') ||
+      achievementId.startsWith('profile_views_')) {
     return 2;
   }
 
-  if (achievementId.startsWith(
-        'login_',
-      ) ||
-      achievementId.startsWith(
-        'runtime_level_',
-      ) ||
-      achievementId.startsWith(
-        'ratings_level_',
-      ) ||
-      achievementId.startsWith(
-        'medal_collection_',
-      )) {
+  if (achievementId.startsWith('login_') ||
+      achievementId.startsWith('runtime_level_') ||
+      achievementId.startsWith('ratings_level_') ||
+      achievementId.startsWith('medal_collection_')) {
     return 3;
   }
 
   return 0;
 }
-
 
 Future<void> _showChipluxUpdateDialog({
   required BuildContext context,
@@ -2550,21 +2425,14 @@ Future<void> _showChipluxUpdateDialog({
 }) async {
   await showDialog<void>(
     context: context,
-    barrierColor: Colors.black.withValues(
-      alpha: 0.82,
-    ),
+    barrierColor: Colors.black.withValues(alpha: 0.82),
     builder: (dialogContext) {
       return Dialog(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        insetPadding: const EdgeInsets.symmetric(
-          horizontal: 22,
-          vertical: 24,
-        ),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 22, vertical: 24),
         child: Container(
-          constraints: const BoxConstraints(
-            maxWidth: 460,
-          ),
+          constraints: const BoxConstraints(maxWidth: 460),
           padding: const EdgeInsets.all(1.2),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(26),
@@ -2572,34 +2440,21 @@ Future<void> _showChipluxUpdateDialog({
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                chipluxCyan.withValues(
-                  alpha: 0.90,
-                ),
-                chipluxViolet.withValues(
-                  alpha: 0.75,
-                ),
-                chipluxPurple.withValues(
-                  alpha: 0.88,
-                ),
+                chipluxCyan.withValues(alpha: 0.90),
+                chipluxViolet.withValues(alpha: 0.75),
+                chipluxPurple.withValues(alpha: 0.88),
               ],
             ),
             boxShadow: [
               BoxShadow(
-                color: chipluxViolet.withValues(
-                  alpha: 0.20,
-                ),
+                color: chipluxViolet.withValues(alpha: 0.20),
                 blurRadius: 34,
                 spreadRadius: 2,
               ),
             ],
           ),
           child: Container(
-            padding: const EdgeInsets.fromLTRB(
-              20,
-              20,
-              20,
-              18,
-            ),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
             decoration: BoxDecoration(
               color: chipluxSurface,
               borderRadius: BorderRadius.circular(25),
@@ -2620,11 +2475,7 @@ Future<void> _showChipluxUpdateDialog({
                         gradient: const LinearGradient(
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
-                          colors: [
-                            chipluxCyan,
-                            chipluxViolet,
-                            chipluxPurple,
-                          ],
+                          colors: [chipluxCyan, chipluxViolet, chipluxPurple],
                         ),
                       ),
                       child: Container(
@@ -2654,17 +2505,13 @@ Future<void> _showChipluxUpdateDialog({
                                   vertical: 5,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: chipluxCyan.withValues(
-                                    alpha: 0.08,
-                                  ),
+                                  color: chipluxCyan.withValues(alpha: 0.08),
                                   borderRadius: BorderRadius.circular(999),
                                   border: Border.all(
-                                    color: chipluxCyan.withValues(
-                                      alpha: 0.40,
-                                    ),
+                                    color: chipluxCyan.withValues(alpha: 0.40),
                                   ),
                                 ),
-                                child: const Text(
+                                child: const UiText(
                                   'CHIPLUX UPDATE',
                                   style: TextStyle(
                                     color: chipluxCyan,
@@ -2680,9 +2527,7 @@ Future<void> _showChipluxUpdateDialog({
                                   vertical: 5,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: chipluxViolet.withValues(
-                                    alpha: 0.08,
-                                  ),
+                                  color: chipluxViolet.withValues(alpha: 0.08),
                                   borderRadius: BorderRadius.circular(999),
                                   border: Border.all(
                                     color: chipluxViolet.withValues(
@@ -2699,7 +2544,7 @@ Future<void> _showChipluxUpdateDialog({
                                       size: 11,
                                     ),
                                     SizedBox(width: 4),
-                                    Text(
+                                    UiText(
                                       'OFFICIAL',
                                       style: TextStyle(
                                         color: chipluxViolet,
@@ -2754,7 +2599,7 @@ Future<void> _showChipluxUpdateDialog({
                   ),
                 ),
                 const SizedBox(height: 17),
-                const Text(
+                const UiText(
                   "WHAT'S NEW",
                   style: TextStyle(
                     color: Colors.white38,
@@ -2768,14 +2613,10 @@ Future<void> _showChipluxUpdateDialog({
                   width: double.infinity,
                   padding: const EdgeInsets.all(15),
                   decoration: BoxDecoration(
-                    color: chipluxBackground.withValues(
-                      alpha: 0.72,
-                    ),
+                    color: chipluxBackground.withValues(alpha: 0.72),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: Colors.white.withValues(
-                        alpha: 0.07,
-                      ),
+                      color: Colors.white.withValues(alpha: 0.07),
                     ),
                   ),
                   child: Text(
@@ -2792,14 +2633,12 @@ Future<void> _showChipluxUpdateDialog({
                   children: [
                     Icon(
                       Icons.lock_outline_rounded,
-                      color: chipluxCyan.withValues(
-                        alpha: 0.65,
-                      ),
+                      color: chipluxCyan.withValues(alpha: 0.65),
                       size: 13,
                     ),
                     const SizedBox(width: 6),
                     const Expanded(
-                      child: Text(
+                      child: UiText(
                         'Official announcement from Chiplux',
                         style: TextStyle(
                           color: Colors.white38,
@@ -2820,23 +2659,17 @@ Future<void> _showChipluxUpdateDialog({
                     borderRadius: BorderRadius.circular(14),
                     child: Ink(
                       width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 13,
-                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 13),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(14),
                         gradient: const LinearGradient(
-                          colors: [
-                            chipluxCyan,
-                            chipluxViolet,
-                            chipluxPurple,
-                          ],
+                          colors: [chipluxCyan, chipluxViolet, chipluxPurple],
                         ),
                       ),
                       child: const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text(
+                          UiText(
                             'GOT IT',
                             style: TextStyle(
                               color: Colors.white,
@@ -2865,13 +2698,8 @@ Future<void> _showChipluxUpdateDialog({
   );
 }
 
-
-Future<void> _openPushMessage(
-  RemoteMessage message,
-) async {
-  final navigator =
-      chipluxNavigatorKey
-          .currentState;
+Future<void> _openPushMessage(RemoteMessage message) async {
+  final navigator = chipluxNavigatorKey.currentState;
 
   if (navigator == null) {
     return;
@@ -2879,11 +2707,7 @@ Future<void> _openPushMessage(
 
   final data = message.data;
 
-  final type =
-      _pushString(
-    data,
-    'type',
-  );
+  final type = _pushString(data, 'type');
 
   if (type == null) {
     return;
@@ -2891,23 +2715,13 @@ Future<void> _openPushMessage(
 
   // Mark the matching in-app
   // notification as read.
-  final notificationId =
-      _pushString(
-    data,
-    'notification_id',
-  );
+  final notificationId = _pushString(data, 'notification_id');
 
   if (notificationId != null) {
     try {
-      await NotificationService
-          .instance
-          .markRead(
-        notificationId,
-      );
+      await NotificationService.instance.markRead(notificationId);
     } catch (e) {
-      debugPrint(
-        'Could not mark push notification read: $e',
-      );
+      debugPrint('Could not mark push notification read: $e');
     }
   }
 
@@ -2916,161 +2730,96 @@ Future<void> _openPushMessage(
   // ==========================================
 
   if (type == 'new_follower') {
-    final userId =
-        _pushString(
-      data,
-      'actor_user_id',
-    );
+    final userId = _pushString(data, 'actor_user_id');
 
     if (userId == null) {
       return;
     }
 
     await navigator.push(
-      MaterialPageRoute(
-        builder: (_) =>
-            PublicProfilePage(
-          userId: userId,
-        ),
-      ),
+      MaterialPageRoute(builder: (_) => PublicProfilePage(userId: userId)),
     );
 
     return;
   }
-
 
   // ==========================================
   // ACHIEVEMENT
   // ==========================================
 
   if (type == 'achievement') {
-    final achievementId =
-        _pushString(
-      data,
-      'achievement_id',
-    );
+    final achievementId = _pushString(data, 'achievement_id');
 
     await navigator.push(
       MaterialPageRoute(
-        builder: (_) =>
-            AchievementsPage(
-          initialTabIndex:
-              _pushAchievementTabIndex(
-            achievementId,
-          ),
+        builder: (_) => AchievementsPage(
+          initialTabIndex: _pushAchievementTabIndex(achievementId),
 
-          initialAchievementId:
-              achievementId,
+          initialAchievementId: achievementId,
         ),
       ),
     );
 
     return;
   }
-
 
   // ==========================================
   // RELEASE
   // ==========================================
 
   if (type == 'release') {
-    final tmdbId =
-        _pushInt(
-      data,
-      'tmdb_id',
-    );
+    final tmdbId = _pushInt(data, 'tmdb_id');
 
-    final mediaType =
-        _pushString(
-      data,
-      'media_type',
-    );
+    final mediaType = _pushString(data, 'media_type');
 
     if (tmdbId == null ||
         mediaType == null ||
-        (mediaType != 'movie' &&
-            mediaType != 'tv')) {
+        (mediaType != 'movie' && mediaType != 'tv')) {
       return;
     }
 
     await navigator.push(
       MaterialPageRoute(
-        builder: (_) =>
-            MediaDetailsPage(
-          id: tmdbId,
-          mediaType:
-              mediaType,
-        ),
+        builder: (_) => MediaDetailsPage(id: tmdbId, mediaType: mediaType),
       ),
     );
 
     return;
   }
 
-
   // ==========================================
   // NEW EPISODE
   // ==========================================
 
   if (type == 'new_episode') {
-    final showId =
-        _pushInt(
-      data,
-      'tmdb_id',
-    );
+    final showId = _pushInt(data, 'tmdb_id');
 
-    final seasonNumber =
-        _pushInt(
-      data,
-      'season_number',
-    );
+    final seasonNumber = _pushInt(data, 'season_number');
 
-    final episodeNumber =
-        _pushInt(
-      data,
-      'episode_number',
-    );
+    final episodeNumber = _pushInt(data, 'episode_number');
 
-    if (showId == null ||
-        seasonNumber == null ||
-        episodeNumber == null) {
+    if (showId == null || seasonNumber == null || episodeNumber == null) {
       return;
     }
 
     try {
-      final tmdb =
-          TmdbService();
+      final tmdb = TmdbService();
 
-      final episodes =
-          await tmdb
-              .getSeasonEpisodes(
-        showId,
-        seasonNumber,
-      );
+      final episodes = await tmdb.getSeasonEpisodes(showId, seasonNumber);
 
-      Map<String, dynamic>?
-          foundEpisode;
+      Map<String, dynamic>? foundEpisode;
 
-      for (final raw
-          in episodes) {
+      for (final raw in episodes) {
         if (raw is! Map) {
           continue;
         }
 
-        final episode =
-            Map<String, dynamic>.from(
-          raw,
-        );
+        final episode = Map<String, dynamic>.from(raw);
 
-        final rawNumber =
-            episode[
-                'episode_number'];
+        final rawNumber = episode['episode_number'];
 
-        if (rawNumber is num &&
-            rawNumber.toInt() ==
-                episodeNumber) {
-          foundEpisode =
-              episode;
+        if (rawNumber is num && rawNumber.toInt() == episodeNumber) {
+          foundEpisode = episode;
 
           break;
         }
@@ -3080,190 +2829,100 @@ Future<void> _openPushMessage(
         return;
       }
 
-      final rawRuntime =
-          foundEpisode[
-              'runtime'];
+      final rawRuntime = foundEpisode['runtime'];
 
-      final rawRating =
-          foundEpisode[
-              'vote_average'];
+      final rawRating = foundEpisode['vote_average'];
 
       await navigator.push(
         MaterialPageRoute(
-          builder: (_) =>
-              SwipeableEpisodePage(
-            showId:
-                showId,
+          builder: (_) => SwipeableEpisodePage(
+            showId: showId,
 
-            seasonNumber:
-                seasonNumber,
+            seasonNumber: seasonNumber,
 
-            episodeNumber:
-                episodeNumber,
+            episodeNumber: episodeNumber,
 
             title:
-                foundEpisode?[
-                            'name']
-                        ?.toString() ??
-                    'Episode $episodeNumber',
+                foundEpisode?['name']?.toString() ?? 'Episode $episodeNumber',
 
-            stillPath:
-                foundEpisode?[
-                        'still_path']
-                    ?.toString(),
+            stillPath: foundEpisode?['still_path']?.toString(),
 
-            runtime:
-                rawRuntime
-                        is num
-                    ? rawRuntime
-                        .toInt()
-                    : null,
+            runtime: rawRuntime is num ? rawRuntime.toInt() : null,
 
-            rating:
-                rawRating is num &&
-                        rawRating
-                                .toDouble() >
-                            0
-                    ? rawRating
-                        .toDouble()
-                    : null,
+            rating: rawRating is num && rawRating.toDouble() > 0
+                ? rawRating.toDouble()
+                : null,
 
-            overview:
-                foundEpisode?[
-                            'overview']
-                        ?.toString() ??
-                    '',
+            overview: foundEpisode?['overview']?.toString() ?? '',
 
-            airDate:
-                foundEpisode?[
-                        'air_date']
-                    ?.toString(),
+            airDate: foundEpisode?['air_date']?.toString(),
           ),
         ),
       );
     } catch (e) {
-      debugPrint(
-        'Could not open push episode: $e',
-      );
+      debugPrint('Could not open push episode: $e');
     }
 
     return;
   }
 
-
   // ==========================================
   // COMMENT / LIKE MILESTONE
   // ==========================================
 
-  if (type ==
-          'comment_reply' ||
-      type ==
-          'comment_like_milestone') {
-    final mediaType =
-        _pushString(
-      data,
-      'media_type',
-    );
+  if (type == 'comment_reply' || type == 'comment_like_milestone') {
+    final mediaType = _pushString(data, 'media_type');
 
-    final tmdbId =
-        _pushInt(
-      data,
-      'tmdb_id',
-    );
+    final tmdbId = _pushInt(data, 'tmdb_id');
 
-    final targetCommentId =
-        _pushString(
-      data,
-      'comment_id',
-    );
+    final targetCommentId = _pushString(data, 'comment_id');
 
-    if (mediaType == null ||
-        tmdbId == null) {
+    if (mediaType == null || tmdbId == null) {
       return;
     }
 
-    final tmdb =
-        TmdbService();
+    final tmdb = TmdbService();
 
     try {
       // ======================================
       // EPISODE COMMENT
       // ======================================
 
-      if (mediaType ==
-          'episode') {
-        final seasonNumber =
-            _pushInt(
-          data,
-          'season_number',
-        );
+      if (mediaType == 'episode') {
+        final seasonNumber = _pushInt(data, 'season_number');
 
-        final episodeNumber =
-            _pushInt(
-          data,
-          'episode_number',
-        );
+        final episodeNumber = _pushInt(data, 'episode_number');
 
-        if (seasonNumber ==
-                null ||
-            episodeNumber ==
-                null) {
+        if (seasonNumber == null || episodeNumber == null) {
           return;
         }
 
-        final showDetails =
-            await tmdb
-                .getDetails(
-          tmdbId,
-          'tv',
-        );
+        final showDetails = await tmdb.getDetails(tmdbId, 'tv');
 
-        final episodes =
-            await tmdb
-                .getSeasonEpisodes(
-          tmdbId,
-          seasonNumber,
-        );
+        final episodes = await tmdb.getSeasonEpisodes(tmdbId, seasonNumber);
 
-        Map<String, dynamic>?
-            episodeDetails;
+        Map<String, dynamic>? episodeDetails;
 
-        for (final raw
-            in episodes) {
+        for (final raw in episodes) {
           if (raw is! Map) {
             continue;
           }
 
-          final episode =
-              Map<String, dynamic>.from(
-            raw,
-          );
+          final episode = Map<String, dynamic>.from(raw);
 
-          final rawNumber =
-              episode[
-                  'episode_number'];
+          final rawNumber = episode['episode_number'];
 
-          if (rawNumber is num &&
-              rawNumber.toInt() ==
-                  episodeNumber) {
-            episodeDetails =
-                episode;
+          if (rawNumber is num && rawNumber.toInt() == episodeNumber) {
+            episodeDetails = episode;
 
             break;
           }
         }
 
-        final showTitle =
-            (showDetails[
-                        'name'] ??
-                    'TV Show')
-                .toString();
+        final showTitle = (showDetails['name'] ?? 'TV Show').toString();
 
         final episodeTitle =
-            (episodeDetails?[
-                        'name'] ??
-                    'Episode $episodeNumber')
-                .toString();
+            (episodeDetails?['name'] ?? 'Episode $episodeNumber').toString();
 
         final episodeCode =
             'S${seasonNumber.toString().padLeft(2, '0')}'
@@ -3271,45 +2930,27 @@ Future<void> _openPushMessage(
 
         await navigator.push(
           MaterialPageRoute(
-            builder: (_) =>
-                CommentsPage(
-              mediaType:
-                  'episode',
+            builder: (_) => CommentsPage(
+              mediaType: 'episode',
 
-              tmdbId:
-                  tmdbId,
+              tmdbId: tmdbId,
 
-              seasonNumber:
-                  seasonNumber,
+              seasonNumber: seasonNumber,
 
-              episodeNumber:
-                  episodeNumber,
+              episodeNumber: episodeNumber,
 
-              title:
-                  episodeTitle,
+              title: episodeTitle,
 
-              subtitle:
-                  '$showTitle • $episodeCode',
+              subtitle: '$showTitle • $episodeCode',
 
-              imagePath:
-                  episodeDetails?[
-                          'still_path']
-                      ?.toString(),
+              imagePath: episodeDetails?['still_path']?.toString(),
 
-              targetCommentId:
-                  targetCommentId,
+              targetCommentId: targetCommentId,
 
-              onProfileTap:
-                  (userId) async {
-                await chipluxNavigatorKey
-                    .currentState
-                    ?.push(
+              onProfileTap: (userId) async {
+                await chipluxNavigatorKey.currentState?.push(
                   MaterialPageRoute(
-                    builder: (_) =>
-                        PublicProfilePage(
-                      userId:
-                          userId,
-                    ),
+                    builder: (_) => PublicProfilePage(userId: userId),
                   ),
                 );
               },
@@ -3320,60 +2961,33 @@ Future<void> _openPushMessage(
         return;
       }
 
-
       // ======================================
       // MOVIE / TV COMMENT
       // ======================================
 
-      if (mediaType ==
-              'movie' ||
-          mediaType ==
-              'tv') {
-        final details =
-            await tmdb
-                .getDetails(
-          tmdbId,
-          mediaType,
-        );
+      if (mediaType == 'movie' || mediaType == 'tv') {
+        final details = await tmdb.getDetails(tmdbId, mediaType);
 
-        final title =
-            (details['title'] ??
-                    details['name'] ??
-                    'Discussion')
-                .toString();
+        final title = (details['title'] ?? details['name'] ?? 'Discussion')
+            .toString();
 
         await navigator.push(
           MaterialPageRoute(
-            builder: (_) =>
-                CommentsPage(
-              mediaType:
-                  mediaType,
+            builder: (_) => CommentsPage(
+              mediaType: mediaType,
 
-              tmdbId:
-                  tmdbId,
+              tmdbId: tmdbId,
 
-              title:
-                  title,
+              title: title,
 
-              imagePath:
-                  details[
-                          'backdrop_path']
-                      ?.toString(),
+              imagePath: details['backdrop_path']?.toString(),
 
-              targetCommentId:
-                  targetCommentId,
+              targetCommentId: targetCommentId,
 
-              onProfileTap:
-                  (userId) async {
-                await chipluxNavigatorKey
-                    .currentState
-                    ?.push(
+              onProfileTap: (userId) async {
+                await chipluxNavigatorKey.currentState?.push(
                   MaterialPageRoute(
-                    builder: (_) =>
-                        PublicProfilePage(
-                      userId:
-                          userId,
-                    ),
+                    builder: (_) => PublicProfilePage(userId: userId),
                   ),
                 );
               },
@@ -3384,62 +2998,39 @@ Future<void> _openPushMessage(
         return;
       }
     } catch (e) {
-      debugPrint(
-        'Could not open push discussion: $e',
-      );
+      debugPrint('Could not open push discussion: $e');
     }
 
     return;
   }
 
-
   // ==========================================
   // FEATURE SUGGESTION STATUS
   // ==========================================
 
-  if (type ==
-      'feature_suggestion_status') {
+  if (type == 'feature_suggestion_status') {
     await navigator.push(
-      MaterialPageRoute(
-        builder: (_) => const FeatureBoardPage(),
-      ),
+      MaterialPageRoute(builder: (_) => const FeatureBoardPage()),
     );
 
     return;
   }
 
-
   // ==========================================
   // CHIPLUX UPDATE
   // ==========================================
 
-  if (type ==
-      'chiplux_update') {
-
-
+  if (type == 'chiplux_update') {
     final title =
-        _pushString(
-          data,
-          'title',
-        ) ??
-        message.notification
-            ?.title ??
+        _pushString(data, 'title') ??
+        message.notification?.title ??
         'Chiplux Update';
 
-    final body =
-        _pushString(
-          data,
-          'body',
-        ) ??
-        message.notification
-            ?.body ??
-        '';
+    final body = _pushString(data, 'body') ?? message.notification?.body ?? '';
 
-    final dialogContext =
-        chipluxNavigatorKey.currentContext;
+    final dialogContext = chipluxNavigatorKey.currentContext;
 
-    if (dialogContext == null ||
-        !dialogContext.mounted) {
+    if (dialogContext == null || !dialogContext.mounted) {
       return;
     }
 
@@ -3453,69 +3044,38 @@ Future<void> _openPushMessage(
   }
 }
 
-Future<void> _openPushWhenReady(
-  RemoteMessage message,
-) async {
+Future<void> _openPushWhenReady(RemoteMessage message) async {
   // Cold start can take a moment before
   // MaterialApp/AuthGate has a navigator.
 
-  for (int attempt = 0;
-      attempt < 30;
-      attempt++) {
-    final navigatorReady =
-        chipluxNavigatorKey
-                .currentState !=
-            null;
+  for (int attempt = 0; attempt < 30; attempt++) {
+    final navigatorReady = chipluxNavigatorKey.currentState != null;
 
-    final userReady =
-        AuthService.instance
-                .currentUser !=
-            null;
+    final userReady = AuthService.instance.currentUser != null;
 
-    if (navigatorReady &&
-        userReady) {
-      await _openPushMessage(
-        message,
-      );
+    if (navigatorReady && userReady) {
+      await _openPushMessage(message);
 
       return;
     }
 
-    await Future<void>.delayed(
-      const Duration(
-        milliseconds: 150,
-      ),
-    );
+    await Future<void>.delayed(const Duration(milliseconds: 150));
   }
 
-  debugPrint(
-    'Push tap could not be routed because the app was not ready.',
-  );
+  debugPrint('Push tap could not be routed because the app was not ready.');
 }
 
-class ChipluxApp
-    extends StatefulWidget {
-  const ChipluxApp({
-    super.key,
-  });
+class ChipluxApp extends StatefulWidget {
+  const ChipluxApp({super.key});
 
   @override
-  State<ChipluxApp>
-      createState() =>
-          _ChipluxAppState();
+  State<ChipluxApp> createState() => _ChipluxAppState();
 }
 
+class _ChipluxAppState extends State<ChipluxApp> {
+  StreamSubscription<RemoteMessage>? _pushTapSubscription;
 
-class _ChipluxAppState
-    extends State<ChipluxApp> {
-  StreamSubscription<
-      RemoteMessage>?
-      _pushTapSubscription;
-
-  StreamSubscription<
-      RemoteMessage>?
-      _foregroundPushSubscription;
-
+  StreamSubscription<RemoteMessage>? _foregroundPushSubscription;
 
   @override
   void initState() {
@@ -3525,131 +3085,94 @@ class _ChipluxAppState
     // APP IS OPEN / FOREGROUND
     // =========================================
 
-    _foregroundPushSubscription =
-        FirebaseMessaging
-            .onMessage
-            .listen(
-      (message) {
-        unawaited(
-          _showForegroundPush(
-            message,
-          ),
-        );
-      },
-    );
+    _foregroundPushSubscription = FirebaseMessaging.onMessage.listen((message) {
+      unawaited(_showForegroundPush(message));
+    });
 
     // =========================================
     // APP WAS IN BACKGROUND
     // =========================================
 
-    _pushTapSubscription =
-        FirebaseMessaging
-            .onMessageOpenedApp
-            .listen(
-      (message) {
-        unawaited(
-          _openPushWhenReady(
-            message,
-          ),
-        );
-      },
-    );
-
+    _pushTapSubscription = FirebaseMessaging.onMessageOpenedApp.listen((
+      message,
+    ) {
+      unawaited(_openPushWhenReady(message));
+    });
 
     // =========================================
     // APP WAS COMPLETELY CLOSED
     // =========================================
 
-    WidgetsBinding.instance
-        .addPostFrameCallback(
-      (_) {
-        unawaited(
-          _checkInitialPush(),
-        );
-      },
-    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_checkInitialPush());
+    });
   }
 
-
-  Future<void>
-      _checkInitialPush() async {
-    final message =
-        await FirebaseMessaging
-            .instance
-            .getInitialMessage();
+  Future<void> _checkInitialPush() async {
+    final message = await FirebaseMessaging.instance.getInitialMessage();
 
     if (message == null) {
       return;
     }
 
-    await _openPushWhenReady(
-      message,
-    );
+    await _openPushWhenReady(message);
   }
-
 
   @override
   void dispose() {
-    _pushTapSubscription
-        ?.cancel();
+    _pushTapSubscription?.cancel();
 
-    _foregroundPushSubscription
-        ?.cancel();
+    _foregroundPushSubscription?.cancel();
 
     super.dispose();
   }
 
-
   @override
-  Widget build(
-    BuildContext context,
-  ) {
-    return MaterialApp(
-      navigatorKey:
-          chipluxNavigatorKey,
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: LocaleService.instance,
+      builder: (context, _) {
+        return MaterialApp(
+          navigatorKey: chipluxNavigatorKey,
 
-      debugShowCheckedModeBanner:
-          false,
+          debugShowCheckedModeBanner: false,
 
-      title: 'Chiplux',
+          title: 'Chiplux',
 
-      theme: ThemeData(
-        brightness:
-            Brightness.dark,
+          locale: LocaleService.instance.locale,
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
 
-        scaffoldBackgroundColor:
-            chipluxBackground,
+          theme: ThemeData(
+            brightness: Brightness.dark,
 
-        colorScheme:
-            const ColorScheme.dark(
-          primary:
-              chipluxCyan,
+            scaffoldBackgroundColor: chipluxBackground,
 
-          secondary:
-              chipluxViolet,
+            colorScheme: const ColorScheme.dark(
+              primary: chipluxCyan,
 
-          surface:
-              chipluxSurface,
-        ),
+              secondary: chipluxViolet,
 
-        useMaterial3: true,
+              surface: chipluxSurface,
+            ),
 
-        navigationBarTheme:
-            const NavigationBarThemeData(
-          backgroundColor:
-              Color(
-            0xFF091521,
+            useMaterial3: true,
+
+            navigationBarTheme: const NavigationBarThemeData(
+              backgroundColor: Color(0xFF091521),
+
+              indicatorColor: Color(0xFF173A50),
+            ),
           ),
 
-          indicatorColor:
-              Color(
-            0xFF173A50,
-          ),
-        ),
-      ),
-
-      home:
-          const AuthGate(),
+          home: const AuthGate(),
+        );
+      },
     );
   }
 }
@@ -4170,7 +3693,7 @@ class _LoginPageState extends State<LoginPage> {
 
                     const SizedBox(height: 10),
 
-                    const Text(
+                    const UiText(
                       'Your Taste · Your Story',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: Colors.white54, letterSpacing: 2),
@@ -4198,7 +3721,7 @@ class _LoginPageState extends State<LoginPage> {
                         onChanged: _onUsernameChanged,
 
                         decoration: InputDecoration(
-                          labelText: 'Username',
+                          label: const UiText('Username'),
 
                           prefixText: '@',
 
@@ -4232,7 +3755,7 @@ class _LoginPageState extends State<LoginPage> {
                       if (usernameStatus != null)
                         Align(
                           alignment: Alignment.centerLeft,
-                          child: Text(
+                          child: UiText(
                             usernameStatus!,
                             style: TextStyle(
                               fontSize: 12,
@@ -4250,7 +3773,7 @@ class _LoginPageState extends State<LoginPage> {
 
                         const Align(
                           alignment: Alignment.centerLeft,
-                          child: Text(
+                          child: UiText(
                             'Try one of these:',
                             style: TextStyle(
                               color: Colors.white54,
@@ -4269,7 +3792,7 @@ class _LoginPageState extends State<LoginPage> {
 
                             children: usernameSuggestions.map((suggestion) {
                               return ActionChip(
-                                label: Text('@$suggestion'),
+                                label: UiText('@$suggestion'),
                                 onPressed: () {
                                   _useUsernameSuggestion(suggestion);
                                 },
@@ -4299,7 +3822,9 @@ class _LoginPageState extends State<LoginPage> {
                       textInputAction: TextInputAction.next,
 
                       decoration: InputDecoration(
-                        labelText: signupMode ? 'Email' : 'Email or username',
+                        label: UiText(
+                          signupMode ? 'Email' : 'Email or username',
+                        ),
 
                         prefixIcon: Icon(
                           signupMode
@@ -4328,7 +3853,9 @@ class _LoginPageState extends State<LoginPage> {
                       },
 
                       decoration: InputDecoration(
-                        labelText: signupMode ? 'Create Password' : 'Password',
+                        label: UiText(
+                          signupMode ? 'Create Password' : 'Password',
+                        ),
 
                         prefixIcon: const Icon(Icons.lock_outline),
 
@@ -4345,9 +3872,10 @@ class _LoginPageState extends State<LoginPage> {
                                 : Icons.visibility_outlined,
                           ),
 
-                          tooltip: showPassword
-                              ? 'Hide password'
-                              : 'Show password',
+                          tooltip: trUi(
+                            context,
+                            showPassword ? 'Hide password' : 'Show password',
+                          ),
                         ),
                       ),
                     ),
@@ -4386,7 +3914,7 @@ class _LoginPageState extends State<LoginPage> {
                                       rememberMe = !rememberMe;
                                     });
                                   },
-                            child: const Text(
+                            child: const UiText(
                               'Remember Me',
                               style: TextStyle(
                                 color: Colors.white70,
@@ -4419,7 +3947,7 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ),
 
-                        child: Text(
+                        child: UiText(
                           message!,
                           textAlign: TextAlign.center,
                           style: const TextStyle(
@@ -4452,7 +3980,9 @@ class _LoginPageState extends State<LoginPage> {
                                     strokeWidth: 2,
                                   ),
                                 )
-                              : Text(signupMode ? 'Create Account' : 'Sign In'),
+                              : UiText(
+                                  signupMode ? 'Create Account' : 'Sign In',
+                                ),
                         ),
                       ),
                     ),
@@ -4465,7 +3995,7 @@ class _LoginPageState extends State<LoginPage> {
                     TextButton(
                       onPressed: loading ? null : _toggleMode,
 
-                      child: Text(
+                      child: UiText(
                         signupMode
                             ? 'Already have an account? Sign In'
                             : 'Don\'t have an account? Create Account',
@@ -5317,7 +4847,7 @@ class _CommunityPageState extends State<CommunityPage>
             child: Row(
               children: [
                 const Expanded(
-                  child: Text(
+                  child: UiText(
                     'Community',
                     style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                   ),
@@ -5381,15 +4911,15 @@ class _CommunityPageState extends State<CommunityPage>
                 labelPadding: const EdgeInsets.symmetric(horizontal: 20),
 
                 tabs: [
-                  const Tab(text: 'Friends Watch'),
+                  const Tab(child: UiText('Friends Watch')),
 
-                  const Tab(text: 'Find Friends'),
+                  const Tab(child: UiText('Find Friends')),
 
                   Tab(
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text('Followers'),
+                        const UiText('Followers'),
 
                         if (newFollowersToday > 0) ...[
                           const SizedBox(width: 6),
@@ -5406,7 +4936,7 @@ class _CommunityPageState extends State<CommunityPage>
                               fit: BoxFit.scaleDown,
                               child: Padding(
                                 padding: const EdgeInsets.all(3),
-                                child: Text(
+                                child: UiText(
                                   '$newFollowersToday',
                                   style: const TextStyle(
                                     color: Colors.black,
@@ -5422,11 +4952,11 @@ class _CommunityPageState extends State<CommunityPage>
                     ),
                   ),
 
-                  const Tab(text: 'Following'),
+                  const Tab(child: UiText('Following')),
 
                   const Tab(
                     icon: Icon(Icons.lightbulb_outline_rounded, size: 18),
-                    text: 'Feature Board',
+                    child: UiText('Feature Board'),
                   ),
                 ],
               ),
@@ -5507,16 +5037,10 @@ class FeatureBoardPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: chipluxBackground,
-      appBar: AppBar(
-        backgroundColor: chipluxBackground,
-        elevation: 0,
-      ),
+      appBar: AppBar(backgroundColor: chipluxBackground, elevation: 0),
       body: const ChipluxBackground(
         style: ChipluxBackgroundStyle.community,
-        child: SafeArea(
-          top: false,
-          child: _FeatureBoardTab(),
-        ),
+        child: SafeArea(top: false, child: _FeatureBoardTab()),
       ),
     );
   }
@@ -5680,7 +5204,7 @@ class _FeatureBoardTabState extends State<_FeatureBoardTab> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: chipluxSurfaceLight,
-          content: Text('Could not update like: $e'),
+          content: UiText('Could not update like: $e'),
         ),
       );
     }
@@ -5694,9 +5218,7 @@ class _FeatureBoardTabState extends State<_FeatureBoardTab> {
 
     await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => PublicProfilePage(userId: userId),
-      ),
+      MaterialPageRoute(builder: (_) => PublicProfilePage(userId: userId)),
     );
   }
 
@@ -5736,7 +5258,7 @@ class _FeatureBoardTabState extends State<_FeatureBoardTab> {
               color: selected ? Colors.white : Colors.white54,
             ),
             const SizedBox(width: 6),
-            Text(
+            UiText(
               label,
               style: TextStyle(
                 color: selected ? Colors.white : Colors.white70,
@@ -5765,7 +5287,7 @@ class _FeatureBoardTabState extends State<_FeatureBoardTab> {
         children: [
           Icon(_statusIcon(status), size: 14, color: color),
           const SizedBox(width: 5),
-          Text(
+          UiText(
             _statusLabel(status).toUpperCase(),
             style: TextStyle(
               color: color,
@@ -5793,7 +5315,7 @@ class _FeatureBoardTabState extends State<_FeatureBoardTab> {
             ),
           ),
           SizedBox(width: 9),
-          Text(
+          UiText(
             'Suggested by a Chiplux user',
             style: TextStyle(
               color: Colors.white54,
@@ -5805,7 +5327,8 @@ class _FeatureBoardTabState extends State<_FeatureBoardTab> {
       );
     }
 
-    final username = suggestion['suggested_by_username']?.toString().trim() ?? '';
+    final username =
+        suggestion['suggested_by_username']?.toString().trim() ?? '';
     final displayName =
         suggestion['suggested_by_display_name']?.toString().trim() ?? '';
     final avatarUrl = suggestion['suggested_by_avatar_url']?.toString();
@@ -5813,8 +5336,8 @@ class _FeatureBoardTabState extends State<_FeatureBoardTab> {
     final label = username.isNotEmpty
         ? '@$username'
         : displayName.isNotEmpty
-            ? displayName
-            : 'Chiplux user';
+        ? displayName
+        : 'Chiplux user';
 
     return InkWell(
       borderRadius: BorderRadius.circular(12),
@@ -5842,9 +5365,9 @@ class _FeatureBoardTabState extends State<_FeatureBoardTab> {
               child: Text.rich(
                 TextSpan(
                   children: [
-                    const TextSpan(
-                      text: 'Suggested by ',
-                      style: TextStyle(color: Colors.white54),
+                    TextSpan(
+                      text: trUi(context, 'Suggested by '),
+                      style: const TextStyle(color: Colors.white54),
                     ),
                     TextSpan(
                       text: label,
@@ -5892,9 +5415,7 @@ class _FeatureBoardTabState extends State<_FeatureBoardTab> {
             decoration: BoxDecoration(
               color: chipluxViolet.withValues(alpha: 0.06),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: chipluxViolet.withValues(alpha: 0.16),
-              ),
+              border: Border.all(color: chipluxViolet.withValues(alpha: 0.16)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -5907,7 +5428,7 @@ class _FeatureBoardTabState extends State<_FeatureBoardTab> {
                       size: 15,
                     ),
                     const SizedBox(width: 6),
-                    const Text(
+                    const UiText(
                       'CHIPLUX UPDATE',
                       style: TextStyle(
                         color: chipluxViolet,
@@ -5917,7 +5438,7 @@ class _FeatureBoardTabState extends State<_FeatureBoardTab> {
                       ),
                     ),
                     const Spacer(),
-                    Text(
+                    UiText(
                       _timeAgo(update['created_at']),
                       style: const TextStyle(
                         color: Colors.white30,
@@ -5979,22 +5500,17 @@ class _FeatureBoardTabState extends State<_FeatureBoardTab> {
               children: [
                 _statusPill(status),
                 const Spacer(),
-                Text(
+                UiText(
                   _timeAgo(suggestion['status_changed_at']),
-                  style: const TextStyle(
-                    color: Colors.white30,
-                    fontSize: 10.5,
-                  ),
+                  style: const TextStyle(color: Colors.white30, fontSize: 10.5),
                 ),
               ],
             ),
             const SizedBox(height: 13),
             Text(
-              suggestion['title']?.toString() ?? 'Feature suggestion',
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-              ),
+              suggestion['title']?.toString() ??
+                  trUi(context, 'Feature suggestion'),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 8),
             Text(
@@ -6043,7 +5559,7 @@ class _FeatureBoardTabState extends State<_FeatureBoardTab> {
                             size: 18,
                           ),
                           const SizedBox(width: 7),
-                          Text(
+                          UiText(
                             '$likeCount',
                             style: TextStyle(
                               color: liked ? chipluxPurple : Colors.white70,
@@ -6056,12 +5572,9 @@ class _FeatureBoardTabState extends State<_FeatureBoardTab> {
                   ),
                 ),
                 const Spacer(),
-                const Text(
+                const UiText(
                   'Developer updates only',
-                  style: TextStyle(
-                    color: Colors.white30,
-                    fontSize: 10.5,
-                  ),
+                  style: TextStyle(color: Colors.white30, fontSize: 10.5),
                 ),
               ],
             ),
@@ -6095,7 +5608,7 @@ class _FeatureBoardTabState extends State<_FeatureBoardTab> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  const Text(
+                  const UiText(
                     'See which community ideas Chiplux is building, has shipped or has decided not to pursue.',
                     style: TextStyle(
                       color: Colors.white54,
@@ -6137,9 +5650,7 @@ class _FeatureBoardTabState extends State<_FeatureBoardTab> {
           if (loading)
             const SliverFillRemaining(
               hasScrollBody: false,
-              child: Center(
-                child: CircularProgressIndicator(),
-              ),
+              child: Center(child: CircularProgressIndicator()),
             )
           else if (errorMessage != null)
             SliverFillRemaining(
@@ -6156,7 +5667,7 @@ class _FeatureBoardTabState extends State<_FeatureBoardTab> {
                         size: 42,
                       ),
                       const SizedBox(height: 12),
-                      Text(
+                      UiText(
                         errorMessage!,
                         textAlign: TextAlign.center,
                         style: const TextStyle(color: Colors.white54),
@@ -6181,7 +5692,7 @@ class _FeatureBoardTabState extends State<_FeatureBoardTab> {
                         size: 44,
                       ),
                       SizedBox(height: 12),
-                      Text(
+                      UiText(
                         'No feature suggestions in this category yet.',
                         textAlign: TextAlign.center,
                         style: TextStyle(color: Colors.white54),
@@ -6195,12 +5706,9 @@ class _FeatureBoardTabState extends State<_FeatureBoardTab> {
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(18, 2, 18, 35),
               sliver: SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    return _featureCard(visible[index]);
-                  },
-                  childCount: visible.length,
-                ),
+                delegate: SliverChildBuilderDelegate((context, index) {
+                  return _featureCard(visible[index]);
+                }, childCount: visible.length),
               ),
             ),
         ],
@@ -6219,7 +5727,6 @@ class _FeatureBoardTabState extends State<_FeatureBoardTab> {
     super.dispose();
   }
 }
-
 
 class _FindFriendsTab extends StatefulWidget {
   const _FindFriendsTab();
@@ -6276,10 +5783,7 @@ class _FindFriendsTabState extends State<_FindFriendsTab> {
 
       final result = await client.rpc(
         'search_visible_profiles',
-        params: {
-          'p_query': query,
-          'p_limit': 20,
-        },
+        params: {'p_query': query, 'p_limit': 20},
       );
 
       if (!mounted || generation != _searchGeneration) {
@@ -6369,7 +5873,7 @@ class _FindFriendsTabState extends State<_FindFriendsTab> {
             textInputAction: TextInputAction.search,
 
             decoration: InputDecoration(
-              hintText: 'Search name or username',
+              hint: const UiText('Search name or username'),
 
               prefixIcon: const Icon(Icons.search_rounded),
 
@@ -6446,7 +5950,14 @@ class _CommunityUsersList extends StatelessWidget {
 
     if (users.isEmpty) {
       return Center(
-        child: Text(emptyText, style: const TextStyle(color: Colors.white54)),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 28),
+          child: UiText(
+            emptyText,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white54),
+          ),
+        ),
       );
     }
 
@@ -6550,7 +6061,7 @@ class _CommunityUsersList extends StatelessWidget {
                         if (username.isNotEmpty) ...[
                           const SizedBox(height: 3),
 
-                          Text(
+                          UiText(
                             '@$username',
                             style: const TextStyle(
                               color: Colors.white54,
@@ -6567,7 +6078,7 @@ class _CommunityUsersList extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       if (isNewToday) ...[
-                        const Text(
+                        const UiText(
                           'New',
                           style: TextStyle(
                             color: Color(0xFFFFC857),
@@ -6638,7 +6149,7 @@ class _FriendsWatchList extends StatelessWidget {
 
                   SizedBox(height: 12),
 
-                  Text(
+                  UiText(
                     'Nothing here yet.',
                     style: TextStyle(
                       color: Colors.white70,
@@ -6649,7 +6160,7 @@ class _FriendsWatchList extends StatelessWidget {
 
                   SizedBox(height: 5),
 
-                  Text(
+                  UiText(
                     'Activity from you and people you follow will appear here.',
                     textAlign: TextAlign.center,
                     style: TextStyle(color: Colors.white38, fontSize: 13),
@@ -6947,7 +6458,7 @@ class _FriendsWatchRow extends StatelessWidget {
                       ),
                     ),
 
-                    Text(
+                    UiText(
                       prefix,
                       style: const TextStyle(
                         color: Colors.white60,
@@ -6963,7 +6474,10 @@ class _FriendsWatchRow extends StatelessWidget {
                           : null,
 
                       child: Text(
-                        target,
+                        type == 'achievement_unlocked' ||
+                                target == 'Unknown title'
+                            ? trUi(context, target)
+                            : target,
                         style: TextStyle(
                           color: canOpenTarget ? chipluxCyan : chipluxViolet,
 
@@ -6994,7 +6508,7 @@ class _FriendsWatchRow extends StatelessWidget {
 
                 const SizedBox(height: 7),
 
-                Text(
+                UiText(
                   _timeAgo(),
                   style: const TextStyle(color: Colors.white30, fontSize: 12),
                 ),
@@ -7353,8 +6867,7 @@ class _PublicCompletedTvShowsPageState
       setState(() {
         loading = false;
         shows = [];
-        errorMessage =
-            'This user is not sharing this profile information.';
+        errorMessage = 'This user is not sharing this profile information.';
       });
 
       return;
@@ -7432,7 +6945,7 @@ class _PublicCompletedTvShowsPageState
                         crossAxisAlignment: CrossAxisAlignment.start,
 
                         children: [
-                          Text(
+                          UiText(
                             '${widget.displayName}\'s TV Shows',
 
                             maxLines: 1,
@@ -7448,7 +6961,7 @@ class _PublicCompletedTvShowsPageState
 
                           const SizedBox(height: 2),
 
-                          Text(
+                          UiText(
                             '${shows.length} completed',
 
                             style: const TextStyle(
@@ -7522,7 +7035,7 @@ class _PublicCompletedTvShowsPageState
 
             const SizedBox(height: 14),
 
-            Text(
+            UiText(
               '${widget.displayName} has no completed TV shows yet.',
 
               textAlign: TextAlign.center,
@@ -7556,14 +7069,17 @@ class _PublicCompletedTvShowsPageState
 
             const SizedBox(height: 12),
 
-            Text(errorMessage!, style: const TextStyle(color: Colors.white54)),
+            UiText(
+              errorMessage!,
+              style: const TextStyle(color: Colors.white54),
+            ),
 
             const SizedBox(height: 16),
 
             OutlinedButton(
               onPressed: _loadShows,
 
-              child: const Text('Try Again'),
+              child: const UiText('Try Again'),
             ),
           ],
         ),
@@ -7660,7 +7176,9 @@ class _PublicCompletedTvShowCard extends StatelessWidget {
 
                     children: [
                       Text(
-                        title.isNotEmpty ? title : 'Unknown TV Show',
+                        title.isNotEmpty
+                            ? title
+                            : trUi(context, 'Unknown TV Show'),
 
                         maxLines: 2,
 
@@ -7691,7 +7209,7 @@ class _PublicCompletedTvShowCard extends StatelessWidget {
                             if (year.isNotEmpty && ratingStars != null) ...[
                               const SizedBox(width: 8),
 
-                              const Text(
+                              const UiText(
                                 '•',
 
                                 style: TextStyle(
@@ -7712,7 +7230,7 @@ class _PublicCompletedTvShowCard extends StatelessWidget {
 
                               const SizedBox(width: 3),
 
-                              Text(
+                              UiText(
                                 '$ratingStars',
 
                                 style: const TextStyle(
@@ -7804,8 +7322,7 @@ class _PublicWatchedMoviesPageState extends State<_PublicWatchedMoviesPage> {
       setState(() {
         loading = false;
         movies = [];
-        errorMessage =
-            'This user is not sharing this profile information.';
+        errorMessage = 'This user is not sharing this profile information.';
       });
 
       return;
@@ -7886,7 +7403,7 @@ class _PublicWatchedMoviesPageState extends State<_PublicWatchedMoviesPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
 
                         children: [
-                          Text(
+                          UiText(
                             '${widget.displayName}\'s Movies',
 
                             maxLines: 1,
@@ -7902,7 +7419,7 @@ class _PublicWatchedMoviesPageState extends State<_PublicWatchedMoviesPage> {
 
                           const SizedBox(height: 2),
 
-                          Text(
+                          UiText(
                             '${movies.length} watched',
 
                             style: const TextStyle(
@@ -7974,7 +7491,7 @@ class _PublicWatchedMoviesPageState extends State<_PublicWatchedMoviesPage> {
 
             const SizedBox(height: 14),
 
-            Text(
+            UiText(
               '${widget.displayName} has no watched movies yet.',
 
               textAlign: TextAlign.center,
@@ -8008,14 +7525,17 @@ class _PublicWatchedMoviesPageState extends State<_PublicWatchedMoviesPage> {
 
             const SizedBox(height: 12),
 
-            Text(errorMessage!, style: const TextStyle(color: Colors.white54)),
+            UiText(
+              errorMessage!,
+              style: const TextStyle(color: Colors.white54),
+            ),
 
             const SizedBox(height: 16),
 
             OutlinedButton(
               onPressed: _loadMovies,
 
-              child: const Text('Try Again'),
+              child: const UiText('Try Again'),
             ),
           ],
         ),
@@ -8113,7 +7633,9 @@ class _PublicWatchedMovieCard extends StatelessWidget {
 
                     children: [
                       Text(
-                        title.isNotEmpty ? title : 'Unknown Movie',
+                        title.isNotEmpty
+                            ? title
+                            : trUi(context, 'Unknown Movie'),
 
                         maxLines: 2,
 
@@ -8144,7 +7666,7 @@ class _PublicWatchedMovieCard extends StatelessWidget {
                             if (year.isNotEmpty && ratingStars != null) ...[
                               const SizedBox(width: 8),
 
-                              const Text(
+                              const UiText(
                                 '•',
 
                                 style: TextStyle(
@@ -8165,7 +7687,7 @@ class _PublicWatchedMovieCard extends StatelessWidget {
 
                               const SizedBox(width: 3),
 
-                              Text(
+                              UiText(
                                 '$ratingStars',
 
                                 style: const TextStyle(
@@ -8311,7 +7833,7 @@ class _PublicFollowersPageState extends State<_PublicFollowersPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
 
                         children: [
-                          const Text(
+                          const UiText(
                             'Followers',
 
                             style: TextStyle(
@@ -8343,7 +7865,7 @@ class _PublicFollowersPageState extends State<_PublicFollowersPage> {
                     ),
 
                     if (!loading)
-                      Text(
+                      UiText(
                         '${followers.length}',
 
                         style: const TextStyle(
@@ -8412,7 +7934,7 @@ class _PublicFollowersPageState extends State<_PublicFollowersPage> {
 
             const SizedBox(height: 12),
 
-            Text(
+            UiText(
               errorMessage!,
 
               textAlign: TextAlign.center,
@@ -8425,7 +7947,7 @@ class _PublicFollowersPageState extends State<_PublicFollowersPage> {
             OutlinedButton(
               onPressed: _loadFollowers,
 
-              child: const Text('Try Again'),
+              child: const UiText('Try Again'),
             ),
           ],
         ),
@@ -8501,7 +8023,7 @@ class _ProfileTitleOption extends StatelessWidget {
 
                 const SizedBox(height: 7),
 
-                Text(
+                UiText(
                   title,
 
                   maxLines: 1,
@@ -8592,17 +8114,12 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
 
       final raw = await client.rpc(
         'get_public_profile',
-        params: {
-          'p_user_id': widget.userId,
-        },
+        params: {'p_user_id': widget.userId},
       );
 
-      final rawProfile = raw is Map
-          ? Map<String, dynamic>.from(raw)
-          : null;
+      final rawProfile = raw is Map ? Map<String, dynamic>.from(raw) : null;
 
-      final isFollowing =
-          await community.isFollowing(widget.userId);
+      final isFollowing = await community.isFollowing(widget.userId);
 
       if (!mounted) {
         return;
@@ -8634,8 +8151,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
 
     final bool wasFollowing = following;
 
-    final bool targetIsDeveloper =
-        profile?['is_developer'] == true;
+    final bool targetIsDeveloper = profile?['is_developer'] == true;
 
     setState(() {
       changingFollow = true;
@@ -8666,8 +8182,9 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
             .claimFollowDeveloperAchievement();
 
         if (newlyUnlocked && mounted) {
-          final achievement =
-              _followDeveloperAchievementGroupFor(true).tiers.first;
+          final achievement = _followDeveloperAchievementGroupFor(true)
+              .tiers
+              .first;
 
           try {
             await CommunityService.instance.deleteActivity(
@@ -8690,10 +8207,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
             return;
           }
 
-          await _showAchievementUnlocked(
-            context,
-            achievement,
-          );
+          await _showAchievementUnlocked(context, achievement);
         }
       }
 
@@ -8705,9 +8219,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Could not change follow state.'),
-          ),
+          const SnackBar(content: UiText('Could not change follow state.')),
         );
       }
     } finally {
@@ -8719,169 +8231,144 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     }
   }
 
-Future<void> _blockCurrentPublicUser() async {
-  final confirmed = await showDialog<bool>(
-    context: context,
-    builder: (dialogContext) {
-      return AlertDialog(
-        backgroundColor: chipluxSurface,
-        title: const Text('Block user?'),
-        content: const Text(
-          'You will stop following each other and will no longer be able to interact.',
-          style: TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(dialogContext, false);
-            },
-            child: const Text('Cancel'),
+  Future<void> _blockCurrentPublicUser() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: chipluxSurface,
+          title: const UiText('Block user?'),
+          content: const UiText(
+            'You will stop following each other and will no longer be able to interact.',
+            style: TextStyle(color: Colors.white70),
           ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(dialogContext, true);
-            },
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.redAccent,
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, false);
+              },
+              child: const UiText('Cancel'),
             ),
-            child: const Text('Block'),
-          ),
-        ],
-      );
-    },
-  );
-
-  if (confirmed != true) {
-    return;
-  }
-
-  try {
-    await PrivacySettingsService.instance.blockUser(widget.userId);
-
-    if (!mounted) {
-      return;
-    }
-
-    Navigator.pop(context);
-  } catch (e) {
-    if (!mounted) {
-      return;
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Could not block user.'),
-      ),
-    );
-  }
-}
-
-Future<void> _reportCurrentPublicUser() async {
-  final reason = await showModalBottomSheet<String>(
-    context: context,
-    backgroundColor: chipluxSurface,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(
-        top: Radius.circular(22),
-      ),
-    ),
-    builder: (sheetContext) {
-      Widget option(
-        String value,
-        String label,
-        IconData icon,
-      ) {
-        return ListTile(
-          leading: Icon(icon, color: chipluxCyan),
-          title: Text(label),
-          onTap: () {
-            Navigator.pop(sheetContext, value);
-          },
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, true);
+              },
+              style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+              child: const UiText('Block'),
+            ),
+          ],
         );
+      },
+    );
+
+    if (confirmed != true) {
+      return;
+    }
+
+    try {
+      await PrivacySettingsService.instance.blockUser(widget.userId);
+
+      if (!mounted) {
+        return;
       }
 
-      return SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(8, 10, 8, 14),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const ListTile(
-                title: Text(
-                  'Report user',
-                  style: TextStyle(
-                    fontSize: 19,
-                    fontWeight: FontWeight.bold,
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: UiText('Could not block user.')));
+    }
+  }
+
+  Future<void> _reportCurrentPublicUser() async {
+    final reason = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: chipluxSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (sheetContext) {
+        Widget option(String value, String label, IconData icon) {
+          return ListTile(
+            leading: Icon(icon, color: chipluxCyan),
+            title: UiText(label),
+            onTap: () {
+              Navigator.pop(sheetContext, value);
+            },
+          );
+        }
+
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(8, 10, 8, 14),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const ListTile(
+                  title: UiText(
+                    'Report user',
+                    style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: UiText(
+                    'Choose the reason for this report.',
+                    style: TextStyle(color: Colors.white54),
                   ),
                 ),
-                subtitle: Text(
-                  'Choose the reason for this report.',
-                  style: TextStyle(color: Colors.white54),
+                option(
+                  'spam',
+                  'Spam or misleading content',
+                  Icons.report_gmailerrorred_rounded,
                 ),
-              ),
-              option(
-                'spam',
-                'Spam or misleading content',
-                Icons.report_gmailerrorred_rounded,
-              ),
-              option(
-                'harassment',
-                'Harassment or abusive behavior',
-                Icons.warning_amber_rounded,
-              ),
-              option(
-                'impersonation',
-                'Impersonation',
-                Icons.badge_outlined,
-              ),
-              option(
-                'inappropriate',
-                'Inappropriate content',
-                Icons.visibility_off_outlined,
-              ),
-              option(
-                'other',
-                'Other',
-                Icons.more_horiz_rounded,
-              ),
-            ],
+                option(
+                  'harassment',
+                  'Harassment or abusive behavior',
+                  Icons.warning_amber_rounded,
+                ),
+                option('impersonation', 'Impersonation', Icons.badge_outlined),
+                option(
+                  'inappropriate',
+                  'Inappropriate content',
+                  Icons.visibility_off_outlined,
+                ),
+                option('other', 'Other', Icons.more_horiz_rounded),
+              ],
+            ),
           ),
-        ),
+        );
+      },
+    );
+
+    if (reason == null) {
+      return;
+    }
+
+    try {
+      await PrivacySettingsService.instance.reportUser(
+        userId: widget.userId,
+        reason: reason,
       );
-    },
-  );
 
-  if (reason == null) {
-    return;
-  }
+      if (!mounted) {
+        return;
+      }
 
-  try {
-    await PrivacySettingsService.instance.reportUser(
-      userId: widget.userId,
-      reason: reason,
-    );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: UiText('Report submitted. Thank you.')),
+      );
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
 
-    if (!mounted) {
-      return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: UiText('Could not submit report.')),
+      );
     }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Report submitted. Thank you.'),
-      ),
-    );
-  } catch (e) {
-    if (!mounted) {
-      return;
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Could not submit report.'),
-      ),
-    );
   }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -8896,7 +8383,7 @@ Future<void> _reportCurrentPublicUser() async {
       return Scaffold(
         backgroundColor: chipluxBackground,
         appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0),
-        body: const Center(child: Text('Profile not found.')),
+        body: const Center(child: UiText('Profile not found.')),
       );
     }
 
@@ -8929,8 +8416,7 @@ Future<void> _reportCurrentPublicUser() async {
     final bool canViewDetails =
         isOwnProfile || profile!['can_view_details'] == true;
 
-    final bool canFollow =
-        profile!['can_follow'] == true;
+    final bool canFollow = profile!['can_follow'] == true;
 
     final bool showConnections =
         isOwnProfile || profile!['show_connections'] == true;
@@ -9102,22 +8588,16 @@ Future<void> _reportCurrentPublicUser() async {
         ?.toString()
         .trim();
 
-    final bool publicIsDeveloper =
-        profile!['is_developer'] == true;
+    final bool publicIsDeveloper = profile!['is_developer'] == true;
 
-        final publicProfilePageFrameId =
-    profile!['profile_page_frame_id']
+    final publicProfilePageFrameId = profile!['profile_page_frame_id']
         ?.toString()
         .trim();
 
-final publicPageFrame =
-    _profilePageFrameWidget(
-  publicProfilePageFrameId,
-);
+    final publicPageFrame = _profilePageFrameWidget(publicProfilePageFrameId);
 
     final bool developerPublicTitleActive =
-        publicIsDeveloper &&
-        selectedPublicTitleId == developerProfileTitleId;
+        publicIsDeveloper && selectedPublicTitleId == developerProfileTitleId;
 
     final selectedPublicTitle = _findProfileTitleAchievement(
       publicTitleGroups,
@@ -9311,662 +8791,697 @@ final publicPageFrame =
                         crossAxisAlignment: CrossAxisAlignment.stretch,
 
                         children: [
-                // =========================
-// PUBLIC PROFILE HEADER
-// =========================
+                          // =========================
+                          // PUBLIC PROFILE HEADER
+                          // =========================
 
-SizedBox(
-  height: 150,
-  child: Stack(
-    clipBehavior: Clip.none,
-    children: [
-      // =====================
-      // BANNER
-      // =====================
+                          SizedBox(
+                            height: 150,
+                            child: Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                // =====================
+                                // BANNER
+                                // =====================
 
-      Positioned.fill(
-        child: ClipRRect(
-          borderRadius:
-              BorderRadius.circular(22),
-          child: _ProfileBanner(
-            imageUrl: bannerUrl,
-          ),
-        ),
-      ),
-
-      // =====================
-      // ACHIEVEMENTS + FOLLOWERS
-      // =====================
-
-      Positioned(
-        left: 10,
-        top: 10,
-        child: Row(
-          children: [
-            if (showProfileAchievements)
-              _AchievementCollectionButton(
-                unlockedCount: publicUnlockedAchievements,
-                totalCount: publicTotalAchievements,
-                styleAchievement: publicMedalCollectionStyle,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => _PublicAchievementsPage(
-                        displayName: displayName.isNotEmpty
-                            ? displayName
-                            : username.isNotEmpty
-                            ? username
-                            : 'Chiplux User',
-                        achievementGroups: List<_AchievementGroup>.from(
-                          publicAchievementGroups,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-
-            if (showProfileAchievements && showConnections)
-              const SizedBox(width: 8),
-
-            if (showConnections)
-              _FollowerCountBadge(
-                userId: widget.userId,
-                selectedTierId: achievementCosmetics['followers'],
-                achievementCount: followerAchievementCount,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => _PublicFollowersPage(
-                        userId: widget.userId,
-                        displayName: name,
-                      ),
-                    ),
-                  );
-                },
-                onCountChanged: (count) {
-                  if (!mounted || publicFollowerCount == count) {
-                    return;
-                  }
-
-                  setState(() {
-                    publicFollowerCount = count;
-                  });
-                },
-              ),
-          ],
-        ),
-      ),
-
-      // =====================
-      // PROFILE OPTIONS
-      // =====================
-      if (!isOwnProfile)
-        Positioned(
-          right: 48,
-          top: 6,
-          child: PopupMenuButton<String>(
-            tooltip: 'Profile options',
-            color: chipluxSurface,
-            icon: const Icon(
-              Icons.more_horiz_rounded,
-              color: Colors.white,
-            ),
-            onSelected: (value) {
-              if (value == 'block') {
-                unawaited(_blockCurrentPublicUser());
-              } else if (value == 'report') {
-                unawaited(_reportCurrentPublicUser());
-              }
-            },
-            itemBuilder: (context) => const [
-              PopupMenuItem<String>(
-                value: 'block',
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.block_rounded,
-                      color: Colors.redAccent,
-                      size: 19,
-                    ),
-                    SizedBox(width: 10),
-                    Text('Block user'),
-                  ],
-                ),
-              ),
-              PopupMenuItem<String>(
-                value: 'report',
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.flag_outlined,
-                      color: Colors.white70,
-                      size: 19,
-                    ),
-                    SizedBox(width: 10),
-                    Text('Report user'),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-
-      // =====================
-      // BACK BUTTON
-      // =====================
-
-      Positioned(
-        right: 8,
-        top: 6,
-        child: IconButton(
-          onPressed: () {
-            Navigator.pop(
-              context,
-            );
-          },
-          icon: const Icon(
-            Icons.arrow_back_rounded,
-          ),
-          color:
-              Colors.white,
-        ),
-      ),
-    ],
-  ),
-),
-
-const SizedBox(
-  height: 8,
-),
-
-                // =========================
-                // AVATAR / NAME / FOLLOW
-                // =========================
-                Transform.translate(
-                  offset: const Offset(0, -42),
-
-                  child: Column(
-                    children: [
-                      SizedBox(
-                        width: 94,
-                        height: 94,
-
-                        child: _AvatarFrame(
-                          frameId: avatarFrameId,
-
-                          child: Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-
-                              gradient: avatarUrl == null || avatarUrl.isEmpty
-                                  ? const LinearGradient(
-                                      colors: [
-                                        chipluxCyan,
-                                        chipluxViolet,
-                                        chipluxPurple,
-                                      ],
-                                    )
-                                  : null,
-
-                              image: avatarUrl != null && avatarUrl.isNotEmpty
-                                  ? DecorationImage(
-                                      image: NetworkImage(avatarUrl),
-                                      fit: BoxFit.cover,
-                                    )
-                                  : null,
-                            ),
-
-                            child: avatarUrl == null || avatarUrl.isEmpty
-                                ? Center(
-                                    child: Text(
-                                      name.isNotEmpty
-                                          ? name[0].toUpperCase()
-                                          : 'C',
-                                      style: const TextStyle(
-                                        fontSize: 38,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  )
-                                : null,
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 10),
-
-                      if (developerPublicTitleActive) ...[
-                        const _DeveloperTitleLabel(),
-
-                        const SizedBox(height: 5),
-                      ] else if (selectedPublicTitle != null) ...[
-                        _ProfileTitleLabel(achievement: selectedPublicTitle),
-
-                        const SizedBox(height: 5),
-                      ],
-
-                      // =========================
-                      // DISPLAY NAME + MEDAL
-                      // =========================
-                      Stack(
-                        clipBehavior: Clip.none,
-                        alignment: Alignment.center,
-
-                        children: [
-                          _DisplayNameFrame(
-                            frameId: displayNameFrameId,
-
-                            child: Container(
-                              padding: EdgeInsets.fromLTRB(
-                                pinnedAchievement != null ? 34 : 20,
-                                8,
-                                pinnedAchievement != null ? 34 : 20,
-                                8,
-                              ),
-
-                              decoration: BoxDecoration(
-                                color: chipluxSurface.withValues(alpha: 0.94),
-
-                                borderRadius: BorderRadius.circular(29),
-                              ),
-
-                              child: Text(
-                                name,
-
-                                maxLines: 1,
-
-                                overflow: TextOverflow.ellipsis,
-
-                                style: TextStyle(
-                                  color: publicDisplayNameColor,
-
-                                  fontSize: 18,
-
-                                  fontWeight: FontWeight.bold,
-
-                                  letterSpacing: 0.3,
-
-                                  shadows:
-                                      selectedPublicNameColorAchievement != null
-                                      ? [
-                                          Shadow(
-                                            color: publicDisplayNameColor
-                                                .withValues(alpha: 0.25),
-
-                                            blurRadius: 6,
-                                          ),
-                                        ]
-                                      : null,
+                                Positioned.fill(
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(22),
+                                    child: _ProfileBanner(imageUrl: bannerUrl),
+                                  ),
                                 ),
-                              ),
-                            ),
-                          ),
 
-                          if (pinnedAchievement != null)
-                            Positioned(
-                              left: -12,
-                              top: 6,
+                                // =====================
+                                // ACHIEVEMENTS + FOLLOWERS
+                                // =====================
+                                Positioned(
+                                  left: 10,
+                                  top: 10,
+                                  child: Row(
+                                    children: [
+                                      if (showProfileAchievements)
+                                        _AchievementCollectionButton(
+                                          unlockedCount:
+                                              publicUnlockedAchievements,
+                                          totalCount: publicTotalAchievements,
+                                          styleAchievement:
+                                              publicMedalCollectionStyle,
+                                          onTap: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    _PublicAchievementsPage(
+                                                      displayName:
+                                                          displayName.isNotEmpty
+                                                          ? displayName
+                                                          : username.isNotEmpty
+                                                          ? username
+                                                          : 'Chiplux User',
+                                                      achievementGroups:
+                                                          List<
+                                                            _AchievementGroup
+                                                          >.from(
+                                                            publicAchievementGroups,
+                                                          ),
+                                                    ),
+                                              ),
+                                            );
+                                          },
+                                        ),
 
-                              child: _PinnedAchievementBadge(
-                                achievement: pinnedAchievement,
-                              ),
-                            ),
-                        ],
-                      ),
+                                      if (showProfileAchievements &&
+                                          showConnections)
+                                        const SizedBox(width: 8),
 
-                      if (username.isNotEmpty) ...[
-                        const SizedBox(height: 6),
+                                      if (showConnections)
+                                        _FollowerCountBadge(
+                                          userId: widget.userId,
+                                          selectedTierId:
+                                              achievementCosmetics['followers'],
+                                          achievementCount:
+                                              followerAchievementCount,
+                                          onTap: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    _PublicFollowersPage(
+                                                      userId: widget.userId,
+                                                      displayName: name,
+                                                    ),
+                                              ),
+                                            );
+                                          },
+                                          onCountChanged: (count) {
+                                            if (!mounted ||
+                                                publicFollowerCount == count) {
+                                              return;
+                                            }
 
-                        Text(
-                          '@$username',
+                                            setState(() {
+                                              publicFollowerCount = count;
+                                            });
+                                          },
+                                        ),
+                                    ],
+                                  ),
+                                ),
 
-                          style: const TextStyle(
-                            color: Colors.white54,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-
-                      if (!isOwnProfile) ...[
-                        const SizedBox(height: 18),
-
-                        SizedBox(
-                          width: 180,
-                          height: 46,
-
-                          child: ElevatedButton.icon(
-                            onPressed:
-                                changingFollow || (!following && !canFollow)
-                                    ? null
-                                    : _toggleFollow,
-
-                            icon: changingFollow
-                                ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
+                                // =====================
+                                // PROFILE OPTIONS
+                                // =====================
+                                if (!isOwnProfile)
+                                  Positioned(
+                                    right: 48,
+                                    top: 6,
+                                    child: PopupMenuButton<String>(
+                                      tooltip: trUi(context, 'Profile options'),
+                                      color: chipluxSurface,
+                                      icon: const Icon(
+                                        Icons.more_horiz_rounded,
+                                        color: Colors.white,
+                                      ),
+                                      onSelected: (value) {
+                                        if (value == 'block') {
+                                          unawaited(_blockCurrentPublicUser());
+                                        } else if (value == 'report') {
+                                          unawaited(_reportCurrentPublicUser());
+                                        }
+                                      },
+                                      itemBuilder: (context) => const [
+                                        PopupMenuItem<String>(
+                                          value: 'block',
+                                          child: Row(
+                                            children: [
+                                              Icon(
+                                                Icons.block_rounded,
+                                                color: Colors.redAccent,
+                                                size: 19,
+                                              ),
+                                              SizedBox(width: 10),
+                                              UiText('Block user'),
+                                            ],
+                                          ),
+                                        ),
+                                        PopupMenuItem<String>(
+                                          value: 'report',
+                                          child: Row(
+                                            children: [
+                                              Icon(
+                                                Icons.flag_outlined,
+                                                color: Colors.white70,
+                                                size: 19,
+                                              ),
+                                              SizedBox(width: 10),
+                                              UiText('Report user'),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  )
-                                : Icon(
-                                    following
-                                        ? Icons.check_rounded
-                                        : Icons.person_add_alt_1_rounded,
                                   ),
 
-                            label: Text(
-                              following
-                                  ? 'Following'
-                                  : canFollow
-                                  ? 'Follow'
-                                  : 'Follow unavailable',
-                            ),
-
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: following
-                                  ? chipluxSurfaceLight
-                                  : chipluxViolet,
-
-                              foregroundColor: Colors.white,
-
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
+                                // =====================
+                                // BACK BUTTON
+                                // =====================
+                                Positioned(
+                                  right: 8,
+                                  top: 6,
+                                  child: IconButton(
+                                    onPressed: () {
+                                      Navigator.pop(context);
+                                    },
+                                    icon: const Icon(Icons.arrow_back_rounded),
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
 
-                const SizedBox(height: 2),
+                          const SizedBox(height: 8),
 
-                if (!canViewDetails)
-                  Container(
-                    padding: const EdgeInsets.all(22),
-                    decoration: BoxDecoration(
-                      color: chipluxSurface,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.06),
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        const Icon(
-                          Icons.lock_outline_rounded,
-                          color: chipluxCyan,
-                          size: 36,
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          profile!['profile_visibility'] == 'followers'
-                              ? 'Followers-only profile'
-                              : 'Private profile',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                          // =========================
+                          // AVATAR / NAME / FOLLOW
+                          // =========================
+                          Transform.translate(
+                            offset: const Offset(0, -42),
+
+                            child: Column(
+                              children: [
+                                SizedBox(
+                                  width: 94,
+                                  height: 94,
+
+                                  child: _AvatarFrame(
+                                    frameId: avatarFrameId,
+
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+
+                                        gradient:
+                                            avatarUrl == null ||
+                                                avatarUrl.isEmpty
+                                            ? const LinearGradient(
+                                                colors: [
+                                                  chipluxCyan,
+                                                  chipluxViolet,
+                                                  chipluxPurple,
+                                                ],
+                                              )
+                                            : null,
+
+                                        image:
+                                            avatarUrl != null &&
+                                                avatarUrl.isNotEmpty
+                                            ? DecorationImage(
+                                                image: NetworkImage(avatarUrl),
+                                                fit: BoxFit.cover,
+                                              )
+                                            : null,
+                                      ),
+
+                                      child:
+                                          avatarUrl == null || avatarUrl.isEmpty
+                                          ? Center(
+                                              child: Text(
+                                                name.isNotEmpty
+                                                    ? name[0].toUpperCase()
+                                                    : 'C',
+                                                style: const TextStyle(
+                                                  fontSize: 38,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            )
+                                          : null,
+                                    ),
+                                  ),
+                                ),
+
+                                const SizedBox(height: 10),
+
+                                if (developerPublicTitleActive) ...[
+                                  const _DeveloperTitleLabel(),
+
+                                  const SizedBox(height: 5),
+                                ] else if (selectedPublicTitle != null) ...[
+                                  _ProfileTitleLabel(
+                                    achievement: selectedPublicTitle,
+                                  ),
+
+                                  const SizedBox(height: 5),
+                                ],
+
+                                // =========================
+                                // DISPLAY NAME + MEDAL
+                                // =========================
+                                Stack(
+                                  clipBehavior: Clip.none,
+                                  alignment: Alignment.center,
+
+                                  children: [
+                                    _DisplayNameFrame(
+                                      frameId: displayNameFrameId,
+
+                                      child: Container(
+                                        padding: EdgeInsets.fromLTRB(
+                                          pinnedAchievement != null ? 34 : 20,
+                                          8,
+                                          pinnedAchievement != null ? 34 : 20,
+                                          8,
+                                        ),
+
+                                        decoration: BoxDecoration(
+                                          color: chipluxSurface.withValues(
+                                            alpha: 0.94,
+                                          ),
+
+                                          borderRadius: BorderRadius.circular(
+                                            29,
+                                          ),
+                                        ),
+
+                                        child: Text(
+                                          name,
+
+                                          maxLines: 1,
+
+                                          overflow: TextOverflow.ellipsis,
+
+                                          style: TextStyle(
+                                            color: publicDisplayNameColor,
+
+                                            fontSize: 18,
+
+                                            fontWeight: FontWeight.bold,
+
+                                            letterSpacing: 0.3,
+
+                                            shadows:
+                                                selectedPublicNameColorAchievement !=
+                                                    null
+                                                ? [
+                                                    Shadow(
+                                                      color:
+                                                          publicDisplayNameColor
+                                                              .withValues(
+                                                                alpha: 0.25,
+                                                              ),
+
+                                                      blurRadius: 6,
+                                                    ),
+                                                  ]
+                                                : null,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+
+                                    if (pinnedAchievement != null)
+                                      Positioned(
+                                        left: -12,
+                                        top: 6,
+
+                                        child: _PinnedAchievementBadge(
+                                          achievement: pinnedAchievement,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+
+                                if (username.isNotEmpty) ...[
+                                  const SizedBox(height: 6),
+
+                                  UiText(
+                                    '@$username',
+
+                                    style: const TextStyle(
+                                      color: Colors.white54,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+
+                                if (!isOwnProfile) ...[
+                                  const SizedBox(height: 18),
+
+                                  SizedBox(
+                                    width: 180,
+                                    height: 46,
+
+                                    child: ElevatedButton.icon(
+                                      onPressed:
+                                          changingFollow ||
+                                              (!following && !canFollow)
+                                          ? null
+                                          : _toggleFollow,
+
+                                      icon: changingFollow
+                                          ? const SizedBox(
+                                              width: 18,
+                                              height: 18,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                              ),
+                                            )
+                                          : Icon(
+                                              following
+                                                  ? Icons.check_rounded
+                                                  : Icons
+                                                        .person_add_alt_1_rounded,
+                                            ),
+
+                                      label: UiText(
+                                        following
+                                            ? 'Following'
+                                            : canFollow
+                                            ? 'Follow'
+                                            : 'Follow unavailable',
+                                      ),
+
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: following
+                                            ? chipluxSurfaceLight
+                                            : chipluxViolet,
+
+                                        foregroundColor: Colors.white,
+
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            14,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          profile!['profile_visibility'] == 'followers'
-                              ? 'Follow this user to see the profile details they share.'
-                              : 'This user only shares their basic profile information.',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Colors.white54,
-                            fontSize: 12,
-                            height: 1.4,
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                else if (publicStats.isEmpty)
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: chipluxSurface,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Column(
-                      children: [
-                        Icon(
-                          Icons.bar_chart_rounded,
-                          color: Colors.white38,
-                          size: 34,
-                        ),
-                        SizedBox(height: 10),
-                        Text(
-                          'No public stats yet.',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        SizedBox(height: 5),
-                        Text(
-                          'Stats will appear after this user syncs their profile.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.white54),
-                        ),
-                      ],
-                    ),
-                  )
-                else ...[
-                  if (!showWatchStats &&
-                      !showGenreStats &&
-                      !showRatingStats)
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: chipluxSurface,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Text(
-                        'This user chose not to share profile statistics.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.white54),
-                      ),
-                    ),
 
-                  if (showWatchStats) ...[
-                    // =========================
-                    // RUNTIME LEVEL
-                    // =========================
-                    _LevelCard(
-                      totalMinutes: totalWatchedMinutes,
-                      title: viewerTitle,
-                      frameAchievement:
-                          selectedPublicCosmetic(runtimeLevelGroup),
-                    ),
+                          const SizedBox(height: 2),
 
-                    const SizedBox(height: 12),
-
-                    // =========================
-                    // WATCHED STATS
-                    // =========================
-                    Column(
-                      children: [
-                        _WatchStatCard(
-                          value: completedTvShows,
-                          label: 'TV Shows Watched',
-                          icon: Icons.tv_rounded,
-                          frameAchievement: selectedPublicCosmetic(tvGroup),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => _PublicCompletedTvShowsPage(
-                                  userId: widget.userId,
-                                  displayName: name,
+                          if (!canViewDetails)
+                            Container(
+                              padding: const EdgeInsets.all(22),
+                              decoration: BoxDecoration(
+                                color: chipluxSurface,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.06),
                                 ),
                               ),
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 7),
-                        _WatchStatCard(
-                          value: episodesWatched,
-                          label: 'Episodes Watched',
-                          runtimeMinutes: episodeWatchedMinutes,
-                          icon: Icons.playlist_add_check_rounded,
-                          frameAchievement:
-                              selectedPublicCosmetic(episodeGroup),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => _PublicCompletedTvShowsPage(
-                                  userId: widget.userId,
-                                  displayName: name,
+                              child: Column(
+                                children: [
+                                  const Icon(
+                                    Icons.lock_outline_rounded,
+                                    color: chipluxCyan,
+                                    size: 36,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  UiText(
+                                    profile!['profile_visibility'] ==
+                                            'followers'
+                                        ? 'Followers-only profile'
+                                        : 'Private profile',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  UiText(
+                                    profile!['profile_visibility'] ==
+                                            'followers'
+                                        ? 'Follow this user to see the profile details they share.'
+                                        : 'This user only shares their basic profile information.',
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      color: Colors.white54,
+                                      fontSize: 12,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          else if (publicStats.isEmpty)
+                            Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: chipluxSurface,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: const Column(
+                                children: [
+                                  Icon(
+                                    Icons.bar_chart_rounded,
+                                    color: Colors.white38,
+                                    size: 34,
+                                  ),
+                                  SizedBox(height: 10),
+                                  UiText(
+                                    'No public stats yet.',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  SizedBox(height: 5),
+                                  UiText(
+                                    'Stats will appear after this user syncs their profile.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(color: Colors.white54),
+                                  ),
+                                ],
+                              ),
+                            )
+                          else ...[
+                            if (!showWatchStats &&
+                                !showGenreStats &&
+                                !showRatingStats)
+                              Container(
+                                padding: const EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  color: chipluxSurface,
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: const UiText(
+                                  'This user chose not to share profile statistics.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(color: Colors.white54),
                                 ),
                               ),
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 7),
-                        _WatchStatCard(
-                          value: moviesWatched,
-                          label: 'Movies Watched',
-                          runtimeMinutes: movieWatchedMinutes,
-                          icon: Icons.movie_outlined,
-                          frameAchievement:
-                              selectedPublicCosmetic(movieGroup),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => _PublicWatchedMoviesPage(
-                                  userId: widget.userId,
-                                  displayName: name,
+
+                            if (showWatchStats) ...[
+                              // =========================
+                              // RUNTIME LEVEL
+                              // =========================
+                              _LevelCard(
+                                totalMinutes: totalWatchedMinutes,
+                                title: viewerTitle,
+                                frameAchievement: selectedPublicCosmetic(
+                                  runtimeLevelGroup,
                                 ),
                               ),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
 
-                  if (showRatingStats) ...[
-                    if (showWatchStats) const SizedBox(height: 16),
+                              const SizedBox(height: 12),
 
-                    // =========================
-                    // RATING LEVEL
-                    // =========================
-                    _CriticReputationCard(
-                      level: criticLevel <= 0 ? 1 : criticLevel,
-                      title: criticTitle,
-                      xp: criticXp,
-                      requiredXp:
-                          criticRequiredXp <= 0 ? 10 : criticRequiredXp,
-                      totalRatings: totalRatings,
-                      titleCoverage: titleCoverage,
-                      episodeCoverage: episodeCoverage,
-                      frameAchievement:
-                          selectedPublicCosmetic(ratingsLevelGroup),
-                      averageStars: averageStars,
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    // =========================
-                    // RATED STATS
-                    // =========================
-                    Column(
-                      children: [
-                        _RatingStatCard(
-                          value: episodeRatings,
-                          label: 'Episodes Rated',
-                          icon: Icons.tv_outlined,
-                          frameAchievement:
-                              selectedPublicCosmetic(episodeRatedGroup),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => _PublicCompletedTvShowsPage(
-                                  userId: widget.userId,
-                                  displayName: name,
-                                  sortByRated: true,
-                                ),
+                              // =========================
+                              // WATCHED STATS
+                              // =========================
+                              Column(
+                                children: [
+                                  _WatchStatCard(
+                                    value: completedTvShows,
+                                    label: 'TV Shows Watched',
+                                    icon: Icons.tv_rounded,
+                                    frameAchievement: selectedPublicCosmetic(
+                                      tvGroup,
+                                    ),
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              _PublicCompletedTvShowsPage(
+                                                userId: widget.userId,
+                                                displayName: name,
+                                              ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  const SizedBox(height: 7),
+                                  _WatchStatCard(
+                                    value: episodesWatched,
+                                    label: 'Episodes Watched',
+                                    runtimeMinutes: episodeWatchedMinutes,
+                                    icon: Icons.playlist_add_check_rounded,
+                                    frameAchievement: selectedPublicCosmetic(
+                                      episodeGroup,
+                                    ),
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              _PublicCompletedTvShowsPage(
+                                                userId: widget.userId,
+                                                displayName: name,
+                                              ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  const SizedBox(height: 7),
+                                  _WatchStatCard(
+                                    value: moviesWatched,
+                                    label: 'Movies Watched',
+                                    runtimeMinutes: movieWatchedMinutes,
+                                    icon: Icons.movie_outlined,
+                                    frameAchievement: selectedPublicCosmetic(
+                                      movieGroup,
+                                    ),
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              _PublicWatchedMoviesPage(
+                                                userId: widget.userId,
+                                                displayName: name,
+                                              ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ],
                               ),
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 7),
-                        _RatingStatCard(
-                          value: tvRatings,
-                          label: 'TV Shows Rated',
-                          icon: Icons.live_tv_rounded,
-                          frameAchievement:
-                              selectedPublicCosmetic(tvShowsRatedGroup),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => _PublicCompletedTvShowsPage(
-                                  userId: widget.userId,
-                                  displayName: name,
-                                  sortByRated: true,
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 7),
-                        _RatingStatCard(
-                          value: movieRatings,
-                          label: 'Movies Rated',
-                          icon: Icons.movie_filter_outlined,
-                          frameAchievement:
-                              selectedPublicCosmetic(moviesRatedGroup),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => _PublicWatchedMoviesPage(
-                                  userId: widget.userId,
-                                  displayName: name,
-                                  sortByRated: true,
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
+                            ],
 
-                  if (showGenreStats) ...[
-                    const SizedBox(height: 24),
-                    _PublicGenreRuntimeCard(stats: genreRuntime),
-                  ],
+                            if (showRatingStats) ...[
+                              if (showWatchStats) const SizedBox(height: 16),
 
-                  if (showRatingStats) ...[
-                    const SizedBox(height: 24),
-                    _PublicRatingDistributionCard(
-                      distribution: ratingDistribution,
-                    ),
-                  ],
-                ],
-              
+                              // =========================
+                              // RATING LEVEL
+                              // =========================
+                              _CriticReputationCard(
+                                level: criticLevel <= 0 ? 1 : criticLevel,
+                                title: criticTitle,
+                                xp: criticXp,
+                                requiredXp: criticRequiredXp <= 0
+                                    ? 10
+                                    : criticRequiredXp,
+                                totalRatings: totalRatings,
+                                titleCoverage: titleCoverage,
+                                episodeCoverage: episodeCoverage,
+                                frameAchievement: selectedPublicCosmetic(
+                                  ratingsLevelGroup,
+                                ),
+                                averageStars: averageStars,
+                              ),
+
+                              const SizedBox(height: 12),
+
+                              // =========================
+                              // RATED STATS
+                              // =========================
+                              Column(
+                                children: [
+                                  _RatingStatCard(
+                                    value: episodeRatings,
+                                    label: 'Episodes Rated',
+                                    icon: Icons.tv_outlined,
+                                    frameAchievement: selectedPublicCosmetic(
+                                      episodeRatedGroup,
+                                    ),
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              _PublicCompletedTvShowsPage(
+                                                userId: widget.userId,
+                                                displayName: name,
+                                                sortByRated: true,
+                                              ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  const SizedBox(height: 7),
+                                  _RatingStatCard(
+                                    value: tvRatings,
+                                    label: 'TV Shows Rated',
+                                    icon: Icons.live_tv_rounded,
+                                    frameAchievement: selectedPublicCosmetic(
+                                      tvShowsRatedGroup,
+                                    ),
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              _PublicCompletedTvShowsPage(
+                                                userId: widget.userId,
+                                                displayName: name,
+                                                sortByRated: true,
+                                              ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  const SizedBox(height: 7),
+                                  _RatingStatCard(
+                                    value: movieRatings,
+                                    label: 'Movies Rated',
+                                    icon: Icons.movie_filter_outlined,
+                                    frameAchievement: selectedPublicCosmetic(
+                                      moviesRatedGroup,
+                                    ),
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              _PublicWatchedMoviesPage(
+                                                userId: widget.userId,
+                                                displayName: name,
+                                                sortByRated: true,
+                                              ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ],
+
+                            if (showGenreStats) ...[
+                              const SizedBox(height: 24),
+                              _PublicGenreRuntimeCard(stats: genreRuntime),
+                            ],
+
+                            if (showRatingStats) ...[
+                              const SizedBox(height: 24),
+                              _PublicRatingDistributionCard(
+                                distribution: ratingDistribution,
+                              ),
+                            ],
+                          ],
                         ],
                       ),
                     ),
 
                     if (publicPageFrame != null)
-  Positioned.fill(
-    child: publicPageFrame,
-  ),
+                      Positioned.fill(child: publicPageFrame),
                   ],
                 ),
               ],
-
             ),
           ),
         ),
@@ -9974,7 +9489,6 @@ const SizedBox(
     );
   }
 }
-
 
 List<_AchievementGroup> _currentUserProfileTitleGroups() {
   final library = LibraryService.instance;
@@ -10046,7 +9560,6 @@ _Achievement? _findProfileTitleAchievement(
   return null;
 }
 
-
 class _PublicGenreRuntimeCard extends StatefulWidget {
   final List<Map<String, dynamic>> stats;
 
@@ -10114,9 +9627,15 @@ class _PublicGenreRuntimeCardState extends State<_PublicGenreRuntimeCard> {
 
               SizedBox(width: 10),
 
-              Text(
-                'Genre Runtime',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              Expanded(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: UiText(
+                    'Genre Runtime',
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  ),
+                ),
               ),
             ],
           ),
@@ -10124,7 +9643,7 @@ class _PublicGenreRuntimeCardState extends State<_PublicGenreRuntimeCard> {
           const SizedBox(height: 20),
 
           if (stats.isEmpty)
-            const Text(
+            const UiText(
               'No genre runtime yet.',
               style: TextStyle(color: Colors.white54),
             )
@@ -10188,7 +9707,7 @@ class _PublicGenreRuntimeCardState extends State<_PublicGenreRuntimeCard> {
                         const SizedBox(width: 10),
 
                         Expanded(
-                          child: Text(
+                          child: UiText(
                             genre,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -10198,7 +9717,7 @@ class _PublicGenreRuntimeCardState extends State<_PublicGenreRuntimeCard> {
 
                         SizedBox(
                           width: 62,
-                          child: Text(
+                          child: UiText(
                             '${percentage.toStringAsFixed(1)}%',
                             textAlign: TextAlign.right,
                             style: const TextStyle(fontWeight: FontWeight.bold),
@@ -10242,7 +9761,7 @@ class _PublicGenreRuntimeCardState extends State<_PublicGenreRuntimeCard> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
+                      UiText(
                         expanded
                             ? 'Show less'
                             : 'Show all ${stats.length} genres',
@@ -10320,7 +9839,7 @@ class _PublicRatingDistributionCard extends StatelessWidget {
 
               SizedBox(width: 10),
 
-              Text(
+              UiText(
                 'Rating Distribution',
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               ),
@@ -10372,14 +9891,14 @@ class _PublicRatingDistributionCard extends StatelessWidget {
 
                       SizedBox(
                         width: 50,
-                        child: Text(
+                        child: UiText(
                           '$rating ★',
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ),
 
                       Expanded(
-                        child: Text(
+                        child: UiText(
                           '$count ${count == 1 ? 'rating' : 'ratings'}',
                           style: const TextStyle(color: Colors.white60),
                         ),
@@ -10387,7 +9906,7 @@ class _PublicRatingDistributionCard extends StatelessWidget {
 
                       SizedBox(
                         width: 64,
-                        child: Text(
+                        child: UiText(
                           '${percentage.toStringAsFixed(1)}%',
                           textAlign: TextAlign.right,
                           style: const TextStyle(fontWeight: FontWeight.bold),
@@ -10418,21 +9937,27 @@ class _ChipluxBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const items = [
-      (label: 'Discover', icon: Icons.home_outlined, selectedIcon: Icons.home),
-      (label: 'Search', icon: Icons.search, selectedIcon: Icons.search),
+    final l10n = AppLocalizations.of(context);
+
+    final items = [
       (
-        label: 'Watch',
+        label: l10n.discover,
+        icon: Icons.home_outlined,
+        selectedIcon: Icons.home,
+      ),
+      (label: l10n.search, icon: Icons.search, selectedIcon: Icons.search),
+      (
+        label: l10n.watch,
         icon: Icons.video_library_outlined,
         selectedIcon: Icons.video_library,
       ),
       (
-        label: 'Community',
+        label: l10n.community,
         icon: Icons.people_outline,
         selectedIcon: Icons.people,
       ),
       (
-        label: 'Profile',
+        label: l10n.profile,
         icon: Icons.person_outline,
         selectedIcon: Icons.person,
       ),
@@ -10574,7 +10099,7 @@ class _BottomNavItem extends StatelessWidget {
                             fontWeight: FontWeight.w700,
                           ),
                         )
-                      : Text(
+                      : UiText(
                           label,
                           maxLines: 1,
                           style: const TextStyle(
@@ -10644,7 +10169,7 @@ class ChipluxWordmark extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
+        UiText(
           'Chip',
           style: TextStyle(
             fontSize: fontSize,
@@ -10680,7 +10205,7 @@ class GradientText extends StatelessWidget {
           colors: [chipluxCyan, chipluxViolet, chipluxPurple],
         ).createShader(bounds);
       },
-      child: Text(text, style: style.copyWith(color: Colors.white)),
+      child: UiText(text, style: style.copyWith(color: Colors.white)),
     );
   }
 }
@@ -10699,11 +10224,23 @@ class BrandedTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final original = '$whitePart$gradientPart';
+    final localized = trUi(context, original);
+
+    final splitIndex = localized.length <= 1
+        ? localized.length
+        : ((localized.length * whitePart.length) / original.length)
+              .round()
+              .clamp(1, localized.length - 1);
+
+    final localizedWhite = localized.substring(0, splitIndex);
+    final localizedGradient = localized.substring(splitIndex);
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          whitePart,
+          localizedWhite,
           style: TextStyle(
             fontSize: fontSize,
             fontWeight: FontWeight.w800,
@@ -10712,7 +10249,7 @@ class BrandedTitle extends StatelessWidget {
           ),
         ),
         GradientText(
-          gradientPart,
+          localizedGradient,
           style: TextStyle(
             fontSize: fontSize,
             fontWeight: FontWeight.w800,
@@ -11061,67 +10598,63 @@ class _HomePageState extends State<HomePage> {
           color: chipluxSurface,
           borderRadius: BorderRadius.circular(18),
         ),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final width = constraints.maxWidth / labels.length;
-
-            return Stack(
-              children: [
-                AnimatedPositioned(
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOutCubic,
-                  left: discoverTab * width,
-                  top: 0,
-                  bottom: 0,
-                  width: width,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(14),
-                      gradient: LinearGradient(
-                        colors: [
-                          chipluxCyan.withValues(alpha: .22),
-                          chipluxViolet.withValues(alpha: .22),
-                          chipluxPurple.withValues(alpha: .22),
-                        ],
+        child: Row(
+          children: [
+            for (int i = 0; i < labels.length; i++)
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 1),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(14),
+                    onTap: () {
+                      _selectDiscoverTab(i);
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeInOutCubic,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14),
+                        gradient: discoverTab == i
+                            ? LinearGradient(
+                                colors: [
+                                  chipluxCyan.withValues(alpha: .22),
+                                  chipluxViolet.withValues(alpha: .22),
+                                  chipluxPurple.withValues(alpha: .22),
+                                ],
+                              )
+                            : null,
+                        border: Border.all(
+                          color: discoverTab == i
+                              ? chipluxViolet.withValues(alpha: .30)
+                              : Colors.transparent,
+                        ),
                       ),
-                      border: Border.all(
-                        color: chipluxViolet.withValues(alpha: .30),
-                      ),
-                    ),
-                  ),
-                ),
-
-                Row(
-                  children: [
-                    for (int i = 0; i < labels.length; i++)
-                      Expanded(
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(14),
-                          onTap: () {
-                            _selectDiscoverTab(i);
-                          },
-                          child: Center(
-                            child: Text(
-                              labels[i],
-                              maxLines: 1,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: discoverTab == i
-                                    ? FontWeight.bold
-                                    : FontWeight.w500,
-                                color: discoverTab == i
-                                    ? Colors.white
-                                    : Colors.white54,
-                              ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: UiText(
+                            labels[i],
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: discoverTab == i
+                                  ? FontWeight.bold
+                                  : FontWeight.w500,
+                              color: discoverTab == i
+                                  ? Colors.white
+                                  : Colors.white54,
                             ),
                           ),
                         ),
                       ),
-                  ],
+                    ),
+                  ),
                 ),
-              ],
-            );
-          },
+              ),
+          ],
         ),
       ),
     );
@@ -11278,78 +10811,53 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Future<Map<String, dynamic>?> _getInMemoriamActor(
-  DateTime date,
-) async {
-  try {
-    final row =
-        await Supabase
-            .instance
-            .client
-            .from(
-              'daily_in_memoriam_spotlights',
-            )
-            .select(
-              'tmdb_id, '
-              'name, '
-              'birth_year, '
-              'death_year, '
-              'age_at_death, '
-              'profile_path',
-            )
-            .eq(
-              'spotlight_date',
-              _dayKey(date),
-            )
-            .maybeSingle();
+  Future<Map<String, dynamic>?> _getInMemoriamActor(DateTime date) async {
+    try {
+      final row = await Supabase.instance.client
+          .from('daily_in_memoriam_spotlights')
+          .select(
+            'tmdb_id, '
+            'name, '
+            'birth_year, '
+            'death_year, '
+            'age_at_death, '
+            'profile_path',
+          )
+          .eq('spotlight_date', _dayKey(date))
+          .maybeSingle();
 
-    if (row == null) {
+      if (row == null) {
+        return null;
+      }
+
+      final rawTmdbId = row['tmdb_id'];
+
+      final int? tmdbId = rawTmdbId is num
+          ? rawTmdbId.toInt()
+          : int.tryParse(rawTmdbId?.toString() ?? '');
+
+      return {
+        'name': row['name']?.toString() ?? 'Unknown Actor',
+
+        'birthYear': row['birth_year'],
+
+        'deathYear': row['death_year'],
+
+        'ageAtDeath': row['age_at_death'],
+
+        'tmdbId': tmdbId,
+
+        'profilePath': row['profile_path']?.toString(),
+      };
+    } catch (e) {
+      debugPrint(
+        'Could not load cached '
+        'In Memoriam actor: $e',
+      );
+
       return null;
     }
-
-    final rawTmdbId =
-        row['tmdb_id'];
-
-    final int? tmdbId =
-        rawTmdbId is num
-            ? rawTmdbId.toInt()
-            : int.tryParse(
-                rawTmdbId
-                        ?.toString() ??
-                    '',
-              );
-
-    return {
-      'name':
-          row['name']
-                  ?.toString() ??
-              'Unknown Actor',
-
-      'birthYear':
-          row['birth_year'],
-
-      'deathYear':
-          row['death_year'],
-
-      'ageAtDeath':
-          row['age_at_death'],
-
-      'tmdbId':
-          tmdbId,
-
-      'profilePath':
-          row['profile_path']
-              ?.toString(),
-    };
-  } catch (e) {
-    debugPrint(
-      'Could not load cached '
-      'In Memoriam actor: $e',
-    );
-
-    return null;
   }
-}
 
   Future<void> _loadToday({bool forceRefresh = false}) async {
     if (todayLoading) {
@@ -11557,7 +11065,7 @@ class _HomePageState extends State<HomePage> {
           if (errorMessage != null)
             Padding(
               padding: const EdgeInsets.all(20),
-              child: Text(
+              child: UiText(
                 errorMessage!,
                 style: const TextStyle(color: Colors.redAccent),
               ),
@@ -11631,7 +11139,7 @@ class _HomePageState extends State<HomePage> {
             const SizedBox(height: 120),
 
             Center(
-              child: Text(
+              child: UiText(
                 todayError!,
                 style: const TextStyle(color: Colors.redAccent),
               ),
@@ -11666,7 +11174,7 @@ class _HomePageState extends State<HomePage> {
           // RELEASED TODAY
           // =========================
 
-          const Text(
+          const UiText(
             'Released Today',
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
           ),
@@ -11692,7 +11200,7 @@ class _HomePageState extends State<HomePage> {
           // =========================
           // AIRING TODAY
           // =========================
-          const Text(
+          const UiText(
             'Airing Today',
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
           ),
@@ -11723,7 +11231,7 @@ class _HomePageState extends State<HomePage> {
 
               SizedBox(width: 9),
 
-              Text(
+              UiText(
                 'Happy Birthday!',
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               ),
@@ -11749,7 +11257,7 @@ class _HomePageState extends State<HomePage> {
 
               SizedBox(width: 9),
 
-              Text(
+              UiText(
                 'In Memoriam',
                 style: TextStyle(
                   color: Color(0xFFD5D9DE),
@@ -11790,7 +11298,7 @@ class _HomePageState extends State<HomePage> {
             const SizedBox(height: 120),
 
             Center(
-              child: Text(
+              child: UiText(
                 todayError!,
                 style: const TextStyle(color: Colors.redAccent),
               ),
@@ -11825,7 +11333,7 @@ class _HomePageState extends State<HomePage> {
           // MOVIE FOR YOU
           // =========================
 
-          const Text(
+          const UiText(
             'Today\'s Movie for You',
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
           ),
@@ -11851,7 +11359,7 @@ class _HomePageState extends State<HomePage> {
           // =========================
           // TV SHOW FOR YOU
           // =========================
-          const Text(
+          const UiText(
             'Today\'s TV Show for You',
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
           ),
@@ -11898,7 +11406,7 @@ class _HomePageState extends State<HomePage> {
 
                       SizedBox(height: 4),
 
-                      Text(
+                      UiText(
                         'Your Taste · Your Story',
                         style: TextStyle(
                           color: Colors.white54,
@@ -11909,7 +11417,6 @@ class _HomePageState extends State<HomePage> {
                     ],
                   ),
                 ),
-
               ],
             ),
           ),
@@ -12022,7 +11529,7 @@ class _DiscoverListCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    UiText(
                       definition.title,
                       style: const TextStyle(
                         fontSize: 16,
@@ -12032,7 +11539,7 @@ class _DiscoverListCard extends StatelessWidget {
 
                     const SizedBox(height: 5),
 
-                    Text(
+                    UiText(
                       definition.subtitle,
                       style: const TextStyle(
                         color: Colors.white54,
@@ -12082,7 +11589,7 @@ class _InMemoriamActorCard extends StatelessWidget {
             SizedBox(width: 12),
 
             Expanded(
-              child: Text(
+              child: UiText(
                 'No memorial spotlight available today.',
 
                 style: TextStyle(color: Colors.white54),
@@ -12093,7 +11600,7 @@ class _InMemoriamActorCard extends StatelessWidget {
       );
     }
 
-    final name = actor!['name']?.toString() ?? 'Unknown Actor';
+    final name = actor!['name']?.toString() ?? trUi(context, 'Unknown Actor');
 
     final profilePath = actor!['profilePath']?.toString();
 
@@ -12244,7 +11751,7 @@ class _InMemoriamActorCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
 
                     children: [
-                      const Text(
+                      const UiText(
                         'REMEMBERING',
 
                         style: TextStyle(
@@ -12279,7 +11786,7 @@ class _InMemoriamActorCard extends StatelessWidget {
                       const SizedBox(height: 7),
 
                       if (birthYear is num && deathYear is num)
-                        Text(
+                        UiText(
                           '${birthYear.toInt()} – '
                           '${deathYear.toInt()}',
 
@@ -12295,7 +11802,7 @@ class _InMemoriamActorCard extends StatelessWidget {
                       if (ageAtDeath is num) ...[
                         const SizedBox(height: 3),
 
-                        Text(
+                        UiText(
                           'Age ${ageAtDeath.toInt()}',
 
                           style: const TextStyle(
@@ -12308,7 +11815,7 @@ class _InMemoriamActorCard extends StatelessWidget {
 
                       const SizedBox(height: 5),
 
-                      const Text(
+                      const UiText(
                         'Remembered today',
 
                         style: TextStyle(
@@ -12384,7 +11891,7 @@ class _BirthdayActorCard extends StatelessWidget {
             Icon(Icons.cake_outlined, color: Colors.white38),
             SizedBox(width: 12),
             Expanded(
-              child: Text(
+              child: UiText(
                 'No birthday spotlight available today.',
                 style: TextStyle(color: Colors.white54),
               ),
@@ -12394,7 +11901,7 @@ class _BirthdayActorCard extends StatelessWidget {
       );
     }
 
-    final name = actor!['name']?.toString() ?? 'Unknown Actor';
+    final name = actor!['name']?.toString() ?? trUi(context, 'Unknown Actor');
 
     final profilePath = actor!['profilePath']?.toString();
 
@@ -12503,7 +12010,7 @@ class _BirthdayActorCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
 
                     children: [
-                      const Text(
+                      const UiText(
                         'TODAY\'S BIRTHDAY',
 
                         style: TextStyle(
@@ -12538,7 +12045,7 @@ class _BirthdayActorCard extends StatelessWidget {
                       const SizedBox(height: 7),
 
                       if (age is num)
-                        Text(
+                        UiText(
                           'Turns ${age.toInt()} today 🎂',
 
                           style: const TextStyle(
@@ -12553,7 +12060,7 @@ class _BirthdayActorCard extends StatelessWidget {
                       if (birthYear is num) ...[
                         const SizedBox(height: 3),
 
-                        Text(
+                        UiText(
                           'Born ${birthYear.toInt()}',
 
                           style: const TextStyle(
@@ -12626,7 +12133,7 @@ class _TodayMediaCard extends StatelessWidget {
           color: chipluxSurface,
           borderRadius: BorderRadius.circular(20),
         ),
-        child: Text(emptyText, style: const TextStyle(color: Colors.white54)),
+        child: UiText(emptyText, style: const TextStyle(color: Colors.white54)),
       );
     }
 
@@ -12715,7 +12222,7 @@ class _TodayMediaCard extends StatelessWidget {
 
                     const SizedBox(height: 8),
 
-                    Text(
+                    UiText(
                       mediaType == 'tv' ? 'TV Show' : 'Movie',
                       style: const TextStyle(
                         color: chipluxCyan,
@@ -12780,7 +12287,7 @@ class _TodayCompactMediaCard extends StatelessWidget {
           color: chipluxSurface,
           borderRadius: BorderRadius.circular(18),
         ),
-        child: Text(
+        child: UiText(
           emptyText,
           style: const TextStyle(color: Colors.white54, fontSize: 13),
         ),
@@ -12859,7 +12366,7 @@ class _TodayCompactMediaCard extends StatelessWidget {
 
                     const SizedBox(height: 7),
 
-                    Text(
+                    UiText(
                       mediaType == 'tv' ? 'TV Show' : 'Movie',
                       style: const TextStyle(
                         color: chipluxCyan,
@@ -12978,7 +12485,7 @@ class _DiscoverTop100PageState extends State<DiscoverTop100Page> {
       backgroundColor: chipluxBackground,
       appBar: AppBar(
         backgroundColor: chipluxBackground,
-        title: Text(widget.definition.title),
+        title: UiText(widget.definition.title),
       ),
       body: ChipluxBackground(
         style: ChipluxBackgroundStyle.discover,
@@ -12986,7 +12493,7 @@ class _DiscoverTop100PageState extends State<DiscoverTop100Page> {
             ? const Center(child: CircularProgressIndicator())
             : error != null
             ? Center(
-                child: Text(
+                child: UiText(
                   error!,
                   style: const TextStyle(color: Colors.redAccent),
                 ),
@@ -13313,7 +12820,7 @@ class _Top100Row extends StatelessWidget {
                                   ),
 
                                 if (year.isNotEmpty && rating > 0)
-                                  const Text(
+                                  const UiText(
                                     '  •  ',
                                     style: TextStyle(color: Colors.white38),
                                   ),
@@ -13375,7 +12882,7 @@ class _Top100Row extends StatelessWidget {
                                         ),
                                       ),
 
-                                      child: Text(
+                                      child: UiText(
                                         isTv ? 'Completed' : 'Watched',
 
                                         style: const TextStyle(
@@ -13409,7 +12916,7 @@ class _Top100Row extends StatelessWidget {
                                         ),
                                       ),
 
-                                      child: const Text(
+                                      child: const UiText(
                                         'Rated',
 
                                         style: TextStyle(
@@ -13443,7 +12950,7 @@ class _Top100Row extends StatelessWidget {
                                         ),
                                       ),
 
-                                      child: const Text(
+                                      child: const UiText(
                                         'Favorite',
 
                                         style: TextStyle(
@@ -13608,7 +13115,7 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Text(
+      child: UiText(
         title,
         style: const TextStyle(fontSize: 21, fontWeight: FontWeight.bold),
       ),
@@ -13639,8 +13146,7 @@ class SearchPage extends StatefulWidget {
 }
 
 class _SearchPageState extends State<SearchPage> {
-  final TextEditingController controller =
-      TextEditingController();
+  final TextEditingController controller = TextEditingController();
 
   final TmdbService tmdbService = TmdbService();
 
@@ -13652,14 +13158,10 @@ class _SearchPageState extends State<SearchPage> {
 
   String? errorMessage;
 
-  _SearchCategory category =
-    _SearchCategory.titles;
+  _SearchCategory category = _SearchCategory.titles;
 
-  Future<void> performSearch([
-    String? value,
-  ]) async {
-    final query =
-        (value ?? controller.text).trim();
+  Future<void> performSearch([String? value]) async {
+    final query = (value ?? controller.text).trim();
 
     if (query.length < 2) {
       setState(() {
@@ -13680,9 +13182,9 @@ class _SearchPageState extends State<SearchPage> {
 
     try {
       final List<dynamic> searchResults =
-    requestedCategory == _SearchCategory.people
-        ? await tmdbService.searchPeople(query)
-        : await tmdbService.search(query);
+          requestedCategory == _SearchCategory.people
+          ? await tmdbService.searchPeople(query)
+          : await tmdbService.search(query);
 
       if (!mounted ||
           controller.text.trim() != query ||
@@ -13712,9 +13214,7 @@ class _SearchPageState extends State<SearchPage> {
     }
   }
 
-  void onSearchChanged(
-    String value,
-  ) {
+  void onSearchChanged(String value) {
     _searchDebounce?.cancel();
 
     final query = value.trim();
@@ -13729,17 +13229,12 @@ class _SearchPageState extends State<SearchPage> {
       return;
     }
 
-    _searchDebounce = Timer(
-      const Duration(milliseconds: 300),
-      () {
-        performSearch(query);
-      },
-    );
+    _searchDebounce = Timer(const Duration(milliseconds: 300), () {
+      performSearch(query);
+    });
   }
 
-  void _changeCategory(
-    _SearchCategory value,
-  ) {
+  void _changeCategory(_SearchCategory value) {
     if (category == value) {
       return;
     }
@@ -13757,26 +13252,18 @@ class _SearchPageState extends State<SearchPage> {
     }
   }
 
-  void _openPersonProjects(
-    Map<String, dynamic> person,
-  ) {
+  void _openPersonProjects(Map<String, dynamic> person) {
     final rawId = person['id'];
 
     if (rawId is! num) {
       return;
     }
 
-    final name =
-        person['name']?.toString() ??
-            'Unknown';
+    final name = person['name']?.toString() ?? 'Unknown';
 
-    final department =
-        person['known_for_department']
-                ?.toString() ??
-            '';
+    final department = person['known_for_department']?.toString() ?? '';
 
-    final profilePath =
-        person['profile_path']?.toString();
+    final profilePath = person['profile_path']?.toString();
 
     String role;
 
@@ -13802,8 +13289,7 @@ class _SearchPageState extends State<SearchPage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) =>
-            PersonProjectsPage(
+        builder: (_) => PersonProjectsPage(
           personId: rawId.toInt(),
           personName: name,
           role: role,
@@ -13814,14 +13300,14 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   String get _hintText {
-  switch (category) {
-    case _SearchCategory.titles:
-      return 'Search movies and TV shows';
+    switch (category) {
+      case _SearchCategory.titles:
+        return 'Search movies and TV shows';
 
-    case _SearchCategory.people:
-      return 'Actors, directors and producers';
+      case _SearchCategory.people:
+        return 'Actors, directors and producers';
+    }
   }
-}
 
   @override
   void dispose() {
@@ -13831,23 +13317,14 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   @override
-  Widget build(
-    BuildContext context,
-  ) {
+  Widget build(BuildContext context) {
     return SafeArea(
       child: Column(
         children: [
           Padding(
-            padding:
-                const EdgeInsets.fromLTRB(
-              20,
-              20,
-              20,
-              10,
-            ),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const BrandedTitle(
                   whitePart: 'Se',
@@ -13858,38 +13335,32 @@ class _SearchPageState extends State<SearchPage> {
                 const SizedBox(height: 14),
 
                 Row(
-  children: [
-    Expanded(
-      child: _SearchTabPill(
-        icon: Icons.movie_filter_rounded,
-        label: 'Movies & TV',
-        selected:
-            category == _SearchCategory.titles,
-        onTap: () {
-          _changeCategory(
-            _SearchCategory.titles,
-          );
-        },
-      ),
-    ),
+                  children: [
+                    Expanded(
+                      child: _SearchTabPill(
+                        icon: Icons.movie_filter_rounded,
+                        label: 'Movies & TV',
+                        selected: category == _SearchCategory.titles,
+                        onTap: () {
+                          _changeCategory(_SearchCategory.titles);
+                        },
+                      ),
+                    ),
 
-    const SizedBox(width: 10),
+                    const SizedBox(width: 10),
 
-    Expanded(
-      child: _SearchTabPill(
-        icon: Icons.person_search_rounded,
-        label: 'People',
-        selected:
-            category == _SearchCategory.people,
-        onTap: () {
-          _changeCategory(
-            _SearchCategory.people,
-          );
-        },
-      ),
-    ),
-  ],
-),
+                    Expanded(
+                      child: _SearchTabPill(
+                        icon: Icons.person_search_rounded,
+                        label: 'People',
+                        selected: category == _SearchCategory.people,
+                        onTap: () {
+                          _changeCategory(_SearchCategory.people);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
 
                 const SizedBox(height: 13),
 
@@ -13900,42 +13371,23 @@ class _SearchPageState extends State<SearchPage> {
                     performSearch();
                   },
                   decoration: InputDecoration(
-                    hintText: _hintText,
-                    prefixIcon:
-                        const Icon(
-                      Icons.search_rounded,
-                    ),
+                    hint: UiText(_hintText),
+                    prefixIcon: const Icon(Icons.search_rounded),
                     suffixIcon: IconButton(
-                      icon: const Icon(
-                        Icons
-                            .arrow_forward_rounded,
-                      ),
+                      icon: const Icon(Icons.arrow_forward_rounded),
                       onPressed: performSearch,
                     ),
                     filled: true,
-                    fillColor:
-                        chipluxSurface,
-                    enabledBorder:
-                        OutlineInputBorder(
-                      borderRadius:
-                          BorderRadius.circular(
-                        18,
-                      ),
+                    fillColor: chipluxSurface,
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(18),
                       borderSide: BorderSide(
-                        color: Colors.white
-                            .withValues(
-                          alpha: 0.07,
-                        ),
+                        color: Colors.white.withValues(alpha: 0.07),
                       ),
                     ),
-                    focusedBorder:
-                        OutlineInputBorder(
-                      borderRadius:
-                          BorderRadius.circular(
-                        18,
-                      ),
-                      borderSide:
-                          const BorderSide(
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(18),
+                      borderSide: const BorderSide(
                         color: chipluxCyan,
                         width: 1.3,
                       ),
@@ -13948,211 +13400,120 @@ class _SearchPageState extends State<SearchPage> {
 
           if (isLoading)
             const Padding(
-              padding:
-                  EdgeInsets.all(20),
-              child:
-                  CircularProgressIndicator(),
+              padding: EdgeInsets.all(20),
+              child: CircularProgressIndicator(),
             ),
 
           if (errorMessage != null)
-            Text(
+            UiText(
               errorMessage!,
-              style: const TextStyle(
-                color: Colors.redAccent,
-              ),
+              style: const TextStyle(color: Colors.redAccent),
             ),
 
           if (!isLoading)
             Expanded(
               child: ListView.separated(
-                padding:
-                    const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(20),
                 itemCount: results.length,
-                separatorBuilder:
-                    (_, _) =>
-                        const SizedBox(
-                  height: 12,
-                ),
-                itemBuilder:
-                    (context, index) {
-                  final item =
-                      Map<String, dynamic>.from(
-                    results[index] as Map,
-                  );
+                separatorBuilder: (_, _) => const SizedBox(height: 12),
+                itemBuilder: (context, index) {
+                  final item = Map<String, dynamic>.from(results[index] as Map);
 
-                  if (category ==
-                      _SearchCategory.people) {
-                    final name =
-                        item['name']
-                                ?.toString() ??
-                            'Unknown';
+                  if (category == _SearchCategory.people) {
+                    final name = item['name']?.toString() ?? 'Unknown';
 
                     final department =
-                        item['known_for_department']
-                                ?.toString() ??
-                            'Person';
+                        item['known_for_department']?.toString() ?? 'Person';
 
-                    final imagePath =
-                        item['profile_path']
-                            ?.toString();
+                    final imagePath = item['profile_path']?.toString();
 
-                    final popularity =
-                        item['popularity']
-                                is num
-                            ? (item['popularity']
-                                    as num)
-                                .toDouble()
-                            : 0.0;
+                    final popularity = item['popularity'] is num
+                        ? (item['popularity'] as num).toDouble()
+                        : 0.0;
 
                     return InkWell(
-                      borderRadius:
-                          BorderRadius.circular(
-                        17,
-                      ),
+                      borderRadius: BorderRadius.circular(17),
                       onTap: () {
-                        _openPersonProjects(
-                          item,
-                        );
+                        _openPersonProjects(item);
                       },
                       child: Container(
-                        padding:
-                            const EdgeInsets.all(
-                          1.1,
-                        ),
-                        decoration:
-                            BoxDecoration(
-                          borderRadius:
-                              BorderRadius.circular(
-                            17,
-                          ),
-                          gradient:
-                              LinearGradient(
-                            begin: Alignment
-                                .topLeft,
-                            end: Alignment
-                                .bottomRight,
+                        padding: const EdgeInsets.all(1.1),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(17),
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                             colors: [
-                              chipluxCyan
-                                  .withValues(
-                                alpha: 0.34,
-                              ),
-                              chipluxViolet
-                                  .withValues(
-                                alpha: 0.22,
-                              ),
-                              chipluxPurple
-                                  .withValues(
-                                alpha: 0.28,
-                              ),
+                              chipluxCyan.withValues(alpha: 0.34),
+                              chipluxViolet.withValues(alpha: 0.22),
+                              chipluxPurple.withValues(alpha: 0.28),
                             ],
                           ),
                         ),
                         child: Container(
-                          padding:
-                              const EdgeInsets.all(
-                            10,
-                          ),
-                          decoration:
-                              BoxDecoration(
-                            color:
-                                chipluxSurface,
-                            borderRadius:
-                                BorderRadius.circular(
-                              16,
-                            ),
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: chipluxSurface,
+                            borderRadius: BorderRadius.circular(16),
                           ),
                           child: Row(
                             children: [
                               ClipRRect(
-                                borderRadius:
-                                    BorderRadius.circular(
-                                  12,
-                                ),
-                                child: imagePath !=
-                                        null
+                                borderRadius: BorderRadius.circular(12),
+                                child: imagePath != null
                                     ? Image.network(
                                         'https://image.tmdb.org/t/p/w185$imagePath',
                                         width: 72,
                                         height: 92,
-                                        fit: BoxFit
-                                            .cover,
-                                        errorBuilder:
-                                            (_, _, _) =>
-                                                Container(
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, _, _) => Container(
                                           width: 72,
                                           height: 92,
-                                          color:
-                                              chipluxSurfaceLight,
-                                          child:
-                                              const Icon(
-                                            Icons
-                                                .person_rounded,
-                                            color:
-                                                Colors.white38,
+                                          color: chipluxSurfaceLight,
+                                          child: const Icon(
+                                            Icons.person_rounded,
+                                            color: Colors.white38,
                                           ),
                                         ),
                                       )
                                     : Container(
                                         width: 72,
                                         height: 92,
-                                        color:
-                                            chipluxSurfaceLight,
-                                        child:
-                                            const Icon(
-                                          Icons
-                                              .person_rounded,
-                                          color: Colors
-                                              .white38,
+                                        color: chipluxSurfaceLight,
+                                        child: const Icon(
+                                          Icons.person_rounded,
+                                          color: Colors.white38,
                                         ),
                                       ),
                               ),
 
-                              const SizedBox(
-                                width: 14,
-                              ),
+                              const SizedBox(width: 14),
 
                               Expanded(
                                 child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment
-                                          .start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
                                       name,
-                                      style:
-                                          const TextStyle(
-                                        fontSize:
-                                            16,
-                                        fontWeight:
-                                            FontWeight
-                                                .bold,
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                    const SizedBox(
-                                      height: 6,
-                                    ),
-                                    Text(
+                                    const SizedBox(height: 6),
+                                    UiText(
                                       department,
-                                      style:
-                                          const TextStyle(
-                                        color:
-                                            chipluxViolet,
-                                        fontWeight:
-                                            FontWeight
-                                                .w600,
+                                      style: const TextStyle(
+                                        color: chipluxViolet,
+                                        fontWeight: FontWeight.w600,
                                       ),
                                     ),
-                                    const SizedBox(
-                                      height: 5,
-                                    ),
-                                    Text(
+                                    const SizedBox(height: 5),
+                                    UiText(
                                       'Popularity ${popularity.toStringAsFixed(1)}',
-                                      style:
-                                          const TextStyle(
-                                        color: Colors
-                                            .white38,
-                                        fontSize:
-                                            11,
+                                      style: const TextStyle(
+                                        color: Colors.white38,
+                                        fontSize: 11,
                                       ),
                                     ),
                                   ],
@@ -14160,10 +13521,8 @@ class _SearchPageState extends State<SearchPage> {
                               ),
 
                               const Icon(
-                                Icons
-                                    .chevron_right_rounded,
-                                color:
-                                    Colors.white38,
+                                Icons.chevron_right_rounded,
+                                color: Colors.white38,
                               ),
                             ],
                           ),
@@ -14172,210 +13531,120 @@ class _SearchPageState extends State<SearchPage> {
                     );
                   }
 
-                  final mediaType =
-                      item['media_type']
-                          ?.toString();
+                  final mediaType = item['media_type']?.toString();
 
-                  final title =
-                      item['title'] ??
-                          item['name'] ??
-                          'Unknown';
+                  final title = item['title'] ?? item['name'] ?? 'Unknown';
 
                   final date =
-                      item['release_date'] ??
-                          item['first_air_date'] ??
-                          '';
+                      item['release_date'] ?? item['first_air_date'] ?? '';
 
-                  final year =
-                      date.toString().length >= 4
-                          ? date
-                              .toString()
-                              .substring(0, 4)
-                          : '';
+                  final year = date.toString().length >= 4
+                      ? date.toString().substring(0, 4)
+                      : '';
 
-                  final posterPath =
-                      item['poster_path'];
+                  final posterPath = item['poster_path'];
 
-                  final posterUrl =
-                      posterPath != null
-                          ? 'https://image.tmdb.org/t/p/w185$posterPath'
-                          : null;
+                  final posterUrl = posterPath != null
+                      ? 'https://image.tmdb.org/t/p/w185$posterPath'
+                      : null;
 
                   return InkWell(
-                    borderRadius:
-                        BorderRadius.circular(
-                      17,
-                    ),
+                    borderRadius: BorderRadius.circular(17),
                     onTap: () {
-                      final rawId =
-                          item['id'];
+                      final rawId = item['id'];
 
-                      if (rawId is! num ||
-                          mediaType == null) {
+                      if (rawId is! num || mediaType == null) {
                         return;
                       }
 
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) =>
-                              MediaDetailsPage(
+                          builder: (_) => MediaDetailsPage(
                             id: rawId.toInt(),
-                            mediaType:
-                                mediaType,
+                            mediaType: mediaType,
                           ),
                         ),
                       );
                     },
                     child: Container(
-                      padding:
-                          const EdgeInsets.all(
-                        1.1,
-                      ),
-                      decoration:
-                          BoxDecoration(
-                        borderRadius:
-                            BorderRadius.circular(
-                          17,
-                        ),
-                        gradient:
-                            LinearGradient(
-                          begin:
-                              Alignment.topLeft,
-                          end: Alignment
-                              .bottomRight,
+                      padding: const EdgeInsets.all(1.1),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(17),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                           colors: [
-                            chipluxCyan
-                                .withValues(
-                              alpha: 0.32,
-                            ),
-                            chipluxViolet
-                                .withValues(
-                              alpha: 0.20,
-                            ),
-                            chipluxPurple
-                                .withValues(
-                              alpha: 0.24,
-                            ),
+                            chipluxCyan.withValues(alpha: 0.32),
+                            chipluxViolet.withValues(alpha: 0.20),
+                            chipluxPurple.withValues(alpha: 0.24),
                           ],
                         ),
                       ),
                       child: Container(
-                        padding:
-                            const EdgeInsets.all(
-                          10,
-                        ),
-                        decoration:
-                            BoxDecoration(
-                          color:
-                              chipluxSurface,
-                          borderRadius:
-                              BorderRadius.circular(
-                            16,
-                          ),
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: chipluxSurface,
+                          borderRadius: BorderRadius.circular(16),
                         ),
                         child: Row(
                           children: [
                             ClipRRect(
-                              borderRadius:
-                                  BorderRadius.circular(
-                                12,
-                              ),
-                              child:
-                                  posterUrl != null
-                                      ? Image.network(
-                                          posterUrl,
-                                          width:
-                                              72,
-                                          height:
-                                              105,
-                                          fit: BoxFit
-                                              .cover,
-                                          errorBuilder:
-                                              (_, _, _) =>
-                                                  Container(
-                                            width:
-                                                72,
-                                            height:
-                                                105,
-                                            color:
-                                                chipluxSurfaceLight,
-                                            child:
-                                                const Icon(
-                                              Icons
-                                                  .movie_outlined,
-                                              color:
-                                                  Colors.white38,
-                                            ),
-                                          ),
-                                        )
-                                      : Container(
-                                          width:
-                                              72,
-                                          height:
-                                              105,
-                                          color:
-                                              chipluxSurfaceLight,
-                                          child:
-                                              const Icon(
-                                            Icons
-                                                .movie_outlined,
-                                            color:
-                                                Colors.white38,
-                                          ),
+                              borderRadius: BorderRadius.circular(12),
+                              child: posterUrl != null
+                                  ? Image.network(
+                                      posterUrl,
+                                      width: 72,
+                                      height: 105,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, _, _) => Container(
+                                        width: 72,
+                                        height: 105,
+                                        color: chipluxSurfaceLight,
+                                        child: const Icon(
+                                          Icons.movie_outlined,
+                                          color: Colors.white38,
                                         ),
+                                      ),
+                                    )
+                                  : Container(
+                                      width: 72,
+                                      height: 105,
+                                      color: chipluxSurfaceLight,
+                                      child: const Icon(
+                                        Icons.movie_outlined,
+                                        color: Colors.white38,
+                                      ),
+                                    ),
                             ),
 
-                            const SizedBox(
-                              width: 14,
-                            ),
+                            const SizedBox(width: 14),
 
                             Expanded(
                               child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment
-                                        .start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    title
-                                        .toString(),
-                                    style:
-                                        const TextStyle(
-                                      fontSize:
-                                          16,
-                                      fontWeight:
-                                          FontWeight
-                                              .bold,
+                                    title.toString(),
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                  const SizedBox(
-                                    height: 7,
-                                  ),
-                                  Text(
-                                    mediaType ==
-                                            'tv'
-                                        ? 'TV Show'
-                                        : 'Movie',
-                                    style:
-                                        const TextStyle(
-                                      color:
-                                          chipluxCyan,
-                                      fontWeight:
-                                          FontWeight
-                                              .w600,
+                                  const SizedBox(height: 7),
+                                  UiText(
+                                    mediaType == 'tv' ? 'TV Show' : 'Movie',
+                                    style: const TextStyle(
+                                      color: chipluxCyan,
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
-                                  if (year
-                                      .isNotEmpty) ...[
-                                    const SizedBox(
-                                      height: 4,
-                                    ),
+                                  if (year.isNotEmpty) ...[
+                                    const SizedBox(height: 4),
                                     Text(
                                       year,
-                                      style:
-                                          const TextStyle(
-                                        color: Colors
-                                            .white54,
+                                      style: const TextStyle(
+                                        color: Colors.white54,
                                       ),
                                     ),
                                   ],
@@ -14384,10 +13653,8 @@ class _SearchPageState extends State<SearchPage> {
                             ),
 
                             const Icon(
-                              Icons
-                                  .chevron_right_rounded,
-                              color:
-                                  Colors.white38,
+                              Icons.chevron_right_rounded,
+                              color: Colors.white38,
                             ),
                           ],
                         ),
@@ -14417,87 +13684,57 @@ class _SearchTabPill extends StatelessWidget {
   });
 
   @override
-  Widget build(
-    BuildContext context,
-  ) {
+  Widget build(BuildContext context) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius:
-            BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14),
         onTap: onTap,
         child: AnimatedContainer(
-          duration:
-              const Duration(
-            milliseconds: 180,
-          ),
+          duration: const Duration(milliseconds: 180),
           curve: Curves.easeOut,
-          padding:
-              const EdgeInsets.symmetric(
-            vertical: 11,
-            horizontal: 8,
-          ),
+          padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 8),
           decoration: BoxDecoration(
-            borderRadius:
-                BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(14),
             gradient: selected
                 ? const LinearGradient(
-                    begin:
-                        Alignment.topLeft,
-                    end: Alignment
-                        .bottomRight,
-                    colors: [
-                      chipluxCyan,
-                      chipluxViolet,
-                      chipluxPurple,
-                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [chipluxCyan, chipluxViolet, chipluxPurple],
                   )
                 : null,
-            color:
-                selected ? null : chipluxSurface,
+            color: selected ? null : chipluxSurface,
             border: Border.all(
               color: selected
                   ? Colors.transparent
-                  : Colors.white.withValues(
-                      alpha: 0.08,
-                    ),
+                  : Colors.white.withValues(alpha: 0.08),
             ),
             boxShadow: selected
                 ? [
                     BoxShadow(
-                      color: chipluxViolet
-                          .withValues(
-                        alpha: 0.16,
-                      ),
+                      color: chipluxViolet.withValues(alpha: 0.16),
                       blurRadius: 14,
                     ),
                   ]
                 : null,
           ),
           child: Row(
-            mainAxisAlignment:
-                MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
                 icon,
                 size: 17,
-                color: selected
-                    ? chipluxBackground
-                    : Colors.white54,
+                color: selected ? chipluxBackground : Colors.white54,
               ),
               const SizedBox(width: 6),
               Flexible(
-                child: Text(
+                child: UiText(
                   label,
-                  overflow:
-                      TextOverflow.ellipsis,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: selected
-                        ? chipluxBackground
-                        : Colors.white70,
+                    color: selected ? chipluxBackground : Colors.white70,
                     fontSize: 12,
-                    fontWeight:
-                        FontWeight.w800,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
               ),
@@ -14738,7 +13975,7 @@ class _LibraryPageState extends State<LibraryPage> {
         ),
       ),
       child: PopupMenuButton<String>(
-        tooltip: 'Sort',
+        tooltip: trUi(context, 'Sort'),
         padding: EdgeInsets.zero,
         icon: Icon(
           Icons.sort_rounded,
@@ -14767,7 +14004,7 @@ class _LibraryPageState extends State<LibraryPage> {
 
                   const SizedBox(width: 10),
 
-                  Text(
+                  UiText(
                     'Sort by Rated',
                     style: TextStyle(
                       color: selected == 'rated'
@@ -14793,7 +14030,7 @@ class _LibraryPageState extends State<LibraryPage> {
 
                   const SizedBox(width: 10),
 
-                  Text(
+                  UiText(
                     'Sort by Not Rated',
                     style: TextStyle(
                       color: selected == 'notRated'
@@ -14953,7 +14190,7 @@ class _LibraryPageState extends State<LibraryPage> {
                                   : Colors.white38,
                             ),
                             const SizedBox(width: 7),
-                            Text(
+                            UiText(
                               'TV Shows',
                               maxLines: 1,
                               style: TextStyle(
@@ -14994,7 +14231,7 @@ class _LibraryPageState extends State<LibraryPage> {
                                   : Colors.white38,
                             ),
                             const SizedBox(width: 7),
-                            Text(
+                            UiText(
                               'Movies',
                               maxLines: 1,
                               style: TextStyle(
@@ -15090,7 +14327,7 @@ class _LibraryPageState extends State<LibraryPage> {
               Expanded(
                 child: items.isEmpty
                     ? const Center(
-                        child: Text(
+                        child: UiText(
                           'Nothing here yet.',
                           style: TextStyle(color: Colors.white54),
                         ),
@@ -15199,8 +14436,8 @@ class _LibraryPageState extends State<LibraryPage> {
     );
   }
 
-  static const double _filterTabWidth = 140;
-  static const double _filterTabHeight = 46;
+  static const double _filterTabWidth = 128;
+  static const double _filterTabHeight = 40;
   static const double _filterGap = 4;
 
   Color _filterAccent(String value) {
@@ -15308,14 +14545,14 @@ class _LibraryPageState extends State<LibraryPage> {
         8;
 
     return SizedBox(
-      height: 58,
+      height: 52,
       child: SingleChildScrollView(
         controller: _filterScrollController,
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Container(
           width: totalWidth,
-          height: 54,
+          height: 48,
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
             color: chipluxSurface,
@@ -15368,34 +14605,38 @@ class _LibraryPageState extends State<LibraryPage> {
                           _scrollFilterIntoView(i);
                         },
                         child: Center(
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Icon(
-                                _filterIcon(filters[i]),
-                                size: 18,
-                                color: filter == filters[i]
-                                    ? _filterAccent(filters[i])
-                                    : Colors.white60,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    _filterIcon(filters[i]),
+                                    size: 17,
+                                    color: filter == filters[i]
+                                        ? _filterAccent(filters[i])
+                                        : Colors.white60,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  UiText(
+                                    _filterLabel(filters[i]),
+                                    maxLines: 1,
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: filter == filters[i]
+                                          ? FontWeight.bold
+                                          : FontWeight.w500,
+                                      color: filter == filters[i]
+                                          ? _filterAccent(filters[i])
+                                          : Colors.white70,
+                                    ),
+                                  ),
+                                ],
                               ),
-
-                              const SizedBox(width: 7),
-
-                              Text(
-                                _filterLabel(filters[i]),
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: filter == filters[i]
-                                      ? FontWeight.bold
-                                      : FontWeight.w500,
-                                  color: filter == filters[i]
-                                      ? _filterAccent(filters[i])
-                                      : Colors.white70,
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
                         ),
                       ),
@@ -15453,7 +14694,7 @@ class _LibraryPageState extends State<LibraryPage> {
                   Icons.delete_outline,
                   color: Colors.redAccent,
                 ),
-                title: const Text(
+                title: const UiText(
                   'Remove from Watch',
                   style: TextStyle(color: Colors.redAccent),
                 ),
@@ -15494,7 +14735,7 @@ class _LibraryPageState extends State<LibraryPage> {
   ) {
     return ListTile(
       leading: Icon(icon),
-      title: Text(label),
+      title: UiText(label),
       onTap: () async {
         final library = LibraryService.instance;
 
@@ -15995,7 +15236,7 @@ class _WatchingTvCardState extends State<_WatchingTvCard> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
+        content: UiText(
           'S${seasonNumber!.toString().padLeft(2, '0')}'
           'E${episodeNumber!.toString().padLeft(2, '0')} marked watched',
         ),
@@ -16237,241 +15478,229 @@ class _WatchingTvCardState extends State<_WatchingTvCard> {
           ),
 
           child: Row(
-  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
 
-                      child: posterUrl != null
-                          ? Image.network(
-                              posterUrl,
-                              width: 82,
-                              height: 118,
-                              fit: BoxFit.cover,
-                            )
-                          : Container(
-                              width: 82,
-                              height: 118,
-                              color: chipluxSurfaceLight,
-                              child: const Icon(Icons.tv_outlined),
-                            ),
-                    ),
+                child: posterUrl != null
+                    ? Image.network(
+                        posterUrl,
+                        width: 82,
+                        height: 118,
+                        fit: BoxFit.cover,
+                      )
+                    : Container(
+                        width: 82,
+                        height: 118,
+                        color: chipluxSurfaceLight,
+                        child: const Icon(Icons.tv_outlined),
+                      ),
+              ),
 
-                    const SizedBox(width: 10),
+              const SizedBox(width: 10),
 
-                    Expanded(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
 
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
 
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  widget.item.title,
-
-                                  maxLines: 1,
-
-                                  overflow: TextOverflow.ellipsis,
-
-                                  style: const TextStyle(
-                                    fontSize: 17,
-
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-
-                              const Icon(
-                                Icons.chevron_right,
-
-                                color: Colors.white60,
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 6),
-
-                          // =========================
-                          // NEXT EPISODE POSITION
-                          // =========================
-                          if (seasonNumber != null &&
-                              episodeNumber != null) ...[
-                            Row(
-                              children: [
-                                Text(
-                                  'Season $seasonNumber',
-
-                                  style: const TextStyle(
-                                    color: chipluxCyan,
-
-                                    fontSize: 12,
-
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-
-                                const SizedBox(width: 9),
-
-                                Container(
-                                  width: 3,
-                                  height: 3,
-
-                                  decoration: const BoxDecoration(
-                                    color: Colors.white24,
-
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-
-                                const SizedBox(width: 9),
-
-                                Text(
-                                  seasonEpisodeCount != null &&
-                                          seasonEpisodeCount! > 0
-                                      ? 'EP ${episodeNumber!.toString().padLeft(2, '0')}'
-                                            '/${seasonEpisodeCount!.toString().padLeft(2, '0')}'
-                                      : 'EP ${episodeNumber!.toString().padLeft(2, '0')}',
-
-                                  style: const TextStyle(
-                                    color: Colors.white54,
-
-                                    fontSize: 11,
-
-                                    fontWeight: FontWeight.w600,
-
-                                    letterSpacing: 0.2,
-                                  ),
-                                ),
-                              ],
-                            ),
-
-                            const SizedBox(height: 3),
-                          ],
-
-                          Text(
-  loading
-      ? 'Loading next episode...'
-      : episodeName,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            widget.item.title,
 
                             maxLines: 1,
 
                             overflow: TextOverflow.ellipsis,
 
                             style: const TextStyle(
-                              color: Colors.white70,
+                              fontSize: 17,
+
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+
+                        const Icon(Icons.chevron_right, color: Colors.white60),
+                      ],
+                    ),
+
+                    const SizedBox(height: 6),
+
+                    // =========================
+                    // NEXT EPISODE POSITION
+                    // =========================
+                    if (seasonNumber != null && episodeNumber != null) ...[
+                      Row(
+                        children: [
+                          UiText(
+                            'Season $seasonNumber',
+
+                            style: const TextStyle(
+                              color: chipluxCyan,
 
                               fontSize: 12,
+
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
 
-                          const SizedBox(height: 8),
+                          const SizedBox(width: 9),
 
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.access_time_rounded,
+                          Container(
+                            width: 3,
+                            height: 3,
 
-                                size: 17,
+                            decoration: const BoxDecoration(
+                              color: Colors.white24,
 
-                                color: Colors.white54,
-                              ),
-
-                              const SizedBox(width: 5),
-
-                              Text(
-                                runtime != null ? '${runtime}m' : '--m',
-
-                                style: const TextStyle(
-                                  color: Colors.white60,
-
-                                  fontSize: 12,
-                                ),
-                              ),
-
-                              const SizedBox(width: 10),
-
-                              const Icon(
-                                Icons.star,
-
-                                size: 18,
-
-                                color: Colors.amber,
-                              ),
-
-                              const SizedBox(width: 5),
-
-                              Text(
-                                episodeRating != null
-                                    ? '${episodeRating!.toStringAsFixed(1)}/10'
-                                    : '--/10',
-
-                                style: const TextStyle(
-                                  color: Colors.white60,
-
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ],
+                              shape: BoxShape.circle,
+                            ),
                           ),
 
-                          const SizedBox(height: 8),
+                          const SizedBox(width: 9),
 
-                          Row(
-                            children: [
-                              Expanded(
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(20),
+                          Text(
+                            seasonEpisodeCount != null &&
+                                    seasonEpisodeCount! > 0
+                                ? 'EP ${episodeNumber!.toString().padLeft(2, '0')}'
+                                      '/${seasonEpisodeCount!.toString().padLeft(2, '0')}'
+                                : 'EP ${episodeNumber!.toString().padLeft(2, '0')}',
 
-                                  child: LinearProgressIndicator(
-                                    value: progress,
+                            style: const TextStyle(
+                              color: Colors.white54,
 
-                                    minHeight: 6,
+                              fontSize: 11,
 
-                                    backgroundColor: Colors.white12,
+                              fontWeight: FontWeight.w600,
 
-                                    valueColor:
-                                        const AlwaysStoppedAnimation<Color>(
-                                          chipluxPurple,
-                                        ),
-                                  ),
-                                ),
-                              ),
-
-                              const SizedBox(width: 12),
-
-                              SizedBox(
-                                width: 46,
-                                height: 22,
-
-                                child: FittedBox(
-                                  fit: BoxFit.scaleDown,
-
-                                  alignment: Alignment.centerRight,
-
-                                  child: Text(
-                                    '$completionPercent%',
-
-                                    maxLines: 1,
-
-                                    style: const TextStyle(
-                                      fontSize: 15,
-
-                                      fontWeight: FontWeight.bold,
-
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
+                              letterSpacing: 0.2,
+                            ),
                           ),
                         ],
                       ),
+
+                      const SizedBox(height: 3),
+                    ],
+
+                    Text(
+                      loading
+                          ? trUi(context, 'Loading next episode...')
+                          : episodeName,
+
+                      maxLines: 1,
+
+                      overflow: TextOverflow.ellipsis,
+
+                      style: const TextStyle(
+                        color: Colors.white70,
+
+                        fontSize: 12,
+                      ),
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.access_time_rounded,
+
+                          size: 17,
+
+                          color: Colors.white54,
+                        ),
+
+                        const SizedBox(width: 5),
+
+                        Text(
+                          runtime != null ? '${runtime}m' : '--m',
+
+                          style: const TextStyle(
+                            color: Colors.white60,
+
+                            fontSize: 12,
+                          ),
+                        ),
+
+                        const SizedBox(width: 10),
+
+                        const Icon(Icons.star, size: 18, color: Colors.amber),
+
+                        const SizedBox(width: 5),
+
+                        Text(
+                          episodeRating != null
+                              ? '${episodeRating!.toStringAsFixed(1)}/10'
+                              : '--/10',
+
+                          style: const TextStyle(
+                            color: Colors.white60,
+
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(20),
+
+                            child: LinearProgressIndicator(
+                              value: progress,
+
+                              minHeight: 6,
+
+                              backgroundColor: Colors.white12,
+
+                              valueColor: const AlwaysStoppedAnimation<Color>(
+                                chipluxPurple,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(width: 12),
+
+                        SizedBox(
+                          width: 46,
+                          height: 22,
+
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+
+                            alignment: Alignment.centerRight,
+
+                            child: UiText(
+                              '$completionPercent%',
+
+                              maxLines: 1,
+
+                              style: const TextStyle(
+                                fontSize: 15,
+
+                                fontWeight: FontWeight.bold,
+
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -16812,12 +16041,17 @@ class _LibraryListCard extends StatelessWidget {
                             Text(
                               isTv
                                   ? [
-                                      '$watched / ${item.totalEpisodes} episodes',
-                                      if (genre.isNotEmpty) genre,
+                                      trUi(
+                                        context,
+                                        '$watched / ${item.totalEpisodes} episodes',
+                                      ),
+                                      if (genre.isNotEmpty)
+                                        trUi(context, genre),
                                     ].join(' • ')
                                   : [
                                       if (item.year.isNotEmpty) item.year,
-                                      if (genre.isNotEmpty) genre,
+                                      if (genre.isNotEmpty)
+                                        trUi(context, genre),
                                     ].join(' • '),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -16854,7 +16088,7 @@ class _LibraryListCard extends StatelessWidget {
                                       width: 0.8,
                                     ),
                                   ),
-                                  child: Text(
+                                  child: UiText(
                                     statusText,
                                     style: TextStyle(
                                       color: statusColor,
@@ -16887,7 +16121,7 @@ class _LibraryListCard extends StatelessWidget {
                                           width: 0.8,
                                         ),
                                       ),
-                                      child: const Text(
+                                      child: const UiText(
                                         'Rated',
                                         style: TextStyle(
                                           color: ratedGold,
@@ -16897,7 +16131,7 @@ class _LibraryListCard extends StatelessWidget {
                                       ),
                                     )
                                   else
-                                    const Text(
+                                    const UiText(
                                       'Not Rated',
                                       style: TextStyle(
                                         color: Colors.white38,
@@ -16911,8 +16145,6 @@ class _LibraryListCard extends StatelessWidget {
                                   // TV ONLY
                                   // =========================
                                   if (isTv) ...[
-                                    const SizedBox(width: 7),
-
                                     Text(
                                       episodeRatingText,
                                       style: TextStyle(
@@ -16946,7 +16178,7 @@ class _LibraryListCard extends StatelessWidget {
                                           width: 0.8,
                                         ),
                                       ),
-                                      child: const Text(
+                                      child: const UiText(
                                         'Favorite',
                                         style: TextStyle(
                                           color: favoriteRed,
@@ -17011,7 +16243,7 @@ class _LibraryListCard extends StatelessWidget {
                     if (fullyRated && titleRatingStars != null) ...[
                       const SizedBox(width: 3),
 
-                      Text(
+                      UiText(
                         '$titleRatingStars',
                         style: const TextStyle(
                           color: ratedGold,
@@ -17151,7 +16383,7 @@ class _LibraryPosterCard extends StatelessWidget {
                       color: Colors.black87,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Text(
+                    child: UiText(
                       _statusLabel(item.status),
                       style: const TextStyle(
                         fontSize: 10,
@@ -17178,7 +16410,7 @@ class _LibraryPosterCard extends StatelessWidget {
 
           Text(
             item.mediaType == 'tv'
-                ? '$watched / ${item.totalEpisodes} episodes'
+                ? trUi(context, '$watched / ${item.totalEpisodes} episodes')
                 : item.year,
             maxLines: 1,
             style: const TextStyle(color: Colors.white54, fontSize: 11),
@@ -17256,7 +16488,7 @@ class _BannerPickerSheet extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
                 children: [
-                  const Text(
+                  const UiText(
                     'Choose Banner',
                     style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                   ),
@@ -17277,7 +16509,7 @@ class _BannerPickerSheet extends StatelessWidget {
               padding: EdgeInsets.fromLTRB(20, 0, 20, 16),
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: Text(
+                child: UiText(
                   'Backdrops from movies and TV shows you completed.',
                   style: TextStyle(color: Colors.white54, fontSize: 13),
                 ),
@@ -17310,7 +16542,7 @@ class _BannerPickerSheet extends StatelessWidget {
                       children: [
                         Icon(Icons.hide_image_outlined, color: Colors.white70),
                         SizedBox(width: 10),
-                        Text('Remove banner'),
+                        UiText('Remove banner'),
                       ],
                     ),
                   ),
@@ -17322,7 +16554,7 @@ class _BannerPickerSheet extends StatelessWidget {
                   ? const Center(
                       child: Padding(
                         padding: EdgeInsets.all(30),
-                        child: Text(
+                        child: UiText(
                           'Complete a movie or TV show to unlock profile banners.',
                           textAlign: TextAlign.center,
                           style: TextStyle(color: Colors.white54),
@@ -17462,7 +16694,7 @@ class _BannerOptionTileState extends State<_BannerOptionTile> {
                   Container(
                     color: chipluxSurfaceLight,
                     alignment: Alignment.center,
-                    child: const Text(
+                    child: const UiText(
                       'No backdrop',
                       style: TextStyle(color: Colors.white38, fontSize: 12),
                     ),
@@ -17501,7 +16733,7 @@ class _BannerOptionTileState extends State<_BannerOptionTile> {
 
                       const SizedBox(width: 5),
 
-                      Text(
+                      UiText(
                         widget.item.mediaType == 'tv' ? 'TV' : 'MOVIE',
                         style: const TextStyle(
                           color: chipluxCyan,
@@ -17790,7 +17022,7 @@ class _PublicAchievementsPage extends StatelessWidget {
 
                   const SizedBox(height: 7),
 
-                  Text(
+                  UiText(
                     group.title,
                     textAlign: TextAlign.center,
 
@@ -17803,7 +17035,7 @@ class _PublicAchievementsPage extends StatelessWidget {
 
                   const SizedBox(height: 3),
 
-                  Text(
+                  UiText(
                     progressText,
 
                     style: TextStyle(
@@ -17828,7 +17060,7 @@ class _PublicAchievementsPage extends StatelessWidget {
 
                   const SizedBox(height: 14),
 
-                  Text(
+                  UiText(
                     'Viewing $displayName\'s achievements',
 
                     textAlign: TextAlign.center,
@@ -17871,7 +17103,7 @@ class _PublicAchievementsPage extends StatelessWidget {
         backgroundColor: chipluxBackground,
         elevation: 0,
 
-        title: Text(
+        title: UiText(
           displayName.isEmpty ? 'Achievements' : '$displayName\'s Achievements',
 
           style: const TextStyle(fontWeight: FontWeight.bold),
@@ -17949,7 +17181,7 @@ class _PublicAchievementsPage extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
 
                             children: [
-                              Text(
+                              UiText(
                                 'Medal Collection',
 
                                 style: TextStyle(
@@ -17965,7 +17197,7 @@ class _PublicAchievementsPage extends StatelessWidget {
 
                               const SizedBox(height: 3),
 
-                              Text(
+                              UiText(
                                 '$unlocked / $total unlocked',
 
                                 style: const TextStyle(
@@ -17977,7 +17209,7 @@ class _PublicAchievementsPage extends StatelessWidget {
                           ),
                         ),
 
-                        Text(
+                        UiText(
                           '$collectionPercent%',
 
                           style: TextStyle(
@@ -17999,7 +17231,7 @@ class _PublicAchievementsPage extends StatelessWidget {
 
             const SizedBox(height: 25),
 
-            Text(
+            UiText(
               displayName.isEmpty
                   ? 'Achievements'
                   : '$displayName\'s Achievements',
@@ -18079,12 +17311,10 @@ class AchievementsPage extends StatefulWidget {
   });
 
   @override
-  State<AchievementsPage> createState() =>
-      _AchievementsPageState();
+  State<AchievementsPage> createState() => _AchievementsPageState();
 }
 
-class _AchievementsPageState
-    extends State<AchievementsPage> {
+class _AchievementsPageState extends State<AchievementsPage> {
   bool _didOpenInitialAchievement = false;
 
   void _showAchievementGroup(BuildContext context, _AchievementGroup group) {
@@ -18229,7 +17459,7 @@ class _AchievementsPageState
                 children: [
                   Icon(achievementIcon, color: accent, size: 32),
                   const SizedBox(height: 7),
-                  Text(
+                  UiText(
                     group.title,
                     textAlign: TextAlign.center,
                     style: TextStyle(
@@ -18239,7 +17469,7 @@ class _AchievementsPageState
                     ),
                   ),
                   const SizedBox(height: 3),
-                  Text(
+                  UiText(
                     progressText,
                     style: TextStyle(
                       color: accent.withValues(alpha: 0.65),
@@ -18402,19 +17632,22 @@ class _AchievementsPageState
                             'get_developer_profile_id',
                           );
                           final developerId = result?.toString();
-                          if (developerId == null || developerId.isEmpty || !context.mounted) {
+                          if (developerId == null ||
+                              developerId.isEmpty ||
+                              !context.mounted) {
                             return;
                           }
                           Navigator.pop(sheetContext);
                           await Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => PublicProfilePage(userId: developerId),
+                              builder: (_) =>
+                                  PublicProfilePage(userId: developerId),
                             ),
                           );
                         },
                         icon: const Icon(Icons.person_search_rounded),
-                        label: const Text('View Developer Profile'),
+                        label: const UiText('View Developer Profile'),
                       ),
                     ),
                   ],
@@ -18452,7 +17685,7 @@ class _AchievementsPageState
                               : Icons.push_pin_rounded,
                           color: accent,
                         ),
-                        label: Text(
+                        label: UiText(
                           !canPin
                               ? 'Unlock a tier first'
                               : isPinned
@@ -18493,7 +17726,7 @@ class _AchievementsPageState
           Icon(icon, color: accent, size: 18),
           const SizedBox(width: 9),
           Expanded(
-            child: Text(
+            child: UiText(
               text,
               style: const TextStyle(
                 color: Colors.white70,
@@ -18546,65 +17779,52 @@ class _AchievementsPageState
   }
 
   void _scheduleInitialAchievementGroup({
-  required List<_AchievementGroup> groups,
-  required _AchievementGroup medalCollectionGroup,
-}) {
-  if (_didOpenInitialAchievement) {
-    return;
-  }
+    required List<_AchievementGroup> groups,
+    required _AchievementGroup medalCollectionGroup,
+  }) {
+    if (_didOpenInitialAchievement) {
+      return;
+    }
 
-  final achievementId =
-      widget.initialAchievementId;
+    final achievementId = widget.initialAchievementId;
 
-  if (achievementId == null ||
-      achievementId.isEmpty) {
+    if (achievementId == null || achievementId.isEmpty) {
+      _didOpenInitialAchievement = true;
+
+      return;
+    }
+
+    _AchievementGroup? targetGroup;
+
+    final allGroups = <_AchievementGroup>[...groups, medalCollectionGroup];
+
+    for (final group in allGroups) {
+      final containsAchievement = group.tiers.any(
+        (tier) => tier.id == achievementId,
+      );
+
+      if (containsAchievement) {
+        targetGroup = group;
+        break;
+      }
+    }
+
     _didOpenInitialAchievement = true;
 
-    return;
-  }
+    final groupToOpen = targetGroup;
 
-  _AchievementGroup? targetGroup;
-
-  final allGroups = <_AchievementGroup>[
-    ...groups,
-    medalCollectionGroup,
-  ];
-
-  for (final group in allGroups) {
-    final containsAchievement =
-        group.tiers.any(
-      (tier) =>
-          tier.id == achievementId,
-    );
-
-    if (containsAchievement) {
-      targetGroup = group;
-      break;
+    if (groupToOpen == null) {
+      return;
     }
-  }
 
-  _didOpenInitialAchievement = true;
-
-  final groupToOpen = targetGroup;
-
-  if (groupToOpen == null) {
-    return;
-  }
-
-  WidgetsBinding.instance
-      .addPostFrameCallback(
-    (_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) {
         return;
       }
 
-      _showAchievementGroup(
-        context,
-        groupToOpen,
-      );
-    },
-  );
-}
+      _showAchievementGroup(context, groupToOpen);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18621,15 +17841,14 @@ class _AchievementsPageState
     final followerCountService = FollowerCountService.instance;
 
     return DefaultTabController(
-  length: 4,
-  initialIndex:
-      widget.initialTabIndex.clamp(0, 3),
+      length: 4,
+      initialIndex: widget.initialTabIndex.clamp(0, 3),
       child: Scaffold(
         backgroundColor: chipluxBackground,
         appBar: AppBar(
           backgroundColor: chipluxBackground,
           elevation: 0,
-          title: const Text(
+          title: const UiText(
             'Achievements',
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
@@ -18721,24 +17940,17 @@ class _AchievementsPageState
                 followerGroup,
               ];
 
-              final followDeveloperGroup =
-    _followDeveloperAchievementGroupFor(
-  ProfileService
-      .instance
-      .followedDeveloperAchievement,
-);
+              final followDeveloperGroup = _followDeveloperAchievementGroupFor(
+                ProfileService.instance.followedDeveloperAchievement,
+              );
 
-final chipluxGroups =
-    <_AchievementGroup>[
-  if (!ProfileService
-      .instance
-      .isDeveloper)
-    followDeveloperGroup,
+              final chipluxGroups = <_AchievementGroup>[
+                if (!ProfileService.instance.isDeveloper) followDeveloperGroup,
 
-  dailyLoginGroup,
-  runtimeLevelGroup,
-  ratingsLevelGroup,
-];
+                dailyLoginGroup,
+                runtimeLevelGroup,
+                ratingsLevelGroup,
+              ];
 
               // =========================
               // ALL NORMAL ACHIEVEMENTS
@@ -18772,10 +17984,9 @@ final chipluxGroups =
               );
 
               _scheduleInitialAchievementGroup(
-  groups: allGroups,
-  medalCollectionGroup:
-      medalCollectionGroup,
-);
+                groups: allGroups,
+                medalCollectionGroup: medalCollectionGroup,
+              );
 
               final medalCollectionTier =
                   medalCollectionGroup.highestUnlockedTier;
@@ -18843,7 +18054,7 @@ final chipluxGroups =
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      Text(
+                                      UiText(
                                         'Medal Collection',
                                         style: TextStyle(
                                           color: medalCollectionTier != null
@@ -18854,7 +18065,7 @@ final chipluxGroups =
                                         ),
                                       ),
                                       const SizedBox(height: 3),
-                                      Text(
+                                      UiText(
                                         '$unlocked / ${allTiers.length} unlocked',
                                         style: const TextStyle(
                                           color: Colors.white54,
@@ -18864,7 +18075,7 @@ final chipluxGroups =
                                     ],
                                   ),
                                 ),
-                                Text(
+                                UiText(
                                   '$collectionPercent%',
                                   style: TextStyle(
                                     color: medalCollectionTier != null
@@ -18927,10 +18138,10 @@ final chipluxGroups =
                           fontWeight: FontWeight.w600,
                         ),
                         tabs: const [
-                          Tab(text: 'Movies'),
-                          Tab(text: 'TV Shows'),
-                          Tab(text: 'Community'),
-                          Tab(text: 'Chiplux'),
+                          Tab(child: UiText('Movies')),
+                          Tab(child: UiText('TV Shows')),
+                          Tab(child: UiText('Community')),
+                          Tab(child: UiText('Chiplux')),
                         ],
                       ),
                     ),
@@ -19034,7 +18245,7 @@ class _AchievementTierRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
 
               children: [
-                Text(
+                UiText(
                   tier.title,
 
                   style: TextStyle(
@@ -19048,7 +18259,7 @@ class _AchievementTierRow extends StatelessWidget {
 
                 const SizedBox(height: 2),
 
-                Text(
+                UiText(
                   tier.description,
 
                   style: const TextStyle(color: Colors.white38, fontSize: 10),
@@ -19060,7 +18271,7 @@ class _AchievementTierRow extends StatelessWidget {
           if (unlocked)
             Icon(Icons.check_circle_rounded, color: tierAccent, size: 20)
           else
-            Text(
+            UiText(
               '${tier.current.clamp(0, tier.target)} / ${tier.target}',
 
               style: const TextStyle(
@@ -19169,7 +18380,7 @@ class _AchievementGroupCard extends StatelessWidget {
 
               const SizedBox(height: 9),
 
-              Text(
+              UiText(
                 group.title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -19184,7 +18395,7 @@ class _AchievementGroupCard extends StatelessWidget {
 
               const SizedBox(height: 3),
 
-              Text(
+              UiText(
                 currentTitle,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -19199,7 +18410,7 @@ class _AchievementGroupCard extends StatelessWidget {
 
               const SizedBox(height: 3),
 
-              Text(
+              UiText(
                 next != null ? 'Next: ${next.target}' : 'Max tier',
                 style: const TextStyle(color: Colors.white38, fontSize: 8.5),
               ),
@@ -19235,7 +18446,7 @@ class _AchievementGroupCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(9),
                     ),
 
-                    child: Text(
+                    child: UiText(
                       achieved != null ? 'Movies Watched' : 'Locked',
 
                       style: TextStyle(
@@ -19284,7 +18495,7 @@ class _AchievementGroupCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(9),
                     ),
 
-                    child: Text(
+                    child: UiText(
                       achieved != null ? 'TV Shows Watched' : 'Locked',
 
                       style: TextStyle(
@@ -19335,7 +18546,7 @@ class _AchievementGroupCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(9),
                     ),
 
-                    child: Text(
+                    child: UiText(
                       achieved != null ? 'Episodes Watched' : 'Locked',
 
                       style: TextStyle(
@@ -19376,7 +18587,7 @@ class _AchievementGroupCard extends StatelessWidget {
 
                   child: Column(
                     children: [
-                      const Text(
+                      const UiText(
                         'REWARD · Display Frame',
                         style: TextStyle(
                           color: Colors.white38,
@@ -19401,7 +18612,7 @@ class _AchievementGroupCard extends StatelessWidget {
                             borderRadius: BorderRadius.circular(9),
                           ),
 
-                          child: Text(
+                          child: UiText(
                             achieved != null ? 'Name' : 'Locked',
 
                             style: TextStyle(
@@ -19443,7 +18654,7 @@ class _AchievementGroupCard extends StatelessWidget {
 
                   child: Column(
                     children: [
-                      const Text(
+                      const UiText(
                         'REWARD · Avatar Frame',
                         style: TextStyle(
                           color: Colors.white38,
@@ -19516,7 +18727,7 @@ class _AchievementGroupCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(9),
                     ),
 
-                    child: Text(
+                    child: UiText(
                       achieved != null ? 'Episodes Rated' : 'Locked',
 
                       style: TextStyle(
@@ -19565,7 +18776,7 @@ class _AchievementGroupCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(9),
                     ),
 
-                    child: Text(
+                    child: UiText(
                       achieved != null ? titleRatedRewardLabel : 'Locked',
 
                       style: TextStyle(
@@ -19611,7 +18822,7 @@ class _AchievementGroupCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(9),
                     ),
 
-                    child: Text(
+                    child: UiText(
                       achieved != null ? 'Runtime Level' : 'Locked',
 
                       style: TextStyle(
@@ -19662,7 +18873,7 @@ class _AchievementGroupCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(9),
                     ),
 
-                    child: Text(
+                    child: UiText(
                       achieved != null ? 'Ratings Level' : 'Locked',
 
                       style: TextStyle(
@@ -19697,7 +18908,7 @@ class _AchievementGroupCard extends StatelessWidget {
 
               const SizedBox(height: 5),
 
-              Text(
+              UiText(
                 next != null
                     ? '${group.current.clamp(0, next.target)} / ${next.target}'
                     : isPinned
@@ -20650,14 +19861,10 @@ int _totalUnlockedAchievementMilestones() {
     _moviesRatedAchievementGroupFor(critic.movieRatingCount),
     _runtimeLevelAchievementGroupFor(runtimeLevel),
     _ratingsLevelAchievementGroupFor(critic.level),
-    if (!ProfileService
-    .instance
-    .isDeveloper)
-  _followDeveloperAchievementGroupFor(
-    ProfileService
-        .instance
-        .followedDeveloperAchievement,
-  ),
+    if (!ProfileService.instance.isDeveloper)
+      _followDeveloperAchievementGroupFor(
+        ProfileService.instance.followedDeveloperAchievement,
+      ),
   ];
 
   return groups
@@ -20959,25 +20166,19 @@ _AchievementGroup _publicProfileViewAchievementGroupFor(int viewedProfiles) {
   );
 }
 
-class ProfilePageFrameService
-    extends ChangeNotifier {
+class ProfilePageFrameService extends ChangeNotifier {
   ProfilePageFrameService._();
 
-  static final ProfilePageFrameService
-      instance =
-      ProfilePageFrameService._();
+  static final ProfilePageFrameService instance = ProfilePageFrameService._();
 
   String? _frameId;
 
-  String? get frameId =>
-      _frameId;
+  String? get frameId => _frameId;
 
   Future<void> load() async {
-    final client =
-        Supabase.instance.client;
+    final client = Supabase.instance.client;
 
-    final user =
-        client.auth.currentUser;
+    final user = client.auth.currentUser;
 
     if (user == null) {
       _frameId = null;
@@ -20990,101 +20191,54 @@ class ProfilePageFrameService
     try {
       final row = await client
           .from('profiles')
-          .select(
-            'profile_page_frame_id',
-          )
-          .eq(
-            'id',
-            user.id,
-          )
+          .select('profile_page_frame_id')
+          .eq('id', user.id)
           .maybeSingle();
 
-      final rawId =
-          row?['profile_page_frame_id']
-              ?.toString()
-              .trim();
+      final rawId = row?['profile_page_frame_id']?.toString().trim();
 
-      _frameId =
-          rawId != null &&
-                  rawId.isNotEmpty
-              ? rawId
-              : null;
+      _frameId = rawId != null && rawId.isNotEmpty ? rawId : null;
 
       notifyListeners();
     } catch (e) {
-      debugPrint(
-        'Could not load profile page frame: $e',
-      );
+      debugPrint('Could not load profile page frame: $e');
     }
   }
 
-  Future<void> apply(
-    String? frameId,
-  ) async {
-    final client =
-        Supabase.instance.client;
+  Future<void> apply(String? frameId) async {
+    final client = Supabase.instance.client;
 
-    final user =
-        client.auth.currentUser;
+    final user = client.auth.currentUser;
 
     if (user == null) {
-      throw Exception(
-        'No signed in user.',
-      );
+      throw Exception('No signed in user.');
     }
 
-    final cleanId =
-        frameId?.trim();
+    final cleanId = frameId?.trim();
 
-    final value =
-        cleanId == null ||
-                cleanId.isEmpty
-            ? null
-            : cleanId;
+    final value = cleanId == null || cleanId.isEmpty ? null : cleanId;
 
     if (value != null &&
-    value !=
-        developerProfilePageFrameId &&
-    value !=
-        followDeveloperProfilePageFrameId) {
-  throw Exception(
-    'Unknown profile page frame.',
-  );
-}
+        value != developerProfilePageFrameId &&
+        value != followDeveloperProfilePageFrameId) {
+      throw Exception('Unknown profile page frame.');
+    }
 
-if (value ==
-        developerProfilePageFrameId &&
-    !ProfileService
-        .instance
-        .isDeveloper) {
-  throw Exception(
-    'Developer frame is not available.',
-  );
-}
+    if (value == developerProfilePageFrameId &&
+        !ProfileService.instance.isDeveloper) {
+      throw Exception('Developer frame is not available.');
+    }
 
-if (value ==
-        followDeveloperProfilePageFrameId &&
-    !ProfileService
-        .instance
-        .isDeveloper &&
-    !ProfileService
-        .instance
-        .followedDeveloperAchievement) {
-  throw Exception(
-    'Follow Developer frame is still locked.',
-  );
-}
+    if (value == followDeveloperProfilePageFrameId &&
+        !ProfileService.instance.isDeveloper &&
+        !ProfileService.instance.followedDeveloperAchievement) {
+      throw Exception('Follow Developer frame is still locked.');
+    }
 
     await client
         .from('profiles')
-        .update({
-          'profile_page_frame_id':
-              value,
-        })
-        .eq(
-          'id',
-          user.id,
-        );
+        .update({'profile_page_frame_id': value})
+        .eq('id', user.id);
 
     _frameId = value;
 
@@ -21501,7 +20655,7 @@ class _ProfileTitleLabel extends StatelessWidget {
         ],
       ),
 
-      child: Text(
+      child: UiText(
         achievement.title.toUpperCase(),
 
         maxLines: 1,
@@ -21524,63 +20678,38 @@ class _ProfileTitleLabel extends StatelessWidget {
   }
 }
 
-class _Tier3ProfilePageFrame
-    extends StatelessWidget {
+class _Tier3ProfilePageFrame extends StatelessWidget {
   const _Tier3ProfilePageFrame();
 
   @override
-  Widget build(
-    BuildContext context,
-  ) {
+  Widget build(BuildContext context) {
     return const IgnorePointer(
       child: CustomPaint(
-        painter:
-            _Tier3ProfilePageFramePainter(),
+        painter: _Tier3ProfilePageFramePainter(),
 
-        child:
-            SizedBox.expand(),
+        child: SizedBox.expand(),
       ),
     );
   }
 }
 
-class _Tier3ProfilePageFramePainter
-    extends CustomPainter {
+class _Tier3ProfilePageFramePainter extends CustomPainter {
   const _Tier3ProfilePageFramePainter();
 
   @override
-  void paint(
-    Canvas canvas,
-    Size size,
-  ) {
-    if (size.width <= 0 ||
-        size.height <= 0) {
+  void paint(Canvas canvas, Size size) {
+    if (size.width <= 0 || size.height <= 0) {
       return;
     }
 
-    final rect =
-        Rect.fromLTWH(
-      5,
-      5,
-      size.width - 10,
-      size.height - 10,
-    );
+    final rect = Rect.fromLTWH(5, 5, size.width - 10, size.height - 10);
 
-    final rrect =
-        RRect.fromRectAndRadius(
-      rect,
-      const Radius.circular(
-        24,
-      ),
-    );
+    final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(24));
 
-    final shader =
-        const LinearGradient(
-      begin:
-          Alignment.topLeft,
+    final shader = const LinearGradient(
+      begin: Alignment.topLeft,
 
-      end:
-          Alignment.bottomRight,
+      end: Alignment.bottomRight,
 
       colors: [
         Color(0xFFA855F7),
@@ -21588,120 +20717,72 @@ class _Tier3ProfilePageFramePainter
         Color(0xFF6366F1),
         Color(0xFFA855F7),
       ],
-    ).createShader(
-      rect,
-    );
+    ).createShader(rect);
 
-    final glow =
-        Paint()
-          ..style =
-              PaintingStyle.stroke
-          ..strokeWidth = 5
-          ..shader = shader
-          ..maskFilter =
-              const MaskFilter.blur(
-            BlurStyle.normal,
-            5,
-          );
+    final glow = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 5
+      ..shader = shader
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
 
-    canvas.drawRRect(
-      rrect,
-      glow,
-    );
+    canvas.drawRRect(rrect, glow);
 
-    final frame =
-        Paint()
-          ..style =
-              PaintingStyle.stroke
-          ..strokeWidth = 2.1
-          ..shader = shader;
+    final frame = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.1
+      ..shader = shader;
+
+    canvas.drawRRect(rrect, frame);
+
+    final innerRect = Rect.fromLTWH(8, 8, size.width - 16, size.height - 16);
 
     canvas.drawRRect(
-      rrect,
-      frame,
-    );
-
-    final innerRect =
-        Rect.fromLTWH(
-      8,
-      8,
-      size.width - 16,
-      size.height - 16,
-    );
-
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        innerRect,
-        const Radius.circular(
-          21,
-        ),
-      ),
+      RRect.fromRectAndRadius(innerRect, const Radius.circular(21)),
       Paint()
-        ..style =
-            PaintingStyle.stroke
+        ..style = PaintingStyle.stroke
         ..strokeWidth = 0.7
-        ..color =
-            Colors.white
-                .withValues(
-          alpha: 0.12,
-        ),
+        ..color = Colors.white.withValues(alpha: 0.12),
     );
   }
 
   @override
-  bool shouldRepaint(
-    covariant
-        _Tier3ProfilePageFramePainter
-        oldDelegate,
-  ) {
+  bool shouldRepaint(covariant _Tier3ProfilePageFramePainter oldDelegate) {
     return false;
   }
 }
 
-Widget? _profilePageFrameWidget(
-  String? frameId,
-) {
+Widget? _profilePageFrameWidget(String? frameId) {
   switch (frameId) {
     case developerProfilePageFrameId:
-      return const
-          _DeveloperProfilePageFrame();
+      return const _DeveloperProfilePageFrame();
 
     case followDeveloperProfilePageFrameId:
-      return const
-          _Tier3ProfilePageFrame();
+      return const _Tier3ProfilePageFrame();
 
     default:
       return null;
   }
 }
 
-class _DeveloperProfilePageFrame
-    extends StatefulWidget {
+class _DeveloperProfilePageFrame extends StatefulWidget {
   const _DeveloperProfilePageFrame();
 
   @override
-  State<_DeveloperProfilePageFrame>
-      createState() =>
-          _DeveloperProfilePageFrameState();
+  State<_DeveloperProfilePageFrame> createState() =>
+      _DeveloperProfilePageFrameState();
 }
 
-class _DeveloperProfilePageFrameState
-    extends State<_DeveloperProfilePageFrame>
+class _DeveloperProfilePageFrameState extends State<_DeveloperProfilePageFrame>
     with SingleTickerProviderStateMixin {
-  late final AnimationController
-      _controller;
+  late final AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
 
-    _controller =
-        AnimationController(
+    _controller = AnimationController(
       vsync: this,
-      duration:
-          const Duration(
-        seconds: 5,
-      ),
+      duration: const Duration(seconds: 5),
     )..repeat();
   }
 
@@ -21713,64 +20794,38 @@ class _DeveloperProfilePageFrameState
   }
 
   @override
-  Widget build(
-    BuildContext context,
-  ) {
+  Widget build(BuildContext context) {
     return IgnorePointer(
       child: CustomPaint(
-        painter:
-            _DeveloperProfileFramePainter(
-          animation: _controller,
-        ),
-        child:
-            const SizedBox.expand(),
+        painter: _DeveloperProfileFramePainter(animation: _controller),
+        child: const SizedBox.expand(),
       ),
     );
   }
 }
 
-class _DeveloperProfileFramePainter
-    extends CustomPainter {
+class _DeveloperProfileFramePainter extends CustomPainter {
   final Animation<double> animation;
 
-  _DeveloperProfileFramePainter({
-    required this.animation,
-  }) : super(
-          repaint: animation,
-        );
+  _DeveloperProfileFramePainter({required this.animation})
+    : super(repaint: animation);
 
   @override
-  void paint(
-    Canvas canvas,
-    Size size,
-  ) {
-    if (size.width <= 0 ||
-        size.height <= 0) {
+  void paint(Canvas canvas, Size size) {
+    if (size.width <= 0 || size.height <= 0) {
       return;
     }
 
-    final rect =
-        Rect.fromLTWH(
-      5,
-      5,
-      size.width - 10,
-      size.height - 10,
-    );
+    final rect = Rect.fromLTWH(5, 5, size.width - 10, size.height - 10);
 
-    final roundedRect =
-        RRect.fromRectAndRadius(
+    final roundedRect = RRect.fromRectAndRadius(
       rect,
-      const Radius.circular(
-        24,
-      ),
+      const Radius.circular(24),
     );
 
-    final rotation =
-        animation.value *
-            6.28318530718;
+    final rotation = animation.value * 6.28318530718;
 
-    final shader =
-        SweepGradient(
+    final shader = SweepGradient(
       colors: const [
         Color(0xFF00E5FF),
         Color(0xFF875CFF),
@@ -21778,124 +20833,75 @@ class _DeveloperProfileFramePainter
         Color(0xFFFFD166),
         Color(0xFF00E5FF),
       ],
-      transform:
-          GradientRotation(
-        rotation,
-      ),
-    ).createShader(
-      rect,
-    );
+      transform: GradientRotation(rotation),
+    ).createShader(rect);
 
     // =========================
     // SOFT OUTER GLOW
     // =========================
 
-    final glowPaint =
-        Paint()
-          ..style =
-              PaintingStyle.stroke
-          ..strokeWidth = 6
-          ..shader = shader
-          ..maskFilter =
-              const MaskFilter.blur(
-            BlurStyle.normal,
-            6,
-          );
+    final glowPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 6
+      ..shader = shader
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
 
-    canvas.drawRRect(
-      roundedRect,
-      glowPaint,
-    );
+    canvas.drawRRect(roundedRect, glowPaint);
 
     // =========================
     // MAIN DEVELOPER FRAME
     // =========================
 
-    final framePaint =
-        Paint()
-          ..style =
-              PaintingStyle.stroke
-          ..strokeWidth = 2.2
-          ..shader = shader;
+    final framePaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.2
+      ..shader = shader;
 
-    canvas.drawRRect(
-      roundedRect,
-      framePaint,
-    );
+    canvas.drawRRect(roundedRect, framePaint);
 
     // =========================
     // SUBTLE INNER LINE
     // =========================
 
-    final innerRect =
-        Rect.fromLTWH(
-      8,
-      8,
-      size.width - 16,
-      size.height - 16,
-    );
+    final innerRect = Rect.fromLTWH(8, 8, size.width - 16, size.height - 16);
 
-    final innerRoundedRect =
-        RRect.fromRectAndRadius(
+    final innerRoundedRect = RRect.fromRectAndRadius(
       innerRect,
-      const Radius.circular(
-        21,
-      ),
+      const Radius.circular(21),
     );
 
-    final innerPaint =
-        Paint()
-          ..style =
-              PaintingStyle.stroke
-          ..strokeWidth = 0.7
-          ..color =
-              Colors.white.withValues(
-            alpha: 0.16,
-          );
+    final innerPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.7
+      ..color = Colors.white.withValues(alpha: 0.16);
 
-    canvas.drawRRect(
-      innerRoundedRect,
-      innerPaint,
-    );
+    canvas.drawRRect(innerRoundedRect, innerPaint);
   }
 
   @override
-  bool shouldRepaint(
-    covariant
-        _DeveloperProfileFramePainter
-        oldDelegate,
-  ) {
+  bool shouldRepaint(covariant _DeveloperProfileFramePainter oldDelegate) {
     return false;
   }
 }
 
-class _DeveloperTitleLabel
-    extends StatefulWidget {
+class _DeveloperTitleLabel extends StatefulWidget {
   const _DeveloperTitleLabel();
 
   @override
-  State<_DeveloperTitleLabel>
-      createState() =>
-          _DeveloperTitleLabelState();
+  State<_DeveloperTitleLabel> createState() => _DeveloperTitleLabelState();
 }
 
-class _DeveloperTitleLabelState
-    extends State<_DeveloperTitleLabel>
+class _DeveloperTitleLabelState extends State<_DeveloperTitleLabel>
     with SingleTickerProviderStateMixin {
-  late final AnimationController
-      _controller;
+  late final AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
 
-    _controller =
-        AnimationController(
+    _controller = AnimationController(
       vsync: this,
-      duration:
-          const Duration(
-        seconds: 4,
-      ),
+      duration: const Duration(seconds: 4),
     )..repeat();
   }
 
@@ -21907,240 +20913,116 @@ class _DeveloperTitleLabelState
   }
 
   @override
-  Widget build(
-    BuildContext context,
-  ) {
+  Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _controller,
 
-      builder: (
-        context,
-        child,
-      ) {
-        final t =
-            _controller.value;
+      builder: (context, child) {
+        final t = _controller.value;
 
-        final pulseValue =
-            t <= 0.5
-                ? t * 2
-                : (1 - t) * 2;
+        final pulseValue = t <= 0.5 ? t * 2 : (1 - t) * 2;
 
-        final pulse =
-            Curves.easeInOut
-                .transform(
-          pulseValue,
-        );
+        final pulse = Curves.easeInOut.transform(pulseValue);
 
         final glowColor =
             Color.lerp(
-              const Color(
-                0xFF00E5FF,
-              ),
-              const Color(
-                0xFFFFD166,
-              ),
+              const Color(0xFF00E5FF),
+              const Color(0xFFFFD166),
               pulse,
             ) ??
             chipluxCyan;
 
         return Container(
-          constraints:
-              const BoxConstraints(
-            maxWidth: 220,
-          ),
+          constraints: const BoxConstraints(maxWidth: 220),
 
-          padding:
-              const EdgeInsets.all(
-            1.4,
-          ),
+          padding: const EdgeInsets.all(1.4),
 
-          decoration:
-              BoxDecoration(
-            borderRadius:
-                BorderRadius.circular(
-              20,
-            ),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
 
-            gradient:
-                LinearGradient(
+            gradient: LinearGradient(
               colors: const [
-                Color(
-                  0xFF00E5FF,
-                ),
-                Color(
-                  0xFF875CFF,
-                ),
-                Color(
-                  0xFFFF4FD8,
-                ),
-                Color(
-                  0xFFFFD166,
-                ),
-                Color(
-                  0xFF00E5FF,
-                ),
+                Color(0xFF00E5FF),
+                Color(0xFF875CFF),
+                Color(0xFFFF4FD8),
+                Color(0xFFFFD166),
+                Color(0xFF00E5FF),
               ],
 
-              transform:
-                  GradientRotation(
-                t * 6.28318,
-              ),
+              transform: GradientRotation(t * 6.28318),
             ),
 
             boxShadow: [
               BoxShadow(
-                color:
-                    glowColor
-                        .withValues(
-                  alpha:
-                      0.18 +
-                      (0.12 *
-                          pulse),
-                ),
+                color: glowColor.withValues(alpha: 0.18 + (0.12 * pulse)),
 
-                blurRadius:
-                    10 +
-                    (8 * pulse),
+                blurRadius: 10 + (8 * pulse),
 
-                spreadRadius:
-                    0.2 +
-                    (0.5 *
-                        pulse),
+                spreadRadius: 0.2 + (0.5 * pulse),
               ),
             ],
           ),
 
           child: Container(
-            padding:
-                const EdgeInsets
-                    .symmetric(
-              horizontal: 14,
-              vertical: 5,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
 
-            decoration:
-                BoxDecoration(
-              color:
-                  chipluxBackground
-                      .withValues(
-                alpha: 0.90,
-              ),
+            decoration: BoxDecoration(
+              color: chipluxBackground.withValues(alpha: 0.90),
 
-              borderRadius:
-                  BorderRadius
-                      .circular(
-                18.5,
-              ),
+              borderRadius: BorderRadius.circular(18.5),
 
-              border:
-                  Border.all(
-                color:
-                    Colors.white
-                        .withValues(
-                  alpha: 0.06,
-                ),
-              ),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
             ),
 
             child: ShaderMask(
-              blendMode:
-                  BlendMode.srcIn,
+              blendMode: BlendMode.srcIn,
 
-              shaderCallback:
-                  (bounds) {
+              shaderCallback: (bounds) {
                 return LinearGradient(
-                  begin:
-                      Alignment(
-                    -1.5 +
-                        (t * 2),
-                    0,
-                  ),
+                  begin: Alignment(-1.5 + (t * 2), 0),
 
-                  end:
-                      Alignment(
-                    0.5 +
-                        (t * 2),
-                    0,
-                  ),
+                  end: Alignment(0.5 + (t * 2), 0),
 
-                  colors:
-                      const [
-                    Color(
-                      0xFF00E5FF,
-                    ),
-                    Color(
-                      0xFFB388FF,
-                    ),
-                    Color(
-                      0xFFFFD166,
-                    ),
-                    Color(
-                      0xFFFF4FD8,
-                    ),
-                    Color(
-                      0xFF00E5FF,
-                    ),
+                  colors: const [
+                    Color(0xFF00E5FF),
+                    Color(0xFFB388FF),
+                    Color(0xFFFFD166),
+                    Color(0xFFFF4FD8),
+                    Color(0xFF00E5FF),
                   ],
-                ).createShader(
-                  bounds,
-                );
+                ).createShader(bounds);
               },
 
-              child:
-                  const Row(
-                mainAxisSize:
-                    MainAxisSize
-                        .min,
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
 
-                mainAxisAlignment:
-                    MainAxisAlignment
-                        .center,
+                mainAxisAlignment: MainAxisAlignment.center,
 
                 children: [
-                  Icon(
-                    Icons
-                        .code_rounded,
+                  Icon(Icons.code_rounded, color: Colors.white, size: 14),
 
-                    color:
-                        Colors.white,
+                  SizedBox(width: 6),
 
-                    size: 14,
-                  ),
-
-                  SizedBox(
-                    width: 6,
-                  ),
-
-                  Text(
+                  UiText(
                     'DEVELOPER',
 
-                    style:
-                        TextStyle(
-                      color:
-                          Colors.white,
+                    style: TextStyle(
+                      color: Colors.white,
 
-                      fontSize:
-                          10.5,
+                      fontSize: 10.5,
 
-                      fontWeight:
-                          FontWeight
-                              .w900,
+                      fontWeight: FontWeight.w900,
 
-                      letterSpacing:
-                          1.4,
+                      letterSpacing: 1.4,
                     ),
                   ),
 
-                  SizedBox(
-                    width: 5,
-                  ),
+                  SizedBox(width: 5),
 
                   Icon(
-                    Icons
-                        .auto_awesome_rounded,
+                    Icons.auto_awesome_rounded,
 
-                    color:
-                        Colors.white,
+                    color: Colors.white,
 
                     size: 10,
                   ),
@@ -22153,7 +21035,6 @@ class _DeveloperTitleLabelState
     );
   }
 }
-
 
 class _DisplayNameFrame extends StatelessWidget {
   final String? frameId;
@@ -22281,7 +21162,7 @@ class _DisplayNameFrameOption extends StatelessWidget {
                         borderRadius: BorderRadius.circular(17),
                       ),
 
-                      child: Text(
+                      child: UiText(
                         frameId == null ? 'Default' : 'Name',
 
                         style: const TextStyle(
@@ -22313,7 +21194,7 @@ class _DisplayNameFrameOption extends StatelessWidget {
                     ],
 
                     Flexible(
-                      child: Text(
+                      child: UiText(
                         label,
 
                         maxLines: 1,
@@ -22569,9 +21450,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
     unawaited(_backfillStatsInBackground());
 
-    unawaited(
-  ProfilePageFrameService.instance.load(),
-);
+    unawaited(ProfilePageFrameService.instance.load());
   }
 
   Future<void> _backfillStatsInBackground() async {
@@ -22853,9 +21732,15 @@ class _ProfilePageState extends State<ProfilePage> {
 
               SizedBox(width: 10),
 
-              Text(
-                'Genre Runtime',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              Expanded(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: UiText(
+                    'Genre Runtime',
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  ),
+                ),
               ),
             ],
           ),
@@ -22927,7 +21812,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       const SizedBox(width: 11),
 
                       Expanded(
-                        child: Text(
+                        child: UiText(
                           stat.genre,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -22946,7 +21831,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         child: FittedBox(
                           fit: BoxFit.scaleDown,
                           alignment: Alignment.centerRight,
-                          child: Text(
+                          child: UiText(
                             '${stat.percentage.toStringAsFixed(1)}%',
                             maxLines: 1,
                             style: const TextStyle(
@@ -23009,7 +21894,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
+                    UiText(
                       _genreRuntimeExpanded
                           ? 'Show less'
                           : 'Show all ${stats.length} genres',
@@ -23094,7 +21979,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
               SizedBox(width: 10),
 
-              Text(
+              UiText(
                 'Rating Distribution',
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
@@ -23148,7 +22033,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       // More room for 10/10
                       SizedBox(
                         width: 58,
-                        child: Text(
+                        child: UiText(
                           '$rating ★',
                           style: const TextStyle(
                             fontSize: 14,
@@ -23160,7 +22045,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       const SizedBox(width: 12),
 
                       Expanded(
-                        child: Text(
+                        child: UiText(
                           '$count '
                           '${count == 1 ? 'rating' : 'ratings'}',
                           style: const TextStyle(
@@ -23176,7 +22061,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         child: FittedBox(
                           fit: BoxFit.scaleDown,
                           alignment: Alignment.centerRight,
-                          child: Text(
+                          child: UiText(
                             '${percentage.toStringAsFixed(1)}%',
                             maxLines: 1,
                             style: const TextStyle(
@@ -23209,19 +22094,19 @@ class _ProfilePageState extends State<ProfilePage> {
     return SafeArea(
       child: AnimatedBuilder(
         animation: Listenable.merge([
-  library,
-  profile,
-  critic,
-  MedalPinService.instance,
-  DisplayNameFrameService.instance,
-  AvatarFrameService.instance,
-  _AchievementCosmeticService.instance,
-  DailyLoginService.instance,
-  PublicProfileViewService.instance,
-  FollowerCountService.instance,
-  ProfileTitleService.instance,
-  ProfilePageFrameService.instance,
-]),
+          library,
+          profile,
+          critic,
+          MedalPinService.instance,
+          DisplayNameFrameService.instance,
+          AvatarFrameService.instance,
+          _AchievementCosmeticService.instance,
+          DailyLoginService.instance,
+          PublicProfileViewService.instance,
+          FollowerCountService.instance,
+          ProfileTitleService.instance,
+          ProfilePageFrameService.instance,
+        ]),
         builder: (context, _) {
           final shownName = profile.displayName.isNotEmpty
               ? profile.displayName
@@ -23346,10 +22231,9 @@ class _ProfilePageState extends State<ProfilePage> {
               ProfileTitleService.instance.achievementId ==
                   developerProfileTitleId;
 
-                  final selectedPageFrame =
-    _profilePageFrameWidget(
-  ProfilePageFrameService.instance.frameId,
-);
+          final selectedPageFrame = _profilePageFrameWidget(
+            ProfilePageFrameService.instance.frameId,
+          );
 
           final selectedMedalCollectionStyle =
               achievementCosmetics.selectedAchievement(medalCollectionGroup) ??
@@ -23402,474 +22286,535 @@ class _ProfilePageState extends State<ProfilePage> {
                       padding: const EdgeInsets.fromLTRB(20, 20, 20, 30),
                       child: Column(
                         children: [
-                // PROFILE HEADER
-                Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    // ListView has 20px top and side
-                    // padding.
-                    //
-                    // Extending by -20 makes the banner
-                    // reach the actual screen edges.
-                    //
-                    // 137px means its bottom lands
-                    // exactly around the vertical middle
-                    // of the existing 88px avatar.
-                    Positioned(
-                      left: -20,
-                      right: -20,
-                      top: -20,
-                      height: 190,
-                      child: _ProfileBanner(imageUrl: profile.bannerUrl),
-                    ),
-
-                    Column(
-                      children: [
-                        // PROFILE TITLE + MENU
-                        Row(
-                          children: [
-                            // =========================
-                            // ACHIEVEMENTS
-                            // =========================
-
-                            _AchievementCollectionButton(
-                              unlockedCount: unlockedAchievementCount,
-
-                              totalCount: totalAchievementCount,
-
-                              styleAchievement: selectedMedalCollectionStyle,
-
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-
-                                  MaterialPageRoute(
-                                    builder: (_) => const AchievementsPage(),
-                                  ),
-                                );
-                              },
-                            ),
-
-                            const SizedBox(width: 8),
-
-                            if (Supabase.instance.client.auth.currentUser !=
-                                null)
-                              _FollowerCountBadge(
-                                userId: Supabase
-                                    .instance
-                                    .client
-                                    .auth
-                                    .currentUser!
-                                    .id,
-
-                                selectedTierId: achievementCosmetics
-                                    .selectedTierId('followers'),
-
-                                achievementCount: FollowerCountService
-                                    .instance
-                                    .peakFollowerCount,
-
-                                onTap: widget.onFollowersTap,
+                          // PROFILE HEADER
+                          Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              // ListView has 20px top and side
+                              // padding.
+                              //
+                              // Extending by -20 makes the banner
+                              // reach the actual screen edges.
+                              //
+                              // 137px means its bottom lands
+                              // exactly around the vertical middle
+                              // of the existing 88px avatar.
+                              Positioned(
+                                left: -20,
+                                right: -20,
+                                top: -20,
+                                height: 190,
+                                child: _ProfileBanner(
+                                  imageUrl: profile.bannerUrl,
+                                ),
                               ),
 
-                            const Spacer(),
+                              Column(
+                                children: [
+                                  // PROFILE TITLE + MENU
+                                  Row(
+                                    children: [
+                                      // =========================
+                                      // ACHIEVEMENTS
+                                      // =========================
 
-                            Container(
-                              padding: const EdgeInsets.all(1),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(18),
-                                gradient: LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [
-                                    chipluxCyan.withValues(alpha: 0.42),
-                                    chipluxViolet.withValues(alpha: 0.30),
-                                    chipluxPurple.withValues(alpha: 0.20),
-                                  ],
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.28),
-                                    blurRadius: 14,
-                                    offset: const Offset(0, 5),
-                                  ),
-                                ],
-                              ),
-                              child: Container(
-                                height: 46,
-                                padding: const EdgeInsets.symmetric(horizontal: 3),
-                                decoration: BoxDecoration(
-                                  color: chipluxBackground.withValues(alpha: 0.62),
-                                  borderRadius: BorderRadius.circular(17),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    if (Supabase.instance.client.auth.currentUser !=
-                                        null)
-                                      const _NotificationBellButton(),
+                                      _AchievementCollectionButton(
+                                        unlockedCount: unlockedAchievementCount,
 
-                                    Container(
-                                      width: 1,
-                                      height: 22,
-                                      color: Colors.white.withValues(alpha: 0.10),
-                                    ),
+                                        totalCount: totalAchievementCount,
 
-                                    IconButton(
-                                      tooltip: 'Profile Menu',
-                                      visualDensity: VisualDensity.compact,
-                                      onPressed: () async {
-                                        await Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) =>
-                                                const ProfileMenuPage(),
-                                          ),
-                                        );
+                                        styleAchievement:
+                                            selectedMedalCollectionStyle,
 
-                                        if (!mounted) {
-                                          return;
-                                        }
+                                        onTap: () {
+                                          Navigator.push(
+                                            context,
 
-                                        await profile.loadProfile();
-                                      },
-                                      icon: const Icon(
-                                        Icons.menu_rounded,
-                                        size: 27,
+                                            MaterialPageRoute(
+                                              builder: (_) =>
+                                                  const AchievementsPage(),
+                                            ),
+                                          );
+                                        },
                                       ),
-                                      color: Colors.white,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
 
-                        const SizedBox(height: 25),
+                                      const SizedBox(width: 8),
 
-                        // AVATAR - same 88 x 88 position
-                        // and size as before.
-                        if (profile.isLoading)
-                          const Center(child: CircularProgressIndicator())
-                        else
-                          Center(
-                            child: Column(
-                              children: [
-                                SizedBox(
-                                  width: 94,
-                                  height: 94,
-                                  child: _AvatarFrame(
-                                    frameId:
-                                        AvatarFrameService.instance.frameId,
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
+                                      if (Supabase
+                                              .instance
+                                              .client
+                                              .auth
+                                              .currentUser !=
+                                          null)
+                                        _FollowerCountBadge(
+                                          userId: Supabase
+                                              .instance
+                                              .client
+                                              .auth
+                                              .currentUser!
+                                              .id,
 
-                                        gradient:
-                                            profile.avatarUrl == null ||
-                                                profile.avatarUrl!.isEmpty
-                                            ? const LinearGradient(
-                                                begin: Alignment.topLeft,
-                                                end: Alignment.bottomRight,
-                                                colors: [
-                                                  chipluxCyan,
-                                                  chipluxViolet,
-                                                  chipluxPurple,
-                                                ],
-                                              )
-                                            : null,
+                                          selectedTierId: achievementCosmetics
+                                              .selectedTierId('followers'),
 
-                                        image:
-                                            profile.avatarUrl != null &&
-                                                profile.avatarUrl!.isNotEmpty
-                                            ? DecorationImage(
-                                                image: NetworkImage(
-                                                  profile.avatarUrl!,
-                                                ),
-                                                fit: BoxFit.cover,
-                                              )
-                                            : null,
-                                      ),
-                                      child:
-                                          profile.avatarUrl == null ||
-                                              profile.avatarUrl!.isEmpty
-                                          ? Center(
-                                              child: Text(
-                                                initial,
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 38,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            )
-                                          : null,
-                                    ),
-                                  ),
-                                ),
+                                          achievementCount: FollowerCountService
+                                              .instance
+                                              .peakFollowerCount,
 
-                                const SizedBox(height: 9),
-
-                                if (developerTitleActive) ...[
-                                  const _DeveloperTitleLabel(),
-
-                                  const SizedBox(height: 5),
-                                ] else if (selectedProfileTitle != null) ...[
-                                  _ProfileTitleLabel(
-                                    achievement: selectedProfileTitle,
-                                  ),
-
-                                  const SizedBox(height: 5),
-                                ],
-
-                                Stack(
-                                  clipBehavior: Clip.none,
-                                  alignment: Alignment.center,
-                                  children: [
-                                    _DisplayNameFrame(
-                                      frameId: DisplayNameFrameService
-                                          .instance
-                                          .frameId,
-
-                                      child: Container(
-                                        padding: EdgeInsets.fromLTRB(
-                                          pinnedAchievement != null ? 34 : 20,
-                                          8,
-                                          pinnedAchievement != null ? 34 : 20,
-                                          8,
+                                          onTap: widget.onFollowersTap,
                                         ),
 
+                                      const Spacer(),
+
+                                      Container(
+                                        padding: const EdgeInsets.all(1),
                                         decoration: BoxDecoration(
                                           borderRadius: BorderRadius.circular(
-                                            29,
+                                            18,
                                           ),
-
-                                          color: chipluxSurface.withValues(
-                                            alpha: 0.94,
+                                          gradient: LinearGradient(
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                            colors: [
+                                              chipluxCyan.withValues(
+                                                alpha: 0.42,
+                                              ),
+                                              chipluxViolet.withValues(
+                                                alpha: 0.30,
+                                              ),
+                                              chipluxPurple.withValues(
+                                                alpha: 0.20,
+                                              ),
+                                            ],
                                           ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withValues(
+                                                alpha: 0.28,
+                                              ),
+                                              blurRadius: 14,
+                                              offset: const Offset(0, 5),
+                                            ),
+                                          ],
                                         ),
+                                        child: Container(
+                                          height: 46,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 3,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: chipluxBackground.withValues(
+                                              alpha: 0.62,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              17,
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              if (Supabase
+                                                      .instance
+                                                      .client
+                                                      .auth
+                                                      .currentUser !=
+                                                  null)
+                                                const _NotificationBellButton(),
 
-                                        child: Text(
-                                          shownName,
+                                              Container(
+                                                width: 1,
+                                                height: 22,
+                                                color: Colors.white.withValues(
+                                                  alpha: 0.10,
+                                                ),
+                                              ),
 
-                                          maxLines: 1,
-
-                                          overflow: TextOverflow.ellipsis,
-
-                                          style: TextStyle(
-                                            color: displayNameColor,
-
-                                            fontSize: 18,
-
-                                            fontWeight: FontWeight.bold,
-
-                                            letterSpacing: 0.3,
-
-                                            shadows:
-                                                selectedDisplayNameColorAchievement !=
-                                                    null
-                                                ? [
-                                                    Shadow(
-                                                      color: displayNameColor
-                                                          .withValues(
-                                                            alpha: 0.25,
-                                                          ),
-                                                      blurRadius: 6,
+                                              IconButton(
+                                                tooltip: trUi(
+                                                  context,
+                                                  'Profile Menu',
+                                                ),
+                                                visualDensity:
+                                                    VisualDensity.compact,
+                                                onPressed: () async {
+                                                  await Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder: (_) =>
+                                                          const ProfileMenuPage(),
                                                     ),
-                                                  ]
-                                                : null,
+                                                  );
+
+                                                  if (!mounted) {
+                                                    return;
+                                                  }
+
+                                                  await profile.loadProfile();
+                                                },
+                                                icon: const Icon(
+                                                  Icons.menu_rounded,
+                                                  size: 27,
+                                                ),
+                                                color: Colors.white,
+                                              ),
+                                            ],
                                           ),
                                         ),
+                                      ),
+                                    ],
+                                  ),
+
+                                  const SizedBox(height: 25),
+
+                                  // AVATAR - same 88 x 88 position
+                                  // and size as before.
+                                  if (profile.isLoading)
+                                    const Center(
+                                      child: CircularProgressIndicator(),
+                                    )
+                                  else
+                                    Center(
+                                      child: Column(
+                                        children: [
+                                          SizedBox(
+                                            width: 94,
+                                            height: 94,
+                                            child: _AvatarFrame(
+                                              frameId: AvatarFrameService
+                                                  .instance
+                                                  .frameId,
+                                              child: Container(
+                                                decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+
+                                                  gradient:
+                                                      profile.avatarUrl ==
+                                                              null ||
+                                                          profile
+                                                              .avatarUrl!
+                                                              .isEmpty
+                                                      ? const LinearGradient(
+                                                          begin:
+                                                              Alignment.topLeft,
+                                                          end: Alignment
+                                                              .bottomRight,
+                                                          colors: [
+                                                            chipluxCyan,
+                                                            chipluxViolet,
+                                                            chipluxPurple,
+                                                          ],
+                                                        )
+                                                      : null,
+
+                                                  image:
+                                                      profile.avatarUrl !=
+                                                              null &&
+                                                          profile
+                                                              .avatarUrl!
+                                                              .isNotEmpty
+                                                      ? DecorationImage(
+                                                          image: NetworkImage(
+                                                            profile.avatarUrl!,
+                                                          ),
+                                                          fit: BoxFit.cover,
+                                                        )
+                                                      : null,
+                                                ),
+                                                child:
+                                                    profile.avatarUrl == null ||
+                                                        profile
+                                                            .avatarUrl!
+                                                            .isEmpty
+                                                    ? Center(
+                                                        child: Text(
+                                                          initial,
+                                                          style:
+                                                              const TextStyle(
+                                                                color: Colors
+                                                                    .white,
+                                                                fontSize: 38,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold,
+                                                              ),
+                                                        ),
+                                                      )
+                                                    : null,
+                                              ),
+                                            ),
+                                          ),
+
+                                          const SizedBox(height: 9),
+
+                                          if (developerTitleActive) ...[
+                                            const _DeveloperTitleLabel(),
+
+                                            const SizedBox(height: 5),
+                                          ] else if (selectedProfileTitle !=
+                                              null) ...[
+                                            _ProfileTitleLabel(
+                                              achievement: selectedProfileTitle,
+                                            ),
+
+                                            const SizedBox(height: 5),
+                                          ],
+
+                                          Stack(
+                                            clipBehavior: Clip.none,
+                                            alignment: Alignment.center,
+                                            children: [
+                                              _DisplayNameFrame(
+                                                frameId: DisplayNameFrameService
+                                                    .instance
+                                                    .frameId,
+
+                                                child: Container(
+                                                  padding: EdgeInsets.fromLTRB(
+                                                    pinnedAchievement != null
+                                                        ? 34
+                                                        : 20,
+                                                    8,
+                                                    pinnedAchievement != null
+                                                        ? 34
+                                                        : 20,
+                                                    8,
+                                                  ),
+
+                                                  decoration: BoxDecoration(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          29,
+                                                        ),
+
+                                                    color: chipluxSurface
+                                                        .withValues(
+                                                          alpha: 0.94,
+                                                        ),
+                                                  ),
+
+                                                  child: Text(
+                                                    shownName,
+
+                                                    maxLines: 1,
+
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+
+                                                    style: TextStyle(
+                                                      color: displayNameColor,
+
+                                                      fontSize: 18,
+
+                                                      fontWeight:
+                                                          FontWeight.bold,
+
+                                                      letterSpacing: 0.3,
+
+                                                      shadows:
+                                                          selectedDisplayNameColorAchievement !=
+                                                              null
+                                                          ? [
+                                                              Shadow(
+                                                                color: displayNameColor
+                                                                    .withValues(
+                                                                      alpha:
+                                                                          0.25,
+                                                                    ),
+                                                                blurRadius: 6,
+                                                              ),
+                                                            ]
+                                                          : null,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+
+                                              if (pinnedAchievement != null)
+                                                Positioned(
+                                                  left: -12,
+                                                  top: 6,
+                                                  child:
+                                                      _PinnedAchievementBadge(
+                                                        achievement:
+                                                            pinnedAchievement,
+                                                      ),
+                                                ),
+                                            ],
+                                          ),
+                                        ],
                                       ),
                                     ),
-
-                                    if (pinnedAchievement != null)
-                                      Positioned(
-                                        left: -12,
-                                        top: 6,
-                                        child: _PinnedAchievementBadge(
-                                          achievement: pinnedAchievement,
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ],
-                            ),
+                                ],
+                              ),
+                            ],
                           ),
-                      ],
-                    ),
-                  ],
-                ),
 
-                const SizedBox(height: 32),
+                          const SizedBox(height: 32),
 
-                // =========================
-                // RUNTIME LEVEL
-                // =========================
-                _LevelCard(
-                  totalMinutes: library.totalWatchedMinutes,
+                          // =========================
+                          // RUNTIME LEVEL
+                          // =========================
+                          _LevelCard(
+                            totalMinutes: library.totalWatchedMinutes,
 
-                  title: library.viewerTitle,
+                            title: library.viewerTitle,
 
-                  frameAchievement: achievementCosmetics.selectedAchievement(
-                    runtimeLevelGroup,
-                  ),
+                            frameAchievement: achievementCosmetics
+                                .selectedAchievement(runtimeLevelGroup),
 
-                  onTap: () {
-                    _scrollToProfileSection(_genreRuntimeKey);
-                  },
-                ),
+                            onTap: () {
+                              _scrollToProfileSection(_genreRuntimeKey);
+                            },
+                          ),
 
-                const SizedBox(height: 12),
+                          const SizedBox(height: 12),
 
-                // WATCHED STATS
-                Column(
-                  children: [
-                    _WatchStatCard(
-                      value: library.completedTvShowsCount,
+                          // WATCHED STATS
+                          Column(
+                            children: [
+                              _WatchStatCard(
+                                value: library.completedTvShowsCount,
 
-                      label: 'TV Shows Watched',
+                                label: 'TV Shows Watched',
 
-                      icon: Icons.tv_rounded,
+                                icon: Icons.tv_rounded,
 
-                      frameAchievement: achievementCosmetics
-                          .selectedAchievement(tvGroup),
+                                frameAchievement: achievementCosmetics
+                                    .selectedAchievement(tvGroup),
 
-                      onTap: widget.onTvShowsWatchedTap,
-                    ),
+                                onTap: widget.onTvShowsWatchedTap,
+                              ),
 
-                    const SizedBox(height: 7),
+                              const SizedBox(height: 7),
 
-                    _WatchStatCard(
-                      value: library.watchedEpisodeCount,
+                              _WatchStatCard(
+                                value: library.watchedEpisodeCount,
 
-                      runtimeMinutes: library.watchedEpisodeMinutes,
+                                runtimeMinutes: library.watchedEpisodeMinutes,
 
-                      label: 'Episodes Watched',
+                                label: 'Episodes Watched',
 
-                      icon: Icons.playlist_add_check_rounded,
+                                icon: Icons.playlist_add_check_rounded,
 
-                      frameAchievement: achievementCosmetics
-                          .selectedAchievement(episodeGroup),
+                                frameAchievement: achievementCosmetics
+                                    .selectedAchievement(episodeGroup),
 
-                      onTap: widget.onEpisodesWatchedTap,
-                    ),
+                                onTap: widget.onEpisodesWatchedTap,
+                              ),
 
-                    const SizedBox(height: 7),
+                              const SizedBox(height: 7),
 
-                    _WatchStatCard(
-                      value: library.moviesWatchedCount,
+                              _WatchStatCard(
+                                value: library.moviesWatchedCount,
 
-                      runtimeMinutes: library.watchedMovieMinutes,
+                                runtimeMinutes: library.watchedMovieMinutes,
 
-                      label: 'Movies Watched',
+                                label: 'Movies Watched',
 
-                      icon: Icons.movie_outlined,
+                                icon: Icons.movie_outlined,
 
-                      frameAchievement: achievementCosmetics
-                          .selectedAchievement(movieGroup),
+                                frameAchievement: achievementCosmetics
+                                    .selectedAchievement(movieGroup),
 
-                      onTap: widget.onMoviesWatchedTap,
-                    ),
-                  ],
-                ),
+                                onTap: widget.onMoviesWatchedTap,
+                              ),
+                            ],
+                          ),
 
-                const SizedBox(height: 14),
+                          const SizedBox(height: 14),
 
-                // =========================
-                // CRITIC LEVEL
-                // =========================
-                _CriticReputationCard(
-                  level: critic.level,
-                  title: critic.title,
-                  xp: critic.xpInLevel,
-                  requiredXp: critic.requiredXp,
-                  totalRatings: critic.totalRatings,
-                  titleCoverage: critic.titleRatingCoverage,
+                          // =========================
+                          // CRITIC LEVEL
+                          // =========================
+                          _CriticReputationCard(
+                            level: critic.level,
+                            title: critic.title,
+                            xp: critic.xpInLevel,
+                            requiredXp: critic.requiredXp,
+                            totalRatings: critic.totalRatings,
+                            titleCoverage: critic.titleRatingCoverage,
 
-                  episodeCoverage: critic.episodeRatingCoverage,
-                  frameAchievement: achievementCosmetics.selectedAchievement(
-                    ratingsLevelGroup,
-                  ),
+                            episodeCoverage: critic.episodeRatingCoverage,
+                            frameAchievement: achievementCosmetics
+                                .selectedAchievement(ratingsLevelGroup),
 
-                  averageStars: critic.averageStars,
-                  onTap: () {
-                    _scrollToProfileSection(_ratingDistributionKey);
-                  },
-                ),
+                            averageStars: critic.averageStars,
+                            onTap: () {
+                              _scrollToProfileSection(_ratingDistributionKey);
+                            },
+                          ),
 
-                const SizedBox(height: 12),
+                          const SizedBox(height: 12),
 
-                // =========================
-                // RATED STATS
-                // =========================
-                Column(
-                  children: [
-                    _RatingStatCard(
-                      value: critic.episodeRatingCount,
+                          // =========================
+                          // RATED STATS
+                          // =========================
+                          Column(
+                            children: [
+                              _RatingStatCard(
+                                value: critic.episodeRatingCount,
 
-                      label: 'Episodes Rated',
+                                label: 'Episodes Rated',
 
-                      icon: Icons.tv_outlined,
+                                icon: Icons.tv_outlined,
 
-                      frameAchievement: achievementCosmetics
-                          .selectedAchievement(episodeRatedGroup),
+                                frameAchievement: achievementCosmetics
+                                    .selectedAchievement(episodeRatedGroup),
 
-                      onTap: widget.onEpisodesRatedTap,
-                    ),
+                                onTap: widget.onEpisodesRatedTap,
+                              ),
 
-                    const SizedBox(height: 7),
+                              const SizedBox(height: 7),
 
-                    _RatingStatCard(
-                      value: critic.tvRatingCount,
+                              _RatingStatCard(
+                                value: critic.tvRatingCount,
 
-                      label: 'TV Shows Rated',
+                                label: 'TV Shows Rated',
 
-                      icon: Icons.live_tv_rounded,
+                                icon: Icons.live_tv_rounded,
 
-                      frameAchievement: achievementCosmetics
-                          .selectedAchievement(tvShowsRatedGroup),
+                                frameAchievement: achievementCosmetics
+                                    .selectedAchievement(tvShowsRatedGroup),
 
-                      onTap: widget.onTvShowsRatedTap,
-                    ),
+                                onTap: widget.onTvShowsRatedTap,
+                              ),
 
-                    const SizedBox(height: 7),
+                              const SizedBox(height: 7),
 
-                    _RatingStatCard(
-                      value: critic.movieRatingCount,
+                              _RatingStatCard(
+                                value: critic.movieRatingCount,
 
-                      label: 'Movies Rated',
+                                label: 'Movies Rated',
 
-                      icon: Icons.movie_filter_outlined,
+                                icon: Icons.movie_filter_outlined,
 
-                      frameAchievement: achievementCosmetics
-                          .selectedAchievement(moviesRatedGroup),
+                                frameAchievement: achievementCosmetics
+                                    .selectedAchievement(moviesRatedGroup),
 
-                      onTap: widget.onMoviesRatedTap,
-                    ),
-                  ],
-                ),
+                                onTap: widget.onMoviesRatedTap,
+                              ),
+                            ],
+                          ),
 
-                const SizedBox(height: 24),
+                          const SizedBox(height: 24),
 
-                // =========================
-                // GENRE RUNTIME FIRST
-                // =========================
-                KeyedSubtree(
-                  key: _genreRuntimeKey,
-                  child: _buildGenreRuntimeSection(),
-                ),
+                          // =========================
+                          // GENRE RUNTIME FIRST
+                          // =========================
+                          KeyedSubtree(
+                            key: _genreRuntimeKey,
+                            child: _buildGenreRuntimeSection(),
+                          ),
 
-                const SizedBox(height: 24),
+                          const SizedBox(height: 24),
 
-                // =========================
-                // RATING DISTRIBUTION SECOND
-                // =========================
-                KeyedSubtree(
-                  key: _ratingDistributionKey,
-                  child: _buildRatingDistributionSection(),
-                ),
+                          // =========================
+                          // RATING DISTRIBUTION SECOND
+                          // =========================
+                          KeyedSubtree(
+                            key: _ratingDistributionKey,
+                            child: _buildRatingDistributionSection(),
+                          ),
                         ],
                       ),
                     ),
@@ -23878,9 +22823,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     // It starts at the top of the profile and ends at the
                     // bottom of the full profile, so it scrolls naturally.
                     if (selectedPageFrame != null)
-  Positioned.fill(
-    child: selectedPageFrame,
-  ),
+                      Positioned.fill(child: selectedPageFrame),
                   ],
                 ),
               ],
@@ -23892,14 +22835,11 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 }
 
-
-class _AchievementCollectionButton
-    extends StatelessWidget {
+class _AchievementCollectionButton extends StatelessWidget {
   final int unlockedCount;
   final int totalCount;
 
-  final _Achievement?
-      styleAchievement;
+  final _Achievement? styleAchievement;
 
   final VoidCallback? onTap;
 
@@ -23911,71 +22851,45 @@ class _AchievementCollectionButton
   });
 
   @override
-  Widget build(
-    BuildContext context,
-  ) {
-    final colors =
-        _achievementTierColors(
-      styleAchievement,
-    );
+  Widget build(BuildContext context) {
+    final colors = _achievementTierColors(styleAchievement);
 
-    final Color accent =
-    colors.isNotEmpty
-        ? colors.first
-        : Colors.white38;
+    final Color accent = colors.isNotEmpty ? colors.first : Colors.white38;
 
-    final bool hasReward =
-        styleAchievement != null &&
-        colors.isNotEmpty;
+    final bool hasReward = styleAchievement != null && colors.isNotEmpty;
 
     return GestureDetector(
       onTap: onTap,
 
-      behavior:
-          HitTestBehavior.opaque,
+      behavior: HitTestBehavior.opaque,
 
       child: Container(
         height: 43,
 
-        padding: hasReward
-            ? const EdgeInsets.all(
-                1.3,
-              )
-            : EdgeInsets.zero,
+        padding: hasReward ? const EdgeInsets.all(1.3) : EdgeInsets.zero,
 
         decoration: BoxDecoration(
-          borderRadius:
-              BorderRadius.circular(
-            16,
-          ),
+          borderRadius: BorderRadius.circular(16),
 
           gradient: hasReward
               ? LinearGradient(
-                  begin:
-                      Alignment.topLeft,
-                  end: Alignment
-                      .bottomRight,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                   colors: colors,
                 )
               : null,
 
           border: hasReward
-    ? null
-    : Border.all(
-        color: Colors.white
-            .withValues(
-          alpha: 0.12,
-        ),
-        width: 1,
-      ),
+              ? null
+              : Border.all(
+                  color: Colors.white.withValues(alpha: 0.12),
+                  width: 1,
+                ),
 
           boxShadow: hasReward
               ? [
                   BoxShadow(
-                    color: accent
-                        .withValues(
-                      alpha: 0.09,
-                    ),
+                    color: accent.withValues(alpha: 0.09),
                     blurRadius: 10,
                   ),
                 ]
@@ -23983,50 +22897,33 @@ class _AchievementCollectionButton
         ),
 
         child: Container(
-          padding:
-              const EdgeInsets.symmetric(
-            horizontal: 11,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 11),
 
           decoration: BoxDecoration(
-            color: chipluxSurface
-                .withValues(
-              alpha: 0.92,
-            ),
+            color: chipluxSurface.withValues(alpha: 0.92),
 
-            borderRadius:
-                BorderRadius.circular(
-              hasReward
-                  ? 14.7
-                  : 16,
-            ),
+            borderRadius: BorderRadius.circular(hasReward ? 14.7 : 16),
           ),
 
           child: Row(
-            mainAxisSize:
-                MainAxisSize.min,
+            mainAxisSize: MainAxisSize.min,
 
             children: [
               Icon(
-  styleAchievement?.icon ??
-      Icons.workspace_premium_rounded,
-  color: accent,
-  size: 22,
-),
-
-              const SizedBox(
-                width: 6,
+                styleAchievement?.icon ?? Icons.workspace_premium_rounded,
+                color: accent,
+                size: 22,
               ),
 
-              Text(
+              const SizedBox(width: 6),
+
+              UiText(
                 '$unlockedCount/$totalCount',
 
-                style:
-                    const TextStyle(
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 14,
-                  fontWeight:
-                      FontWeight.bold,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ],
@@ -24191,10 +23088,7 @@ class _FollowerCountBadgeState extends State<_FollowerCountBadge> {
 
     final colors = _achievementTierColors(styleAchievement);
 
-    final Color accent =
-    colors.isNotEmpty
-        ? colors.first
-        : Colors.white54;
+    final Color accent = colors.isNotEmpty ? colors.first : Colors.white54;
 
     final bool hasReward = styleAchievement != null && colors.isNotEmpty;
 
@@ -24222,14 +23116,11 @@ class _FollowerCountBadgeState extends State<_FollowerCountBadge> {
               : null,
 
           border: hasReward
-    ? null
-    : Border.all(
-        color: Colors.white
-            .withValues(
-          alpha: 0.18,
-        ),
-        width: 1,
-      ),
+              ? null
+              : Border.all(
+                  color: Colors.white.withValues(alpha: 0.18),
+                  width: 1,
+                ),
 
           boxShadow: hasReward
               ? [
@@ -24272,7 +23163,7 @@ class _FollowerCountBadgeState extends State<_FollowerCountBadge> {
                   ),
                 )
               else
-                Text(
+                UiText(
                   '$followerCount',
 
                   style: const TextStyle(
@@ -24344,7 +23235,7 @@ void _showPinnedAchievementDetails(
               mainAxisSize: MainAxisSize.min,
 
               children: [
-                Text(
+                UiText(
                   'PINNED ACHIEVEMENT',
 
                   style: TextStyle(
@@ -24370,7 +23261,7 @@ void _showPinnedAchievementDetails(
 
                 const SizedBox(height: 18),
 
-                Text(
+                UiText(
                   achievement.title,
 
                   textAlign: TextAlign.center,
@@ -24413,7 +23304,7 @@ void _showPinnedAchievementDetails(
                           crossAxisAlignment: CrossAxisAlignment.start,
 
                           children: [
-                            const Text(
+                            const UiText(
                               'Achievement requirement',
 
                               style: TextStyle(
@@ -24427,7 +23318,7 @@ void _showPinnedAchievementDetails(
 
                             const SizedBox(height: 3),
 
-                            Text(
+                            UiText(
                               achievement.description,
 
                               style: const TextStyle(
@@ -24475,7 +23366,7 @@ void _showPinnedAchievementDetails(
                       ),
                     ),
 
-                    child: const Text(
+                    child: const UiText(
                       'Close',
 
                       style: TextStyle(fontWeight: FontWeight.bold),
@@ -24604,7 +23495,7 @@ class _PinnedAchievementBadgeState extends State<_PinnedAchievementBadge>
         final colors = _colors();
 
         return Tooltip(
-          message: widget.achievement.title,
+          message: trUi(context, widget.achievement.title),
 
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
@@ -24733,7 +23624,7 @@ class _LevelHexBadge extends StatelessWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Text(
+                        const UiText(
                           'LVL',
                           style: TextStyle(
                             color: Colors.white60,
@@ -24751,7 +23642,7 @@ class _LevelHexBadge extends StatelessWidget {
                                 .createShader(bounds);
                           },
 
-                          child: Text(
+                          child: UiText(
                             '$level',
                             style: TextStyle(
                               color: Colors.white,
@@ -24907,7 +23798,7 @@ class _CriticReputationCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
 
                       children: [
-                        const Text(
+                        const UiText(
                           'CRITIC LEVEL',
 
                           style: TextStyle(
@@ -24923,7 +23814,7 @@ class _CriticReputationCard extends StatelessWidget {
 
                         const SizedBox(height: 3),
 
-                        Text(
+                        UiText(
                           title.toUpperCase(),
 
                           maxLines: 1,
@@ -24961,7 +23852,7 @@ class _CriticReputationCard extends StatelessWidget {
 
                         Row(
                           children: [
-                            Text(
+                            UiText(
                               '$xp / $requiredXp XP',
 
                               style: const TextStyle(
@@ -24975,7 +23866,7 @@ class _CriticReputationCard extends StatelessWidget {
 
                             const Spacer(),
 
-                            Text(
+                            UiText(
                               '$xpLeft XP left',
 
                               style: const TextStyle(
@@ -25224,7 +24115,7 @@ class _CriticStat extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Text(
+        UiText(
           value,
           maxLines: 1,
           style: TextStyle(
@@ -25236,7 +24127,7 @@ class _CriticStat extends StatelessWidget {
 
         const SizedBox(height: 4),
 
-        Text(
+        UiText(
           label,
           style: const TextStyle(color: Colors.white54, fontSize: 10),
         ),
@@ -25474,7 +24365,7 @@ class _LevelCardState extends State<_LevelCard> with TickerProviderStateMixin {
                   crossAxisAlignment: CrossAxisAlignment.start,
 
                   children: [
-                    const Text(
+                    const UiText(
                       'RUNTIME LEVEL',
 
                       style: TextStyle(
@@ -25490,7 +24381,7 @@ class _LevelCardState extends State<_LevelCard> with TickerProviderStateMixin {
 
                     const SizedBox(height: 1),
 
-                    Text(
+                    UiText(
                       widget.title.toUpperCase(),
 
                       maxLines: 1,
@@ -25627,7 +24518,7 @@ class _LevelCardState extends State<_LevelCard> with TickerProviderStateMixin {
 
                     Row(
                       children: [
-                        Text(
+                        UiText(
                           '$minutesInLevel / '
                           '$requiredMinutes min',
 
@@ -25642,7 +24533,7 @@ class _LevelCardState extends State<_LevelCard> with TickerProviderStateMixin {
 
                         const Spacer(),
 
-                        Text(
+                        UiText(
                           _formatTimeLeft(minutesLeft),
 
                           style: const TextStyle(
@@ -25658,7 +24549,7 @@ class _LevelCardState extends State<_LevelCard> with TickerProviderStateMixin {
 
                     const SizedBox(height: 2),
 
-                    Text(
+                    UiText(
                       'to Level '
                       '${level + 1}',
 
@@ -25795,7 +24686,7 @@ class _WatchStatCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
 
                   children: [
-                    Text(
+                    UiText(
                       cleanLabel,
 
                       maxLines: 1,
@@ -25832,7 +24723,7 @@ class _WatchStatCard extends StatelessWidget {
                 ),
               ),
 
-              Text(
+              UiText(
                 '$value',
 
                 style: const TextStyle(
@@ -25942,7 +24833,7 @@ class _RatingStatCard extends StatelessWidget {
               const SizedBox(width: 12),
 
               Expanded(
-                child: Text(
+                child: UiText(
                   cleanLabel,
 
                   maxLines: 1,
@@ -25959,7 +24850,7 @@ class _RatingStatCard extends StatelessWidget {
                 ),
               ),
 
-              Text(
+              UiText(
                 '$value',
 
                 style: const TextStyle(
@@ -25990,8 +24881,7 @@ class _RatingStatCard extends StatelessWidget {
   }
 }
 
-class _NotificationBellButton
-    extends StatefulWidget {
+class _NotificationBellButton extends StatefulWidget {
   const _NotificationBellButton();
 
   @override
@@ -25999,10 +24889,8 @@ class _NotificationBellButton
       _NotificationBellButtonState();
 }
 
-class _NotificationBellButtonState
-    extends State<_NotificationBellButton> {
-  final service =
-      NotificationService.instance;
+class _NotificationBellButtonState extends State<_NotificationBellButton> {
+  final service = NotificationService.instance;
 
   @override
   void initState() {
@@ -26020,8 +24908,6 @@ class _NotificationBellButtonState
 
     setState(() {});
   }
-
-
 
   @override
   void dispose() {
@@ -26044,15 +24930,14 @@ class _NotificationBellButtonState
         children: [
           Positioned.fill(
             child: IconButton(
-              tooltip: 'Notifications',
+              tooltip: trUi(context, 'Notifications'),
 
               onPressed: () async {
                 await Navigator.push(
                   context,
 
                   MaterialPageRoute(
-                    builder: (_) =>
-                        const _NotificationInboxPage(),
+                    builder: (_) => const _NotificationInboxPage(),
                   ),
                 );
 
@@ -26066,8 +24951,7 @@ class _NotificationBellButtonState
               icon: Icon(
                 unread > 0
                     ? Icons.notifications_rounded
-                    : Icons
-                        .notifications_none_rounded,
+                    : Icons.notifications_none_rounded,
 
                 color: Colors.white,
 
@@ -26082,19 +24966,11 @@ class _NotificationBellButtonState
               right: 1,
 
               child: Container(
-                constraints:
-                    const BoxConstraints(
-                  minWidth: 18,
-                  minHeight: 18,
-                ),
+                constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
 
-                padding:
-                    const EdgeInsets.symmetric(
-                  horizontal: 4,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 4),
 
-                decoration:
-                    const BoxDecoration(
+                decoration: const BoxDecoration(
                   color: Colors.redAccent,
 
                   shape: BoxShape.circle,
@@ -26103,17 +24979,14 @@ class _NotificationBellButtonState
                 alignment: Alignment.center,
 
                 child: Text(
-                  unread > 99
-                      ? '99+'
-                      : '$unread',
+                  unread > 99 ? '99+' : '$unread',
 
                   style: const TextStyle(
                     color: Colors.white,
 
                     fontSize: 9,
 
-                    fontWeight:
-                        FontWeight.bold,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
@@ -26124,22 +24997,17 @@ class _NotificationBellButtonState
   }
 }
 
-class _NotificationInboxPage
-    extends StatefulWidget {
+class _NotificationInboxPage extends StatefulWidget {
   const _NotificationInboxPage();
 
   @override
-  State<_NotificationInboxPage> createState() =>
-      _NotificationInboxPageState();
+  State<_NotificationInboxPage> createState() => _NotificationInboxPageState();
 }
 
-class _NotificationInboxPageState
-    extends State<_NotificationInboxPage> {
-  final service =
-      NotificationService.instance;
+class _NotificationInboxPageState extends State<_NotificationInboxPage> {
+  final service = NotificationService.instance;
 
-  final TmdbService tmdbService =
-      TmdbService();
+  final TmdbService tmdbService = TmdbService();
 
   @override
   void initState() {
@@ -26150,8 +25018,6 @@ class _NotificationInboxPageState
     unawaited(service.load());
   }
 
-  
-
   void _handleChange() {
     if (!mounted) {
       return;
@@ -26160,646 +25026,451 @@ class _NotificationInboxPageState
     setState(() {});
   }
 
-  int _achievementTabIndex(
-  String? achievementId,
-) {
-  if (achievementId == null ||
-      achievementId.isEmpty) {
+  int _achievementTabIndex(String? achievementId) {
+    if (achievementId == null || achievementId.isEmpty) {
+      return 0;
+    }
+
+    // =========================
+    // MOVIES
+    // =========================
+    if (achievementId.startsWith('movies_') ||
+        achievementId.startsWith('movies_rated_')) {
+      return 0;
+    }
+
+    // =========================
+    // TV SHOWS
+    // =========================
+    if (achievementId.startsWith('tv_') ||
+        achievementId.startsWith('episodes_') ||
+        achievementId.startsWith('tv_rated_') ||
+        achievementId.startsWith('episodes_rated_')) {
+      return 1;
+    }
+
+    // =========================
+    // COMMUNITY
+    // =========================
+    if (achievementId.startsWith('followers_') ||
+        achievementId.startsWith('profile_views_')) {
+      return 2;
+    }
+
+    // =========================
+    // CHIPLUX
+    // =========================
+    if (achievementId.startsWith('login_') ||
+        achievementId.startsWith('runtime_level_') ||
+        achievementId.startsWith('ratings_level_') ||
+        achievementId.startsWith('medal_collection_')) {
+      return 3;
+    }
+
     return 0;
   }
 
-  // =========================
-  // MOVIES
-  // =========================
-  if (achievementId.startsWith(
-        'movies_',
-      ) ||
-      achievementId.startsWith(
-        'movies_rated_',
-      )) {
-    return 0;
-  }
+  Future<void> _openNewEpisodeNotification(
+    ChipluxNotification notification,
+  ) async {
+    final showId = notification.tmdbId;
 
-  // =========================
-  // TV SHOWS
-  // =========================
-  if (achievementId.startsWith(
-        'tv_',
-      ) ||
-      achievementId.startsWith(
-        'episodes_',
-      ) ||
-      achievementId.startsWith(
-        'tv_rated_',
-      ) ||
-      achievementId.startsWith(
-        'episodes_rated_',
-      )) {
-    return 1;
-  }
+    final seasonNumber = notification.seasonNumber;
 
-  // =========================
-  // COMMUNITY
-  // =========================
-  if (achievementId.startsWith(
-        'followers_',
-      ) ||
-      achievementId.startsWith(
-        'profile_views_',
-      )) {
-    return 2;
-  }
+    final episodeNumber = notification.episodeNumber;
 
-  // =========================
-  // CHIPLUX
-  // =========================
-  if (achievementId.startsWith(
-        'login_',
-      ) ||
-      achievementId.startsWith(
-        'runtime_level_',
-      ) ||
-      achievementId.startsWith(
-        'ratings_level_',
-      ) ||
-      achievementId.startsWith(
-        'medal_collection_',
-      )) {
-    return 3;
-  }
-
-  return 0;
-}
-
-Future<void> _openNewEpisodeNotification(
-  ChipluxNotification notification,
-) async {
-  final showId =
-      notification.tmdbId;
-
-  final seasonNumber =
-      notification.seasonNumber;
-
-  final episodeNumber =
-      notification.episodeNumber;
-
-  if (showId == null ||
-      seasonNumber == null ||
-      episodeNumber == null) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Could not open this episode.',
-        ),
-      ),
-    );
-
-    return;
-  }
-
-  try {
-    final episodes =
-        await tmdbService.getSeasonEpisodes(
-      showId,
-      seasonNumber,
-    );
-
-    Map<String, dynamic>? foundEpisode;
-
-    for (final raw in episodes) {
-      if (raw is! Map) {
-        continue;
-      }
-
-      final episode =
-          Map<String, dynamic>.from(
-        raw,
-      );
-
-      final number =
-          episode['episode_number'];
-
-      if (number is num &&
-          number.toInt() ==
-              episodeNumber) {
-        foundEpisode = episode;
-        break;
-      }
-    }
-
-    if (!mounted) {
-      return;
-    }
-
-    if (foundEpisode == null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Could not find this episode.',
-          ),
-        ),
+    if (showId == null || seasonNumber == null || episodeNumber == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: UiText('Could not open this episode.')),
       );
 
       return;
     }
 
-    final rawRuntime =
-        foundEpisode['runtime'];
-
-    final rawRating =
-        foundEpisode['vote_average'];
-
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) =>
-            SwipeableEpisodePage(
-          showId: showId,
-
-          seasonNumber:
-              seasonNumber,
-
-          episodeNumber:
-              episodeNumber,
-
-          title:
-              foundEpisode?['name']
-                      ?.toString() ??
-                  'Episode $episodeNumber',
-
-          stillPath:
-              foundEpisode?['still_path']
-                  ?.toString(),
-
-          runtime:
-              rawRuntime is num
-                  ? rawRuntime.toInt()
-                  : null,
-
-          rating:
-              rawRating is num &&
-                      rawRating.toDouble() >
-                          0
-                  ? rawRating.toDouble()
-                  : null,
-
-          overview:
-              foundEpisode?['overview']
-                      ?.toString() ??
-                  '',
-
-          airDate:
-              foundEpisode?['air_date']
-                  ?.toString(),
-        ),
-      ),
-    );
-  } catch (e) {
-    debugPrint(
-      'Could not open new episode notification: $e',
-    );
-
-    if (!mounted) {
-      return;
-    }
-
-    ScaffoldMessenger.of(context)
-        .showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Could not open this episode.',
-        ),
-      ),
-    );
-  }
-}
-
-Future<void> _openChipluxUpdate(
-  ChipluxNotification notification,
-) async {
-  await _showChipluxUpdateDialog(
-    context: context,
-    title: notification.title,
-    body: notification.body,
-  );
-}
-
-  Future<void> _openNotification(
-  ChipluxNotification notification,
-) async {
-  // Mark it read immediately.
-  await service.markRead(
-    notification.id,
-  );
-
-  if (!mounted) {
-    return;
-  }
-
-  // ===================================================
-// NEW FOLLOWER
-// ===================================================
-if (notification.type ==
-    'new_follower') {
-  final followerUserId =
-      notification.actorUserId;
-
-  if (followerUserId == null ||
-      followerUserId.isEmpty) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Could not open this profile.',
-        ),
-      ),
-    );
-
-    return;
-  }
-
-  await Navigator.push(
-    context,
-
-    MaterialPageRoute(
-      builder: (_) =>
-          PublicProfilePage(
-        userId: followerUserId,
-      ),
-    ),
-  );
-
-  return;
-}
-
-// ===================================================
-// ACHIEVEMENT
-// ===================================================
-if (notification.type ==
-    'achievement') {
-  final tabIndex =
-      _achievementTabIndex(
-    notification.achievementId,
-  );
-
-  await Navigator.push(
-    context,
-
-    MaterialPageRoute(
-      builder: (_) =>
-          AchievementsPage(
-        initialTabIndex:
-            tabIndex,
-
-        initialAchievementId:
-            notification.achievementId,
-      ),
-    ),
-  );
-
-  return;
-}
-
-// ===================================================
-// RELEASE REMINDER
-// ===================================================
-if (notification.type ==
-    'release') {
-  final tmdbId =
-      notification.tmdbId;
-
-  final mediaType =
-      notification.mediaType;
-
-  if (tmdbId == null ||
-      mediaType == null ||
-      (mediaType != 'movie' &&
-          mediaType != 'tv')) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Could not open this title.',
-        ),
-      ),
-    );
-
-    return;
-  }
-
-  await Navigator.push(
-    context,
-
-    MaterialPageRoute(
-      builder: (_) =>
-          MediaDetailsPage(
-        id: tmdbId,
-        mediaType: mediaType,
-      ),
-    ),
-  );
-
-  return;
-}
-
-// ===================================================
-// NEW EPISODE
-// ===================================================
-if (notification.type ==
-    'new_episode') {
-  await _openNewEpisodeNotification(
-    notification,
-  );
-
-  return;
-}
-
-// ===================================================
-// FEATURE SUGGESTION STATUS
-// ===================================================
-if (notification.type ==
-    'feature_suggestion_status') {
-  await Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (_) => const FeatureBoardPage(),
-    ),
-  );
-
-  return;
-}
-
-// ===================================================
-// CHIPLUX UPDATE
-// ===================================================
-if (notification.type ==
-    'chiplux_update') {
-  await _openChipluxUpdate(
-    notification,
-  );
-
-  return;
-}
-
-
-// ===================================================
-// COMMENT NOTIFICATIONS
-// ===================================================
-final bool opensDiscussion =
-    notification.type == 'comment_reply' ||
-    notification.type ==
-        'comment_like_milestone';
-
-if (!opensDiscussion) {
-  return;
-}
-
-  final mediaType =
-      notification.mediaType;
-
-  final tmdbId =
-      notification.tmdbId;
-
-  if (mediaType == null ||
-      tmdbId == null) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Could not open this notification.',
-        ),
-      ),
-    );
-
-    return;
-  }
-
-  try {
-    // ===================================================
-    // EPISODE DISCUSSION
-    // ===================================================
-    if (mediaType == 'episode') {
-      final seasonNumber =
-          notification.seasonNumber;
-
-      final episodeNumber =
-          notification.episodeNumber;
-
-      if (seasonNumber == null ||
-          episodeNumber == null) {
-        throw Exception(
-          'Missing episode information.',
-        );
-      }
-
-      final showDetails =
-          await tmdbService.getDetails(
-        tmdbId,
-        'tv',
-      );
-
-      final episodes =
-          await tmdbService
-              .getSeasonEpisodes(
-        tmdbId,
+    try {
+      final episodes = await tmdbService.getSeasonEpisodes(
+        showId,
         seasonNumber,
       );
 
-      Map<String, dynamic>?
-          episodeDetails;
+      Map<String, dynamic>? foundEpisode;
 
       for (final raw in episodes) {
         if (raw is! Map) {
           continue;
         }
 
-        final episode =
-            Map<String, dynamic>.from(
-          raw,
-        );
+        final episode = Map<String, dynamic>.from(raw);
 
-        final rawEpisodeNumber =
-            episode['episode_number'];
+        final number = episode['episode_number'];
 
-        if (rawEpisodeNumber is num &&
-            rawEpisodeNumber.toInt() ==
-                episodeNumber) {
-          episodeDetails = episode;
-
+        if (number is num && number.toInt() == episodeNumber) {
+          foundEpisode = episode;
           break;
         }
       }
 
-      final String showTitle =
-          (showDetails['name'] ??
-                  LibraryService.instance
-                      .getItem(
-                        tmdbId,
-                        'tv',
-                      )
-                      ?.title ??
-                  'TV Show')
-              .toString();
+      if (!mounted) {
+        return;
+      }
 
-      final String episodeTitle =
-          (episodeDetails?['name'] ??
-                  'Episode $episodeNumber')
-              .toString();
+      if (foundEpisode == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: UiText('Could not find this episode.')),
+        );
 
-      final String episodeCode =
-          'S${seasonNumber.toString().padLeft(2, '0')}'
-          'E${episodeNumber.toString().padLeft(2, '0')}';
+        return;
+      }
 
-      final String? stillPath =
-          episodeDetails?['still_path']
-              ?.toString();
+      final rawRuntime = foundEpisode['runtime'];
+
+      final rawRating = foundEpisode['vote_average'];
+
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => SwipeableEpisodePage(
+            showId: showId,
+
+            seasonNumber: seasonNumber,
+
+            episodeNumber: episodeNumber,
+
+            title:
+                foundEpisode?['name']?.toString() ?? 'Episode $episodeNumber',
+
+            stillPath: foundEpisode?['still_path']?.toString(),
+
+            runtime: rawRuntime is num ? rawRuntime.toInt() : null,
+
+            rating: rawRating is num && rawRating.toDouble() > 0
+                ? rawRating.toDouble()
+                : null,
+
+            overview: foundEpisode?['overview']?.toString() ?? '',
+
+            airDate: foundEpisode?['air_date']?.toString(),
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Could not open new episode notification: $e');
 
       if (!mounted) {
         return;
       }
 
-      await Navigator.push(
-        context,
-
-        MaterialPageRoute(
-          builder: (_) =>
-              CommentsPage(
-            mediaType: 'episode',
-
-            tmdbId: tmdbId,
-
-            seasonNumber:
-                seasonNumber,
-
-            episodeNumber:
-                episodeNumber,
-
-            title: episodeTitle,
-
-            subtitle:
-                '$showTitle • $episodeCode',
-
-            imagePath:
-                stillPath,
-
-                targetCommentId:
-    notification.commentId,
-
-            onProfileTap:
-                (userId) async {
-              await Navigator.push(
-                context,
-
-                MaterialPageRoute(
-                  builder: (_) =>
-                      PublicProfilePage(
-                    userId: userId,
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: UiText('Could not open this episode.')),
       );
-
-      return;
     }
+  }
 
-    // ===================================================
-    // MOVIE / TV DISCUSSION
-    // ===================================================
-    if (mediaType == 'movie' ||
-        mediaType == 'tv') {
-      final details =
-          await tmdbService.getDetails(
-        tmdbId,
-        mediaType,
-      );
-
-      final libraryItem =
-          LibraryService.instance
-              .getItem(
-        tmdbId,
-        mediaType,
-      );
-
-      final String title =
-          (details['title'] ??
-                  details['name'] ??
-                  libraryItem?.title ??
-                  'Discussion')
-              .toString();
-
-      final String? backdropPath =
-          details['backdrop_path']
-              ?.toString();
-
-      if (!mounted) {
-        return;
-      }
-
-      await Navigator.push(
-        context,
-
-        MaterialPageRoute(
-          builder: (_) =>
-              CommentsPage(
-            mediaType: mediaType,
-
-            tmdbId: tmdbId,
-
-            title: title,
-
-            imagePath:
-                backdropPath,
-
-                targetCommentId:
-    notification.commentId,
-
-            onProfileTap:
-                (userId) async {
-              await Navigator.push(
-                context,
-
-                MaterialPageRoute(
-                  builder: (_) =>
-                      PublicProfilePage(
-                    userId: userId,
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      );
-
-      return;
-    }
-  } catch (e) {
-    debugPrint(
-      'Could not open notification: $e',
+  Future<void> _openChipluxUpdate(ChipluxNotification notification) async {
+    await _showChipluxUpdateDialog(
+      context: context,
+      title: notification.title,
+      body: notification.body,
     );
+  }
+
+  Future<void> _openNotification(ChipluxNotification notification) async {
+    // Mark it read immediately.
+    await service.markRead(notification.id);
 
     if (!mounted) {
       return;
     }
 
-    ScaffoldMessenger.of(context)
-        .showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Could not open this discussion.',
+    // ===================================================
+    // NEW FOLLOWER
+    // ===================================================
+    if (notification.type == 'new_follower') {
+      final followerUserId = notification.actorUserId;
+
+      if (followerUserId == null || followerUserId.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: UiText('Could not open this profile.')),
+        );
+
+        return;
+      }
+
+      await Navigator.push(
+        context,
+
+        MaterialPageRoute(
+          builder: (_) => PublicProfilePage(userId: followerUserId),
         ),
-      ),
-    );
+      );
+
+      return;
+    }
+
+    // ===================================================
+    // ACHIEVEMENT
+    // ===================================================
+    if (notification.type == 'achievement') {
+      final tabIndex = _achievementTabIndex(notification.achievementId);
+
+      await Navigator.push(
+        context,
+
+        MaterialPageRoute(
+          builder: (_) => AchievementsPage(
+            initialTabIndex: tabIndex,
+
+            initialAchievementId: notification.achievementId,
+          ),
+        ),
+      );
+
+      return;
+    }
+
+    // ===================================================
+    // RELEASE REMINDER
+    // ===================================================
+    if (notification.type == 'release') {
+      final tmdbId = notification.tmdbId;
+
+      final mediaType = notification.mediaType;
+
+      if (tmdbId == null ||
+          mediaType == null ||
+          (mediaType != 'movie' && mediaType != 'tv')) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: UiText('Could not open this title.')),
+        );
+
+        return;
+      }
+
+      await Navigator.push(
+        context,
+
+        MaterialPageRoute(
+          builder: (_) => MediaDetailsPage(id: tmdbId, mediaType: mediaType),
+        ),
+      );
+
+      return;
+    }
+
+    // ===================================================
+    // NEW EPISODE
+    // ===================================================
+    if (notification.type == 'new_episode') {
+      await _openNewEpisodeNotification(notification);
+
+      return;
+    }
+
+    // ===================================================
+    // FEATURE SUGGESTION STATUS
+    // ===================================================
+    if (notification.type == 'feature_suggestion_status') {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const FeatureBoardPage()),
+      );
+
+      return;
+    }
+
+    // ===================================================
+    // CHIPLUX UPDATE
+    // ===================================================
+    if (notification.type == 'chiplux_update') {
+      await _openChipluxUpdate(notification);
+
+      return;
+    }
+
+    // ===================================================
+    // COMMENT NOTIFICATIONS
+    // ===================================================
+    final bool opensDiscussion =
+        notification.type == 'comment_reply' ||
+        notification.type == 'comment_like_milestone';
+
+    if (!opensDiscussion) {
+      return;
+    }
+
+    final mediaType = notification.mediaType;
+
+    final tmdbId = notification.tmdbId;
+
+    if (mediaType == null || tmdbId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: UiText('Could not open this notification.')),
+      );
+
+      return;
+    }
+
+    try {
+      // ===================================================
+      // EPISODE DISCUSSION
+      // ===================================================
+      if (mediaType == 'episode') {
+        final seasonNumber = notification.seasonNumber;
+
+        final episodeNumber = notification.episodeNumber;
+
+        if (seasonNumber == null || episodeNumber == null) {
+          throw Exception('Missing episode information.');
+        }
+
+        final showDetails = await tmdbService.getDetails(tmdbId, 'tv');
+
+        final episodes = await tmdbService.getSeasonEpisodes(
+          tmdbId,
+          seasonNumber,
+        );
+
+        Map<String, dynamic>? episodeDetails;
+
+        for (final raw in episodes) {
+          if (raw is! Map) {
+            continue;
+          }
+
+          final episode = Map<String, dynamic>.from(raw);
+
+          final rawEpisodeNumber = episode['episode_number'];
+
+          if (rawEpisodeNumber is num &&
+              rawEpisodeNumber.toInt() == episodeNumber) {
+            episodeDetails = episode;
+
+            break;
+          }
+        }
+
+        final String showTitle =
+            (showDetails['name'] ??
+                    LibraryService.instance.getItem(tmdbId, 'tv')?.title ??
+                    'TV Show')
+                .toString();
+
+        final String episodeTitle =
+            (episodeDetails?['name'] ?? 'Episode $episodeNumber').toString();
+
+        final String episodeCode =
+            'S${seasonNumber.toString().padLeft(2, '0')}'
+            'E${episodeNumber.toString().padLeft(2, '0')}';
+
+        final String? stillPath = episodeDetails?['still_path']?.toString();
+
+        if (!mounted) {
+          return;
+        }
+
+        await Navigator.push(
+          context,
+
+          MaterialPageRoute(
+            builder: (_) => CommentsPage(
+              mediaType: 'episode',
+
+              tmdbId: tmdbId,
+
+              seasonNumber: seasonNumber,
+
+              episodeNumber: episodeNumber,
+
+              title: episodeTitle,
+
+              subtitle: '$showTitle • $episodeCode',
+
+              imagePath: stillPath,
+
+              targetCommentId: notification.commentId,
+
+              onProfileTap: (userId) async {
+                await Navigator.push(
+                  context,
+
+                  MaterialPageRoute(
+                    builder: (_) => PublicProfilePage(userId: userId),
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+
+        return;
+      }
+
+      // ===================================================
+      // MOVIE / TV DISCUSSION
+      // ===================================================
+      if (mediaType == 'movie' || mediaType == 'tv') {
+        final details = await tmdbService.getDetails(tmdbId, mediaType);
+
+        final libraryItem = LibraryService.instance.getItem(tmdbId, mediaType);
+
+        final String title =
+            (details['title'] ??
+                    details['name'] ??
+                    libraryItem?.title ??
+                    'Discussion')
+                .toString();
+
+        final String? backdropPath = details['backdrop_path']?.toString();
+
+        if (!mounted) {
+          return;
+        }
+
+        await Navigator.push(
+          context,
+
+          MaterialPageRoute(
+            builder: (_) => CommentsPage(
+              mediaType: mediaType,
+
+              tmdbId: tmdbId,
+
+              title: title,
+
+              imagePath: backdropPath,
+
+              targetCommentId: notification.commentId,
+
+              onProfileTap: (userId) async {
+                await Navigator.push(
+                  context,
+
+                  MaterialPageRoute(
+                    builder: (_) => PublicProfilePage(userId: userId),
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+
+        return;
+      }
+    } catch (e) {
+      debugPrint('Could not open notification: $e');
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: UiText('Could not open this discussion.')),
+      );
+    }
   }
-}
 
   String _timeAgo(DateTime date) {
-    final difference =
-        DateTime.now().difference(date);
+    final difference = DateTime.now().difference(date);
 
     if (difference.inSeconds < 60) {
       return 'Just now';
@@ -26820,9 +25491,7 @@ if (!opensDiscussion) {
     return '${date.day}/${date.month}/${date.year}';
   }
 
-  IconData _iconFor(
-    ChipluxNotification notification,
-  ) {
+  IconData _iconFor(ChipluxNotification notification) {
     switch (notification.type) {
       case 'comment_reply':
         return Icons.reply_rounded;
@@ -26834,32 +25503,26 @@ if (!opensDiscussion) {
         return Icons.person_add_alt_1_rounded;
 
       case 'achievement':
-        return Icons
-            .workspace_premium_rounded;
+        return Icons.workspace_premium_rounded;
 
       case 'new_episode':
         return Icons.tv_rounded;
 
       case 'release':
-  return Icons
-      .calendar_month_rounded;
+        return Icons.calendar_month_rounded;
 
-case 'feature_suggestion_status':
-  return Icons.lightbulb_rounded;
+      case 'feature_suggestion_status':
+        return Icons.lightbulb_rounded;
 
-case 'chiplux_update':
-  return Icons
-      .auto_awesome_rounded;
+      case 'chiplux_update':
+        return Icons.auto_awesome_rounded;
 
-default:
-        return Icons
-            .notifications_rounded;
+      default:
+        return Icons.notifications_rounded;
     }
   }
 
-  String _labelFor(
-    ChipluxNotification notification,
-  ) {
+  String _labelFor(ChipluxNotification notification) {
     switch (notification.type) {
       case 'comment_reply':
         return 'REPLY';
@@ -26899,33 +25562,19 @@ default:
 
   @override
   Widget build(BuildContext context) {
-    final notifications =
-        service.notifications;
+    final notifications = service.notifications;
 
-    final unreadCount =
-        service.unreadCount;
+    final unreadCount = service.unreadCount;
 
-    Widget typeBadge(
-      ChipluxNotification notification,
-    ) {
+    Widget typeBadge(ChipluxNotification notification) {
       return Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 8,
-          vertical: 4,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: chipluxCyan.withValues(
-            alpha: 0.07,
-          ),
-          borderRadius:
-              BorderRadius.circular(999),
-          border: Border.all(
-            color: chipluxCyan.withValues(
-              alpha: 0.30,
-            ),
-          ),
+          color: chipluxCyan.withValues(alpha: 0.07),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: chipluxCyan.withValues(alpha: 0.30)),
         ),
-        child: Text(
+        child: UiText(
           _labelFor(notification),
           style: const TextStyle(
             color: chipluxCyan,
@@ -26938,12 +25587,10 @@ default:
     }
 
     return Scaffold(
-      backgroundColor:
-          chipluxBackground,
+      backgroundColor: chipluxBackground,
 
       appBar: AppBar(
-        backgroundColor:
-            chipluxBackground,
+        backgroundColor: chipluxBackground,
 
         elevation: 0,
 
@@ -26953,18 +25600,15 @@ default:
         leadingWidth: 44,
 
         title: const Column(
-          crossAxisAlignment:
-              CrossAxisAlignment.start,
-          mainAxisSize:
-              MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
+            UiText(
               'CHIPLUX INBOX',
               style: TextStyle(
                 color: Colors.white38,
                 fontSize: 9,
-                fontWeight:
-                    FontWeight.w800,
+                fontWeight: FontWeight.w800,
                 letterSpacing: 1.6,
               ),
             ),
@@ -26973,8 +25617,7 @@ default:
               'Notifications',
               style: TextStyle(
                 fontSize: 25,
-                fontWeight:
-                    FontWeight.w900,
+                fontWeight: FontWeight.w900,
                 letterSpacing: -0.6,
               ),
             ),
@@ -26984,68 +25627,43 @@ default:
         actions: [
           if (unreadCount > 0)
             Padding(
-              padding:
-                  const EdgeInsets.only(
-                right: 12,
-              ),
+              padding: const EdgeInsets.only(right: 12),
               child: Center(
                 child: Material(
-                  color:
-                      Colors.transparent,
+                  color: Colors.transparent,
                   child: InkWell(
                     onTap: () {
                       service.markAllRead();
                     },
-                    borderRadius:
-                        BorderRadius.circular(
-                      999,
-                    ),
+                    borderRadius: BorderRadius.circular(999),
                     child: Container(
-                      padding:
-                          const EdgeInsets.symmetric(
+                      padding: const EdgeInsets.symmetric(
                         horizontal: 11,
                         vertical: 7,
                       ),
-                      decoration:
-                          BoxDecoration(
-                        color: chipluxViolet
-                            .withValues(
-                          alpha: 0.07,
-                        ),
-                        borderRadius:
-                            BorderRadius.circular(
-                          999,
-                        ),
+                      decoration: BoxDecoration(
+                        color: chipluxViolet.withValues(alpha: 0.07),
+                        borderRadius: BorderRadius.circular(999),
                         border: Border.all(
-                          color: chipluxViolet
-                              .withValues(
-                            alpha: 0.32,
-                          ),
+                          color: chipluxViolet.withValues(alpha: 0.32),
                         ),
                       ),
                       child: const Row(
-                        mainAxisSize:
-                            MainAxisSize.min,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            Icons
-                                .done_all_rounded,
-                            color:
-                                chipluxViolet,
+                            Icons.done_all_rounded,
+                            color: chipluxViolet,
                             size: 14,
                           ),
                           SizedBox(width: 5),
-                          Text(
+                          UiText(
                             'READ ALL',
                             style: TextStyle(
-                              color:
-                                  chipluxViolet,
+                              color: chipluxViolet,
                               fontSize: 9,
-                              fontWeight:
-                                  FontWeight
-                                      .w900,
-                              letterSpacing:
-                                  0.8,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.8,
                             ),
                           ),
                         ],
@@ -27059,108 +25677,53 @@ default:
       ),
 
       body: ChipluxBackground(
-        style:
-            ChipluxBackgroundStyle
-                .profile,
+        style: ChipluxBackgroundStyle.profile,
 
         child: RefreshIndicator(
           color: chipluxCyan,
 
-          backgroundColor:
-              chipluxSurface,
+          backgroundColor: chipluxSurface,
 
-          onRefresh:
-              service.refresh,
+          onRefresh: service.refresh,
 
-          child: service.loading &&
-                  notifications.isEmpty
-              ? const Center(
-                  child:
-                      CircularProgressIndicator(),
-                )
+          child: service.loading && notifications.isEmpty
+              ? const Center(child: CircularProgressIndicator())
               : notifications.isEmpty
               ? ListView(
-                  physics:
-                      const AlwaysScrollableScrollPhysics(),
+                  physics: const AlwaysScrollableScrollPhysics(),
 
-                  padding:
-                      const EdgeInsets.fromLTRB(
-                    20,
-                    34,
-                    20,
-                    30,
-                  ),
+                  padding: const EdgeInsets.fromLTRB(20, 34, 20, 30),
 
                   children: [
                     Container(
-                      padding:
-                          const EdgeInsets.all(
-                        1,
-                      ),
-                      decoration:
-                          BoxDecoration(
-                        borderRadius:
-                            BorderRadius.circular(
-                          24,
-                        ),
-                        gradient:
-                            LinearGradient(
-                          begin:
-                              Alignment.topLeft,
-                          end:
-                              Alignment.bottomRight,
+                      padding: const EdgeInsets.all(1),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(24),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                           colors: [
-                            chipluxCyan
-                                .withValues(
-                              alpha: 0.65,
-                            ),
-                            chipluxViolet
-                                .withValues(
-                              alpha: 0.45,
-                            ),
-                            chipluxPurple
-                                .withValues(
-                              alpha: 0.30,
-                            ),
+                            chipluxCyan.withValues(alpha: 0.65),
+                            chipluxViolet.withValues(alpha: 0.45),
+                            chipluxPurple.withValues(alpha: 0.30),
                           ],
                         ),
                       ),
                       child: Container(
-                        padding:
-                            const EdgeInsets
-                                .fromLTRB(
-                          22,
-                          28,
-                          22,
-                          27,
-                        ),
-                        decoration:
-                            BoxDecoration(
-                          color:
-                              chipluxSurface,
-                          borderRadius:
-                              BorderRadius
-                                  .circular(
-                            23,
-                          ),
+                        padding: const EdgeInsets.fromLTRB(22, 28, 22, 27),
+                        decoration: BoxDecoration(
+                          color: chipluxSurface,
+                          borderRadius: BorderRadius.circular(23),
                         ),
                         child: Column(
                           children: [
                             Container(
                               width: 62,
                               height: 62,
-                              padding:
-                                  const EdgeInsets
-                                      .all(
-                                1.2,
-                              ),
-                              decoration:
-                                  BoxDecoration(
-                                shape:
-                                    BoxShape
-                                        .circle,
-                                gradient:
-                                    const LinearGradient(
+                              padding: const EdgeInsets.all(1.2),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: const LinearGradient(
                                   colors: [
                                     chipluxCyan,
                                     chipluxViolet,
@@ -27169,107 +25732,61 @@ default:
                                 ),
                               ),
                               child: Container(
-                                decoration:
-                                    const BoxDecoration(
-                                  color:
-                                      chipluxBackground,
-                                  shape:
-                                      BoxShape
-                                          .circle,
+                                decoration: const BoxDecoration(
+                                  color: chipluxBackground,
+                                  shape: BoxShape.circle,
                                 ),
-                                child:
-                                    const Icon(
-                                  Icons
-                                      .notifications_none_rounded,
-                                  color:
-                                      chipluxCyan,
+                                child: const Icon(
+                                  Icons.notifications_none_rounded,
+                                  color: chipluxCyan,
                                   size: 29,
                                 ),
                               ),
                             ),
 
-                            const SizedBox(
-                              height: 16,
-                            ),
+                            const SizedBox(height: 16),
 
                             Container(
-                              padding:
-                                  const EdgeInsets
-                                      .symmetric(
+                              padding: const EdgeInsets.symmetric(
                                 horizontal: 10,
                                 vertical: 5,
                               ),
-                              decoration:
-                                  BoxDecoration(
-                                color:
-                                    chipluxCyan
-                                        .withValues(
-                                  alpha:
-                                      0.07,
-                                ),
-                                borderRadius:
-                                    BorderRadius
-                                        .circular(
-                                  999,
-                                ),
-                                border:
-                                    Border.all(
-                                  color:
-                                      chipluxCyan
-                                          .withValues(
-                                    alpha:
-                                        0.30,
-                                  ),
+                              decoration: BoxDecoration(
+                                color: chipluxCyan.withValues(alpha: 0.07),
+                                borderRadius: BorderRadius.circular(999),
+                                border: Border.all(
+                                  color: chipluxCyan.withValues(alpha: 0.30),
                                 ),
                               ),
-                              child:
-                                  const Text(
+                              child: const UiText(
                                 'ALL CAUGHT UP',
-                                style:
-                                    TextStyle(
-                                  color:
-                                      chipluxCyan,
+                                style: TextStyle(
+                                  color: chipluxCyan,
                                   fontSize: 9,
-                                  fontWeight:
-                                      FontWeight
-                                          .w900,
-                                  letterSpacing:
-                                      1.2,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1.2,
                                 ),
                               ),
                             ),
 
-                            const SizedBox(
-                              height: 12,
-                            ),
+                            const SizedBox(height: 12),
 
                             const GradientText(
                               'No notifications yet',
-                              style:
-                                  TextStyle(
+                              style: TextStyle(
                                 fontSize: 21,
-                                fontWeight:
-                                    FontWeight
-                                        .w900,
-                                letterSpacing:
-                                    -0.35,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -0.35,
                               ),
                             ),
 
-                            const SizedBox(
-                              height: 8,
-                            ),
+                            const SizedBox(height: 8),
 
-                            const Text(
+                            const UiText(
                               'Replies, followers, achievements and Chiplux activity will appear here.',
-                              textAlign:
-                                  TextAlign
-                                      .center,
-                              style:
-                                  TextStyle(
-                                color:
-                                    Colors
-                                        .white54,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Colors.white54,
                                 fontSize: 12,
                                 height: 1.45,
                               ),
@@ -27281,139 +25798,71 @@ default:
                   ],
                 )
               : ListView.separated(
-                  physics:
-                      const AlwaysScrollableScrollPhysics(),
+                  physics: const AlwaysScrollableScrollPhysics(),
 
-                  padding:
-                      const EdgeInsets.fromLTRB(
-                    16,
-                    10,
-                    16,
-                    30,
-                  ),
+                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 30),
 
-                  itemCount:
-                      notifications.length +
-                          1,
+                  itemCount: notifications.length + 1,
 
-                  separatorBuilder:
-                      (context, index) =>
-                          SizedBox(
-                    height:
-                        index == 0
-                            ? 12
-                            : 9,
-                  ),
+                  separatorBuilder: (context, index) =>
+                      SizedBox(height: index == 0 ? 12 : 9),
 
-                  itemBuilder:
-                      (context, index) {
+                  itemBuilder: (context, index) {
                     if (index == 0) {
                       return Container(
-                        padding:
-                            const EdgeInsets
-                                .fromLTRB(
-                          3,
-                          2,
-                          3,
-                          0,
-                        ),
+                        padding: const EdgeInsets.fromLTRB(3, 2, 3, 0),
                         child: Row(
                           children: [
-                            const Text(
+                            const UiText(
                               'RECENT ACTIVITY',
-                              style:
-                                  TextStyle(
-                                color:
-                                    Colors
-                                        .white38,
+                              style: TextStyle(
+                                color: Colors.white38,
                                 fontSize: 9,
-                                fontWeight:
-                                    FontWeight
-                                        .w900,
-                                letterSpacing:
-                                    1.5,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 1.5,
                               ),
                             ),
 
-                            const SizedBox(
-                              width: 9,
-                            ),
+                            const SizedBox(width: 9),
 
                             Expanded(
                               child: Container(
                                 height: 1,
-                                decoration:
-                                    BoxDecoration(
-                                  gradient:
-                                      LinearGradient(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
                                     colors: [
-                                      chipluxCyan
-                                          .withValues(
-                                        alpha:
-                                            0.35,
-                                      ),
-                                      chipluxViolet
-                                          .withValues(
-                                        alpha:
-                                            0.18,
-                                      ),
-                                      Colors
-                                          .transparent,
+                                      chipluxCyan.withValues(alpha: 0.35),
+                                      chipluxViolet.withValues(alpha: 0.18),
+                                      Colors.transparent,
                                     ],
                                   ),
                                 ),
                               ),
                             ),
 
-                            if (unreadCount >
-                                0) ...[
-                              const SizedBox(
-                                width: 9,
-                              ),
+                            if (unreadCount > 0) ...[
+                              const SizedBox(width: 9),
                               Container(
-                                padding:
-                                    const EdgeInsets
-                                        .symmetric(
-                                  horizontal:
-                                      8,
-                                  vertical:
-                                      4,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
                                 ),
-                                decoration:
-                                    BoxDecoration(
-                                  color:
-                                      chipluxViolet
-                                          .withValues(
-                                    alpha:
-                                        0.08,
-                                  ),
-                                  borderRadius:
-                                      BorderRadius
-                                          .circular(
-                                    999,
-                                  ),
-                                  border:
-                                      Border.all(
-                                    color:
-                                        chipluxViolet
-                                            .withValues(
-                                      alpha:
-                                          0.28,
+                                decoration: BoxDecoration(
+                                  color: chipluxViolet.withValues(alpha: 0.08),
+                                  borderRadius: BorderRadius.circular(999),
+                                  border: Border.all(
+                                    color: chipluxViolet.withValues(
+                                      alpha: 0.28,
                                     ),
                                   ),
                                 ),
-                                child: Text(
+                                child: UiText(
                                   '$unreadCount UNREAD',
-                                  style:
-                                      const TextStyle(
-                                    color:
-                                        chipluxViolet,
+                                  style: const TextStyle(
+                                    color: chipluxViolet,
                                     fontSize: 8,
-                                    fontWeight:
-                                        FontWeight
-                                            .w900,
-                                    letterSpacing:
-                                        0.8,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 0.8,
                                   ),
                                 ),
                               ),
@@ -27423,81 +25872,43 @@ default:
                       );
                     }
 
-                    final notification =
-                        notifications[
-                            index - 1];
+                    final notification = notifications[index - 1];
 
                     return Dismissible(
-                      key: ValueKey(
-                        notification.id,
-                      ),
+                      key: ValueKey(notification.id),
 
-                      direction:
-                          DismissDirection
-                              .endToStart,
+                      direction: DismissDirection.endToStart,
 
                       background: Container(
-                        alignment:
-                            Alignment
-                                .centerRight,
+                        alignment: Alignment.centerRight,
 
-                        padding:
-                            const EdgeInsets
-                                .only(
-                          right: 20,
-                        ),
+                        padding: const EdgeInsets.only(right: 20),
 
-                        decoration:
-                            BoxDecoration(
-                          color: Colors
-                              .redAccent
-                              .withValues(
-                            alpha: 0.12,
-                          ),
-                          borderRadius:
-                              BorderRadius
-                                  .circular(
-                            19,
-                          ),
-                          border:
-                              Border.all(
-                            color: Colors
-                                .redAccent
-                                .withValues(
-                              alpha: 0.22,
-                            ),
+                        decoration: BoxDecoration(
+                          color: Colors.redAccent.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(19),
+                          border: Border.all(
+                            color: Colors.redAccent.withValues(alpha: 0.22),
                           ),
                         ),
 
                         child: const Row(
-                          mainAxisAlignment:
-                              MainAxisAlignment
-                                  .end,
-                          mainAxisSize:
-                              MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(
+                            UiText(
                               'REMOVE',
-                              style:
-                                  TextStyle(
-                                color: Colors
-                                    .redAccent,
+                              style: TextStyle(
+                                color: Colors.redAccent,
                                 fontSize: 9,
-                                fontWeight:
-                                    FontWeight
-                                        .w900,
-                                letterSpacing:
-                                    0.9,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.9,
                               ),
                             ),
-                            SizedBox(
-                              width: 7,
-                            ),
+                            SizedBox(width: 7),
                             Icon(
-                              Icons
-                                  .delete_outline_rounded,
-                              color: Colors
-                                  .redAccent,
+                              Icons.delete_outline_rounded,
+                              color: Colors.redAccent,
                               size: 19,
                             ),
                           ],
@@ -27505,150 +25916,70 @@ default:
                       ),
 
                       onDismissed: (_) {
-                        service
-                            .deleteNotification(
-                          notification.id,
-                        );
+                        service.deleteNotification(notification.id);
                       },
 
                       child: Material(
-                        color:
-                            Colors.transparent,
+                        color: Colors.transparent,
                         child: InkWell(
                           onTap: () {
-                            unawaited(
-                              _openNotification(
-                                notification,
-                              ),
-                            );
+                            unawaited(_openNotification(notification));
                           },
 
-                          borderRadius:
-                              BorderRadius
-                                  .circular(
-                            19,
-                          ),
+                          borderRadius: BorderRadius.circular(19),
 
                           child: Ink(
-                            padding:
-                                const EdgeInsets
-                                    .all(
-                              1,
-                            ),
-                            decoration:
-                                BoxDecoration(
-                              borderRadius:
-                                  BorderRadius
-                                      .circular(
-                                19,
-                              ),
-                              gradient: notification
-                                      .isRead
+                            padding: const EdgeInsets.all(1),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(19),
+                              gradient: notification.isRead
                                   ? LinearGradient(
                                       colors: [
-                                        Colors
-                                            .white
-                                            .withValues(
-                                          alpha:
-                                              0.08,
-                                        ),
-                                        Colors
-                                            .white
-                                            .withValues(
-                                          alpha:
-                                              0.035,
-                                        ),
+                                        Colors.white.withValues(alpha: 0.08),
+                                        Colors.white.withValues(alpha: 0.035),
                                       ],
                                     )
                                   : LinearGradient(
-                                      begin:
-                                          Alignment
-                                              .topLeft,
-                                      end:
-                                          Alignment
-                                              .bottomRight,
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
                                       colors: [
-                                        chipluxCyan
-                                            .withValues(
-                                          alpha:
-                                              0.72,
-                                        ),
-                                        chipluxViolet
-                                            .withValues(
-                                          alpha:
-                                              0.50,
-                                        ),
-                                        chipluxPurple
-                                            .withValues(
-                                          alpha:
-                                              0.36,
-                                        ),
+                                        chipluxCyan.withValues(alpha: 0.72),
+                                        chipluxViolet.withValues(alpha: 0.50),
+                                        chipluxPurple.withValues(alpha: 0.36),
                                       ],
                                     ),
                             ),
                             child: Container(
-                              padding:
-                                  const EdgeInsets
-                                      .all(
-                                14,
-                              ),
-                              decoration:
-                                  BoxDecoration(
-                                color:
-                                    chipluxSurface,
-                                borderRadius:
-                                    BorderRadius
-                                        .circular(
-                                  18,
-                                ),
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: chipluxSurface,
+                                borderRadius: BorderRadius.circular(18),
                               ),
                               child: Row(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment
-                                        .start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Container(
                                     width: 46,
                                     height: 46,
-                                    padding:
-                                        const EdgeInsets
-                                            .all(
-                                      1,
-                                    ),
-                                    decoration:
-                                        BoxDecoration(
-                                      borderRadius:
-                                          BorderRadius
-                                              .circular(
-                                        14,
-                                      ),
-                                      gradient:
-                                          LinearGradient(
-                                        begin:
-                                            Alignment
-                                                .topLeft,
-                                        end:
-                                            Alignment
-                                                .bottomRight,
+                                    padding: const EdgeInsets.all(1),
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(14),
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
                                         colors: [
-                                          chipluxCyan
-                                              .withValues(
-                                            alpha: notification
-                                                    .isRead
+                                          chipluxCyan.withValues(
+                                            alpha: notification.isRead
                                                 ? 0.22
                                                 : 0.75,
                                           ),
-                                          chipluxViolet
-                                              .withValues(
-                                            alpha: notification
-                                                    .isRead
+                                          chipluxViolet.withValues(
+                                            alpha: notification.isRead
                                                 ? 0.14
                                                 : 0.48,
                                           ),
-                                          chipluxPurple
-                                              .withValues(
-                                            alpha: notification
-                                                    .isRead
+                                          chipluxPurple.withValues(
+                                            alpha: notification.isRead
                                                 ? 0.10
                                                 : 0.28,
                                           ),
@@ -27656,94 +25987,58 @@ default:
                                       ),
                                     ),
                                     child: Container(
-                                      decoration:
-                                          BoxDecoration(
-                                        color:
-                                            chipluxBackground,
-                                        borderRadius:
-                                            BorderRadius
-                                                .circular(
-                                          13,
-                                        ),
+                                      decoration: BoxDecoration(
+                                        color: chipluxBackground,
+                                        borderRadius: BorderRadius.circular(13),
                                       ),
                                       child: Icon(
-                                        _iconFor(
-                                          notification,
-                                        ),
-                                        color:
-                                            chipluxCyan,
+                                        _iconFor(notification),
+                                        color: chipluxCyan,
                                         size: 22,
                                       ),
                                     ),
                                   ),
 
-                                  const SizedBox(
-                                    width: 12,
-                                  ),
+                                  const SizedBox(width: 12),
 
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment:
-                                          CrossAxisAlignment
-                                              .start,
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Row(
                                           children: [
-                                            typeBadge(
-                                              notification,
-                                            ),
+                                            typeBadge(notification),
 
-                                            if (!notification
-                                                .isRead) ...[
-                                              const SizedBox(
-                                                width: 6,
-                                              ),
+                                            if (!notification.isRead) ...[
+                                              const SizedBox(width: 6),
                                               Container(
                                                 padding:
-                                                    const EdgeInsets
-                                                        .symmetric(
-                                                  horizontal:
-                                                      7,
-                                                  vertical:
-                                                      4,
-                                                ),
-                                                decoration:
-                                                    BoxDecoration(
-                                                  color:
-                                                      chipluxViolet
-                                                          .withValues(
-                                                    alpha:
-                                                        0.10,
-                                                  ),
-                                                  borderRadius:
-                                                      BorderRadius
-                                                          .circular(
-                                                    999,
-                                                  ),
-                                                  border:
-                                                      Border.all(
-                                                    color:
-                                                        chipluxViolet
-                                                            .withValues(
-                                                      alpha:
-                                                          0.33,
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 7,
+                                                      vertical: 4,
                                                     ),
+                                                decoration: BoxDecoration(
+                                                  color: chipluxViolet
+                                                      .withValues(alpha: 0.10),
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                        999,
+                                                      ),
+                                                  border: Border.all(
+                                                    color: chipluxViolet
+                                                        .withValues(
+                                                          alpha: 0.33,
+                                                        ),
                                                   ),
                                                 ),
-                                                child:
-                                                    const Text(
+                                                child: const UiText(
                                                   'NEW',
-                                                  style:
-                                                      TextStyle(
-                                                    color:
-                                                        chipluxViolet,
-                                                    fontSize:
-                                                        8,
-                                                    fontWeight:
-                                                        FontWeight
-                                                            .w900,
-                                                    letterSpacing:
-                                                        0.8,
+                                                  style: TextStyle(
+                                                    color: chipluxViolet,
+                                                    fontSize: 8,
+                                                    fontWeight: FontWeight.w900,
+                                                    letterSpacing: 0.8,
                                                   ),
                                                 ),
                                               ),
@@ -27751,67 +26046,39 @@ default:
 
                                             const Spacer(),
 
-                                            Text(
-                                              _timeAgo(
-                                                notification
-                                                    .createdAt,
-                                              ),
-                                              style:
-                                                  const TextStyle(
-                                                color:
-                                                    Colors
-                                                        .white30,
-                                                fontSize:
-                                                    9,
-                                                fontWeight:
-                                                    FontWeight
-                                                        .w600,
+                                            UiText(
+                                              _timeAgo(notification.createdAt),
+                                              style: const TextStyle(
+                                                color: Colors.white30,
+                                                fontSize: 9,
+                                                fontWeight: FontWeight.w600,
                                               ),
                                             ),
                                           ],
                                         ),
 
-                                        const SizedBox(
-                                          height: 9,
-                                        ),
+                                        const SizedBox(height: 9),
 
                                         Text(
-                                          notification
-                                              .title,
-                                          style:
-                                              TextStyle(
-                                            color:
-                                                Colors
-                                                    .white,
-                                            fontSize:
-                                                14,
-                                            height:
-                                                1.2,
-                                            fontWeight: notification
-                                                    .isRead
-                                                ? FontWeight
-                                                    .w600
-                                                : FontWeight
-                                                    .w800,
+                                          notification.title,
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 14,
+                                            height: 1.2,
+                                            fontWeight: notification.isRead
+                                                ? FontWeight.w600
+                                                : FontWeight.w800,
                                           ),
                                         ),
 
-                                        const SizedBox(
-                                          height: 5,
-                                        ),
+                                        const SizedBox(height: 5),
 
                                         Text(
-                                          notification
-                                              .body,
-                                          style:
-                                              const TextStyle(
-                                            color:
-                                                Colors
-                                                    .white60,
-                                            fontSize:
-                                                12,
-                                            height:
-                                                1.4,
+                                          notification.body,
+                                          style: const TextStyle(
+                                            color: Colors.white60,
+                                            fontSize: 12,
+                                            height: 1.4,
                                           ),
                                         ),
                                       ],
@@ -27833,235 +26100,149 @@ default:
 }
 
 class ProfileMenuPage extends StatelessWidget {
-  const ProfileMenuPage({
-    super.key,
-  });
+  const ProfileMenuPage({super.key});
 
   @override
-  Widget build(
-    BuildContext context,
-  ) {
+  Widget build(BuildContext context) {
     return DefaultTabController(
       length: 3,
 
       child: Scaffold(
-        backgroundColor:
-            chipluxBackground,
+        backgroundColor: chipluxBackground,
 
         appBar: AppBar(
-          backgroundColor:
-              chipluxBackground,
+          backgroundColor: chipluxBackground,
 
           elevation: 0,
 
           toolbarHeight: 78,
 
-          title: const Row(
-  mainAxisSize:
-      MainAxisSize.min,
+          title: Row(
+            mainAxisSize: MainAxisSize.min,
 
-  crossAxisAlignment:
-      CrossAxisAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.end,
 
-  children: [
-    GradientText(
-      'Profile',
-      style: TextStyle(
-        fontSize: 25,
-        fontWeight: FontWeight.w900,
-        letterSpacing: -0.6,
-      ),
-    ),
-
-    SizedBox(width: 8),
-
-    Padding(
-      padding: EdgeInsets.only(
-        bottom: 3,
-      ),
-
-      child: Text(
-        'HUB',
-        style: TextStyle(
-          color: Colors.white38,
-          fontSize: 8,
-          fontWeight: FontWeight.w900,
-          letterSpacing: 1.3,
-        ),
-      ),
-    ),
-  ],
-),
-
-          bottom: PreferredSize(
-            preferredSize:
-                const Size.fromHeight(
-              62,
-            ),
-
-            child: Padding(
-              padding:
-                  const EdgeInsets.fromLTRB(
-                14,
-                3,
-                14,
-                12,
+            children: [
+              GradientText(
+                AppLocalizations.of(context).profile,
+                style: TextStyle(
+                  fontSize: 25,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.6,
+                ),
               ),
 
-              child: Container(
-                padding:
-                    const EdgeInsets.all(
-                  4,
+              SizedBox(width: 8),
+
+              Padding(
+                padding: EdgeInsets.only(bottom: 3),
+
+                child: UiText(
+                  'HUB',
+                  style: TextStyle(
+                    color: Colors.white38,
+                    fontSize: 8,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.3,
+                  ),
                 ),
+              ),
+            ],
+          ),
 
-                decoration:
-                    BoxDecoration(
-                  color: chipluxSurface
-                      .withValues(
-                    alpha: 0.75,
-                  ),
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(62),
 
-                  borderRadius:
-                      BorderRadius.circular(
-                    18,
-                  ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 3, 14, 12),
+
+              child: Container(
+                padding: const EdgeInsets.all(4),
+
+                decoration: BoxDecoration(
+                  color: chipluxSurface.withValues(alpha: 0.75),
+
+                  borderRadius: BorderRadius.circular(18),
 
                   border: Border.all(
-                    color: chipluxCyan
-                        .withValues(
-                      alpha: 0.16,
-                    ),
+                    color: chipluxCyan.withValues(alpha: 0.16),
                   ),
 
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black
-                          .withValues(
-                        alpha: 0.18,
-                      ),
+                      color: Colors.black.withValues(alpha: 0.18),
 
                       blurRadius: 12,
 
-                      offset:
-                          const Offset(
-                        0,
-                        4,
-                      ),
+                      offset: const Offset(0, 4),
                     ),
                   ],
                 ),
 
                 child: TabBar(
-                  dividerColor:
-                      Colors.transparent,
+                  dividerColor: Colors.transparent,
 
-                  indicatorSize:
-                      TabBarIndicatorSize.tab,
+                  indicatorSize: TabBarIndicatorSize.tab,
 
-                  indicator:
-                      BoxDecoration(
-                    borderRadius:
-                        BorderRadius.circular(
-                      14,
-                    ),
+                  indicator: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14),
 
-                    gradient:
-                        LinearGradient(
-                      begin:
-                          Alignment.topLeft,
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
 
-                      end:
-                          Alignment.bottomRight,
+                      end: Alignment.bottomRight,
 
                       colors: [
-                        chipluxCyan
-                            .withValues(
-                          alpha: 0.20,
-                        ),
+                        chipluxCyan.withValues(alpha: 0.20),
 
-                        chipluxViolet
-                            .withValues(
-                          alpha: 0.18,
-                        ),
+                        chipluxViolet.withValues(alpha: 0.18),
 
-                        chipluxPurple
-                            .withValues(
-                          alpha: 0.12,
-                        ),
+                        chipluxPurple.withValues(alpha: 0.12),
                       ],
                     ),
 
                     border: Border.all(
-                      color: chipluxCyan
-                          .withValues(
-                        alpha: 0.35,
-                      ),
+                      color: chipluxCyan.withValues(alpha: 0.35),
                     ),
                   ),
 
-                  labelColor:
-                      chipluxCyan,
+                  labelColor: chipluxCyan,
 
-                  unselectedLabelColor:
-                      Colors.white54,
+                  unselectedLabelColor: Colors.white54,
 
-                  labelStyle:
-                      const TextStyle(
+                  labelStyle: const TextStyle(
                     fontSize: 11,
 
-                    fontWeight:
-                        FontWeight.w900,
+                    fontWeight: FontWeight.w900,
 
-                    letterSpacing:
-                        0.7,
+                    letterSpacing: 0.7,
                   ),
 
-                  unselectedLabelStyle:
-                      const TextStyle(
+                  unselectedLabelStyle: const TextStyle(
                     fontSize: 11,
 
-                    fontWeight:
-                        FontWeight.w700,
+                    fontWeight: FontWeight.w700,
 
-                    letterSpacing:
-                        0.5,
+                    letterSpacing: 0.5,
                   ),
 
-                  tabs: const [
+                  tabs: [
                     Tab(
-                      icon: Icon(
-                        Icons
-                            .auto_awesome_rounded,
+                      icon: Icon(Icons.auto_awesome_rounded, size: 17),
 
-                        size: 17,
-                      ),
-
-                      text:
-                          'CUSTOMIZE',
+                      text: AppLocalizations.of(context).customize,
                     ),
 
                     Tab(
-                      icon: Icon(
-                        Icons
-                            .tune_rounded,
+                      icon: Icon(Icons.tune_rounded, size: 17),
 
-                        size: 17,
-                      ),
-
-                      text:
-                          'SETTINGS',
+                      text: AppLocalizations.of(context).settings,
                     ),
 
                     Tab(
-                      icon: Icon(
-                        Icons
-                            .help_outline_rounded,
+                      icon: Icon(Icons.help_outline_rounded, size: 17),
 
-                        size: 17,
-                      ),
-
-                      text:
-                          'HELP',
+                      text: AppLocalizations.of(context).help,
                     ),
                   ],
                 ),
@@ -28071,22 +26252,196 @@ class ProfileMenuPage extends StatelessWidget {
         ),
 
         body: ChipluxBackground(
-          style:
-              ChipluxBackgroundStyle
-                  .profile,
+          style: ChipluxBackgroundStyle.profile,
 
-          child:
-              const TabBarView(
+          child: const TabBarView(
             children: [
-              EditProfilePage(
-                embedded: true,
-              ),
+              EditProfilePage(embedded: true),
 
               _ProfileSettingsTab(),
 
               _ProfileHelpTab(),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class LanguageSettingsPage extends StatefulWidget {
+  const LanguageSettingsPage({super.key});
+
+  @override
+  State<LanguageSettingsPage> createState() => _LanguageSettingsPageState();
+}
+
+class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
+  bool saving = false;
+
+  Future<void> _choose(String code) async {
+    if (saving || LocaleService.instance.preferenceCode == code) return;
+
+    setState(() => saving = true);
+    await LocaleService.instance.setLanguage(code);
+
+    if (!mounted) return;
+    setState(() => saving = false);
+  }
+
+  Widget _languageOption({
+    required String code,
+    required String title,
+    required String subtitle,
+    required String flag,
+  }) {
+    final selected = LocaleService.instance.preferenceCode == code;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(1.1),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        gradient: LinearGradient(
+          colors: selected
+              ? [chipluxCyan, chipluxViolet, chipluxPurple]
+              : [
+                  Colors.white.withValues(alpha: .08),
+                  Colors.white.withValues(alpha: .03),
+                ],
+        ),
+      ),
+      child: Material(
+        color: chipluxSurface,
+        borderRadius: BorderRadius.circular(17),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(17),
+          onTap: saving ? null : () => _choose(code),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 14),
+            child: Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: chipluxSurfaceLight,
+                    borderRadius: BorderRadius.circular(13),
+                  ),
+                  child: Text(flag, style: const TextStyle(fontSize: 22)),
+                ),
+                const SizedBox(width: 13),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      UiText(
+                        title,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color: selected ? chipluxCyan : Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      UiText(
+                        subtitle,
+                        style: const TextStyle(
+                          color: Colors.white54,
+                          fontSize: 11.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Icon(
+                  selected ? Icons.check_circle_rounded : Icons.circle_outlined,
+                  color: selected ? chipluxCyan : Colors.white24,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
+    return Scaffold(
+      backgroundColor: chipluxBackground,
+      appBar: AppBar(backgroundColor: chipluxBackground, elevation: 0),
+      body: ChipluxBackground(
+        style: ChipluxBackgroundStyle.profile,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(18, 8, 18, 35),
+          children: [
+            GradientText(
+              l10n.language,
+              style: const TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.6,
+              ),
+            ),
+            const SizedBox(height: 5),
+            Text(
+              l10n.languagePageSubtitle,
+              style: const TextStyle(
+                color: Colors.white54,
+                fontSize: 12,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 18),
+            _languageOption(
+              code: 'system',
+              title: l10n.systemDefault,
+              subtitle: 'Android / iOS / Windows',
+              flag: '◉',
+            ),
+            _languageOption(
+              code: 'en',
+              title: l10n.english,
+              subtitle: 'English',
+              flag: '🇬🇧',
+            ),
+            _languageOption(
+              code: 'hr',
+              title: l10n.croatian,
+              subtitle: 'Hrvatski',
+              flag: '🇭🇷',
+            ),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: chipluxViolet.withValues(alpha: .06),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: chipluxViolet.withValues(alpha: .18)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.movie_filter_outlined, color: chipluxCyan),
+                  const SizedBox(width: 11),
+                  Expanded(
+                    child: Text(
+                      l10n.languageMediaRule,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                        height: 1.45,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -28101,10 +26456,8 @@ class NotificationSettingsPage extends StatefulWidget {
       _NotificationSettingsPageState();
 }
 
-class _NotificationSettingsPageState
-    extends State<NotificationSettingsPage> {
-  final settings =
-      NotificationSettingsService.instance;
+class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
+  final settings = NotificationSettingsService.instance;
 
   bool loading = true;
 
@@ -28119,9 +26472,7 @@ class _NotificationSettingsPageState
     try {
       await settings.load();
     } catch (e) {
-      debugPrint(
-        'Could not load notification settings: $e',
-      );
+      debugPrint('Could not load notification settings: $e');
     }
 
     if (!mounted) {
@@ -28135,8 +26486,7 @@ class _NotificationSettingsPageState
 
   Future<void> _change({
     required bool value,
-    required Future<void> Function(bool value)
-        save,
+    required Future<void> Function(bool value) save,
   }) async {
     try {
       await save(value);
@@ -28153,9 +26503,7 @@ class _NotificationSettingsPageState
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-            'Could not update notification setting.',
-          ),
+          content: UiText('Could not update notification setting.'),
         ),
       );
     }
@@ -28163,12 +26511,9 @@ class _NotificationSettingsPageState
 
   Widget _sectionLabel(String text) {
     return Padding(
-      padding: const EdgeInsets.only(
-        left: 4,
-        bottom: 8,
-      ),
+      padding: const EdgeInsets.only(left: 4, bottom: 8),
 
-      child: Text(
+      child: UiText(
         text,
 
         style: const TextStyle(
@@ -28186,36 +26531,22 @@ class _NotificationSettingsPageState
     return Scaffold(
       backgroundColor: chipluxBackground,
 
-      appBar: AppBar(
-        backgroundColor: chipluxBackground,
-        elevation: 0,
-      ),
+      appBar: AppBar(backgroundColor: chipluxBackground, elevation: 0),
 
       body: ChipluxBackground(
         style: ChipluxBackgroundStyle.profile,
 
         child: loading
-            ? const Center(
-                child:
-                    CircularProgressIndicator(),
-              )
+            ? const Center(child: CircularProgressIndicator())
             : ListView(
-                physics:
-                    const AlwaysScrollableScrollPhysics(),
+                physics: const AlwaysScrollableScrollPhysics(),
 
-                padding:
-                    const EdgeInsets.fromLTRB(
-                  18,
-                  22,
-                  18,
-                  35,
-                ),
+                padding: const EdgeInsets.fromLTRB(18, 22, 18, 35),
 
                 children: [
                   const _ProfileMenuSectionTitle(
                     title: 'Notifications',
-                    subtitle:
-                        'Choose which Chiplux notifications you want to receive.',
+                    subtitle: 'Choose which Chiplux notifications you want to receive.',
                   ),
 
                   const SizedBox(height: 22),
@@ -28228,47 +26559,34 @@ class _NotificationSettingsPageState
                   _ProfileMenuCard(
                     children: [
                       _NotificationSettingRow(
-                        icon:
-                            Icons.tv_rounded,
+                        icon: Icons.tv_rounded,
 
-                        title:
-                            'New Episodes',
+                        title: 'New Episodes',
 
-                        subtitle:
-                            'Notify me when a new episode of a show I am watching becomes available.',
+                        subtitle: 'Notify me when a new episode of a show I am watching becomes available.',
 
-                        value:
-                            settings.newEpisodes,
+                        value: settings.newEpisodes,
 
                         onChanged: (value) {
-                          _change(
-                            value: value,
-                            save: settings
-                                .setNewEpisodes,
-                          );
+                          _change(value: value, save: settings.setNewEpisodes);
                         },
                       ),
 
                       const _ProfileMenuDivider(),
 
                       _NotificationSettingRow(
-                        icon: Icons
-                            .calendar_month_rounded,
+                        icon: Icons.calendar_month_rounded,
 
-                        title:
-                            'Release Reminders',
+                        title: 'Release Reminders',
 
-                        subtitle:
-                            'Notify me when a planned movie or TV show is released.',
+                        subtitle: 'Notify me when a planned movie or TV show is released.',
 
-                        value:
-                            settings.releaseReminders,
+                        value: settings.releaseReminders,
 
                         onChanged: (value) {
                           _change(
                             value: value,
-                            save: settings
-                                .setReleaseReminders,
+                            save: settings.setReleaseReminders,
                           );
                         },
                       ),
@@ -28285,23 +26603,18 @@ class _NotificationSettingsPageState
                   _ProfileMenuCard(
                     children: [
                       _NotificationSettingRow(
-                        icon:
-                            Icons.reply_rounded,
+                        icon: Icons.reply_rounded,
 
-                        title:
-                            'Comments & Replies',
+                        title: 'Comments & Replies',
 
-                        subtitle:
-                            'Notify me when someone replies to one of my comments.',
+                        subtitle: 'Notify me when someone replies to one of my comments.',
 
-                        value:
-                            settings.commentsReplies,
+                        value: settings.commentsReplies,
 
                         onChanged: (value) {
                           _change(
                             value: value,
-                            save: settings
-                                .setCommentsReplies,
+                            save: settings.setCommentsReplies,
                           );
                         },
                       ),
@@ -28309,23 +26622,18 @@ class _NotificationSettingsPageState
                       const _ProfileMenuDivider(),
 
                       _NotificationSettingRow(
-                        icon:
-                            Icons.favorite_rounded,
+                        icon: Icons.favorite_rounded,
 
-                        title:
-                            'Comment Likes',
+                        title: 'Comment Likes',
 
-                        subtitle:
-                            'Notify me whenever one of my comments reaches another 100 likes.',
+                        subtitle: 'Notify me whenever one of my comments reaches another 100 likes.',
 
-                        value: settings
-                            .commentLikeMilestones,
+                        value: settings.commentLikeMilestones,
 
                         onChanged: (value) {
                           _change(
                             value: value,
-                            save: settings
-                                .setCommentLikeMilestones,
+                            save: settings.setCommentLikeMilestones,
                           );
                         },
                       ),
@@ -28333,24 +26641,16 @@ class _NotificationSettingsPageState
                       const _ProfileMenuDivider(),
 
                       _NotificationSettingRow(
-                        icon: Icons
-                            .person_add_alt_1_rounded,
+                        icon: Icons.person_add_alt_1_rounded,
 
-                        title:
-                            'New Followers',
+                        title: 'New Followers',
 
-                        subtitle:
-                            'Notify me when someone follows my profile.',
+                        subtitle: 'Notify me when someone follows my profile.',
 
-                        value:
-                            settings.newFollowers,
+                        value: settings.newFollowers,
 
                         onChanged: (value) {
-                          _change(
-                            value: value,
-                            save: settings
-                                .setNewFollowers,
-                          );
+                          _change(value: value, save: settings.setNewFollowers);
                         },
                       ),
                     ],
@@ -28366,47 +26666,34 @@ class _NotificationSettingsPageState
                   _ProfileMenuCard(
                     children: [
                       _NotificationSettingRow(
-                        icon: Icons
-                            .workspace_premium_rounded,
+                        icon: Icons.workspace_premium_rounded,
 
-                        title:
-                            'Achievements',
+                        title: 'Achievements',
 
-                        subtitle:
-                            'Notify me when I unlock a new Chiplux achievement.',
+                        subtitle: 'Notify me when I unlock a new Chiplux achievement.',
 
-                        value:
-                            settings.achievements,
+                        value: settings.achievements,
 
                         onChanged: (value) {
-                          _change(
-                            value: value,
-                            save: settings
-                                .setAchievements,
-                          );
+                          _change(value: value, save: settings.setAchievements);
                         },
                       ),
 
                       const _ProfileMenuDivider(),
 
                       _NotificationSettingRow(
-                        icon: Icons
-                            .auto_awesome_rounded,
+                        icon: Icons.auto_awesome_rounded,
 
-                        title:
-                            'Chiplux Updates',
+                        title: 'Chiplux Updates',
 
-                        subtitle:
-                            'Receive important Chiplux feature and app updates.',
+                        subtitle: 'Receive important Chiplux feature and app updates.',
 
-                        value:
-                            settings.chipluxUpdates,
+                        value: settings.chipluxUpdates,
 
                         onChanged: (value) {
                           _change(
                             value: value,
-                            save: settings
-                                .setChipluxUpdates,
+                            save: settings.setChipluxUpdates,
                           );
                         },
                       ),
@@ -28416,39 +26703,26 @@ class _NotificationSettingsPageState
                   const SizedBox(height: 20),
 
                   Container(
-                    padding:
-                        const EdgeInsets.all(14),
+                    padding: const EdgeInsets.all(14),
 
                     decoration: BoxDecoration(
-                      color: chipluxCyan
-                          .withValues(
-                        alpha: 0.05,
-                      ),
+                      color: chipluxCyan.withValues(alpha: 0.05),
 
-                      borderRadius:
-                          BorderRadius.circular(
-                        14,
-                      ),
+                      borderRadius: BorderRadius.circular(14),
 
                       border: Border.all(
-                        color: chipluxCyan
-                            .withValues(
-                          alpha: 0.12,
-                        ),
+                        color: chipluxCyan.withValues(alpha: 0.12),
                       ),
                     ),
 
                     child: const Row(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
 
                       children: [
                         Icon(
-                          Icons
-                              .notifications_active_outlined,
+                          Icons.notifications_active_outlined,
 
-                          color:
-                              chipluxCyan,
+                          color: chipluxCyan,
 
                           size: 18,
                         ),
@@ -28456,19 +26730,15 @@ class _NotificationSettingsPageState
                         SizedBox(width: 9),
 
                         Expanded(
-                          child: Text(
+                          child: UiText(
                             'These preferences control Chiplux notifications. Your phone notification permission must also be enabled.',
 
-                            style:
-                                TextStyle(
-                              color:
-                                  Colors.white54,
+                            style: TextStyle(
+                              color: Colors.white54,
 
-                              fontSize:
-                                  11,
+                              fontSize: 11,
 
-                              height:
-                                  1.4,
+                              height: 1.4,
                             ),
                           ),
                         ),
@@ -28486,12 +26756,10 @@ class PrivacySettingsPage extends StatefulWidget {
   const PrivacySettingsPage({super.key});
 
   @override
-  State<PrivacySettingsPage> createState() =>
-      _PrivacySettingsPageState();
+  State<PrivacySettingsPage> createState() => _PrivacySettingsPageState();
 }
 
-class _PrivacySettingsPageState
-    extends State<PrivacySettingsPage> {
+class _PrivacySettingsPageState extends State<PrivacySettingsPage> {
   final settings = PrivacySettingsService.instance;
 
   bool loading = true;
@@ -28536,9 +26804,7 @@ class _PrivacySettingsPageState
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not update privacy setting.'),
-        ),
+        const SnackBar(content: UiText('Could not update privacy setting.')),
       );
     }
   }
@@ -28561,9 +26827,7 @@ class _PrivacySettingsPageState
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not update privacy setting.'),
-        ),
+        const SnackBar(content: UiText('Could not update privacy setting.')),
       );
     }
   }
@@ -28571,7 +26835,7 @@ class _PrivacySettingsPageState
   Widget _sectionLabel(String text) {
     return Padding(
       padding: const EdgeInsets.only(left: 4, bottom: 8),
-      child: Text(
+      child: UiText(
         text,
         style: const TextStyle(
           color: chipluxCyan,
@@ -28612,9 +26876,7 @@ class _PrivacySettingsPageState
       context: context,
       backgroundColor: chipluxSurface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(24),
-        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (sheetContext) {
         return SafeArea(
@@ -28624,7 +26886,7 @@ class _PrivacySettingsPageState
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                const UiText(
                   'Profile visibility',
                   style: TextStyle(
                     color: Colors.white,
@@ -28633,20 +26895,16 @@ class _PrivacySettingsPageState
                   ),
                 ),
                 const SizedBox(height: 6),
-                const Text(
+                const UiText(
                   'Choose who can see the detailed contents of your profile.',
-                  style: TextStyle(
-                    color: Colors.white54,
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: Colors.white54, fontSize: 12),
                 ),
                 const SizedBox(height: 14),
                 _PrivacyChoiceSheetTile(
                   icon: Icons.public_rounded,
                   title: 'Everyone',
                   subtitle: 'Anyone can see your full profile.',
-                  selected:
-                      settings.profileVisibility == 'everyone',
+                  selected: settings.profileVisibility == 'everyone',
                   onTap: () {
                     Navigator.pop(sheetContext, 'everyone');
                   },
@@ -28656,8 +26914,7 @@ class _PrivacySettingsPageState
                   title: 'Followers',
                   subtitle:
                       'Only people following you can see your full profile.',
-                  selected:
-                      settings.profileVisibility == 'followers',
+                  selected: settings.profileVisibility == 'followers',
                   onTap: () {
                     Navigator.pop(sheetContext, 'followers');
                   },
@@ -28665,10 +26922,8 @@ class _PrivacySettingsPageState
                 _PrivacyChoiceSheetTile(
                   icon: Icons.lock_rounded,
                   title: 'Private',
-                  subtitle:
-                      'Other users only see your basic identity.',
-                  selected:
-                      settings.profileVisibility == 'private',
+                  subtitle: 'Other users only see your basic identity.',
+                  selected: settings.profileVisibility == 'private',
                   onTap: () {
                     Navigator.pop(sheetContext, 'private');
                   },
@@ -28684,10 +26939,7 @@ class _PrivacySettingsPageState
       return;
     }
 
-    await _changeString(
-      value: value,
-      save: settings.setProfileVisibility,
-    );
+    await _changeString(value: value, save: settings.setProfileVisibility);
   }
 
   Future<void> _chooseFollowPermission() async {
@@ -28695,9 +26947,7 @@ class _PrivacySettingsPageState
       context: context,
       backgroundColor: chipluxSurface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(24),
-        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (sheetContext) {
         return SafeArea(
@@ -28707,7 +26957,7 @@ class _PrivacySettingsPageState
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                const UiText(
                   'Who can follow me',
                   style: TextStyle(
                     color: Colors.white,
@@ -28720,8 +26970,7 @@ class _PrivacySettingsPageState
                   icon: Icons.public_rounded,
                   title: 'Everyone',
                   subtitle: 'Any Chiplux user can follow you.',
-                  selected:
-                      settings.followPermission == 'everyone',
+                  selected: settings.followPermission == 'everyone',
                   onTap: () {
                     Navigator.pop(sheetContext, 'everyone');
                   },
@@ -28729,10 +26978,8 @@ class _PrivacySettingsPageState
                 _PrivacyChoiceSheetTile(
                   icon: Icons.swap_horiz_rounded,
                   title: 'People I Follow',
-                  subtitle:
-                      'Only people you already follow can follow you.',
-                  selected:
-                      settings.followPermission == 'people_i_follow',
+                  subtitle: 'Only people you already follow can follow you.',
+                  selected: settings.followPermission == 'people_i_follow',
                   onTap: () {
                     Navigator.pop(sheetContext, 'people_i_follow');
                   },
@@ -28741,8 +26988,7 @@ class _PrivacySettingsPageState
                   icon: Icons.person_off_rounded,
                   title: 'Nobody',
                   subtitle: 'New follows are disabled.',
-                  selected:
-                      settings.followPermission == 'nobody',
+                  selected: settings.followPermission == 'nobody',
                   onTap: () {
                     Navigator.pop(sheetContext, 'nobody');
                   },
@@ -28758,34 +27004,25 @@ class _PrivacySettingsPageState
       return;
     }
 
-    await _changeString(
-      value: value,
-      save: settings.setFollowPermission,
-    );
+    await _changeString(value: value, save: settings.setFollowPermission);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: chipluxBackground,
-      appBar: AppBar(
-        backgroundColor: chipluxBackground,
-        elevation: 0,
-      ),
+      appBar: AppBar(backgroundColor: chipluxBackground, elevation: 0),
       body: ChipluxBackground(
         style: ChipluxBackgroundStyle.profile,
         child: loading
-            ? const Center(
-                child: CircularProgressIndicator(),
-              )
+            ? const Center(child: CircularProgressIndicator())
             : ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.fromLTRB(18, 22, 18, 35),
                 children: [
                   const _ProfileMenuSectionTitle(
                     title: 'Privacy',
-                    subtitle:
-                        'Control who can find you, see your profile and interact with you.',
+                    subtitle: 'Control who can find you, see your profile and interact with you.',
                   ),
 
                   const SizedBox(height: 22),
@@ -28842,8 +27079,7 @@ class _PrivacySettingsPageState
                       _NotificationSettingRow(
                         icon: Icons.movie_outlined,
                         title: 'Show watch activity',
-                        subtitle:
-                            'Watched, started, planned, dropped and favorite activity.',
+                        subtitle: 'Watched, started, planned, dropped and favorite activity.',
                         value: settings.showWatchActivity,
                         onChanged: (value) {
                           _changeBool(
@@ -28856,8 +27092,7 @@ class _PrivacySettingsPageState
                       _NotificationSettingRow(
                         icon: Icons.star_outline_rounded,
                         title: 'Show ratings',
-                        subtitle:
-                            'Allow ratings to appear in Friends Watch.',
+                        subtitle: 'Allow ratings to appear in Friends Watch.',
                         value: settings.showRatingsActivity,
                         onChanged: (value) {
                           _changeBool(
@@ -28870,8 +27105,7 @@ class _PrivacySettingsPageState
                       _NotificationSettingRow(
                         icon: Icons.workspace_premium_outlined,
                         title: 'Show achievements',
-                        subtitle:
-                            'Allow achievement unlocks to appear in Friends Watch.',
+                        subtitle: 'Allow achievement unlocks to appear in Friends Watch.',
                         value: settings.showAchievementsActivity,
                         onChanged: (value) {
                           _changeBool(
@@ -28933,8 +27167,7 @@ class _PrivacySettingsPageState
                       _NotificationSettingRow(
                         icon: Icons.emoji_events_outlined,
                         title: 'Show achievements',
-                        subtitle:
-                            'Show achievement collection and pinned achievement.',
+                        subtitle: 'Show achievement collection and pinned achievement.',
                         value: settings.showProfileAchievements,
                         onChanged: (value) {
                           _changeBool(
@@ -28947,8 +27180,7 @@ class _PrivacySettingsPageState
                       _NotificationSettingRow(
                         icon: Icons.groups_outlined,
                         title: 'Show followers/following',
-                        subtitle:
-                            'Allow other users to open your social connections.',
+                        subtitle: 'Allow other users to open your social connections.',
                         value: settings.showConnections,
                         onChanged: (value) {
                           _changeBool(
@@ -28979,8 +27211,7 @@ class _PrivacySettingsPageState
                       _NotificationSettingRow(
                         icon: Icons.reply_rounded,
                         title: 'Allow replies to my comments',
-                        subtitle:
-                            'When off, other users cannot reply to your comments.',
+                        subtitle: 'When off, other users cannot reply to your comments.',
                         value: settings.allowCommentReplies,
                         onChanged: (value) {
                           _changeBool(
@@ -29000,8 +27231,7 @@ class _PrivacySettingsPageState
                       _NotificationSettingRow(
                         icon: Icons.lightbulb_outline_rounded,
                         title: 'Public suggestion attribution',
-                        subtitle:
-                            'Show your username and profile when one of your feature suggestions is published.',
+                        subtitle: 'Show your username and profile when one of your feature suggestions is published.',
                         value: settings.featureSuggestionAttribution,
                         onChanged: (value) {
                           _changeBool(
@@ -29021,15 +27251,13 @@ class _PrivacySettingsPageState
                       _PrivacyValueRow(
                         icon: Icons.block_rounded,
                         title: 'Blocked users',
-                        subtitle:
-                            'Review and unblock people you have blocked.',
+                        subtitle: 'Review and unblock people you have blocked.',
                         value: 'Manage',
                         onTap: () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) =>
-                                  const BlockedUsersPage(),
+                              builder: (_) => const BlockedUsersPage(),
                             ),
                           );
                         },
@@ -29065,10 +27293,7 @@ class _PrivacyValueRow extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 15,
-            vertical: 14,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 14),
           child: Row(
             children: [
               Container(
@@ -29086,18 +27311,14 @@ class _PrivacyValueRow extends StatelessWidget {
                     color: chipluxCyan.withValues(alpha: 0.20),
                   ),
                 ),
-                child: Icon(
-                  icon,
-                  color: chipluxCyan,
-                  size: 20,
-                ),
+                child: Icon(icon, color: chipluxCyan, size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    UiText(
                       title,
                       style: const TextStyle(
                         color: Colors.white,
@@ -29106,7 +27327,7 @@ class _PrivacyValueRow extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 3),
-                    Text(
+                    UiText(
                       subtitle,
                       style: const TextStyle(
                         color: Colors.white54,
@@ -29118,7 +27339,7 @@ class _PrivacyValueRow extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 10),
-              Text(
+              UiText(
                 value,
                 style: const TextStyle(
                   color: chipluxCyan,
@@ -29164,10 +27385,7 @@ class _PrivacyChoiceSheetTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(15),
         child: Container(
           margin: const EdgeInsets.only(bottom: 7),
-          padding: const EdgeInsets.symmetric(
-            horizontal: 13,
-            vertical: 12,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
           decoration: BoxDecoration(
             color: selected
                 ? chipluxCyan.withValues(alpha: 0.06)
@@ -29191,7 +27409,7 @@ class _PrivacyChoiceSheetTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    UiText(
                       title,
                       style: TextStyle(
                         color: selected ? chipluxCyan : Colors.white,
@@ -29199,7 +27417,7 @@ class _PrivacyChoiceSheetTile extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 3),
-                    Text(
+                    UiText(
                       subtitle,
                       style: const TextStyle(
                         color: Colors.white54,
@@ -29227,8 +27445,7 @@ class BlockedUsersPage extends StatefulWidget {
   const BlockedUsersPage({super.key});
 
   @override
-  State<BlockedUsersPage> createState() =>
-      _BlockedUsersPageState();
+  State<BlockedUsersPage> createState() => _BlockedUsersPageState();
 }
 
 class _BlockedUsersPageState extends State<BlockedUsersPage> {
@@ -29283,9 +27500,7 @@ class _BlockedUsersPageState extends State<BlockedUsersPage> {
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not unblock user.'),
-        ),
+        const SnackBar(content: UiText('Could not unblock user.')),
       );
     }
   }
@@ -29296,41 +27511,34 @@ class _BlockedUsersPageState extends State<BlockedUsersPage> {
       backgroundColor: chipluxBackground,
       appBar: AppBar(
         backgroundColor: chipluxBackground,
-        title: const Text('Blocked users'),
+        title: const UiText('Blocked users'),
       ),
       body: ChipluxBackground(
         style: ChipluxBackgroundStyle.profile,
         child: loading
-            ? const Center(
-                child: CircularProgressIndicator(),
-              )
+            ? const Center(child: CircularProgressIndicator())
             : users.isEmpty
             ? const Center(
                 child: Padding(
                   padding: EdgeInsets.all(28),
-                  child: Text(
+                  child: UiText(
                     'You have not blocked anyone.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white54,
-                      fontSize: 14,
-                    ),
+                    style: TextStyle(color: Colors.white54, fontSize: 14),
                   ),
                 ),
               )
             : ListView.separated(
                 padding: const EdgeInsets.fromLTRB(18, 18, 18, 30),
                 itemCount: users.length,
-                separatorBuilder: (_, _) =>
-                    const SizedBox(height: 9),
+                separatorBuilder: (_, _) => const SizedBox(height: 9),
                 itemBuilder: (context, index) {
                   final user = users[index];
 
                   final displayName =
                       user['display_name']?.toString().trim() ?? '';
 
-                  final username =
-                      user['username']?.toString().trim() ?? '';
+                  final username = user['username']?.toString().trim() ?? '';
 
                   final avatarUrl = user['avatar_url']?.toString();
 
@@ -29340,9 +27548,7 @@ class _BlockedUsersPageState extends State<BlockedUsersPage> {
                       ? username
                       : 'Chiplux User';
 
-                  final initial = name.isNotEmpty
-                      ? name[0].toUpperCase()
-                      : 'C';
+                  final initial = name.isNotEmpty ? name[0].toUpperCase() : 'C';
 
                   return Container(
                     padding: const EdgeInsets.all(13),
@@ -29388,7 +27594,7 @@ class _BlockedUsersPageState extends State<BlockedUsersPage> {
                               ),
                               if (username.isNotEmpty) ...[
                                 const SizedBox(height: 2),
-                                Text(
+                                UiText(
                                   '@$username',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -29412,7 +27618,7 @@ class _BlockedUsersPageState extends State<BlockedUsersPage> {
                               color: chipluxCyan.withValues(alpha: 0.42),
                             ),
                           ),
-                          child: const Text('Unblock'),
+                          child: const UiText('Unblock'),
                         ),
                       ],
                     ),
@@ -29424,9 +27630,7 @@ class _BlockedUsersPageState extends State<BlockedUsersPage> {
   }
 }
 
-
-class _NotificationSettingRow
-    extends StatelessWidget {
+class _NotificationSettingRow extends StatelessWidget {
   final IconData icon;
 
   final String title;
@@ -29447,17 +27651,10 @@ class _NotificationSettingRow
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding:
-          const EdgeInsets.fromLTRB(
-        15,
-        13,
-        10,
-        13,
-      ),
+      padding: const EdgeInsets.fromLTRB(15, 13, 10, 13),
 
       child: Row(
-        crossAxisAlignment:
-            CrossAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
 
         children: [
           Container(
@@ -29465,60 +27662,40 @@ class _NotificationSettingRow
             height: 38,
 
             decoration: BoxDecoration(
-              color: chipluxCyan
-                  .withValues(
-                alpha: 0.08,
-              ),
+              color: chipluxCyan.withValues(alpha: 0.08),
 
-              borderRadius:
-                  BorderRadius.circular(
-                11,
-              ),
+              borderRadius: BorderRadius.circular(11),
             ),
 
-            child: Icon(
-              icon,
-
-              color: chipluxCyan,
-
-              size: 21,
-            ),
+            child: Icon(icon, color: chipluxCyan, size: 21),
           ),
 
           const SizedBox(width: 12),
 
           Expanded(
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
 
               children: [
-                Text(
+                UiText(
                   title,
 
-                  style:
-                      const TextStyle(
-                    color:
-                        Colors.white,
+                  style: const TextStyle(
+                    color: Colors.white,
 
                     fontSize: 14,
 
-                    fontWeight:
-                        FontWeight.w700,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
 
-                const SizedBox(
-                  height: 3,
-                ),
+                const SizedBox(height: 3),
 
-                Text(
+                UiText(
                   subtitle,
 
-                  style:
-                      const TextStyle(
-                    color:
-                        Colors.white54,
+                  style: const TextStyle(
+                    color: Colors.white54,
 
                     fontSize: 11,
 
@@ -29536,23 +27713,13 @@ class _NotificationSettingRow
 
             onChanged: onChanged,
 
-            activeThumbColor:
-                chipluxCyan,
+            activeThumbColor: chipluxCyan,
 
-            activeTrackColor:
-                chipluxViolet
-                    .withValues(
-              alpha: 0.55,
-            ),
+            activeTrackColor: chipluxViolet.withValues(alpha: 0.55),
 
-            inactiveThumbColor:
-                Colors.white54,
+            inactiveThumbColor: Colors.white54,
 
-            inactiveTrackColor:
-                Colors.white
-                    .withValues(
-              alpha: 0.10,
-            ),
+            inactiveTrackColor: Colors.white.withValues(alpha: 0.10),
           ),
         ],
       ),
@@ -29564,886 +27731,698 @@ class _ProfileSettingsTab extends StatelessWidget {
   const _ProfileSettingsTab();
 
   Future<void> _changePassword(BuildContext context) async {
-  final currentPasswordController = TextEditingController();
-  final newPasswordController = TextEditingController();
-  final confirmPasswordController = TextEditingController();
+    final currentPasswordController = TextEditingController();
+    final newPasswordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
 
-  String? errorMessage;
+    String? errorMessage;
 
-  final changed = await showDialog<bool>(
-    context: context,
-    barrierDismissible: false,
-    barrierColor: Colors.black.withValues(alpha: 0.78),
+    final changed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black.withValues(alpha: 0.78),
 
-    builder: (dialogContext) {
-      bool saving = false;
+      builder: (dialogContext) {
+        bool saving = false;
 
-      bool showCurrentPassword = false;
-      bool showNewPassword = false;
-      bool showConfirmPassword = false;
+        bool showCurrentPassword = false;
+        bool showNewPassword = false;
+        bool showConfirmPassword = false;
 
-      return StatefulBuilder(
-        builder: (context, setDialogState) {
-          Future<void> submit() async {
-            if (saving) {
-              return;
-            }
-
-            final currentPassword =
-                currentPasswordController.text;
-
-            final newPassword =
-                newPasswordController.text;
-
-            final confirmPassword =
-                confirmPasswordController.text;
-
-            if (currentPassword.isEmpty) {
-              setDialogState(() {
-                errorMessage =
-                    'Enter your current password.';
-              });
-
-              return;
-            }
-
-            if (newPassword.length < 6) {
-              setDialogState(() {
-                errorMessage =
-                    'New password must contain at least 6 characters.';
-              });
-
-              return;
-            }
-
-            if (newPassword != confirmPassword) {
-              setDialogState(() {
-                errorMessage =
-                    'New passwords do not match.';
-              });
-
-              return;
-            }
-
-            if (currentPassword == newPassword) {
-              setDialogState(() {
-                errorMessage =
-                    'Choose a different password.';
-              });
-
-              return;
-            }
-
-            setDialogState(() {
-              saving = true;
-              errorMessage = null;
-            });
-
-            try {
-              await AuthService.instance.changePassword(
-                currentPassword: currentPassword,
-                newPassword: newPassword,
-              );
-
-              if (!dialogContext.mounted) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            Future<void> submit() async {
+              if (saving) {
                 return;
               }
 
-              Navigator.pop(dialogContext, true);
-            } catch (e) {
-              if (!dialogContext.mounted) {
+              final currentPassword = currentPasswordController.text;
+
+              final newPassword = newPasswordController.text;
+
+              final confirmPassword = confirmPasswordController.text;
+
+              if (currentPassword.isEmpty) {
+                setDialogState(() {
+                  errorMessage = 'Enter your current password.';
+                });
+
                 return;
               }
 
-              String message = e.toString();
+              if (newPassword.length < 6) {
+                setDialogState(() {
+                  errorMessage =
+                      'New password must contain at least 6 characters.';
+                });
 
-              if (message.contains(
-                    'Invalid login credentials',
-                  ) ||
-                  message.contains(
-                    'Invalid username or password',
-                  )) {
-                message =
-                    'Current password is incorrect.';
-              } else {
-                message =
-                    'Could not change password.';
+                return;
+              }
+
+              if (newPassword != confirmPassword) {
+                setDialogState(() {
+                  errorMessage = 'New passwords do not match.';
+                });
+
+                return;
+              }
+
+              if (currentPassword == newPassword) {
+                setDialogState(() {
+                  errorMessage = 'Choose a different password.';
+                });
+
+                return;
               }
 
               setDialogState(() {
-                saving = false;
-                errorMessage = message;
+                saving = true;
+                errorMessage = null;
               });
+
+              try {
+                await AuthService.instance.changePassword(
+                  currentPassword: currentPassword,
+                  newPassword: newPassword,
+                );
+
+                if (!dialogContext.mounted) {
+                  return;
+                }
+
+                Navigator.pop(dialogContext, true);
+              } catch (e) {
+                if (!dialogContext.mounted) {
+                  return;
+                }
+
+                String message = e.toString();
+
+                if (message.contains('Invalid login credentials') ||
+                    message.contains('Invalid username or password')) {
+                  message = 'Current password is incorrect.';
+                } else {
+                  message = 'Could not change password.';
+                }
+
+                setDialogState(() {
+                  saving = false;
+                  errorMessage = message;
+                });
+              }
             }
-          }
 
-          InputDecoration passwordDecoration({
-            required String label,
-            required IconData icon,
-            required bool visible,
-            required VoidCallback onVisibilityTap,
-          }) {
-            return InputDecoration(
-              labelText: label,
+            InputDecoration passwordDecoration({
+              required String label,
+              required IconData icon,
+              required bool visible,
+              required VoidCallback onVisibilityTap,
+            }) {
+              return InputDecoration(
+                label: UiText(label),
 
-              labelStyle: const TextStyle(
-                color: Colors.white54,
-                fontSize: 13,
-              ),
-
-              floatingLabelStyle: const TextStyle(
-                color: chipluxCyan,
-                fontWeight: FontWeight.w600,
-              ),
-
-              prefixIcon: Icon(
-                icon,
-                color: chipluxCyan,
-                size: 21,
-              ),
-
-              suffixIcon: IconButton(
-                onPressed:
-                    saving ? null : onVisibilityTap,
-
-                icon: Icon(
-                  visible
-                      ? Icons.visibility_off_outlined
-                      : Icons.visibility_outlined,
-
-                  color: Colors.white38,
-                  size: 20,
+                labelStyle: const TextStyle(
+                  color: Colors.white54,
+                  fontSize: 13,
                 ),
-              ),
 
-              filled: true,
-
-              fillColor: chipluxSurfaceLight
-                  .withValues(alpha: 0.75),
-
-              contentPadding:
-                  const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 17,
-              ),
-
-              enabledBorder: OutlineInputBorder(
-                borderRadius:
-                    BorderRadius.circular(15),
-
-                borderSide: BorderSide(
-                  color: Colors.white
-                      .withValues(alpha: 0.08),
-                ),
-              ),
-
-              focusedBorder: OutlineInputBorder(
-                borderRadius:
-                    BorderRadius.circular(15),
-
-                borderSide: const BorderSide(
+                floatingLabelStyle: const TextStyle(
                   color: chipluxCyan,
-                  width: 1.4,
+                  fontWeight: FontWeight.w600,
                 ),
-              ),
 
-              disabledBorder: OutlineInputBorder(
-                borderRadius:
-                    BorderRadius.circular(15),
+                prefixIcon: Icon(icon, color: chipluxCyan, size: 21),
 
-                borderSide: BorderSide(
-                  color: Colors.white
-                      .withValues(alpha: 0.05),
+                suffixIcon: IconButton(
+                  onPressed: saving ? null : onVisibilityTap,
+
+                  icon: Icon(
+                    visible
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+
+                    color: Colors.white38,
+                    size: 20,
+                  ),
                 ),
-              ),
-            );
-          }
 
-          return Dialog(
-            backgroundColor: Colors.transparent,
+                filled: true,
 
-            insetPadding:
-                const EdgeInsets.symmetric(
-              horizontal: 30,
-            ),
+                fillColor: chipluxSurfaceLight.withValues(alpha: 0.75),
 
-            child: Stack(
-              clipBehavior: Clip.none,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 17,
+                ),
 
-              children: [
-                // =====================================
-                // MAIN GRADIENT FRAME
-                // =====================================
-                Container(
-                  padding: const EdgeInsets.all(1.4),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(15),
 
-                  decoration: BoxDecoration(
-                    borderRadius:
-                        BorderRadius.circular(25),
+                  borderSide: BorderSide(
+                    color: Colors.white.withValues(alpha: 0.08),
+                  ),
+                ),
 
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(15),
 
-                      colors: [
-                        chipluxCyan,
-                        chipluxViolet,
-                        chipluxPurple,
+                  borderSide: const BorderSide(color: chipluxCyan, width: 1.4),
+                ),
+
+                disabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(15),
+
+                  borderSide: BorderSide(
+                    color: Colors.white.withValues(alpha: 0.05),
+                  ),
+                ),
+              );
+            }
+
+            return Dialog(
+              backgroundColor: Colors.transparent,
+
+              insetPadding: const EdgeInsets.symmetric(horizontal: 30),
+
+              child: Stack(
+                clipBehavior: Clip.none,
+
+                children: [
+                  // =====================================
+                  // MAIN GRADIENT FRAME
+                  // =====================================
+                  Container(
+                    padding: const EdgeInsets.all(1.4),
+
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(25),
+
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+
+                        colors: [chipluxCyan, chipluxViolet, chipluxPurple],
+                      ),
+
+                      boxShadow: [
+                        BoxShadow(
+                          color: chipluxViolet.withValues(alpha: 0.20),
+
+                          blurRadius: 28,
+                          spreadRadius: 1,
+                        ),
                       ],
                     ),
 
-                    boxShadow: [
-                      BoxShadow(
-                        color: chipluxViolet
-                            .withValues(alpha: 0.20),
+                    child: Container(
+                      padding: const EdgeInsets.fromLTRB(21, 22, 21, 18),
 
-                        blurRadius: 28,
-                        spreadRadius: 1,
+                      decoration: BoxDecoration(
+                        color: chipluxSurface,
+
+                        borderRadius: BorderRadius.circular(24),
                       ),
-                    ],
-                  ),
 
-                  child: Container(
-                    padding:
-                        const EdgeInsets.fromLTRB(
-                      21,
-                      22,
-                      21,
-                      18,
-                    ),
+                      child: SingleChildScrollView(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
 
-                    decoration: BoxDecoration(
-                      color: chipluxSurface,
+                          crossAxisAlignment: CrossAxisAlignment.start,
 
-                      borderRadius:
-                          BorderRadius.circular(24),
-                    ),
+                          children: [
+                            // =====================
+                            // HEADER
+                            // =====================
+                            Row(
+                              children: [
+                                Container(
+                                  width: 46,
+                                  height: 46,
 
-                    child: SingleChildScrollView(
-                      child: Column(
-                        mainAxisSize:
-                            MainAxisSize.min,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(14),
 
-                        crossAxisAlignment:
-                            CrossAxisAlignment.start,
+                                    gradient: const LinearGradient(
+                                      begin: Alignment.topLeft,
 
-                        children: [
-                          // =====================
-                          // HEADER
-                          // =====================
-                          Row(
-                            children: [
-                              Container(
-                                width: 46,
-                                height: 46,
+                                      end: Alignment.bottomRight,
 
-                                decoration:
-                                    BoxDecoration(
-                                  borderRadius:
-                                      BorderRadius.circular(
-                                    14,
-                                  ),
-
-                                  gradient:
-                                      const LinearGradient(
-                                    begin:
-                                        Alignment.topLeft,
-
-                                    end:
-                                        Alignment.bottomRight,
-
-                                    colors: [
-                                      chipluxCyan,
-                                      chipluxViolet,
-                                    ],
-                                  ),
-
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: chipluxCyan
-                                          .withValues(
-                                        alpha: 0.16,
-                                      ),
-
-                                      blurRadius: 14,
-                                    ),
-                                  ],
-                                ),
-
-                                child: const Icon(
-                                  Icons.lock_reset_rounded,
-                                  color: Colors.black,
-                                  size: 25,
-                                ),
-                              ),
-
-                              const SizedBox(
-                                width: 13,
-                              ),
-
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment
-                                          .start,
-
-                                  children: [
-                                    ShaderMask(
-                                      shaderCallback:
-                                          (bounds) {
-                                        return const LinearGradient(
-                                          colors: [
-                                            chipluxCyan,
-                                            chipluxViolet,
-                                            chipluxPurple,
-                                          ],
-                                        ).createShader(
-                                          bounds,
-                                        );
-                                      },
-
-                                      child: const Text(
-                                        'Change Password',
-
-                                        style: TextStyle(
-                                          color:
-                                              Colors.white,
-
-                                          fontSize: 22,
-
-                                          fontWeight:
-                                              FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-
-                                    const SizedBox(
-                                      height: 3,
-                                    ),
-
-                                    const Text(
-                                      'Keep your Chiplux account secure.',
-
-                                      style: TextStyle(
-                                        color:
-                                            Colors.white38,
-
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-
-                              // Leave some room
-                              // for the floating X.
-                              const SizedBox(
-                                width: 25,
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 22),
-
-                          // =====================
-                          // CURRENT PASSWORD
-                          // =====================
-                          const Text(
-                            'CURRENT PASSWORD',
-
-                            style: TextStyle(
-                              color: Colors.white38,
-                              fontSize: 10,
-
-                              fontWeight:
-                                  FontWeight.bold,
-
-                              letterSpacing: 1.1,
-                            ),
-                          ),
-
-                          const SizedBox(height: 8),
-
-                          TextField(
-                            controller:
-                                currentPasswordController,
-
-                            obscureText:
-                                !showCurrentPassword,
-
-                            enabled: !saving,
-
-                            decoration:
-                                passwordDecoration(
-                              label:
-                                  'Current Password',
-
-                              icon: Icons
-                                  .lock_outline_rounded,
-
-                              visible:
-                                  showCurrentPassword,
-
-                              onVisibilityTap: () {
-                                setDialogState(() {
-                                  showCurrentPassword =
-                                      !showCurrentPassword;
-                                });
-                              },
-                            ),
-                          ),
-
-                          const SizedBox(height: 20),
-
-                          // =====================
-                          // NEW PASSWORD FRAME
-                          // =====================
-                          Container(
-                            padding:
-                                const EdgeInsets.all(1),
-
-                            decoration: BoxDecoration(
-                              borderRadius:
-                                  BorderRadius.circular(
-                                18,
-                              ),
-
-                              gradient: LinearGradient(
-                                colors: [
-                                  chipluxCyan.withValues(
-                                    alpha: 0.45,
-                                  ),
-
-                                  chipluxViolet.withValues(
-                                    alpha: 0.30,
-                                  ),
-
-                                  chipluxPurple.withValues(
-                                    alpha: 0.40,
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                            child: Container(
-                              padding:
-                                  const EdgeInsets.all(
-                                14,
-                              ),
-
-                              decoration:
-                                  BoxDecoration(
-                                color: chipluxBackground
-                                    .withValues(
-                                  alpha: 0.65,
-                                ),
-
-                                borderRadius:
-                                    BorderRadius.circular(
-                                  17,
-                                ),
-                              ),
-
-                              child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment
-                                        .start,
-
-                                children: [
-                                  const Text(
-                                    'NEW PASSWORD',
-
-                                    style: TextStyle(
-                                      color:
-                                          Colors.white38,
-
-                                      fontSize: 10,
-
-                                      fontWeight:
-                                          FontWeight.bold,
-
-                                      letterSpacing: 1.1,
-                                    ),
-                                  ),
-
-                                  const SizedBox(
-                                    height: 10,
-                                  ),
-
-                                  TextField(
-                                    controller:
-                                        newPasswordController,
-
-                                    obscureText:
-                                        !showNewPassword,
-
-                                    enabled: !saving,
-
-                                    decoration:
-                                        passwordDecoration(
-                                      label:
-                                          'New Password',
-
-                                      icon: Icons
-                                          .password_rounded,
-
-                                      visible:
-                                          showNewPassword,
-
-                                      onVisibilityTap:
-                                          () {
-                                        setDialogState(
-                                          () {
-                                            showNewPassword =
-                                                !showNewPassword;
-                                          },
-                                        );
-                                      },
-                                    ),
-                                  ),
-
-                                  const SizedBox(
-                                    height: 12,
-                                  ),
-
-                                  TextField(
-                                    controller:
-                                        confirmPasswordController,
-
-                                    obscureText:
-                                        !showConfirmPassword,
-
-                                    enabled: !saving,
-
-                                    onSubmitted: (_) {
-                                      submit();
-                                    },
-
-                                    decoration:
-                                        passwordDecoration(
-                                      label:
-                                          'Confirm New Password',
-
-                                      icon: Icons
-                                          .verified_user_outlined,
-
-                                      visible:
-                                          showConfirmPassword,
-
-                                      onVisibilityTap:
-                                          () {
-                                        setDialogState(
-                                          () {
-                                            showConfirmPassword =
-                                                !showConfirmPassword;
-                                          },
-                                        );
-                                      },
-                                    ),
-                                  ),
-
-                                  const SizedBox(
-                                    height: 9,
-                                  ),
-
-                                  const Row(
-                                    children: [
-                                      Icon(
-                                        Icons
-                                            .info_outline_rounded,
-
-                                        color:
-                                            Colors.white30,
-
-                                        size: 14,
-                                      ),
-
-                                      SizedBox(width: 6),
-
-                                      Expanded(
-                                        child: Text(
-                                          'Use at least 6 characters.',
-
-                                          style:
-                                              TextStyle(
-                                            color: Colors
-                                                .white30,
-
-                                            fontSize:
-                                                10,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-
-                          // =====================
-                          // ERROR MESSAGE
-                          // =====================
-                          if (errorMessage != null) ...[
-                            const SizedBox(
-                              height: 14,
-                            ),
-
-                            Container(
-                              width:
-                                  double.infinity,
-
-                              padding:
-                                  const EdgeInsets.all(
-                                12,
-                              ),
-
-                              decoration:
-                                  BoxDecoration(
-                                color: Colors.redAccent
-                                    .withValues(
-                                  alpha: 0.08,
-                                ),
-
-                                borderRadius:
-                                    BorderRadius.circular(
-                                  12,
-                                ),
-
-                                border: Border.all(
-                                  color: Colors.redAccent
-                                      .withValues(
-                                    alpha: 0.30,
-                                  ),
-                                ),
-                              ),
-
-                              child: Row(
-                                children: [
-                                  const Icon(
-                                    Icons
-                                        .error_outline_rounded,
-
-                                    color:
-                                        Colors.redAccent,
-
-                                    size: 18,
-                                  ),
-
-                                  const SizedBox(
-                                    width: 8,
-                                  ),
-
-                                  Expanded(
-                                    child: Text(
-                                      errorMessage!,
-
-                                      style:
-                                          const TextStyle(
-                                        color:
-                                            Colors.redAccent,
-
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-
-                          const SizedBox(height: 22),
-
-                          // =====================
-                          // BUTTONS
-                          // =====================
-                          Row(
-                            children: [
-                              Expanded(
-                                child: TextButton(
-                                  onPressed: saving
-                                      ? null
-                                      : () {
-                                          Navigator.pop(
-                                            dialogContext,
-                                            false,
-                                          );
-                                        },
-
-                                  style:
-                                      TextButton.styleFrom(
-                                    foregroundColor:
-                                        Colors.white54,
-
-                                    padding:
-                                        const EdgeInsets
-                                            .symmetric(
-                                      vertical: 15,
-                                    ),
-                                  ),
-
-                                  child: const Text(
-                                    'Cancel',
-
-                                    style: TextStyle(
-                                      fontWeight:
-                                          FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ),
-
-                              const SizedBox(
-                                width: 10,
-                              ),
-
-                              Expanded(
-                                flex: 2,
-
-                                child: Container(
-                                  decoration:
-                                      BoxDecoration(
-                                    borderRadius:
-                                        BorderRadius.circular(
-                                      14,
-                                    ),
-
-                                    gradient:
-                                        const LinearGradient(
-                                      begin:
-                                          Alignment.topLeft,
-
-                                      end:
-                                          Alignment.bottomRight,
-
-                                      colors: [
-                                        chipluxCyan,
-                                        chipluxViolet,
-                                        chipluxPurple,
-                                      ],
+                                      colors: [chipluxCyan, chipluxViolet],
                                     ),
 
                                     boxShadow: [
                                       BoxShadow(
-                                        color:
-                                            chipluxViolet
-                                                .withValues(
-                                          alpha: 0.18,
+                                        color: chipluxCyan.withValues(
+                                          alpha: 0.16,
                                         ),
 
-                                        blurRadius:
-                                            13,
+                                        blurRadius: 14,
                                       ),
                                     ],
                                   ),
 
-                                  child: Material(
-                                    color:
-                                        Colors.transparent,
+                                  child: const Icon(
+                                    Icons.lock_reset_rounded,
+                                    color: Colors.black,
+                                    size: 25,
+                                  ),
+                                ),
 
-                                    child: InkWell(
-                                      onTap: saving
-                                          ? null
-                                          : submit,
+                                const SizedBox(width: 13),
 
-                                      borderRadius:
-                                          BorderRadius.circular(
-                                        14,
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+
+                                    children: [
+                                      ShaderMask(
+                                        shaderCallback: (bounds) {
+                                          return const LinearGradient(
+                                            colors: [
+                                              chipluxCyan,
+                                              chipluxViolet,
+                                              chipluxPurple,
+                                            ],
+                                          ).createShader(bounds);
+                                        },
+
+                                        child: const UiText(
+                                          'Change Password',
+
+                                          style: TextStyle(
+                                            color: Colors.white,
+
+                                            fontSize: 22,
+
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
                                       ),
 
-                                      child: SizedBox(
-                                        height: 49,
+                                      const SizedBox(height: 3),
 
-                                        child: Center(
-                                          child: saving
-                                              ? const SizedBox(
-                                                  width:
-                                                      20,
+                                      const UiText(
+                                        'Keep your Chiplux account secure.',
 
-                                                  height:
-                                                      20,
+                                        style: TextStyle(
+                                          color: Colors.white38,
 
-                                                  child:
-                                                      CircularProgressIndicator(
-                                                    strokeWidth:
-                                                        2,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
 
-                                                    color:
-                                                        Colors.black,
-                                                  ),
-                                                )
-                                              : const Row(
-                                                  mainAxisSize:
-                                                      MainAxisSize.min,
+                                // Leave some room
+                                // for the floating X.
+                                const SizedBox(width: 25),
+                              ],
+                            ),
 
-                                                  children: [
-                                                    Icon(
-                                                      Icons
-                                                          .lock_reset_rounded,
+                            const SizedBox(height: 22),
 
-                                                      color:
-                                                          Colors.black,
+                            // =====================
+                            // CURRENT PASSWORD
+                            // =====================
+                            const UiText(
+                              'CURRENT PASSWORD',
 
-                                                      size:
-                                                          18,
-                                                    ),
+                              style: TextStyle(
+                                color: Colors.white38,
+                                fontSize: 10,
 
-                                                    SizedBox(
-                                                      width:
-                                                          7,
-                                                    ),
+                                fontWeight: FontWeight.bold,
 
-                                                    Text(
-                                                      'Change Password',
+                                letterSpacing: 1.1,
+                              ),
+                            ),
 
-                                                      style:
-                                                          TextStyle(
-                                                        color:
-                                                            Colors.black,
+                            const SizedBox(height: 8),
 
-                                                        fontWeight:
-                                                            FontWeight.bold,
+                            TextField(
+                              controller: currentPasswordController,
+
+                              obscureText: !showCurrentPassword,
+
+                              enabled: !saving,
+
+                              decoration: passwordDecoration(
+                                label: 'Current Password',
+
+                                icon: Icons.lock_outline_rounded,
+
+                                visible: showCurrentPassword,
+
+                                onVisibilityTap: () {
+                                  setDialogState(() {
+                                    showCurrentPassword = !showCurrentPassword;
+                                  });
+                                },
+                              ),
+                            ),
+
+                            const SizedBox(height: 20),
+
+                            // =====================
+                            // NEW PASSWORD FRAME
+                            // =====================
+                            Container(
+                              padding: const EdgeInsets.all(1),
+
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(18),
+
+                                gradient: LinearGradient(
+                                  colors: [
+                                    chipluxCyan.withValues(alpha: 0.45),
+
+                                    chipluxViolet.withValues(alpha: 0.30),
+
+                                    chipluxPurple.withValues(alpha: 0.40),
+                                  ],
+                                ),
+                              ),
+
+                              child: Container(
+                                padding: const EdgeInsets.all(14),
+
+                                decoration: BoxDecoration(
+                                  color: chipluxBackground.withValues(
+                                    alpha: 0.65,
+                                  ),
+
+                                  borderRadius: BorderRadius.circular(17),
+                                ),
+
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+
+                                  children: [
+                                    const UiText(
+                                      'NEW PASSWORD',
+
+                                      style: TextStyle(
+                                        color: Colors.white38,
+
+                                        fontSize: 10,
+
+                                        fontWeight: FontWeight.bold,
+
+                                        letterSpacing: 1.1,
+                                      ),
+                                    ),
+
+                                    const SizedBox(height: 10),
+
+                                    TextField(
+                                      controller: newPasswordController,
+
+                                      obscureText: !showNewPassword,
+
+                                      enabled: !saving,
+
+                                      decoration: passwordDecoration(
+                                        label: 'New Password',
+
+                                        icon: Icons.password_rounded,
+
+                                        visible: showNewPassword,
+
+                                        onVisibilityTap: () {
+                                          setDialogState(() {
+                                            showNewPassword = !showNewPassword;
+                                          });
+                                        },
+                                      ),
+                                    ),
+
+                                    const SizedBox(height: 12),
+
+                                    TextField(
+                                      controller: confirmPasswordController,
+
+                                      obscureText: !showConfirmPassword,
+
+                                      enabled: !saving,
+
+                                      onSubmitted: (_) {
+                                        submit();
+                                      },
+
+                                      decoration: passwordDecoration(
+                                        label: 'Confirm New Password',
+
+                                        icon: Icons.verified_user_outlined,
+
+                                        visible: showConfirmPassword,
+
+                                        onVisibilityTap: () {
+                                          setDialogState(() {
+                                            showConfirmPassword =
+                                                !showConfirmPassword;
+                                          });
+                                        },
+                                      ),
+                                    ),
+
+                                    const SizedBox(height: 9),
+
+                                    const Row(
+                                      children: [
+                                        Icon(
+                                          Icons.info_outline_rounded,
+
+                                          color: Colors.white30,
+
+                                          size: 14,
+                                        ),
+
+                                        SizedBox(width: 6),
+
+                                        Expanded(
+                                          child: UiText(
+                                            'Use at least 6 characters.',
+
+                                            style: TextStyle(
+                                              color: Colors.white30,
+
+                                              fontSize: 10,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+
+                            // =====================
+                            // ERROR MESSAGE
+                            // =====================
+                            if (errorMessage != null) ...[
+                              const SizedBox(height: 14),
+
+                              Container(
+                                width: double.infinity,
+
+                                padding: const EdgeInsets.all(12),
+
+                                decoration: BoxDecoration(
+                                  color: Colors.redAccent.withValues(
+                                    alpha: 0.08,
+                                  ),
+
+                                  borderRadius: BorderRadius.circular(12),
+
+                                  border: Border.all(
+                                    color: Colors.redAccent.withValues(
+                                      alpha: 0.30,
+                                    ),
+                                  ),
+                                ),
+
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.error_outline_rounded,
+
+                                      color: Colors.redAccent,
+
+                                      size: 18,
+                                    ),
+
+                                    const SizedBox(width: 8),
+
+                                    Expanded(
+                                      child: UiText(
+                                        errorMessage!,
+
+                                        style: const TextStyle(
+                                          color: Colors.redAccent,
+
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+
+                            const SizedBox(height: 22),
+
+                            // =====================
+                            // BUTTONS
+                            // =====================
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextButton(
+                                    onPressed: saving
+                                        ? null
+                                        : () {
+                                            Navigator.pop(dialogContext, false);
+                                          },
+
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: Colors.white54,
+
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 15,
+                                      ),
+                                    ),
+
+                                    child: const UiText(
+                                      'Cancel',
+
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+
+                                const SizedBox(width: 10),
+
+                                Expanded(
+                                  flex: 2,
+
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(14),
+
+                                      gradient: const LinearGradient(
+                                        begin: Alignment.topLeft,
+
+                                        end: Alignment.bottomRight,
+
+                                        colors: [
+                                          chipluxCyan,
+                                          chipluxViolet,
+                                          chipluxPurple,
+                                        ],
+                                      ),
+
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: chipluxViolet.withValues(
+                                            alpha: 0.18,
+                                          ),
+
+                                          blurRadius: 13,
+                                        ),
+                                      ],
+                                    ),
+
+                                    child: Material(
+                                      color: Colors.transparent,
+
+                                      child: InkWell(
+                                        onTap: saving ? null : submit,
+
+                                        borderRadius: BorderRadius.circular(14),
+
+                                        child: SizedBox(
+                                          height: 49,
+
+                                          child: Center(
+                                            child: saving
+                                                ? const SizedBox(
+                                                    width: 20,
+
+                                                    height: 20,
+
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                          strokeWidth: 2,
+
+                                                          color: Colors.black,
+                                                        ),
+                                                  )
+                                                : const Row(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+
+                                                    children: [
+                                                      Icon(
+                                                        Icons
+                                                            .lock_reset_rounded,
+
+                                                        color: Colors.black,
+
+                                                        size: 18,
                                                       ),
-                                                    ),
-                                                  ],
-                                                ),
+
+                                                      SizedBox(width: 7),
+
+                                                      UiText(
+                                                        'Change Password',
+
+                                                        style: TextStyle(
+                                                          color: Colors.black,
+
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                          ),
                                         ),
                                       ),
                                     ),
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ],
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
 
-                // =====================================
-              ],
-            ),
-          );
-        },
-      );
-    },
-  );
-
-  currentPasswordController.dispose();
-  newPasswordController.dispose();
-  confirmPasswordController.dispose();
-
-  if (changed == true && context.mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Password changed successfully.',
-        ),
-      ),
+                  // =====================================
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
+
+    currentPasswordController.dispose();
+    newPasswordController.dispose();
+    confirmPasswordController.dispose();
+
+    if (changed == true && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: UiText('Password changed successfully.')),
+      );
+    }
   }
-}
 
   Future<void> _deleteAccount(BuildContext context) async {
     final usernameController = TextEditingController();
@@ -30486,20 +28465,26 @@ class _ProfileSettingsTab extends StatelessWidget {
                 if (!dialogContext.mounted) return;
                 setDialogState(() {
                   deleting = false;
-                  dialogError = e.toString().replaceFirst('AuthException(message: ', '').replaceFirst(', statusCode: 400, code: invalid_credentials)', '');
+                  dialogError = e
+                      .toString()
+                      .replaceFirst('AuthException(message: ', '')
+                      .replaceFirst(
+                        ', statusCode: 400, code: invalid_credentials)',
+                        '',
+                      );
                 });
               }
             }
 
             return AlertDialog(
               backgroundColor: chipluxSurface,
-              title: const Text('Delete Chiplux account?'),
+              title: const UiText('Delete Chiplux account?'),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    const UiText(
                       'This permanently deletes your account and Chiplux data. This cannot be undone.',
                       style: TextStyle(color: Colors.white70, height: 1.4),
                     ),
@@ -30508,7 +28493,7 @@ class _ProfileSettingsTab extends StatelessWidget {
                       controller: usernameController,
                       enabled: !deleting,
                       decoration: const InputDecoration(
-                        labelText: 'Full username',
+                        label: UiText('Full username'),
                         prefixIcon: Icon(Icons.alternate_email_rounded),
                       ),
                     ),
@@ -30519,27 +28504,39 @@ class _ProfileSettingsTab extends StatelessWidget {
                       obscureText: true,
                       onSubmitted: (_) => submit(),
                       decoration: const InputDecoration(
-                        labelText: 'Password',
+                        label: UiText('Password'),
                         prefixIcon: Icon(Icons.lock_outline_rounded),
                       ),
                     ),
                     if (dialogError != null) ...[
                       const SizedBox(height: 12),
-                      Text(dialogError!, style: const TextStyle(color: Colors.redAccent)),
+                      UiText(
+                        dialogError!,
+                        style: const TextStyle(color: Colors.redAccent),
+                      ),
                     ],
                   ],
                 ),
               ),
               actions: [
                 TextButton(
-                  onPressed: deleting ? null : () => Navigator.pop(dialogContext, false),
-                  child: const Text('Cancel'),
+                  onPressed: deleting
+                      ? null
+                      : () => Navigator.pop(dialogContext, false),
+                  child: const UiText('Cancel'),
                 ),
                 TextButton(
                   onPressed: deleting ? null : submit,
                   child: deleting
-                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Text('Delete account', style: TextStyle(color: Colors.redAccent)),
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const UiText(
+                          'Delete account',
+                          style: TextStyle(color: Colors.redAccent),
+                        ),
                 ),
               ],
             );
@@ -30552,35 +28549,31 @@ class _ProfileSettingsTab extends StatelessWidget {
     passwordController.dispose();
 
     if (confirmed == true && context.mounted) {
-  _MedalCollectionUnlockTracker.instance.reset();
+      _MedalCollectionUnlockTracker.instance.reset();
 
-  await NotificationService.instance.clear();
-  await LibraryService.instance.clearLocalData();
+      await NotificationService.instance.clear();
+      await LibraryService.instance.clearLocalData();
 
-  CriticService.instance.clear();
-  ProfileService.instance.clear();
-  PrivacySettingsService.instance.clear();
+      CriticService.instance.clear();
+      ProfileService.instance.clear();
+      PrivacySettingsService.instance.clear();
 
-  if (!context.mounted) {
-    return;
-  }
+      if (!context.mounted) {
+        return;
+      }
 
-  Navigator.of(context).popUntil((route) => route.isFirst);
-}
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    }
   }
 
   Future<void> _signOut(BuildContext context) async {
     final library = LibraryService.instance;
 
-await PushNotificationService
-    .instance
-    .unregisterCurrentToken();
+    await PushNotificationService.instance.unregisterCurrentToken();
 
-await NotificationService
-    .instance
-    .clear();
+    await NotificationService.instance.clear();
 
-await AuthService.instance.signOut();
+    await AuthService.instance.signOut();
 
     _MedalCollectionUnlockTracker.instance.reset();
 
@@ -30596,7 +28589,7 @@ await AuthService.instance.signOut();
 
     PrivacySettingsService.instance.clear();
 
-await ProfileTitleService.instance.load();
+    await ProfileTitleService.instance.load();
 
     await DisplayNameFrameService.instance.load();
 
@@ -30618,93 +28611,90 @@ await ProfileTitleService.instance.load();
   @override
   Widget build(BuildContext context) {
     final email = AuthService.instance.currentUser?.email?.trim();
+    final l10n = AppLocalizations.of(context);
 
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(18, 22, 18, 32),
       children: [
-        const _ProfileMenuSectionTitle(
-          title: 'Account',
-          subtitle: 'Your Chiplux account and sign-in information.',
+        _ProfileMenuSectionTitle(
+          title: l10n.account,
+          subtitle: l10n.accountSubtitle,
         ),
 
         const SizedBox(height: 10),
 
         _ProfileMenuCard(
-  children: [
-    _ProfileMenuRow(
-      icon: Icons.alternate_email_rounded,
-      title: 'Email',
-      subtitle: email?.isNotEmpty == true
-          ? email!
-          : 'Not available',
-    ),
-
-    const _ProfileMenuDivider(),
-
-    InkWell(
-      onTap: () {
-        _changePassword(context);
-      },
-      child: const _ProfileMenuRow(
-        icon: Icons.lock_reset_rounded,
-        title: 'Change Password',
-        subtitle: 'Update your account password',
-      ),
-    ),
-    if (ProfileService.instance.isDeveloper) ...[
-      const _ProfileMenuDivider(),
-      InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => const AdminModerationPage(),
+          children: [
+            _ProfileMenuRow(
+              icon: Icons.alternate_email_rounded,
+              title: l10n.email,
+              subtitle: email?.isNotEmpty == true ? email! : l10n.notAvailable,
             ),
-          );
-        },
-        child: const _ProfileMenuRow(
-          icon: Icons.admin_panel_settings_outlined,
-          title: 'Admin Moderation',
-          subtitle: 'Review user, comment and bug reports',
+
+            const _ProfileMenuDivider(),
+
+            InkWell(
+              onTap: () {
+                _changePassword(context);
+              },
+              child: _ProfileMenuRow(
+                icon: Icons.lock_reset_rounded,
+                title: l10n.changePassword,
+                subtitle: l10n.changePasswordSubtitle,
+              ),
+            ),
+            if (ProfileService.instance.isDeveloper) ...[
+              const _ProfileMenuDivider(),
+              InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const AdminModerationPage(),
+                    ),
+                  );
+                },
+                child: _ProfileMenuRow(
+                  icon: Icons.admin_panel_settings_outlined,
+                  title: l10n.adminModeration,
+                  subtitle: l10n.adminModerationSubtitle,
+                ),
+              ),
+            ],
+          ],
         ),
-      ),
-    ],
-  ],
-),
 
         const SizedBox(height: 24),
 
-        const _ProfileMenuSectionTitle(
-          title: 'Preferences',
-          subtitle: 'More app preferences can live here as Chiplux grows.',
+        _ProfileMenuSectionTitle(
+          title: l10n.preferences,
+          subtitle: l10n.preferencesSubtitle,
         ),
 
         const SizedBox(height: 10),
 
         _ProfileMenuCard(
-  children: [
-    GestureDetector(
-  behavior: HitTestBehavior.opaque,
+          children: [
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
 
-  onTap: () {
-    Navigator.push(
-      context,
+              onTap: () {
+                Navigator.push(
+                  context,
 
-      MaterialPageRoute(
-        builder: (_) =>
-            const NotificationSettingsPage(),
-      ),
-    );
-  },
+                  MaterialPageRoute(
+                    builder: (_) => const NotificationSettingsPage(),
+                  ),
+                );
+              },
 
-  child: const _ProfileMenuRow(
-    icon: Icons.notifications_none_rounded,
-    title: 'Notifications',
-    subtitle:
-        'Episodes, releases and community activity',
-  ),
-),
+              child: _ProfileMenuRow(
+                icon: Icons.notifications_none_rounded,
+                title: l10n.notifications,
+                subtitle: l10n.notificationsSubtitle,
+              ),
+            ),
             _ProfileMenuDivider(),
             GestureDetector(
               behavior: HitTestBehavior.opaque,
@@ -30716,10 +28706,10 @@ await ProfileTitleService.instance.load();
                   ),
                 );
               },
-              child: const _ProfileMenuRow(
+              child: _ProfileMenuRow(
                 icon: Icons.visibility_outlined,
-                title: 'Privacy',
-                subtitle: 'Profile, activity and interaction controls',
+                title: l10n.privacy,
+                subtitle: l10n.privacySubtitle,
               ),
             ),
             const _ProfileMenuDivider(),
@@ -30729,14 +28719,29 @@ await ProfileTitleService.instance.load();
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => const DataExportPage(),
+                    builder: (_) => const LanguageSettingsPage(),
                   ),
                 );
               },
-              child: const _ProfileMenuRow(
+              child: _ProfileMenuRow(
+                icon: Icons.language_rounded,
+                title: l10n.language,
+                subtitle: l10n.languageSubtitle,
+              ),
+            ),
+            const _ProfileMenuDivider(),
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const DataExportPage()),
+                );
+              },
+              child: _ProfileMenuRow(
                 icon: Icons.download_outlined,
-                title: 'Data & Export',
-                subtitle: 'Export your Chiplux data and schedule backups',
+                title: l10n.dataExport,
+                subtitle: l10n.dataExportSubtitle,
               ),
             ),
           ],
@@ -30751,7 +28756,7 @@ await ProfileTitleService.instance.load();
               _signOut(context);
             },
             icon: const Icon(Icons.logout_rounded),
-            label: const Text('Sign Out'),
+            label: Text(l10n.signOut),
             style: OutlinedButton.styleFrom(
               foregroundColor: Colors.redAccent,
               side: const BorderSide(color: Colors.redAccent, width: 1.4),
@@ -30767,8 +28772,8 @@ await ProfileTitleService.instance.load();
         Center(
           child: TextButton(
             onPressed: () => _deleteAccount(context),
-            child: const Text(
-              'Delete account',
+            child: Text(
+              l10n.deleteAccount,
               style: TextStyle(color: Colors.white30, fontSize: 11),
             ),
           ),
@@ -30783,9 +28788,11 @@ class _ProfileHelpTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     Widget row(IconData icon, String title, String subtitle, Widget page) {
       return InkWell(
-        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => page)),
+        onTap: () =>
+            Navigator.push(context, MaterialPageRoute(builder: (_) => page)),
         child: _ProfileMenuRow(icon: icon, title: title, subtitle: subtitle),
       );
     }
@@ -30794,29 +28801,54 @@ class _ProfileHelpTab extends StatelessWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(18, 22, 18, 32),
       children: [
-        const _ProfileMenuSectionTitle(
-          title: 'Help',
-          subtitle: 'Support, policies and answers about Chiplux.',
-        ),
+        _ProfileMenuSectionTitle(title: l10n.help, subtitle: l10n.helpSubtitle),
         const SizedBox(height: 10),
         _ProfileMenuCard(
           children: [
-            row(Icons.quiz_outlined, 'FAQ', 'Common Chiplux questions', const _FaqPage()),
+            row(
+              Icons.quiz_outlined,
+              l10n.faq,
+              l10n.faqSubtitle,
+              const _FaqPage(),
+            ),
             const _ProfileMenuDivider(),
-            row(Icons.mail_outline_rounded, 'Contact', 'Contact details and support', const _SimpleHelpPage(title: 'Contact', body: 'Chiplux contact details will be added before release.')),
+            row(
+              Icons.mail_outline_rounded,
+              l10n.contact,
+              l10n.contactSubtitle,
+              const _SimpleHelpPage(
+                title: 'Contact',
+                body: 'Chiplux contact details will be added before release.',
+              ),
+            ),
             const _ProfileMenuDivider(),
-            row(Icons.privacy_tip_outlined, 'Privacy Policy', 'How Chiplux handles data', const _PrivacyPolicyPage()),
+            row(
+              Icons.privacy_tip_outlined,
+              l10n.privacyPolicy,
+              l10n.privacyPolicySubtitle,
+              const _PrivacyPolicyPage(),
+            ),
             const _ProfileMenuDivider(),
-            row(Icons.description_outlined, 'Terms', 'Terms of use', const _TermsOfUsePage()),
+            row(
+              Icons.description_outlined,
+              l10n.terms,
+              l10n.termsSubtitle,
+              const _TermsOfUsePage(),
+            ),
             const _ProfileMenuDivider(),
             row(
               Icons.lightbulb_outline_rounded,
-              'Suggest a Feature',
-              'Share an idea with the Chiplux developer',
+              l10n.suggestFeature,
+              l10n.suggestFeatureSubtitle,
               const _SuggestFeaturePage(),
             ),
             const _ProfileMenuDivider(),
-            row(Icons.bug_report_outlined, 'Report a Bug', 'Send a problem directly to Chiplux', const _ReportBugPage()),
+            row(
+              Icons.bug_report_outlined,
+              l10n.reportBug,
+              l10n.reportBugSubtitle,
+              const _ReportBugPage(),
+            ),
           ],
         ),
       ],
@@ -30828,41 +28860,27 @@ class _SimpleHelpPage extends StatelessWidget {
   final String title;
   final String body;
 
-  const _SimpleHelpPage({
-    required this.title,
-    required this.body,
-  });
+  const _SimpleHelpPage({required this.title, required this.body});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: chipluxBackground,
-      appBar: AppBar(
-        backgroundColor: chipluxBackground,
-        elevation: 0,
-      ),
+      appBar: AppBar(backgroundColor: chipluxBackground, elevation: 0),
       body: ChipluxBackground(
         style: ChipluxBackgroundStyle.profile,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(
-            18,
-            8,
-            18,
-            35,
-          ),
+          padding: const EdgeInsets.fromLTRB(18, 8, 18, 35),
           children: [
             _HelpPageHeader(
               title: title,
-              description: 'Information and support for Chiplux.',
+              description: AppLocalizations.of(context).informationSupport,
             ),
             const SizedBox(height: 18),
             _HelpGradientCard(
-              child: Text(
+              child: UiText(
                 body,
-                style: const TextStyle(
-                  color: Colors.white70,
-                  height: 1.55,
-                ),
+                style: const TextStyle(color: Colors.white70, height: 1.55),
               ),
             ),
           ],
@@ -30876,16 +28894,12 @@ class _HelpPageHeader extends StatelessWidget {
   final String title;
   final String description;
 
-  const _HelpPageHeader({
-    required this.title,
-    required this.description,
-  });
+  const _HelpPageHeader({required this.title, required this.description});
 
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment:
-          CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         GradientText(
           title,
@@ -30896,7 +28910,7 @@ class _HelpPageHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 5),
-        Text(
+        UiText(
           description,
           style: const TextStyle(
             color: Colors.white54,
@@ -30954,51 +28968,37 @@ class _FaqPage extends StatelessWidget {
     const items = <({String question, String answer})>[
       (
         question: 'How do I track a movie or TV show?',
-        answer:
-            'Open a title and add it to your library. Movies can be marked watched, while TV shows track individual episodes and completion.',
+        answer: 'Open a title and add it to your library. Movies can be marked watched, while TV shows track individual episodes and completion.',
       ),
       (
         question: 'When can I rate or comment?',
-        answer:
-            'Ratings and comments unlock after the related movie, show or episode has been watched.',
+        answer: 'Ratings and comments unlock after the related movie, show or episode has been watched.',
       ),
       (
         question: 'What are achievements for?',
-        answer:
-            'Achievements track your Chiplux progress and unlock profile cosmetics such as frames, colors and titles.',
+        answer: 'Achievements track your Chiplux progress and unlock profile cosmetics such as frames, colors and titles.',
       ),
       (
         question: 'Can I control what other users see?',
-        answer:
-            'Yes. Open Settings → Privacy to control profile visibility, activity, statistics, follows and blocked users.',
+        answer: 'Yes. Open Settings → Privacy to control profile visibility, activity, statistics, follows and blocked users.',
       ),
       (
         question: 'Can I export my Chiplux data?',
-        answer:
-            'Yes. Open Settings → Data & Export to create a JSON backup. You can also enable automatic local backups.',
+        answer: 'Yes. Open Settings → Data & Export to create a JSON backup. You can also enable automatic local backups.',
       ),
       (
         question: 'How do notifications work?',
-        answer:
-            'Open Settings → Notifications to choose which episode, release, community, achievement and Chiplux update notifications you want to receive.',
+        answer: 'Open Settings → Notifications to choose which episode, release, community, achievement and Chiplux update notifications you want to receive.',
       ),
     ];
 
     return Scaffold(
       backgroundColor: chipluxBackground,
-      appBar: AppBar(
-        backgroundColor: chipluxBackground,
-        elevation: 0,
-      ),
+      appBar: AppBar(backgroundColor: chipluxBackground, elevation: 0),
       body: ChipluxBackground(
         style: ChipluxBackgroundStyle.profile,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(
-            18,
-            8,
-            18,
-            35,
-          ),
+          padding: const EdgeInsets.fromLTRB(18, 8, 18, 35),
           children: [
             const _HelpPageHeader(
               title: 'FAQ',
@@ -31006,15 +29006,9 @@ class _FaqPage extends StatelessWidget {
                   'Quick answers to common questions about using Chiplux.',
             ),
             const SizedBox(height: 18),
-            for (int i = 0;
-                i < items.length;
-                i++) ...[
-              _FaqCard(
-                question: items[i].question,
-                answer: items[i].answer,
-              ),
-              if (i < items.length - 1)
-                const SizedBox(height: 10),
+            for (int i = 0; i < items.length; i++) ...[
+              _FaqCard(question: items[i].question, answer: items[i].answer),
+              if (i < items.length - 1) const SizedBox(height: 10),
             ],
           ],
         ),
@@ -31027,46 +29021,27 @@ class _FaqCard extends StatelessWidget {
   final String question;
   final String answer;
 
-  const _FaqCard({
-    required this.question,
-    required this.answer,
-  });
+  const _FaqCard({required this.question, required this.answer});
 
   @override
   Widget build(BuildContext context) {
     return _HelpGradientCard(
       padding: EdgeInsets.zero,
       child: Theme(
-        data: Theme.of(context).copyWith(
-          dividerColor: Colors.transparent,
-        ),
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
-          tilePadding:
-              const EdgeInsets.symmetric(
-            horizontal: 15,
-            vertical: 2,
-          ),
-          childrenPadding:
-              const EdgeInsets.fromLTRB(
-            15,
-            0,
-            15,
-            15,
-          ),
+          tilePadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 2),
+          childrenPadding: const EdgeInsets.fromLTRB(15, 0, 15, 15),
           iconColor: chipluxCyan,
-          collapsedIconColor:
-              Colors.white38,
-          title: Text(
+          collapsedIconColor: Colors.white38,
+          title: UiText(
             question,
-            style: const TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 14,
-            ),
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
           ),
           children: [
             Align(
               alignment: Alignment.centerLeft,
-              child: Text(
+              child: UiText(
                 answer,
                 style: const TextStyle(
                   color: Colors.white60,
@@ -31082,22 +29057,19 @@ class _FaqCard extends StatelessWidget {
   }
 }
 
-class _PrivacyPolicyPage
-    extends StatelessWidget {
+class _PrivacyPolicyPage extends StatelessWidget {
   const _PrivacyPolicyPage();
 
   @override
   Widget build(BuildContext context) {
     return const _LegalPage(
       title: 'Privacy Policy',
-      description:
-          'How Chiplux collects, uses and protects information.',
+      description: 'How Chiplux collects, uses and protects information.',
       effectiveDate: '8 October 2026',
       sections: [
         _LegalSection(
           title: '1. About this policy',
-          body:
-              'This Privacy Policy explains how Chiplux handles personal information when you create an account, use movie and TV tracking features, participate in community features, receive notifications, submit reports or otherwise use the Chiplux app.',
+          body: 'This Privacy Policy explains how Chiplux handles personal information when you create an account, use movie and TV tracking features, participate in community features, receive notifications, submit reports or otherwise use the Chiplux app.',
         ),
         _LegalSection(
           title: '2. Information we collect',
@@ -31108,8 +29080,7 @@ class _PrivacyPolicyPage
         ),
         _LegalSection(
           title: '3. How we use information',
-          body:
-              'We use information to provide and synchronize your account and library, personalize your Chiplux experience, calculate statistics and achievements, operate community features, deliver notifications, process reports, prevent abuse, troubleshoot problems, secure the service and comply with applicable legal obligations.',
+          body: 'We use information to provide and synchronize your account and library, personalize your Chiplux experience, calculate statistics and achievements, operate community features, deliver notifications, process reports, prevent abuse, troubleshoot problems, secure the service and comply with applicable legal obligations.',
         ),
         _LegalSection(
           title: '4. Service providers and third-party data',
@@ -31119,120 +29090,98 @@ class _PrivacyPolicyPage
         ),
         _LegalSection(
           title: '5. Community content',
-          body:
-              'Comments, reviews, profile information and other content you choose to make public may be visible to other users according to your privacy settings. If a feature suggestion is published to the Feature Board, Chiplux may show your username and link to your profile when public suggestion attribution is enabled; otherwise the suggestion is shown without identifying you publicly. You should not post personal information that you do not want other people to see.',
+          body: 'Comments, reviews, profile information and other content you choose to make public may be visible to other users according to your privacy settings. If a feature suggestion is published to the Feature Board, Chiplux may show your username and link to your profile when public suggestion attribution is enabled; otherwise the suggestion is shown without identifying you publicly. You should not post personal information that you do not want other people to see.',
         ),
         _LegalSection(
           title: '6. Your controls and choices',
-          body:
-              'Chiplux provides controls for profile visibility, search visibility, activity visibility, statistics, follows, comment interactions, public feature-suggestion attribution, blocked users and notification categories. You can also use Data & Export to create a copy of supported account data and can request account deletion through the app.',
+          body: 'Chiplux provides controls for profile visibility, search visibility, activity visibility, statistics, follows, comment interactions, public feature-suggestion attribution, blocked users and notification categories. You can also use Data & Export to create a copy of supported account data and can request account deletion through the app.',
         ),
         _LegalSection(
           title: '7. Retention and deletion',
-          body:
-              'We retain information for as long as reasonably necessary to provide Chiplux, maintain security, resolve disputes and meet legal obligations. When an account is deleted, associated account data is deleted or de-identified where reasonably possible, subject to limited retention that may be required for security, backups, fraud prevention or law.',
+          body: 'We retain information for as long as reasonably necessary to provide Chiplux, maintain security, resolve disputes and meet legal obligations. When an account is deleted, associated account data is deleted or de-identified where reasonably possible, subject to limited retention that may be required for security, backups, fraud prevention or law.',
         ),
         _LegalSection(
           title: '8. European privacy rights',
-          body:
-              'If the GDPR or similar privacy law applies to you, you may have rights to access, correct, delete, restrict or object to certain processing, receive a portable copy of your data, and withdraw consent where processing is based on consent. You may also have the right to complain to your local data protection authority.',
+          body: 'If the GDPR or similar privacy law applies to you, you may have rights to access, correct, delete, restrict or object to certain processing, receive a portable copy of your data, and withdraw consent where processing is based on consent. You may also have the right to complain to your local data protection authority.',
         ),
         _LegalSection(
           title: '9. Security',
-          body:
-              'We use reasonable technical and organizational measures intended to protect account information. No online service can guarantee absolute security, so you should use a strong password and keep access to your account and devices secure.',
+          body: 'We use reasonable technical and organizational measures intended to protect account information. No online service can guarantee absolute security, so you should use a strong password and keep access to your account and devices secure.',
         ),
         _LegalSection(
           title: '10. Children',
-          body:
-              'Chiplux is not intended to knowingly collect personal information from children who are below the minimum age permitted to use an online service without parental authorization under applicable law. If you believe a child has provided personal information unlawfully, contact Chiplux so the issue can be reviewed.',
+          body: 'Chiplux is not intended to knowingly collect personal information from children who are below the minimum age permitted to use an online service without parental authorization under applicable law. If you believe a child has provided personal information unlawfully, contact Chiplux so the issue can be reviewed.',
         ),
         _LegalSection(
           title: '11. Changes to this policy',
-          body:
-              'We may update this Privacy Policy as Chiplux changes. Material changes may be communicated in the app or through another appropriate notice. The effective date shown above indicates the current version.',
+          body: 'We may update this Privacy Policy as Chiplux changes. Material changes may be communicated in the app or through another appropriate notice. The effective date shown above indicates the current version.',
         ),
         _LegalSection(
           title: '12. Contact',
-          body:
-              'For privacy questions or requests, use the Contact option in Chiplux. Before public release, the developer should also publish a monitored privacy or support email address here.',
+          body: 'For privacy questions or requests, use the Contact option in Chiplux. Before public release, the developer should also publish a monitored privacy or support email address here.',
         ),
       ],
     );
   }
 }
 
-class _TermsOfUsePage
-    extends StatelessWidget {
+class _TermsOfUsePage extends StatelessWidget {
   const _TermsOfUsePage();
 
   @override
   Widget build(BuildContext context) {
     return const _LegalPage(
       title: 'Terms of Use',
-      description:
-          'The rules for using Chiplux and its community features.',
+      description: 'The rules for using Chiplux and its community features.',
       effectiveDate: '8 October 2026',
       sections: [
         _LegalSection(
           title: '1. Acceptance',
-          body:
-              'By creating an account or using Chiplux, you agree to these Terms of Use. If you do not agree, do not use the service. If local law requires a parent or guardian to authorize your use, you may use Chiplux only with that authorization.',
+          body: 'By creating an account or using Chiplux, you agree to these Terms of Use. If you do not agree, do not use the service. If local law requires a parent or guardian to authorize your use, you may use Chiplux only with that authorization.',
         ),
         _LegalSection(
           title: '2. Your account',
-          body:
-              'You are responsible for the accuracy of information you provide, for keeping your login credentials secure and for activity performed through your account. You may not impersonate another person, misrepresent your identity or use another user’s account without permission.',
+          body: 'You are responsible for the accuracy of information you provide, for keeping your login credentials secure and for activity performed through your account. You may not impersonate another person, misrepresent your identity or use another user’s account without permission.',
         ),
         _LegalSection(
           title: '3. Acceptable use',
-          body:
-              'You may not use Chiplux to harass or threaten others, post unlawful or abusive material, spam users, manipulate ratings or engagement, distribute malware, attempt unauthorized access, interfere with the service, scrape or harvest data in a prohibited manner, or otherwise use Chiplux in a way that harms users or the service.',
+          body: 'You may not use Chiplux to harass or threaten others, post unlawful or abusive material, spam users, manipulate ratings or engagement, distribute malware, attempt unauthorized access, interfere with the service, scrape or harvest data in a prohibited manner, or otherwise use Chiplux in a way that harms users or the service.',
         ),
         _LegalSection(
           title: '4. Your content',
-          body:
-              'You retain ownership of content you create, such as comments, reviews and feature suggestions. By posting content to Chiplux, you grant Chiplux a non-exclusive, worldwide, royalty-free license to host, store, reproduce and display that content only as reasonably necessary to operate, moderate and improve the service. Feature suggestions may be reviewed, ignored, rejected, published or implemented at the developer’s discretion, and submitting an idea does not create an obligation to implement it or provide compensation. You represent that you have the right to post the content you submit.',
+          body: 'You retain ownership of content you create, such as comments, reviews and feature suggestions. By posting content to Chiplux, you grant Chiplux a non-exclusive, worldwide, royalty-free license to host, store, reproduce and display that content only as reasonably necessary to operate, moderate and improve the service. Feature suggestions may be reviewed, ignored, rejected, published or implemented at the developer’s discretion, and submitting an idea does not create an obligation to implement it or provide compensation. You represent that you have the right to post the content you submit.',
         ),
         _LegalSection(
           title: '5. Moderation and reports',
-          body:
-              'Chiplux may review reports and may remove content, restrict features, suspend accounts or take other reasonable moderation action when content or behavior violates these Terms, applicable law or community safety rules. Moderation decisions may be made using automated signals and human review.',
+          body: 'Chiplux may review reports and may remove content, restrict features, suspend accounts or take other reasonable moderation action when content or behavior violates these Terms, applicable law or community safety rules. Moderation decisions may be made using automated signals and human review.',
         ),
         _LegalSection(
           title: '6. Movie and TV information',
-          body:
-              'Chiplux uses third-party movie, TV and person information, including data and images supplied through TMDB. Chiplux does not own that third-party content and cannot guarantee that all metadata, release dates, ratings or images are complete or error-free. This product uses the TMDB API but is not endorsed or certified by TMDB.',
+          body: 'Chiplux uses third-party movie, TV and person information, including data and images supplied through TMDB. Chiplux does not own that third-party content and cannot guarantee that all metadata, release dates, ratings or images are complete or error-free. This product uses the TMDB API but is not endorsed or certified by TMDB.',
         ),
         _LegalSection(
           title: '7. Service availability',
-          body:
-              'We may add, change or discontinue features and may perform maintenance or suspend access when reasonably necessary. Chiplux is provided on an as-available basis, and uninterrupted or error-free operation is not guaranteed.',
+          body: 'We may add, change or discontinue features and may perform maintenance or suspend access when reasonably necessary. Chiplux is provided on an as-available basis, and uninterrupted or error-free operation is not guaranteed.',
         ),
         _LegalSection(
           title: '8. Account suspension and termination',
-          body:
-              'You may stop using Chiplux and may delete your account through the available account controls. Chiplux may suspend or terminate access when reasonably necessary for serious or repeated violations, security risks, fraud, unlawful conduct or protection of other users.',
+          body: 'You may stop using Chiplux and may delete your account through the available account controls. Chiplux may suspend or terminate access when reasonably necessary for serious or repeated violations, security risks, fraud, unlawful conduct or protection of other users.',
         ),
         _LegalSection(
           title: '9. Disclaimers and liability',
-          body:
-              'To the maximum extent permitted by applicable law, Chiplux is provided without warranties beyond those that cannot legally be excluded. Chiplux is not responsible for decisions made solely on the basis of third-party entertainment metadata or user-generated content. Nothing in these Terms limits rights or remedies that cannot be limited under applicable consumer law.',
+          body: 'To the maximum extent permitted by applicable law, Chiplux is provided without warranties beyond those that cannot legally be excluded. Chiplux is not responsible for decisions made solely on the basis of third-party entertainment metadata or user-generated content. Nothing in these Terms limits rights or remedies that cannot be limited under applicable consumer law.',
         ),
         _LegalSection(
           title: '10. Changes to these terms',
-          body:
-              'We may update these Terms as the service changes. If a change materially affects users, Chiplux may provide notice in the app or by another appropriate method. Continued use after the updated Terms take effect constitutes acceptance where permitted by law.',
+          body: 'We may update these Terms as the service changes. If a change materially affects users, Chiplux may provide notice in the app or by another appropriate method. Continued use after the updated Terms take effect constitutes acceptance where permitted by law.',
         ),
         _LegalSection(
           title: '11. Governing law',
-          body:
-              'These Terms are governed by the laws of Croatia, except where mandatory consumer or other laws in your country require a different result. Any mandatory rights available to consumers remain unaffected.',
+          body: 'These Terms are governed by the laws of Croatia, except where mandatory consumer or other laws in your country require a different result. Any mandatory rights available to consumers remain unaffected.',
         ),
         _LegalSection(
           title: '12. Contact',
-          body:
-              'Questions about these Terms can be sent through the Contact option in Chiplux. Before public release, the developer should also publish a monitored support email address here.',
+          body: 'Questions about these Terms can be sent through the Contact option in Chiplux. Before public release, the developer should also publish a monitored support email address here.',
         ),
       ],
     );
@@ -31243,10 +29192,7 @@ class _LegalSection {
   final String title;
   final String body;
 
-  const _LegalSection({
-    required this.title,
-    required this.body,
-  });
+  const _LegalSection({required this.title, required this.body});
 }
 
 class _LegalPage extends StatelessWidget {
@@ -31266,26 +29212,15 @@ class _LegalPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: chipluxBackground,
-      appBar: AppBar(
-        backgroundColor: chipluxBackground,
-        elevation: 0,
-      ),
+      appBar: AppBar(backgroundColor: chipluxBackground, elevation: 0),
       body: ChipluxBackground(
         style: ChipluxBackgroundStyle.profile,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(
-            18,
-            8,
-            18,
-            35,
-          ),
+          padding: const EdgeInsets.fromLTRB(18, 8, 18, 35),
           children: [
-            _HelpPageHeader(
-              title: title,
-              description: description,
-            ),
+            _HelpPageHeader(title: title, description: description),
             const SizedBox(height: 7),
-            Text(
+            UiText(
               'Effective $effectiveDate',
               style: const TextStyle(
                 color: chipluxCyan,
@@ -31295,24 +29230,20 @@ class _LegalPage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 18),
-            for (int i = 0;
-                i < sections.length;
-                i++) ...[
+            for (int i = 0; i < sections.length; i++) ...[
               _HelpGradientCard(
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    UiText(
                       sections[i].title,
                       style: const TextStyle(
                         fontSize: 15,
-                        fontWeight:
-                            FontWeight.w800,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Text(
+                    UiText(
                       sections[i].body,
                       style: const TextStyle(
                         color: Colors.white70,
@@ -31323,8 +29254,7 @@ class _LegalPage extends StatelessWidget {
                   ],
                 ),
               ),
-              if (i < sections.length - 1)
-                const SizedBox(height: 10),
+              if (i < sections.length - 1) const SizedBox(height: 10),
             ],
           ],
         ),
@@ -31454,10 +29384,7 @@ class _SuggestFeaturePageState extends State<_SuggestFeaturePage> {
 
   void _showMessage(String text) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: chipluxSurfaceLight,
-        content: Text(text),
-      ),
+      SnackBar(backgroundColor: chipluxSurfaceLight, content: UiText(text)),
     );
   }
 
@@ -31513,7 +29440,7 @@ class _SuggestFeaturePageState extends State<_SuggestFeaturePage> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      const Text(
+                      const UiText(
                         'Your idea is now waiting for developer review. If it is published, it will appear on the Community Feature Board.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
@@ -31523,7 +29450,7 @@ class _SuggestFeaturePageState extends State<_SuggestFeaturePage> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      Text(
+                      UiText(
                         'Next suggestion: ${_dateLabel(availability?.nextAllowedAt)}',
                         style: const TextStyle(
                           color: chipluxCyan,
@@ -31536,7 +29463,7 @@ class _SuggestFeaturePageState extends State<_SuggestFeaturePage> {
                         width: double.infinity,
                         child: FilledButton(
                           onPressed: () => Navigator.pop(dialogContext),
-                          child: const Text('Got it'),
+                          child: const UiText('Got it'),
                         ),
                       ),
                     ],
@@ -31568,7 +29495,7 @@ class _SuggestFeaturePageState extends State<_SuggestFeaturePage> {
             children: [
               Icon(icon, color: chipluxCyan, size: 19),
               const SizedBox(width: 8),
-              Text(
+              UiText(
                 label,
                 style: const TextStyle(
                   fontWeight: FontWeight.w800,
@@ -31585,7 +29512,7 @@ class _SuggestFeaturePageState extends State<_SuggestFeaturePage> {
             maxLength: maxLength,
             textCapitalization: TextCapitalization.sentences,
             decoration: InputDecoration(
-              hintText: hint,
+              hint: UiText(hint),
               filled: true,
               fillColor: chipluxSurfaceLight,
               border: OutlineInputBorder(
@@ -31630,8 +29557,9 @@ class _SuggestFeaturePageState extends State<_SuggestFeaturePage> {
               width: 42,
               height: 42,
               decoration: BoxDecoration(
-                color: (allowed ? chipluxCyan : chipluxViolet)
-                    .withValues(alpha: 0.09),
+                color: (allowed ? chipluxCyan : chipluxViolet).withValues(
+                  alpha: 0.09,
+                ),
                 borderRadius: BorderRadius.circular(13),
               ),
               child: Icon(
@@ -31644,7 +29572,7 @@ class _SuggestFeaturePageState extends State<_SuggestFeaturePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  UiText(
                     allowed ? 'Suggestion available' : 'Next suggestion',
                     style: const TextStyle(
                       fontWeight: FontWeight.w800,
@@ -31652,7 +29580,7 @@ class _SuggestFeaturePageState extends State<_SuggestFeaturePage> {
                     ),
                   ),
                   const SizedBox(height: 3),
-                  Text(
+                  UiText(
                     allowed
                         ? 'You can submit one feature idea now.'
                         : 'Available ${_dateLabel(availability?.nextAllowedAt)}',
@@ -31670,7 +29598,7 @@ class _SuggestFeaturePageState extends State<_SuggestFeaturePage> {
                 color: chipluxCyan.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(99),
               ),
-              child: const Text(
+              child: const UiText(
                 '30 DAYS',
                 style: TextStyle(
                   color: chipluxCyan,
@@ -31693,10 +29621,7 @@ class _SuggestFeaturePageState extends State<_SuggestFeaturePage> {
 
     return Scaffold(
       backgroundColor: chipluxBackground,
-      appBar: AppBar(
-        backgroundColor: chipluxBackground,
-        elevation: 0,
-      ),
+      appBar: AppBar(backgroundColor: chipluxBackground, elevation: 0),
       body: ChipluxBackground(
         style: ChipluxBackgroundStyle.profile,
         child: loading
@@ -31706,8 +29631,7 @@ class _SuggestFeaturePageState extends State<_SuggestFeaturePage> {
                 children: [
                   const _HelpPageHeader(
                     title: 'Suggest a Feature',
-                    description:
-                        'Share one meaningful idea every 30 days. Suggestions are reviewed before anything becomes public.',
+                    description: 'Share one meaningful idea every 30 days. Suggestions are reviewed before anything becomes public.',
                   ),
                   const SizedBox(height: 16),
                   _cooldownCard(),
@@ -31725,8 +29649,7 @@ class _SuggestFeaturePageState extends State<_SuggestFeaturePage> {
                   _field(
                     controller: descriptionController,
                     label: 'Describe your idea',
-                    hint:
-                        'What should Chiplux add, and how would you expect it to work?',
+                    hint: 'What should Chiplux add, and how would you expect it to work?',
                     icon: Icons.notes_rounded,
                     minLines: 6,
                     maxLines: 12,
@@ -31759,7 +29682,7 @@ class _SuggestFeaturePageState extends State<_SuggestFeaturePage> {
                   const SizedBox(height: 10),
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 4),
-                    child: Text(
+                    child: UiText(
                       'Your identity is still stored privately with the submission for moderation and the 30-day limit, even when public credit is off.',
                       style: TextStyle(
                         color: Colors.white38,
@@ -31788,7 +29711,9 @@ class _SuggestFeaturePageState extends State<_SuggestFeaturePage> {
                       style: FilledButton.styleFrom(
                         backgroundColor: Colors.transparent,
                         shadowColor: Colors.transparent,
-                        foregroundColor: canSubmit ? Colors.white : Colors.white38,
+                        foregroundColor: canSubmit
+                            ? Colors.white
+                            : Colors.white38,
                         padding: const EdgeInsets.symmetric(vertical: 15),
                       ),
                       onPressed: canSubmit && !sending ? _submit : null,
@@ -31802,7 +29727,7 @@ class _SuggestFeaturePageState extends State<_SuggestFeaturePage> {
                               ),
                             )
                           : const Icon(Icons.lightbulb_rounded),
-                      label: Text(
+                      label: UiText(
                         canSubmit
                             ? 'Submit Suggestion'
                             : 'Available ${_dateLabel(availability?.nextAllowedAt)}',
@@ -31811,7 +29736,7 @@ class _SuggestFeaturePageState extends State<_SuggestFeaturePage> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  const Text(
+                  const UiText(
                     'The developer can publish a suggestion as In Progress, Implemented or Rejected. Ignored duplicates or unsuitable submissions are deleted and never shown publicly.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
@@ -31834,31 +29759,25 @@ class _SuggestFeaturePageState extends State<_SuggestFeaturePage> {
   }
 }
 
-
 class _ReportBugPage extends StatefulWidget {
   const _ReportBugPage();
 
   @override
-  State<_ReportBugPage> createState() =>
-      _ReportBugPageState();
+  State<_ReportBugPage> createState() => _ReportBugPageState();
 }
 
-class _ReportBugPageState
-    extends State<_ReportBugPage> {
-  final controller =
-      TextEditingController();
+class _ReportBugPageState extends State<_ReportBugPage> {
+  final controller = TextEditingController();
 
   bool sending = false;
 
   Future<void> _send() async {
-    final text =
-        controller.text.trim();
+    final text = controller.text.trim();
 
     if (text.length < 10) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
+          content: UiText(
             'Please describe the problem in a little more detail.',
           ),
         ),
@@ -31872,13 +29791,9 @@ class _ReportBugPageState
     });
 
     try {
-      final user =
-          Supabase.instance.client.auth
-              .currentUser;
+      final user = Supabase.instance.client.auth.currentUser;
 
-      await Supabase.instance.client
-          .from('bug_reports')
-          .insert({
+      await Supabase.instance.client.from('bug_reports').insert({
         'user_id': user?.id,
         'description': text,
       });
@@ -31889,23 +29804,13 @@ class _ReportBugPageState
 
       controller.clear();
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Bug report sent. Thank you.',
-          ),
-        ),
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: UiText('Bug report sent. Thank you.')),
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(
-          SnackBar(
-            content: Text(
-              'Could not send bug report: $e',
-            ),
-          ),
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: UiText('Could not send bug report: $e')),
         );
       }
     } finally {
@@ -31921,48 +29826,36 @@ class _ReportBugPageState
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: chipluxBackground,
-      appBar: AppBar(
-        backgroundColor: chipluxBackground,
-        elevation: 0,
-      ),
+      appBar: AppBar(backgroundColor: chipluxBackground, elevation: 0),
       body: ChipluxBackground(
         style: ChipluxBackgroundStyle.profile,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(
-            18,
-            8,
-            18,
-            35,
-          ),
+          padding: const EdgeInsets.fromLTRB(18, 8, 18, 35),
           children: [
             const _HelpPageHeader(
               title: 'Report a Bug',
-              description:
-                  'Tell us what happened so the issue can be reproduced and fixed.',
+              description: 'Tell us what happened so the issue can be reproduced and fixed.',
             ),
 
             const SizedBox(height: 18),
 
             _HelpGradientCard(
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Row(
                     children: [
                       Icon(
-                        Icons
-                            .bug_report_outlined,
+                        Icons.bug_report_outlined,
                         color: chipluxCyan,
                         size: 20,
                       ),
                       SizedBox(width: 9),
                       Expanded(
-                        child: Text(
+                        child: UiText(
                           'Describe what happened, what you expected and what you were doing just before the problem appeared.',
                           style: TextStyle(
-                            color:
-                                Colors.white70,
+                            color: Colors.white70,
                             fontSize: 12,
                             height: 1.45,
                           ),
@@ -31978,39 +29871,20 @@ class _ReportBugPageState
                     minLines: 7,
                     maxLines: 14,
                     maxLength: 5000,
-                    textCapitalization:
-                        TextCapitalization
-                            .sentences,
-                    decoration:
-                        InputDecoration(
-                      hintText:
-                          'Describe the problem...',
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: InputDecoration(
+                      hint: const UiText('Describe the problem...'),
                       filled: true,
-                      fillColor:
-                          chipluxSurfaceLight,
-                      enabledBorder:
-                          OutlineInputBorder(
-                        borderRadius:
-                            BorderRadius
-                                .circular(14),
-                        borderSide:
-                            BorderSide(
-                          color: Colors.white
-                              .withValues(
-                            alpha: 0.07,
-                          ),
+                      fillColor: chipluxSurfaceLight,
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(
+                          color: Colors.white.withValues(alpha: 0.07),
                         ),
                       ),
-                      focusedBorder:
-                          OutlineInputBorder(
-                        borderRadius:
-                            BorderRadius
-                                .circular(14),
-                        borderSide:
-                            const BorderSide(
-                          color:
-                              chipluxCyan,
-                        ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: chipluxCyan),
                       ),
                     ),
                   ),
@@ -32023,39 +29897,21 @@ class _ReportBugPageState
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
-                onPressed:
-                    sending ? null : _send,
+                onPressed: sending ? null : _send,
                 icon: sending
                     ? const SizedBox(
                         width: 18,
                         height: 18,
-                        child:
-                            CircularProgressIndicator(
-                          strokeWidth: 2,
-                        ),
+                        child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Icon(
-                        Icons.send_rounded,
-                      ),
-                label: const Text(
-                  'Send Bug Report',
-                ),
-                style: FilledButton
-                    .styleFrom(
-                  backgroundColor:
-                      chipluxCyan,
-                  foregroundColor:
-                      chipluxBackground,
-                  padding:
-                      const EdgeInsets.symmetric(
-                    vertical: 14,
-                  ),
-                  shape:
-                      RoundedRectangleBorder(
-                    borderRadius:
-                        BorderRadius.circular(
-                      14,
-                    ),
+                    : const Icon(Icons.send_rounded),
+                label: const UiText('Send Bug Report'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: chipluxCyan,
+                  foregroundColor: chipluxBackground,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
                   ),
                 ),
               ),
@@ -32073,40 +29929,30 @@ class _ReportBugPageState
   }
 }
 
-class _ProfileMenuSectionTitle
-    extends StatelessWidget {
+class _ProfileMenuSectionTitle extends StatelessWidget {
   final String title;
   final String subtitle;
 
-  const _ProfileMenuSectionTitle({
-    required this.title,
-    required this.subtitle,
-  });
+  const _ProfileMenuSectionTitle({required this.title, required this.subtitle});
 
   @override
-  Widget build(
-    BuildContext context,
-  ) {
+  Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment:
-          CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
 
       children: [
         GradientText(
           title,
           style: const TextStyle(
             fontSize: 20,
-            fontWeight:
-                FontWeight.w900,
+            fontWeight: FontWeight.w900,
             letterSpacing: -0.3,
           ),
         ),
 
-        const SizedBox(
-          height: 5,
-        ),
+        const SizedBox(height: 5),
 
-        Text(
+        UiText(
           subtitle,
           style: const TextStyle(
             color: Colors.white54,
@@ -32119,93 +29965,52 @@ class _ProfileMenuSectionTitle
   }
 }
 
-class _ProfileMenuCard
-    extends StatelessWidget {
+class _ProfileMenuCard extends StatelessWidget {
   final List<Widget> children;
 
-  const _ProfileMenuCard({
-    required this.children,
-  });
+  const _ProfileMenuCard({required this.children});
 
   @override
-  Widget build(
-    BuildContext context,
-  ) {
+  Widget build(BuildContext context) {
     return Container(
-      padding:
-          const EdgeInsets.all(
-        1,
-      ),
+      padding: const EdgeInsets.all(1),
 
-      decoration:
-          BoxDecoration(
-        borderRadius:
-            BorderRadius.circular(
-          19,
-        ),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(19),
 
-        gradient:
-            LinearGradient(
-          begin:
-              Alignment.topLeft,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
 
-          end:
-              Alignment.bottomRight,
+          end: Alignment.bottomRight,
 
           colors: [
-            chipluxCyan
-                .withValues(
-              alpha: 0.38,
-            ),
+            chipluxCyan.withValues(alpha: 0.38),
 
-            chipluxViolet
-                .withValues(
-              alpha: 0.25,
-            ),
+            chipluxViolet.withValues(alpha: 0.25),
 
-            chipluxPurple
-                .withValues(
-              alpha: 0.15,
-            ),
+            chipluxPurple.withValues(alpha: 0.15),
           ],
         ),
 
         boxShadow: [
           BoxShadow(
-            color: Colors.black
-                .withValues(
-              alpha: 0.18,
-            ),
+            color: Colors.black.withValues(alpha: 0.18),
 
             blurRadius: 14,
 
-            offset:
-                const Offset(
-              0,
-              5,
-            ),
+            offset: const Offset(0, 5),
           ),
         ],
       ),
 
       child: Container(
-        decoration:
-            BoxDecoration(
-          color: chipluxSurface
-              .withValues(
-            alpha: 0.94,
-          ),
+        decoration: BoxDecoration(
+          color: chipluxSurface.withValues(alpha: 0.94),
 
-          borderRadius:
-              BorderRadius.circular(
-            18,
-          ),
+          borderRadius: BorderRadius.circular(18),
         ),
 
-        child: Column(
-          children:
-              children,
-        ),
+        child: Column(children: children),
       ),
     );
   }
@@ -32230,76 +30035,45 @@ class _ProfileMenuRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-  width: 40,
-  height: 40,
+            width: 40,
+            height: 40,
 
-  padding:
-      const EdgeInsets.all(
-    1,
-  ),
+            padding: const EdgeInsets.all(1),
 
-  decoration:
-      BoxDecoration(
-    borderRadius:
-        BorderRadius.circular(
-      12,
-    ),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
 
-    gradient:
-        LinearGradient(
-      begin:
-          Alignment.topLeft,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
 
-      end:
-          Alignment.bottomRight,
+                end: Alignment.bottomRight,
 
-      colors: [
-        chipluxCyan
-            .withValues(
-          alpha: 0.60,
-        ),
+                colors: [
+                  chipluxCyan.withValues(alpha: 0.60),
 
-        chipluxViolet
-            .withValues(
-          alpha: 0.35,
-        ),
+                  chipluxViolet.withValues(alpha: 0.35),
 
-        chipluxPurple
-            .withValues(
-          alpha: 0.20,
-        ),
-      ],
-    ),
-  ),
+                  chipluxPurple.withValues(alpha: 0.20),
+                ],
+              ),
+            ),
 
-  child: Container(
-    decoration:
-        BoxDecoration(
-      color:
-          chipluxBackground,
+            child: Container(
+              decoration: BoxDecoration(
+                color: chipluxBackground,
 
-      borderRadius:
-          BorderRadius.circular(
-        11,
-      ),
-    ),
+                borderRadius: BorderRadius.circular(11),
+              ),
 
-    child: Icon(
-      icon,
-
-      color:
-          chipluxCyan,
-
-      size: 20,
-    ),
-  ),
-),
+              child: Icon(icon, color: chipluxCyan, size: 20),
+            ),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                UiText(
                   title,
                   style: const TextStyle(
                     color: Colors.white,
@@ -32308,7 +30082,7 @@ class _ProfileMenuRow extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 3),
-                Text(
+                UiText(
                   subtitle,
                   style: const TextStyle(
                     color: Colors.white54,
@@ -32337,7 +30111,6 @@ class _ProfileMenuDivider extends StatelessWidget {
     );
   }
 }
-
 
 class EditProfilePage extends StatefulWidget {
   final bool embedded;
@@ -32434,52 +30207,102 @@ class _EditProfilePageState extends State<EditProfilePage> {
   Future<void> _saveDisplayName() async {
     final value = displayNameController.text.trim();
     if (value.isEmpty) {
-      if (mounted) setState(() => errorMessage = 'Display name cannot be empty.');
+      if (mounted) {
+        setState(() => errorMessage = 'Display name cannot be empty.');
+      }
       return;
     }
     if (value == profile.displayName.trim()) return;
     try {
-      if (mounted) setState(() { saving = true; errorMessage = null; });
-      await profile.updateProfile(displayName: value, username: profile.username);
+      if (mounted) {
+        setState(() {
+          saving = true;
+          errorMessage = null;
+        });
+      }
+      await profile.updateProfile(
+        displayName: value,
+        username: profile.username,
+      );
       if (mounted) setState(() => saving = false);
-    } catch (e) { _setAutoSaveError(e); }
+    } catch (e) {
+      _setAutoSaveError(e);
+    }
   }
 
   Future<void> _selectDisplayNameFrame(String? id) async {
     try {
       await frameService.apply(id);
-      if (mounted) setState(() { selectedFrameId = id; errorMessage = null; });
-    } catch (e) { _setAutoSaveError(e); }
+      if (mounted) {
+        setState(() {
+          selectedFrameId = id;
+          errorMessage = null;
+        });
+      }
+    } catch (e) {
+      _setAutoSaveError(e);
+    }
   }
 
   Future<void> _selectAvatarFrame(String? id) async {
     try {
       await avatarFrameService.apply(id);
-      if (mounted) setState(() { selectedAvatarFrameId = id; errorMessage = null; });
-    } catch (e) { _setAutoSaveError(e); }
+      if (mounted) {
+        setState(() {
+          selectedAvatarFrameId = id;
+          errorMessage = null;
+        });
+      }
+    } catch (e) {
+      _setAutoSaveError(e);
+    }
   }
 
   Future<void> _selectProfileTitle(String? id) async {
     try {
       await titleService.apply(id);
-      if (mounted) setState(() { selectedTitleId = id; errorMessage = null; });
-    } catch (e) { _setAutoSaveError(e); }
+      if (mounted) {
+        setState(() {
+          selectedTitleId = id;
+          errorMessage = null;
+        });
+      }
+    } catch (e) {
+      _setAutoSaveError(e);
+    }
   }
 
   Future<void> _selectProfilePageFrame(String? id) async {
     try {
       await profilePageFrameService.apply(id);
-      if (mounted) setState(() { selectedProfilePageFrameId = id; errorMessage = null; });
-    } catch (e) { _setAutoSaveError(e); }
+      if (mounted) {
+        setState(() {
+          selectedProfilePageFrameId = id;
+          errorMessage = null;
+        });
+      }
+    } catch (e) {
+      _setAutoSaveError(e);
+    }
   }
 
-  Future<void> _selectAchievementCosmetic(String groupId, String? tierId) async {
+  Future<void> _selectAchievementCosmetic(
+    String groupId,
+    String? tierId,
+  ) async {
     final updated = Map<String, String?>.from(selectedAchievementCosmetics);
     updated[groupId] = tierId;
     try {
       await achievementCosmeticService.applyAll(updated);
-      if (mounted) setState(() { selectedAchievementCosmetics = updated; errorMessage = null; });
-    } catch (e) { _setAutoSaveError(e); }
+      if (mounted) {
+        setState(() {
+          selectedAchievementCosmetics = updated;
+          errorMessage = null;
+        });
+      }
+    } catch (e) {
+      _setAutoSaveError(e);
+    }
   }
 
   Future<void> _loadProfileTitle() async {
@@ -32570,13 +30393,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
               child: const Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    Icons.code_rounded,
-                    color: Color(0xFF00E5FF),
-                    size: 24,
-                  ),
+                  Icon(Icons.code_rounded, color: Color(0xFF00E5FF), size: 24),
                   SizedBox(height: 7),
-                  Text(
+                  UiText(
                     'Developer',
                     style: TextStyle(
                       color: Color(0xFFFFD166),
@@ -32585,7 +30404,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     ),
                   ),
                   SizedBox(height: 2),
-                  Text(
+                  UiText(
                     'EXCLUSIVE',
                     style: TextStyle(
                       color: Colors.white38,
@@ -32625,12 +30444,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        const UiText(
           'Profile Title',
           style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 5),
-        const Text(
+        const UiText(
           'Use any unlocked achievement milestone as the title shown above your display name.',
           style: TextStyle(color: Colors.white54, fontSize: 12),
         ),
@@ -32639,8 +30458,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
           height: 88,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            itemCount:
-                unlocked.length + 1 + (profile.isDeveloper ? 1 : 0),
+            itemCount: unlocked.length + 1 + (profile.isDeveloper ? 1 : 0),
             separatorBuilder: (context, index) => const SizedBox(width: 8),
             itemBuilder: (context, index) {
               if (index == 0) {
@@ -32657,9 +30475,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 return _buildDeveloperTitleOption();
               }
 
-              final achievement = unlocked[
-                index - 1 - (profile.isDeveloper ? 1 : 0)
-              ];
+              final achievement =
+                  unlocked[index - 1 - (profile.isDeveloper ? 1 : 0)];
 
               return _ProfileTitleOption(
                 achievement: achievement,
@@ -32673,7 +30490,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         ),
         if (unlocked.isEmpty && !profile.isDeveloper) ...[
           const SizedBox(height: 8),
-          const Text(
+          const UiText(
             'Unlock an achievement milestone to earn your first title.',
             style: TextStyle(color: Colors.white38, fontSize: 11),
           ),
@@ -32683,10 +30500,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   Future<void> _loadProfilePageFrame() async {
-    await Future.wait([
-      profilePageFrameService.load(),
-      profile.loadProfile(),
-    ]);
+    await Future.wait([profilePageFrameService.load(), profile.loadProfile()]);
 
     if (!mounted) {
       return;
@@ -32694,24 +30508,21 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
     String? loadedId = profilePageFrameService.frameId;
 
-    if (loadedId ==
-        developerProfilePageFrameId &&
-    !profile.isDeveloper) {
-  loadedId = null;
-}
+    if (loadedId == developerProfilePageFrameId && !profile.isDeveloper) {
+      loadedId = null;
+    }
 
-if (loadedId ==
-        followDeveloperProfilePageFrameId &&
-    !profile.isDeveloper &&
-    !profile.followedDeveloperAchievement) {
-  loadedId = null;
-}
+    if (loadedId == followDeveloperProfilePageFrameId &&
+        !profile.isDeveloper &&
+        !profile.followedDeveloperAchievement) {
+      loadedId = null;
+    }
 
-if (loadedId != null &&
-    loadedId != developerProfilePageFrameId &&
-    loadedId != followDeveloperProfilePageFrameId) {
-  loadedId = null;
-}
+    if (loadedId != null &&
+        loadedId != developerProfilePageFrameId &&
+        loadedId != followDeveloperProfilePageFrameId) {
+      loadedId = null;
+    }
 
     setState(() {
       selectedProfilePageFrameId = loadedId;
@@ -32720,281 +30531,183 @@ if (loadedId != null &&
   }
 
   Widget _profilePageFrameOption({
-  required String label,
-  required String? frameId,
-}) {
-  final selected =
-      selectedProfilePageFrameId ==
-          frameId;
+    required String label,
+    required String? frameId,
+  }) {
+    final selected = selectedProfilePageFrameId == frameId;
 
-  final isDeveloperFrame =
-      frameId ==
-          developerProfilePageFrameId;
+    final isDeveloperFrame = frameId == developerProfilePageFrameId;
 
-  final isFollowDeveloperFrame =
-      frameId ==
-          followDeveloperProfilePageFrameId;
+    final isFollowDeveloperFrame = frameId == followDeveloperProfilePageFrameId;
 
-  Widget? previewFrame;
+    Widget? previewFrame;
 
-  if (isDeveloperFrame) {
-    previewFrame =
-        const _DeveloperProfilePageFrame();
-  } else if (isFollowDeveloperFrame) {
-    previewFrame =
-        const _Tier3ProfilePageFrame();
-  }
+    if (isDeveloperFrame) {
+      previewFrame = const _DeveloperProfilePageFrame();
+    } else if (isFollowDeveloperFrame) {
+      previewFrame = const _Tier3ProfilePageFrame();
+    }
 
-  return SizedBox(
-    width: 132,
+    return SizedBox(
+      width: 132,
 
-    child: Material(
-      color: Colors.transparent,
+      child: Material(
+        color: Colors.transparent,
 
-      child: InkWell(
-        onTap: () {
-          unawaited(_selectProfilePageFrame(frameId));
-        },
+        child: InkWell(
+          onTap: () {
+            unawaited(_selectProfilePageFrame(frameId));
+          },
 
-        borderRadius:
-            BorderRadius.circular(
-          16,
-        ),
+          borderRadius: BorderRadius.circular(16),
 
-        child: Container(
-          padding:
-              const EdgeInsets.all(
-            7,
-          ),
+          child: Container(
+            padding: const EdgeInsets.all(7),
 
-          decoration:
-              BoxDecoration(
-            color:
-                selected
-                    ? Colors.white
-                        .withValues(
-                          alpha:
-                              0.055,
-                        )
-                    : Colors
-                        .transparent,
+            decoration: BoxDecoration(
+              color: selected
+                  ? Colors.white.withValues(alpha: 0.055)
+                  : Colors.transparent,
 
-            borderRadius:
-                BorderRadius.circular(
-              16,
+              borderRadius: BorderRadius.circular(16),
+
+              border: Border.all(
+                color: selected
+                    ? chipluxCyan.withValues(alpha: 0.65)
+                    : Colors.white.withValues(alpha: 0.07),
+
+                width: selected ? 1.3 : 1,
+              ),
             ),
 
-            border:
-                Border.all(
-              color:
-                  selected
-                      ? chipluxCyan
-                          .withValues(
-                            alpha:
-                                0.65,
-                          )
-                      : Colors.white
-                          .withValues(
-                            alpha:
-                                0.07,
+            child: Column(
+              children: [
+                SizedBox(
+                  height: 67,
+
+                  width: double.infinity,
+
+                  child: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: Container(
+                          margin: const EdgeInsets.all(5),
+
+                          decoration: BoxDecoration(
+                            color: chipluxBackground,
+
+                            borderRadius: BorderRadius.circular(14),
+
+                            border: previewFrame == null
+                                ? Border.all(
+                                    color: Colors.white.withValues(alpha: 0.18),
+                                  )
+                                : null,
                           ),
 
-              width:
-                  selected
-                      ? 1.3
-                      : 1,
-            ),
-          ),
+                          child: const Center(
+                            child: Icon(
+                              Icons.person_outline_rounded,
 
-          child: Column(
-            children: [
-              SizedBox(
-                height: 67,
+                              color: Colors.white38,
 
-                width:
-                    double.infinity,
+                              size: 23,
+                            ),
+                          ),
+                        ),
+                      ),
 
-                child: Stack(
+                      if (previewFrame != null)
+                        Positioned.fill(child: previewFrame),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 5),
+
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+
                   children: [
-                    Positioned.fill(
-                      child:
-                          Container(
-                        margin:
-                            const EdgeInsets
-                                .all(
-                          5,
-                        ),
+                    if (isDeveloperFrame) ...[
+                      const Icon(
+                        Icons.code_rounded,
 
-                        decoration:
-                            BoxDecoration(
-                          color:
-                              chipluxBackground,
+                        size: 11,
 
-                          borderRadius:
-                              BorderRadius
-                                  .circular(
-                            14,
-                          ),
+                        color: chipluxCyan,
+                      ),
 
-                          border:
-                              previewFrame ==
-                                      null
-                                  ? Border.all(
-                                      color:
-                                          Colors.white.withValues(
-                                        alpha:
-                                            0.18,
-                                      ),
-                                    )
-                                  : null,
-                        ),
+                      const SizedBox(width: 4),
+                    ] else if (isFollowDeveloperFrame) ...[
+                      const Icon(
+                        Icons.workspace_premium_rounded,
 
-                        child:
-                            const Center(
-                          child: Icon(
-                            Icons
-                                .person_outline_rounded,
+                        size: 11,
 
-                            color:
-                                Colors.white38,
+                        color: Color(0xFFA855F7),
+                      ),
 
-                            size: 23,
-                          ),
+                      const SizedBox(width: 4),
+                    ],
+
+                    Flexible(
+                      child: UiText(
+                        label,
+
+                        maxLines: 1,
+
+                        overflow: TextOverflow.ellipsis,
+
+                        style: TextStyle(
+                          color: isDeveloperFrame
+                              ? const Color(0xFFFFD166)
+                              : isFollowDeveloperFrame
+                              ? const Color(0xFFD946EF)
+                              : Colors.white70,
+
+                          fontSize: 10,
+
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
-
-                    if (previewFrame !=
-                        null)
-                      Positioned.fill(
-                        child:
-                            previewFrame,
-                      ),
                   ],
                 ),
-              ),
-
-              const SizedBox(
-                height: 5,
-              ),
-
-              Row(
-                mainAxisAlignment:
-                    MainAxisAlignment
-                        .center,
-
-                children: [
-                  if (isDeveloperFrame) ...[
-                    const Icon(
-                      Icons
-                          .code_rounded,
-
-                      size: 11,
-
-                      color:
-                          chipluxCyan,
-                    ),
-
-                    const SizedBox(
-                      width: 4,
-                    ),
-                  ] else if (isFollowDeveloperFrame) ...[
-                    const Icon(
-                      Icons
-                          .workspace_premium_rounded,
-
-                      size: 11,
-
-                      color:
-                          Color(
-                        0xFFA855F7,
-                      ),
-                    ),
-
-                    const SizedBox(
-                      width: 4,
-                    ),
-                  ],
-
-                  Flexible(
-                    child: Text(
-                      label,
-
-                      maxLines: 1,
-
-                      overflow:
-                          TextOverflow
-                              .ellipsis,
-
-                      style:
-                          TextStyle(
-                        color:
-                            isDeveloperFrame
-                                ? const Color(
-                                    0xFFFFD166,
-                                  )
-                                : isFollowDeveloperFrame
-                                ? const Color(
-                                    0xFFD946EF,
-                                  )
-                                : Colors
-                                    .white70,
-
-                        fontSize:
-                            10,
-
-                        fontWeight:
-                            FontWeight
-                                .w700,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget buildProfilePageFramePicker() {
-    final options =
-    <Widget>[
-  _profilePageFrameOption(
-    label: 'None',
-    frameId: null,
-  ),
+    final options = <Widget>[
+      _profilePageFrameOption(label: 'None', frameId: null),
 
-  if (profile.isDeveloper ||
-      profile
-          .followedDeveloperAchievement)
-    _profilePageFrameOption(
-      label:
-          'Follow Developer',
-      frameId:
-          followDeveloperProfilePageFrameId,
-    ),
+      if (profile.isDeveloper || profile.followedDeveloperAchievement)
+        _profilePageFrameOption(
+          label: 'Follow Developer',
+          frameId: followDeveloperProfilePageFrameId,
+        ),
 
-  if (profile.isDeveloper)
-    _profilePageFrameOption(
-      label:
-          'Developer',
-      frameId:
-          developerProfilePageFrameId,
-    ),
-];
+      if (profile.isDeveloper)
+        _profilePageFrameOption(
+          label: 'Developer',
+          frameId: developerProfilePageFrameId,
+        ),
+    ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        const UiText(
           'Profile Page Frame',
           style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 5),
-        const Text(
+        const UiText(
           'Choose the frame surrounding your full profile page.',
           style: TextStyle(color: Colors.white54, fontSize: 12),
         ),
@@ -33335,8 +31048,7 @@ if (loadedId != null &&
     if (selectedTitleId == developerProfileTitleId) {
       if (!profile.isDeveloper) {
         setState(() {
-          errorMessage =
-              'Developer title is not available for this account.';
+          errorMessage = 'Developer title is not available for this account.';
         });
 
         return;
@@ -33356,35 +31068,31 @@ if (loadedId != null &&
       }
     }
 
-    if (selectedProfilePageFrameId ==
-    developerProfilePageFrameId) {
-  if (!profile.isDeveloper) {
-    setState(() {
-      errorMessage =
-          'Developer profile frame is not available for this account.';
-    });
+    if (selectedProfilePageFrameId == developerProfilePageFrameId) {
+      if (!profile.isDeveloper) {
+        setState(() {
+          errorMessage =
+              'Developer profile frame is not available for this account.';
+        });
 
-    return;
-  }
-} else if (selectedProfilePageFrameId ==
-    followDeveloperProfilePageFrameId) {
-  if (!profile.isDeveloper &&
-      !profile.followedDeveloperAchievement) {
-    setState(() {
-      errorMessage =
-          'Follow Developer profile frame is still locked.';
-    });
+        return;
+      }
+    } else if (selectedProfilePageFrameId ==
+        followDeveloperProfilePageFrameId) {
+      if (!profile.isDeveloper && !profile.followedDeveloperAchievement) {
+        setState(() {
+          errorMessage = 'Follow Developer profile frame is still locked.';
+        });
 
-    return;
-  }
-} else if (selectedProfilePageFrameId != null) {
-  setState(() {
-    errorMessage =
-        'That profile page frame is not available.';
-  });
+        return;
+      }
+    } else if (selectedProfilePageFrameId != null) {
+      setState(() {
+        errorMessage = 'That profile page frame is not available.';
+      });
 
-  return;
-}
+      return;
+    }
 
     setState(() {
       saving = true;
@@ -33443,7 +31151,7 @@ if (loadedId != null &&
       if (mounted) {
         if (widget.embedded) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Profile customization saved.')),
+            const SnackBar(content: UiText('Profile customization saved.')),
           );
         } else {
           Navigator.pop(context);
@@ -33576,14 +31284,14 @@ if (loadedId != null &&
       crossAxisAlignment: CrossAxisAlignment.start,
 
       children: [
-        const Text(
+        const UiText(
           'Avatar Frame',
           style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
         ),
 
         const SizedBox(height: 5),
 
-        const Text(
+        const UiText(
           'Unlock new avatar frames through Profile Explorer achievements.',
           style: TextStyle(color: Colors.white54, fontSize: 12),
         ),
@@ -33645,7 +31353,7 @@ if (loadedId != null &&
       crossAxisAlignment: CrossAxisAlignment.start,
 
       children: [
-        const Text(
+        const UiText(
           'Display Name Frame',
 
           style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
@@ -33653,7 +31361,7 @@ if (loadedId != null &&
 
         const SizedBox(height: 5),
 
-        const Text(
+        const UiText(
           'Unlock new frames through Daily Login achievements.',
 
           style: TextStyle(color: Colors.white54, fontSize: 12),
@@ -33720,7 +31428,7 @@ if (loadedId != null &&
       crossAxisAlignment: CrossAxisAlignment.start,
 
       children: [
-        Text(
+        UiText(
           title,
 
           style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
@@ -33728,7 +31436,7 @@ if (loadedId != null &&
 
         const SizedBox(height: 5),
 
-        Text(
+        UiText(
           description,
 
           style: const TextStyle(color: Colors.white54, fontSize: 12),
@@ -33901,7 +31609,7 @@ if (loadedId != null &&
 
               const SizedBox(height: 10),
 
-              const Text(
+              const UiText(
                 'Tap to change profile picture',
                 style: TextStyle(color: Colors.white54, fontSize: 12),
               ),
@@ -33911,7 +31619,7 @@ if (loadedId != null &&
 
         const SizedBox(height: 28),
 
-        const Text(
+        const UiText(
           'Profile Banner',
           style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
         ),
@@ -33951,11 +31659,7 @@ if (loadedId != null &&
                     Container(
                       decoration: const BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [
-                            chipluxCyan,
-                            chipluxViolet,
-                            chipluxPurple,
-                          ],
+                          colors: [chipluxCyan, chipluxViolet, chipluxPurple],
                         ),
                       ),
                     ),
@@ -33968,7 +31672,7 @@ if (loadedId != null &&
                       children: [
                         Icon(Icons.panorama_outlined),
                         SizedBox(width: 8),
-                        Text(
+                        UiText(
                           'Tap to change banner',
                           style: TextStyle(fontWeight: FontWeight.bold),
                         ),
@@ -33991,7 +31695,7 @@ if (loadedId != null &&
             unawaited(_saveDisplayName());
           },
           decoration: const InputDecoration(
-            labelText: 'Display Name',
+            label: UiText('Display Name'),
             prefixIcon: Icon(Icons.person_outline),
           ),
         ),
@@ -34018,7 +31722,7 @@ if (loadedId != null &&
 
         if (errorMessage != null) ...[
           const SizedBox(height: 14),
-          Text(
+          UiText(
             errorMessage!,
             style: const TextStyle(color: Colors.redAccent),
           ),
@@ -34047,7 +31751,7 @@ if (loadedId != null &&
       backgroundColor: chipluxBackground,
       appBar: AppBar(
         backgroundColor: chipluxBackground,
-        title: const Text('Edit Profile'),
+        title: const UiText('Edit Profile'),
       ),
       body: SafeArea(child: _buildCustomizationContent()),
     );
@@ -34060,7 +31764,6 @@ if (loadedId != null &&
     super.dispose();
   }
 }
-
 
 class _AvatarFrameOption extends StatelessWidget {
   final String label;
@@ -34135,7 +31838,7 @@ class _AvatarFrameOption extends StatelessWidget {
 
                 const SizedBox(height: 6),
 
-                Text(
+                UiText(
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -34269,7 +31972,7 @@ class _AchievementCosmeticOption extends StatelessWidget {
                     ],
 
                     Flexible(
-                      child: Text(
+                      child: UiText(
                         label,
 
                         maxLines: 1,
@@ -34323,7 +32026,6 @@ class _EpisodeRatingCardState extends State<_EpisodeRatingCard> {
   @override
   void initState() {
     super.initState();
-    
 
     _load();
   }
@@ -34448,7 +32150,7 @@ class _EpisodeRatingCardState extends State<_EpisodeRatingCard> {
       }
 
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Could not save rating: $e')));
+          .showSnackBar(SnackBar(content: UiText('Could not save rating: $e')));
     }
   }
 
@@ -34495,8 +32197,9 @@ class _EpisodeRatingCardState extends State<_EpisodeRatingCard> {
         rating = oldRating;
       });
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Could not remove rating: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: UiText('Could not remove rating: $e')));
     }
   }
 
@@ -34510,10 +32213,10 @@ class _EpisodeRatingCardState extends State<_EpisodeRatingCard> {
     }
 
     final bool canRateEpisode = LibraryService.instance.isEpisodeWatched(
-    widget.showId,
-    widget.seasonNumber,
-    widget.episodeNumber,
-  );
+      widget.showId,
+      widget.seasonNumber,
+      widget.episodeNumber,
+    );
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -34524,22 +32227,19 @@ class _EpisodeRatingCardState extends State<_EpisodeRatingCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          const UiText(
             'Your Episode Rating',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
           ),
 
           if (!canRateEpisode) ...[
-  const SizedBox(height: 5),
+            const SizedBox(height: 5),
 
-  const Text(
-    'Mark this episode as Watched to rate it.',
-    style: TextStyle(
-      color: Colors.white38,
-      fontSize: 11,
-    ),
-  ),
-],
+            const UiText(
+              'Mark this episode as Watched to rate it.',
+              style: TextStyle(color: Colors.white38, fontSize: 11),
+            ),
+          ],
 
           const SizedBox(height: 12),
 
@@ -34556,43 +32256,43 @@ class _EpisodeRatingCardState extends State<_EpisodeRatingCard> {
                       behavior: HitTestBehavior.opaque,
 
                       onTapDown: canRateEpisode
-    ? (details) {
-        _setRating(
-          details.localPosition.dx,
-          constraints.maxWidth,
-        );
-      }
-    : null,
+                          ? (details) {
+                              _setRating(
+                                details.localPosition.dx,
+                                constraints.maxWidth,
+                              );
+                            }
+                          : null,
 
-onTapUp: canRateEpisode
-    ? (_) {
-        unawaited(_save());
-      }
-    : null,
+                      onTapUp: canRateEpisode
+                          ? (_) {
+                              unawaited(_save());
+                            }
+                          : null,
 
-onHorizontalDragStart: canRateEpisode
-    ? (details) {
-        _setRating(
-          details.localPosition.dx,
-          constraints.maxWidth,
-        );
-      }
-    : null,
+                      onHorizontalDragStart: canRateEpisode
+                          ? (details) {
+                              _setRating(
+                                details.localPosition.dx,
+                                constraints.maxWidth,
+                              );
+                            }
+                          : null,
 
-onHorizontalDragUpdate: canRateEpisode
-    ? (details) {
-        _setRating(
-          details.localPosition.dx,
-          constraints.maxWidth,
-        );
-      }
-    : null,
+                      onHorizontalDragUpdate: canRateEpisode
+                          ? (details) {
+                              _setRating(
+                                details.localPosition.dx,
+                                constraints.maxWidth,
+                              );
+                            }
+                          : null,
 
-onHorizontalDragEnd: canRateEpisode
-    ? (_) {
-        unawaited(_save());
-      }
-    : null,
+                      onHorizontalDragEnd: canRateEpisode
+                          ? (_) {
+                              unawaited(_save());
+                            }
+                          : null,
 
                       child: SizedBox(
                         height: 48,
@@ -34603,11 +32303,11 @@ onHorizontalDragEnd: canRateEpisode
                             return Expanded(
                               child: Center(
                                 child: _RatingEffectStar(
-  filled: currentStars >= starNumber,
-  pulseToken: _episodeRatingPulse,
-  size: 36,
-  enabled: canRateEpisode,
-),
+                                  filled: currentStars >= starNumber,
+                                  pulseToken: _episodeRatingPulse,
+                                  size: 36,
+                                  enabled: canRateEpisode,
+                                ),
                               ),
                             );
                           }),
@@ -34622,7 +32322,7 @@ onHorizontalDragEnd: canRateEpisode
                 const SizedBox(width: 5),
 
                 IconButton(
-                  tooltip: 'Remove rating',
+                  tooltip: trUi(context, 'Remove rating'),
                   onPressed: () {
                     unawaited(_removeRating());
                   },
@@ -34638,7 +32338,7 @@ onHorizontalDragEnd: canRateEpisode
 
           if (rating != null)
             Center(
-              child: Text(
+              child: UiText(
                 '${(rating! / 2).round()} / 5',
                 style: const TextStyle(
                   color: Color(0xFFFFC857),
@@ -34815,9 +32515,12 @@ class _ChipluxAverageRatingState extends State<_ChipluxAverageRating> {
             : '--/5';
 
         return Tooltip(
-          message: count == 1
-              ? 'Chiplux average · 1 rating'
-              : 'Chiplux average · $count ratings',
+          message: trUi(
+            context,
+            count == 1
+                ? 'Chiplux average · 1 rating'
+                : 'Chiplux average · $count ratings',
+          ),
 
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -34832,7 +32535,7 @@ class _ChipluxAverageRatingState extends State<_ChipluxAverageRating> {
 
               const SizedBox(width: 5),
 
-              Text(
+              UiText(
                 text,
 
                 style: const TextStyle(
@@ -35247,9 +32950,9 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
         );
       });
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Could not update favorite: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: UiText('Could not update favorite: $e')),
+      );
     }
   }
 
@@ -35311,8 +33014,9 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
         );
       });
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Could not remove rating: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: UiText('Could not remove rating: $e')));
     }
   }
 
@@ -35341,13 +33045,13 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Your rating and notes were saved.')),
+        const SnackBar(content: UiText('Your rating and notes were saved.')),
       );
     } catch (e) {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Could not save: $e')));
+          .showSnackBar(SnackBar(content: UiText('Could not save: $e')));
     } finally {
       if (mounted) {
         setState(() {
@@ -35538,16 +33242,19 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
           Row(
             children: [
               const Expanded(
-                child: Text(
+                child: UiText(
                   'Add to Favorites',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
               ),
 
               IconButton(
-                tooltip: mediaUserData.isFavorite
-                    ? 'Remove from favorites'
-                    : 'Add to favorites',
+                tooltip: trUi(
+                  context,
+                  mediaUserData.isFavorite
+                      ? 'Remove from favorites'
+                      : 'Add to favorites',
+                ),
                 onPressed: canRateOrFavorite || mediaUserData.isFavorite
                     ? toggleFavorite
                     : null,
@@ -35577,7 +33284,7 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
 
           const SizedBox(height: 18),
 
-          const Text(
+          const UiText(
             'Your Rating',
             style: TextStyle(fontWeight: FontWeight.w600),
           ),
@@ -35585,7 +33292,7 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
           if (!canRateOrFavorite) ...[
             const SizedBox(height: 5),
 
-            Text(
+            UiText(
               widget.mediaType == 'movie'
                   ? 'Mark this movie as Watched to rate or favorite it.'
                   : 'Start Watching or complete this show to rate or favorite it.',
@@ -35675,7 +33382,7 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
                 const SizedBox(width: 4),
 
                 IconButton(
-                  tooltip: 'Remove rating',
+                  tooltip: trUi(context, 'Remove rating'),
                   onPressed: () {
                     unawaited(_removeMediaRating());
                   },
@@ -35693,7 +33400,7 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
             const SizedBox(height: 4),
 
             Center(
-              child: Text(
+              child: UiText(
                 '${(mediaUserData.rating! / 2).round()} / 5',
                 style: const TextStyle(
                   color: chipluxCyan,
@@ -35722,7 +33429,7 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
     if (errorMessage != null || details == null) {
       return Scaffold(
         appBar: AppBar(),
-        body: Center(child: Text(errorMessage ?? 'Something went wrong')),
+        body: Center(child: UiText(errorMessage ?? 'Something went wrong')),
       );
     }
 
@@ -35732,7 +33439,8 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
 
     final title = data['title'] ?? data['name'] ?? 'Unknown';
 
-    final overview = data['overview'] ?? 'No description available.';
+    final overview =
+        data['overview'] ?? trUi(context, 'No description available.');
 
     final posterPath = data['poster_path'];
 
@@ -35755,32 +33463,34 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
         : '';
 
     // =========================
-// COUNTRY FLAG
-// =========================
+    // COUNTRY FLAG
+    // =========================
 
-String countryFlag = '';
+    String countryFlag = '';
 
-final productionCountries = data['production_countries'];
+    final productionCountries = data['production_countries'];
 
-if (productionCountries is List && productionCountries.isNotEmpty) {
-  final firstCountry = productionCountries.first;
+    if (productionCountries is List && productionCountries.isNotEmpty) {
+      final firstCountry = productionCountries.first;
 
-  if (firstCountry is Map) {
-    final code = firstCountry['iso_3166_1']?.toString() ?? '';
-    countryFlag = _flagEmojiFromCountryCode(code);
-  }
-}
+      if (firstCountry is Map) {
+        final code = firstCountry['iso_3166_1']?.toString() ?? '';
+        countryFlag = _flagEmojiFromCountryCode(code);
+      }
+    }
 
-// TV shows sometimes provide
-// origin_country even if
-// production_countries is empty.
-if (countryFlag.isEmpty && widget.mediaType == 'tv') {
-  final originCountries = data['origin_country'];
+    // TV shows sometimes provide
+    // origin_country even if
+    // production_countries is empty.
+    if (countryFlag.isEmpty && widget.mediaType == 'tv') {
+      final originCountries = data['origin_country'];
 
-  if (originCountries is List && originCountries.isNotEmpty) {
-    countryFlag = _flagEmojiFromCountryCode(originCountries.first.toString());
-  }
-}
+      if (originCountries is List && originCountries.isNotEmpty) {
+        countryFlag = _flagEmojiFromCountryCode(
+          originCountries.first.toString(),
+        );
+      }
+    }
 
     final String tagline = (data['tagline'] ?? '').toString().trim();
 
@@ -36022,14 +33732,14 @@ if (countryFlag.isEmpty && widget.mediaType == 'tv') {
 
                             const SizedBox(height: 8),
 
-                            Text(
+                            UiText(
                               [
-  if (year.isNotEmpty) year,
+                                if (year.isNotEmpty) year,
 
-  widget.mediaType == 'tv' ? 'TV Show' : 'Movie',
+                                widget.mediaType == 'tv' ? 'TV Show' : 'Movie',
 
-  if (countryFlag.isNotEmpty) countryFlag,
-].join('  •  '),
+                                if (countryFlag.isNotEmpty) countryFlag,
+                              ].join('  •  '),
 
                               style: const TextStyle(color: Colors.white60),
                             ),
@@ -36038,7 +33748,7 @@ if (countryFlag.isEmpty && widget.mediaType == 'tv') {
                                 tagline.isNotEmpty) ...[
                               const SizedBox(height: 8),
 
-                              Text(
+                              UiText(
                                 '"$tagline"',
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
@@ -36059,7 +33769,7 @@ if (countryFlag.isEmpty && widget.mediaType == 'tv') {
                                 runSpacing: 5,
                                 crossAxisAlignment: WrapCrossAlignment.center,
                                 children: [
-                                  Text(
+                                  UiText(
                                     showStatus,
                                     style: TextStyle(
                                       color: showStatusColor,
@@ -36068,7 +33778,7 @@ if (countryFlag.isEmpty && widget.mediaType == 'tv') {
                                     ),
                                   ),
 
-                                  const Text(
+                                  const UiText(
                                     '•',
                                     style: TextStyle(
                                       color: Colors.white38,
@@ -36076,7 +33786,7 @@ if (countryFlag.isEmpty && widget.mediaType == 'tv') {
                                     ),
                                   ),
 
-                                  Text(
+                                  UiText(
                                     '$seasonCount '
                                     '${seasonCount == 1 ? 'Season' : 'Seasons'}',
                                     style: const TextStyle(
@@ -36101,11 +33811,11 @@ if (countryFlag.isEmpty && widget.mediaType == 'tv') {
 
                                 const SizedBox(width: 5),
 
-                                Text('${rating.toStringAsFixed(1)} / 10'),
+                                UiText('${rating.toStringAsFixed(1)} / 10'),
 
                                 const SizedBox(width: 12),
 
-                                const Text(
+                                const UiText(
                                   '•',
                                   style: TextStyle(color: Colors.white30),
                                 ),
@@ -36134,7 +33844,7 @@ if (countryFlag.isEmpty && widget.mediaType == 'tv') {
                                     color: chipluxSurface,
                                     borderRadius: BorderRadius.circular(20),
                                   ),
-                                  child: Text(
+                                  child: UiText(
                                     genre['name'] ?? '',
                                     style: const TextStyle(fontSize: 11),
                                   ),
@@ -36248,7 +33958,7 @@ if (countryFlag.isEmpty && widget.mediaType == 'tv') {
 
                                   const SizedBox(height: 5),
 
-                                  Text(
+                                  UiText(
                                     label,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
@@ -36474,7 +34184,7 @@ if (countryFlag.isEmpty && widget.mediaType == 'tv') {
 
                   const SizedBox(height: 30),
 
-                  const Text(
+                  const UiText(
                     'Overview',
                     style: TextStyle(fontSize: 21, fontWeight: FontWeight.bold),
                   ),
@@ -36538,7 +34248,7 @@ if (countryFlag.isEmpty && widget.mediaType == 'tv') {
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Text(
+                                    UiText(
                                       _overviewExpanded
                                           ? 'View less'
                                           : 'View more',
@@ -36607,7 +34317,7 @@ if (countryFlag.isEmpty && widget.mediaType == 'tv') {
                   if (cast.isNotEmpty) ...[
                     const SizedBox(height: 28),
 
-                    const Text(
+                    const UiText(
                       'Top Billed Cast',
                       style: TextStyle(
                         fontSize: 21,
@@ -36665,7 +34375,7 @@ if (countryFlag.isEmpty && widget.mediaType == 'tv') {
                   if (widget.mediaType == 'tv' && seasons.isNotEmpty) ...[
                     const SizedBox(height: 35),
 
-                    const Text(
+                    const UiText(
                       'Seasons',
                       style: TextStyle(
                         fontSize: 21,
@@ -36680,7 +34390,8 @@ if (countryFlag.isEmpty && widget.mediaType == 'tv') {
                           .toInt();
 
                       final String seasonName =
-                          season['name'] ?? 'Season $seasonNumber';
+                          season['name'] ??
+                          trUi(context, 'Season $seasonNumber');
 
                       final String? seasonPosterPath = season['poster_path']
                           ?.toString();
@@ -36785,7 +34496,7 @@ if (countryFlag.isEmpty && widget.mediaType == 'tv') {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
+                                    UiText(
                                       '$watched / $episodeCount watched',
                                       style: TextStyle(
                                         color: showSeasonGreen
@@ -36821,9 +34532,12 @@ if (countryFlag.isEmpty && widget.mediaType == 'tv') {
                               ),
 
                               trailing: IconButton(
-                                tooltip: allWatched
-                                    ? 'Clear season'
-                                    : 'Mark season watched',
+                                tooltip: trUi(
+                                  context,
+                                  allWatched
+                                      ? 'Clear season'
+                                      : 'Mark season watched',
+                                ),
                                 onPressed: () async {
                                   if (!loadedEpisodes.containsKey(
                                     seasonNumber,
@@ -37051,7 +34765,7 @@ class _TopCastCard extends StatelessWidget {
               if (character.isNotEmpty) ...[
                 const SizedBox(height: 2),
 
-                Text(
+                UiText(
                   'As $character',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -37120,14 +34834,14 @@ class _CastViewMoreCard extends StatelessWidget {
 
                 const SizedBox(height: 8),
 
-                const Text(
+                const UiText(
                   'View more',
                   style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
                 ),
 
                 const SizedBox(height: 3),
 
-                Text(
+                UiText(
                   '+$remaining',
                   style: const TextStyle(color: Colors.white54, fontSize: 11),
                 ),
@@ -37153,7 +34867,7 @@ class FullCastPage extends StatelessWidget {
       backgroundColor: chipluxBackground,
       appBar: AppBar(
         backgroundColor: chipluxBackground,
-        title: const Text('Full Cast'),
+        title: const UiText('Full Cast'),
       ),
       body: ChipluxBackground(
         style: ChipluxBackgroundStyle.discover,
@@ -37408,7 +35122,7 @@ class _CreatorChip extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      UiText(
                         role.toUpperCase(),
                         style: const TextStyle(
                           color: chipluxCyan,
@@ -37483,55 +35197,38 @@ class _PersonProjectsPageState extends State<PersonProjectsPage> {
 
   Future<void> _load() async {
     try {
-      final result =
-          await tmdb.getPersonCombinedCredits(
-        widget.personId,
-      );
+      final result = await tmdb.getPersonCombinedCredits(widget.personId);
 
-      final bool isActor =
-          widget.role == 'Actor';
+      final bool isActor = widget.role == 'Actor';
 
-      final bool showAll =
-          widget.role == 'All';
+      final bool showAll = widget.role == 'All';
 
-      final List<dynamic> castCredits =
-          List<dynamic>.from(
+      final List<dynamic> castCredits = List<dynamic>.from(
         result['cast'] ?? const [],
       );
 
-      final List<dynamic> crewCredits =
-          List<dynamic>.from(
+      final List<dynamic> crewCredits = List<dynamic>.from(
         result['crew'] ?? const [],
       );
 
-      final List<dynamic> rawCredits =
-          isActor
-              ? castCredits
-              : showAll
-                  ? [
-                      ...castCredits,
-                      ...crewCredits,
-                    ]
-                  : crewCredits;
+      final List<dynamic> rawCredits = isActor
+          ? castCredits
+          : showAll
+          ? [...castCredits, ...crewCredits]
+          : crewCredits;
 
-      final allCredits =
-          <Map<String, dynamic>>[];
+      final allCredits = <Map<String, dynamic>>[];
 
       for (final raw in rawCredits) {
         if (raw is! Map) {
           continue;
         }
 
-        final item =
-            Map<String, dynamic>.from(
-          raw,
-        );
+        final item = Map<String, dynamic>.from(raw);
 
-        final mediaType =
-            item['media_type'];
+        final mediaType = item['media_type'];
 
-        if (mediaType != 'movie' &&
-            mediaType != 'tv') {
+        if (mediaType != 'movie' && mediaType != 'tv') {
           continue;
         }
 
@@ -37542,31 +35239,16 @@ class _PersonProjectsPageState extends State<PersonProjectsPage> {
 
       if (isActor || showAll) {
         filtered = allCredits;
-      } else if (
-          widget.role == 'Director') {
-        filtered = allCredits.where(
-          (item) {
-            return item['job']
-                    ?.toString() ==
-                'Director';
-          },
-        ).toList();
-      } else if (
-          widget.role.contains(
-        'Producer',
-      )) {
-        filtered = allCredits.where(
-          (item) {
-            final job =
-                item['job']
-                    ?.toString() ??
-                '';
+      } else if (widget.role == 'Director') {
+        filtered = allCredits.where((item) {
+          return item['job']?.toString() == 'Director';
+        }).toList();
+      } else if (widget.role.contains('Producer')) {
+        filtered = allCredits.where((item) {
+          final job = item['job']?.toString() ?? '';
 
-            return job.contains(
-              'Producer',
-            );
-          },
-        ).toList();
+          return job.contains('Producer');
+        }).toList();
       } else {
         filtered = allCredits;
       }
@@ -37581,43 +35263,29 @@ class _PersonProjectsPageState extends State<PersonProjectsPage> {
       // Remove duplicate projects.
       final seen = <String>{};
 
-      filtered = filtered.where(
-        (item) {
-          final rawId = item['id'];
+      filtered = filtered.where((item) {
+        final rawId = item['id'];
 
-          final mediaType =
-              item['media_type']
-                  ?.toString();
+        final mediaType = item['media_type']?.toString();
 
-          if (rawId is! num ||
-              mediaType == null) {
-            return false;
-          }
+        if (rawId is! num || mediaType == null) {
+          return false;
+        }
 
-          final key =
-              '$mediaType:${rawId.toInt()}';
+        final key = '$mediaType:${rawId.toInt()}';
 
-          return seen.add(key);
-        },
-      ).toList();
+        return seen.add(key);
+      }).toList();
 
       // Newest projects first.
       filtered.sort((a, b) {
-        final aDate =
-            (a['release_date'] ??
-                    a['first_air_date'] ??
-                    '')
-                .toString();
+        final aDate = (a['release_date'] ?? a['first_air_date'] ?? '')
+            .toString();
 
-        final bDate =
-            (b['release_date'] ??
-                    b['first_air_date'] ??
-                    '')
-                .toString();
+        final bDate = (b['release_date'] ?? b['first_air_date'] ?? '')
+            .toString();
 
-        return bDate.compareTo(
-          aDate,
-        );
+        return bDate.compareTo(aDate);
       });
 
       if (!mounted) {
@@ -37635,8 +35303,7 @@ class _PersonProjectsPageState extends State<PersonProjectsPage> {
 
       setState(() {
         loading = false;
-        error =
-            'Could not load projects.';
+        error = 'Could not load projects.';
       });
     }
   }
@@ -37652,7 +35319,7 @@ class _PersonProjectsPageState extends State<PersonProjectsPage> {
       backgroundColor: chipluxBackground,
       appBar: AppBar(
         backgroundColor: chipluxBackground,
-        title: const Text('Projects'),
+        title: const UiText('Projects'),
       ),
       body: ChipluxBackground(
         style: ChipluxBackgroundStyle.discover,
@@ -37710,7 +35377,7 @@ class _PersonProjectsPageState extends State<PersonProjectsPage> {
 
                         const SizedBox(height: 4),
 
-                        Text(
+                        UiText(
                           widget.role,
                           style: const TextStyle(
                             color: chipluxCyan,
@@ -37723,7 +35390,7 @@ class _PersonProjectsPageState extends State<PersonProjectsPage> {
                   ),
 
                   if (!loading)
-                    Text(
+                    UiText(
                       '${projects.length}',
                       style: const TextStyle(
                         color: Colors.white54,
@@ -37739,14 +35406,14 @@ class _PersonProjectsPageState extends State<PersonProjectsPage> {
                   ? const Center(child: CircularProgressIndicator())
                   : error != null
                   ? Center(
-                      child: Text(
+                      child: UiText(
                         error!,
                         style: const TextStyle(color: Colors.redAccent),
                       ),
                     )
                   : projects.isEmpty
                   ? const Center(
-                      child: Text(
+                      child: UiText(
                         'No projects found.',
                         style: TextStyle(color: Colors.white54),
                       ),
@@ -37874,7 +35541,7 @@ class _PersonProjectCard extends StatelessWidget {
                     if (character.isNotEmpty) ...[
                       const SizedBox(height: 4),
 
-                      Text(
+                      UiText(
                         'as $character',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -37890,7 +35557,7 @@ class _PersonProjectCard extends StatelessWidget {
 
                     Row(
                       children: [
-                        Text(
+                        UiText(
                           mediaType == 'tv' ? 'TV Show' : 'Movie',
                           style: const TextStyle(
                             color: chipluxCyan,
@@ -37900,7 +35567,7 @@ class _PersonProjectCard extends StatelessWidget {
                         ),
 
                         if (year.isNotEmpty) ...[
-                          const Text(
+                          const UiText(
                             '  •  ',
                             style: TextStyle(color: Colors.white30),
                           ),
@@ -37915,7 +35582,7 @@ class _PersonProjectCard extends StatelessWidget {
                         ],
 
                         if (rating > 0) ...[
-                          const Text(
+                          const UiText(
                             '  •  ',
                             style: TextStyle(color: Colors.white30),
                           ),
@@ -38098,7 +35765,7 @@ class _EpisodeTile extends StatelessWidget {
 
                                   const SizedBox(width: 4),
 
-                                  Text(
+                                  UiText(
                                     '${runtime}m',
                                     style: const TextStyle(
                                       fontSize: 12,
@@ -38112,7 +35779,7 @@ class _EpisodeTile extends StatelessWidget {
                                     padding: EdgeInsets.symmetric(
                                       horizontal: 8,
                                     ),
-                                    child: Text(
+                                    child: UiText(
                                       '•',
                                       style: TextStyle(color: Colors.white38),
                                     ),
@@ -38127,7 +35794,7 @@ class _EpisodeTile extends StatelessWidget {
 
                                   const SizedBox(width: 4),
 
-                                  Text(
+                                  UiText(
                                     '${rating!.toStringAsFixed(1)}/10',
                                     style: const TextStyle(
                                       fontSize: 12,
@@ -38829,7 +36496,7 @@ class EpisodeInfoPage extends StatelessWidget {
 
                               const SizedBox(width: 2),
 
-                              Text(
+                              UiText(
                                 'Previous episode',
                                 style: TextStyle(
                                   color: hasPreviousEpisode
@@ -38860,7 +36527,7 @@ class EpisodeInfoPage extends StatelessWidget {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(
+                              UiText(
                                 'Next episode',
                                 style: TextStyle(
                                   color: hasNextEpisode
@@ -39074,7 +36741,7 @@ class EpisodeInfoPage extends StatelessWidget {
                   icon: Icon(
                     watched ? Icons.check_circle : Icons.radio_button_unchecked,
                   ),
-                  label: Text(watched ? 'Watched' : 'Mark as Watched'),
+                  label: UiText(watched ? 'Watched' : 'Mark as Watched'),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     backgroundColor: watched
@@ -39173,7 +36840,7 @@ class EpisodeInfoPage extends StatelessWidget {
               if (overview.trim().isNotEmpty) ...[
                 const SizedBox(height: 30),
 
-                const Text(
+                const UiText(
                   'Overview',
                   style: TextStyle(fontSize: 21, fontWeight: FontWeight.bold),
                 ),
@@ -39232,7 +36899,10 @@ class _EpisodeInfoMeta extends StatelessWidget {
 
         const SizedBox(width: 5),
 
-        Text(text, style: const TextStyle(color: Colors.white60, fontSize: 14)),
+        UiText(
+          text,
+          style: const TextStyle(color: Colors.white60, fontSize: 14),
+        ),
       ],
     );
   }

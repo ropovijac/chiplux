@@ -7,11 +7,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class PushNotificationService {
   PushNotificationService._();
 
-  static final PushNotificationService instance =
-      PushNotificationService._();
+  static final PushNotificationService instance = PushNotificationService._();
 
-  final FirebaseMessaging _messaging =
-      FirebaseMessaging.instance;
+  final FirebaseMessaging _messaging = FirebaseMessaging.instance;
 
   StreamSubscription<String>? _tokenSubscription;
 
@@ -22,10 +20,8 @@ class PushNotificationService {
       return false;
     }
 
-    return defaultTargetPlatform ==
-            TargetPlatform.android ||
-        defaultTargetPlatform ==
-            TargetPlatform.iOS;
+    return defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS;
   }
 
   String get _platformName {
@@ -42,39 +38,27 @@ class PushNotificationService {
   }
 
   Future<void> initialize() async {
-    if (_initialized ||
-        !_supportedPlatform) {
+    if (_initialized || !_supportedPlatform) {
       return;
     }
 
     _initialized = true;
 
     try {
-      await _messaging.requestPermission(
-        alert: true,
-        badge: true,
-        sound: true,
-      );
+      await _messaging.requestPermission(alert: true, badge: true, sound: true);
 
-      _tokenSubscription =
-          _messaging.onTokenRefresh.listen(
+      _tokenSubscription = _messaging.onTokenRefresh.listen(
         (token) {
-          unawaited(
-            _saveToken(token),
-          );
+          unawaited(_saveToken(token));
         },
         onError: (error) {
-          debugPrint(
-            'FCM token refresh error: $error',
-          );
+          debugPrint('FCM token refresh error: $error');
         },
       );
 
       await registerCurrentToken();
     } catch (e) {
-      debugPrint(
-        'Could not initialize push notifications: $e',
-      );
+      debugPrint('Could not initialize push notifications: $e');
     }
   }
 
@@ -83,64 +67,43 @@ class PushNotificationService {
       return;
     }
 
-    final user =
-        Supabase.instance.client.auth.currentUser;
+    final user = Supabase.instance.client.auth.currentUser;
 
-        debugPrint(
-  'Push registration user: ${user?.id}',
-);
+    debugPrint('Push registration user: ${user?.id}');
 
     if (user == null) {
       return;
     }
 
     try {
-      final token =
-          await _messaging.getToken();
+      final token = await _messaging.getToken();
 
-          debugPrint(
-  'Push token available: ${token != null}',
-);
+      debugPrint('Push token available: ${token != null}');
 
-      if (token == null ||
-          token.trim().isEmpty) {
-        debugPrint(
-          'FCM token is not available.',
-        );
+      if (token == null || token.trim().isEmpty) {
+        debugPrint('FCM token is not available.');
 
         return;
       }
 
       await _saveToken(token);
 
-      debugPrint(
-        'Push device registered.',
-      );
+      debugPrint('Push device registered.');
     } catch (e) {
-      debugPrint(
-        'Could not register push token: $e',
-      );
+      debugPrint('Could not register push token: $e');
     }
   }
 
-  Future<void> _saveToken(
-    String token,
-  ) async {
-    final user =
-        Supabase.instance.client.auth.currentUser;
+  Future<void> _saveToken(String token) async {
+    final user = Supabase.instance.client.auth.currentUser;
 
-    if (user == null ||
-        token.trim().isEmpty) {
+    if (user == null || token.trim().isEmpty) {
       return;
     }
 
     await Supabase.instance.client.rpc(
       'register_push_token',
-      params: {
-        'p_token': token,
-        'p_platform':
-            _platformName,
-      },
+      params: {'p_token': token, 'p_platform': _platformName},
     );
   }
 
@@ -149,32 +112,25 @@ class PushNotificationService {
       return;
     }
 
-    final user =
-        Supabase.instance.client.auth.currentUser;
+    final user = Supabase.instance.client.auth.currentUser;
 
     if (user == null) {
       return;
     }
 
     try {
-      final token =
-          await _messaging.getToken();
+      final token = await _messaging.getToken();
 
-      if (token == null ||
-          token.trim().isEmpty) {
+      if (token == null || token.trim().isEmpty) {
         return;
       }
 
       await Supabase.instance.client.rpc(
         'unregister_push_token',
-        params: {
-          'p_token': token,
-        },
+        params: {'p_token': token},
       );
     } catch (e) {
-      debugPrint(
-        'Could not unregister push token: $e',
-      );
+      debugPrint('Could not unregister push token: $e');
     }
   }
 

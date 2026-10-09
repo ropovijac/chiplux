@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+
+import 'l10n/generated/app_localizations.dart';
+import 'l10n/ui_translations.dart';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'services/feature_suggestion_service.dart';
@@ -54,7 +58,7 @@ class _AdminModerationPageState extends State<AdminModerationPage>
       if (mounted) {
         setState(() {
           loading = false;
-          errorMessage = 'Developer access required.';
+          errorMessage = AppLocalizations.of(context).developerAccessRequired;
         });
       }
       return;
@@ -158,12 +162,7 @@ class _AdminModerationPageState extends State<AdminModerationPage>
           ..addEntries(
             loadedProfiles
                 .where((profile) => profile['id'] != null)
-                .map(
-                  (profile) => MapEntry(
-                    profile['id'].toString(),
-                    profile,
-                  ),
-                ),
+                .map((profile) => MapEntry(profile['id'].toString(), profile)),
           );
 
         comments
@@ -171,12 +170,7 @@ class _AdminModerationPageState extends State<AdminModerationPage>
           ..addEntries(
             loadedComments
                 .where((comment) => comment['id'] != null)
-                .map(
-                  (comment) => MapEntry(
-                    comment['id'].toString(),
-                    comment,
-                  ),
-                ),
+                .map((comment) => MapEntry(comment['id'].toString(), comment)),
           );
 
         loading = false;
@@ -187,7 +181,8 @@ class _AdminModerationPageState extends State<AdminModerationPage>
 
       setState(() {
         loading = false;
-        errorMessage = 'Could not load moderation reports: $e';
+        errorMessage = AppLocalizations.of(context)
+            .couldNotLoadModeration(e.toString());
       });
     }
   }
@@ -232,7 +227,7 @@ class _AdminModerationPageState extends State<AdminModerationPage>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: _adminSurfaceLight,
-          content: Text('Could not update report: $e'),
+          content: UiText('Could not update report: $e'),
         ),
       );
     }
@@ -249,24 +244,24 @@ class _AdminModerationPageState extends State<AdminModerationPage>
           backgroundColor: _adminSurface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(22),
-            side: BorderSide(
-              color: _adminCyan.withValues(alpha: 0.28),
-            ),
+            side: BorderSide(color: _adminCyan.withValues(alpha: 0.28)),
           ),
-          title: _dialogGradientTitle('Resolve this bug?'),
-          content: const Text(
+          title: _dialogGradientTitle(
+            AppLocalizations.of(context).resolveBugQuestion,
+          ),
+          content: const UiText(
             'This will mark the bug as solved and remove it from the active Bugs queue.',
             style: TextStyle(color: Colors.white70, height: 1.4),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancel'),
+              child: const UiText('Cancel'),
             ),
             FilledButton.icon(
               onPressed: () => Navigator.pop(dialogContext, true),
               icon: const Icon(Icons.check_circle_outline_rounded),
-              label: const Text('Resolve'),
+              label: const UiText('Resolve'),
             ),
           ],
         );
@@ -289,23 +284,23 @@ class _AdminModerationPageState extends State<AdminModerationPage>
           backgroundColor: _adminSurface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(22),
-            side: BorderSide(
-              color: _adminRed.withValues(alpha: 0.28),
-            ),
+            side: BorderSide(color: _adminRed.withValues(alpha: 0.28)),
           ),
-          title: _dialogGradientTitle('Delete reported comment?'),
-          content: const Text(
+          title: _dialogGradientTitle(
+            AppLocalizations.of(context).deleteReportedComment,
+          ),
+          content: const UiText(
             'This permanently removes the comment.',
             style: TextStyle(color: Colors.white70),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancel'),
+              child: const UiText('Cancel'),
             ),
             TextButton(
               onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text(
+              child: const UiText(
                 'Delete',
                 style: TextStyle(color: Colors.redAccent),
               ),
@@ -350,11 +345,9 @@ class _AdminModerationPageState extends State<AdminModerationPage>
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _dialogGradientTitle(
-                  'Set ${_suggestionStatusLabel(status)}',
-                ),
+                _dialogGradientTitle('Set ${_suggestionStatusLabel(status)}'),
                 const SizedBox(height: 7),
-                const Text(
+                const UiText(
                   'You can add an optional developer note. It will appear publicly on the Feature Board.',
                   style: TextStyle(
                     color: Colors.white54,
@@ -370,9 +363,11 @@ class _AdminModerationPageState extends State<AdminModerationPage>
                   maxLength: 2000,
                   textCapitalization: TextCapitalization.sentences,
                   decoration: InputDecoration(
-                    hintText: status == 'rejected'
-                        ? 'Why is this suggestion being rejected?'
-                        : 'Optional Chiplux update...',
+                    hint: UiText(
+                      status == 'rejected'
+                          ? 'Why is this suggestion being rejected?'
+                          : 'Optional Chiplux update...',
+                    ),
                     filled: true,
                     fillColor: _adminSurfaceLight,
                     border: OutlineInputBorder(
@@ -402,12 +397,9 @@ class _AdminModerationPageState extends State<AdminModerationPage>
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                     onPressed: () {
-                      Navigator.pop(
-                        sheetContext,
-                        noteController.text.trim(),
-                      );
+                      Navigator.pop(sheetContext, noteController.text.trim());
                     },
-                    child: Text(
+                    child: UiText(
                       'Publish as ${_suggestionStatusLabel(status)}',
                       style: const TextStyle(fontWeight: FontWeight.w800),
                     ),
@@ -438,7 +430,7 @@ class _AdminModerationPageState extends State<AdminModerationPage>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: _adminSurfaceLight,
-          content: Text('Could not update feature suggestion: $e'),
+          content: UiText('Could not update feature suggestion: $e'),
         ),
       );
     }
@@ -455,23 +447,23 @@ class _AdminModerationPageState extends State<AdminModerationPage>
           backgroundColor: _adminSurface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(22),
-            side: BorderSide(
-              color: Colors.white.withValues(alpha: 0.10),
-            ),
+            side: BorderSide(color: Colors.white.withValues(alpha: 0.10)),
           ),
-          title: _dialogGradientTitle('Ignore suggestion?'),
-          content: const Text(
+          title: _dialogGradientTitle(
+            AppLocalizations.of(context).ignoreSuggestionQuestion,
+          ),
+          content: const UiText(
             'This suggestion will not appear on the Feature Board and will be permanently deleted. The user will still keep their 30-day submission cooldown.',
             style: TextStyle(color: Colors.white70, height: 1.45),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancel'),
+              child: const UiText('Cancel'),
             ),
             TextButton(
               onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text(
+              child: const UiText(
                 'Ignore & Delete',
                 style: TextStyle(color: Colors.white54),
               ),
@@ -492,7 +484,7 @@ class _AdminModerationPageState extends State<AdminModerationPage>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: _adminSurfaceLight,
-          content: Text('Could not ignore suggestion: $e'),
+          content: UiText('Could not ignore suggestion: $e'),
         ),
       );
     }
@@ -526,7 +518,7 @@ class _AdminModerationPageState extends State<AdminModerationPage>
               children: [
                 _dialogGradientTitle('Add Chiplux update'),
                 const SizedBox(height: 7),
-                const Text(
+                const UiText(
                   'Only developer updates can appear below Feature Board posts.',
                   style: TextStyle(color: Colors.white54, fontSize: 12),
                 ),
@@ -538,7 +530,7 @@ class _AdminModerationPageState extends State<AdminModerationPage>
                   maxLines: 8,
                   maxLength: 2000,
                   decoration: InputDecoration(
-                    hintText: 'Write a progress update...',
+                    hint: const UiText('Write a progress update...'),
                     filled: true,
                     fillColor: _adminSurfaceLight,
                     border: OutlineInputBorder(
@@ -558,7 +550,7 @@ class _AdminModerationPageState extends State<AdminModerationPage>
                       }
                     },
                     icon: const Icon(Icons.campaign_rounded),
-                    label: const Text('Publish Update'),
+                    label: const UiText('Publish Update'),
                   ),
                 ),
               ],
@@ -573,17 +565,14 @@ class _AdminModerationPageState extends State<AdminModerationPage>
     if (body == null || body.isEmpty) return;
 
     try {
-      await featureService.addDeveloperUpdate(
-        featureId: id,
-        body: body,
-      );
+      await featureService.addDeveloperUpdate(featureId: id, body: body);
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           backgroundColor: _adminSurfaceLight,
-          content: Text('Feature Board update published.'),
+          content: UiText('Feature Board update published.'),
         ),
       );
     } catch (e) {
@@ -592,32 +581,28 @@ class _AdminModerationPageState extends State<AdminModerationPage>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: _adminSurfaceLight,
-          content: Text('Could not publish update: $e'),
+          content: UiText('Could not publish update: $e'),
         ),
       );
     }
   }
 
-  Widget _actions(
-    String table,
-    Object id, {
-    VoidCallback? deleteComment,
-  }) {
+  Widget _actions(String table, Object id, {VoidCallback? deleteComment}) {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children: [
         OutlinedButton(
           onPressed: () => _status(table, id, 'reviewing'),
-          child: const Text('Reviewing'),
+          child: const UiText('Reviewing'),
         ),
         OutlinedButton(
           onPressed: () => _status(table, id, 'dismissed'),
-          child: const Text('Dismiss'),
+          child: const UiText('Dismiss'),
         ),
         FilledButton(
           onPressed: () => _status(table, id, 'resolved'),
-          child: const Text('Resolve'),
+          child: const UiText('Resolve'),
         ),
         if (deleteComment != null)
           TextButton.icon(
@@ -626,7 +611,7 @@ class _AdminModerationPageState extends State<AdminModerationPage>
               Icons.delete_outline_rounded,
               color: Colors.redAccent,
             ),
-            label: const Text(
+            label: const UiText(
               'Delete comment',
               style: TextStyle(color: Colors.redAccent),
             ),
@@ -641,7 +626,7 @@ class _AdminModerationPageState extends State<AdminModerationPage>
       child: FilledButton.icon(
         onPressed: () => _resolveBug(report),
         icon: const Icon(Icons.check_circle_outline_rounded),
-        label: const Text('Resolve'),
+        label: const UiText('Resolve'),
         style: FilledButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 13),
           backgroundColor: _adminCyan,
@@ -688,7 +673,7 @@ class _AdminModerationPageState extends State<AdminModerationPage>
           children: [
             Row(
               children: [
-                Text(
+                UiText(
                   header,
                   style: const TextStyle(
                     color: _adminCyan,
@@ -704,10 +689,7 @@ class _AdminModerationPageState extends State<AdminModerationPage>
             const SizedBox(height: 12),
             Text(
               title,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 3),
             Text(
@@ -738,7 +720,7 @@ class _AdminModerationPageState extends State<AdminModerationPage>
   Widget _user(Map<String, dynamic> report) {
     final id = report['id'];
     final status = report['status']?.toString() ?? 'open';
-    final reason = report['reason']?.toString() ?? 'No reason';
+    final reason = report['reason']?.toString() ?? trUi(context, 'No reason');
     final details = report['details']?.toString().trim() ?? '';
 
     return _card(
@@ -763,7 +745,8 @@ class _AdminModerationPageState extends State<AdminModerationPage>
       status,
       _who(comment?['user_id']?.toString()),
       'Reported by ${_who(report['reporter_id']?.toString())}',
-      comment?['body']?.toString() ?? 'Comment no longer exists.',
+      comment?['body']?.toString() ??
+          trUi(context, 'Comment no longer exists.'),
       _actions(
         'comment_reports',
         id,
@@ -785,7 +768,8 @@ class _AdminModerationPageState extends State<AdminModerationPage>
 
   Widget _suggestion(Map<String, dynamic> suggestion) {
     final status = suggestion['status']?.toString() ?? 'pending';
-    final title = suggestion['title']?.toString() ?? 'Untitled suggestion';
+    final title =
+        suggestion['title']?.toString() ?? trUi(context, 'Untitled suggestion');
     final description = suggestion['description']?.toString() ?? '';
     final requestedAttribution = suggestion['public_attribution'] != false;
 
@@ -819,7 +803,7 @@ class _AdminModerationPageState extends State<AdminModerationPage>
                   size: 19,
                 ),
                 const SizedBox(width: 8),
-                const Text(
+                const UiText(
                   'FEATURE SUGGESTION',
                   style: TextStyle(
                     color: _adminCyan,
@@ -835,10 +819,7 @@ class _AdminModerationPageState extends State<AdminModerationPage>
             const SizedBox(height: 14),
             Text(
               title,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-              ),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 5),
             Text(
@@ -870,14 +851,11 @@ class _AdminModerationPageState extends State<AdminModerationPage>
                 ),
                 const SizedBox(width: 7),
                 Expanded(
-                  child: Text(
+                  child: UiText(
                     requestedAttribution
                         ? 'User requested public credit if published.'
                         : 'Publish without user attribution.',
-                    style: const TextStyle(
-                      color: Colors.white54,
-                      fontSize: 11,
-                    ),
+                    style: const TextStyle(color: Colors.white54, fontSize: 11),
                   ),
                 ),
               ],
@@ -898,9 +876,11 @@ class _AdminModerationPageState extends State<AdminModerationPage>
       final color = _statusColor(value);
 
       return OutlinedButton.icon(
-        onPressed: current ? null : () => _setSuggestionStatus(suggestion, value),
+        onPressed: current
+            ? null
+            : () => _setSuggestionStatus(suggestion, value),
         icon: Icon(icon, size: 17),
-        label: Text(text),
+        label: UiText(text),
         style: OutlinedButton.styleFrom(
           foregroundColor: color,
           side: BorderSide(color: color.withValues(alpha: 0.55)),
@@ -924,21 +904,13 @@ class _AdminModerationPageState extends State<AdminModerationPage>
               'In Progress',
               Icons.construction_rounded,
             ),
-            stateButton(
-              'implemented',
-              'Implemented',
-              Icons.task_alt_rounded,
-            ),
-            stateButton(
-              'rejected',
-              'Rejected',
-              Icons.close_rounded,
-            ),
+            stateButton('implemented', 'Implemented', Icons.task_alt_rounded),
+            stateButton('rejected', 'Rejected', Icons.close_rounded),
             if (status == 'pending')
               TextButton.icon(
                 onPressed: () => _ignoreSuggestion(suggestion),
                 icon: const Icon(Icons.visibility_off_outlined, size: 17),
-                label: const Text('Ignore'),
+                label: const UiText('Ignore'),
                 style: TextButton.styleFrom(foregroundColor: Colors.white54),
               ),
           ],
@@ -950,7 +922,7 @@ class _AdminModerationPageState extends State<AdminModerationPage>
             child: FilledButton.icon(
               onPressed: () => _addSuggestionUpdate(suggestion),
               icon: const Icon(Icons.campaign_outlined),
-              label: const Text('Add Developer Update'),
+              label: const UiText('Add Developer Update'),
               style: FilledButton.styleFrom(
                 backgroundColor: _adminViolet.withValues(alpha: 0.15),
                 foregroundColor: _adminViolet,
@@ -978,7 +950,7 @@ class _AdminModerationPageState extends State<AdminModerationPage>
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
-          child: Text(errorMessage!, textAlign: TextAlign.center),
+          child: UiText(errorMessage!, textAlign: TextAlign.center),
         ),
       );
     }
@@ -991,7 +963,7 @@ class _AdminModerationPageState extends State<AdminModerationPage>
           children: const [
             SizedBox(height: 160),
             Center(
-              child: Text(
+              child: UiText(
                 'No reports.',
                 style: TextStyle(color: Colors.white54),
               ),
@@ -1020,7 +992,7 @@ class _AdminModerationPageState extends State<AdminModerationPage>
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
-          child: Text(errorMessage!, textAlign: TextAlign.center),
+          child: UiText(errorMessage!, textAlign: TextAlign.center),
         ),
       );
     }
@@ -1061,7 +1033,7 @@ class _AdminModerationPageState extends State<AdminModerationPage>
                       ),
                       const SizedBox(height: 10),
                       Center(
-                        child: Text(
+                        child: UiText(
                           'No ${_suggestionStatusLabel(suggestionFilter).toLowerCase()} suggestions.',
                           style: const TextStyle(color: Colors.white54),
                         ),
@@ -1071,7 +1043,8 @@ class _AdminModerationPageState extends State<AdminModerationPage>
                 : ListView.builder(
                     physics: const AlwaysScrollableScrollPhysics(),
                     itemCount: filtered.length,
-                    itemBuilder: (context, index) => _suggestion(filtered[index]),
+                    itemBuilder: (context, index) =>
+                        _suggestion(filtered[index]),
                   ),
           ),
         ),
@@ -1112,7 +1085,7 @@ class _AdminModerationPageState extends State<AdminModerationPage>
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
+            UiText(
               label,
               style: TextStyle(
                 color: selected ? Colors.white : Colors.white70,
@@ -1127,7 +1100,7 @@ class _AdminModerationPageState extends State<AdminModerationPage>
                 color: Colors.black.withValues(alpha: selected ? 0.20 : 0.16),
                 borderRadius: BorderRadius.circular(99),
               ),
-              child: Text(
+              child: UiText(
                 '$count',
                 style: const TextStyle(
                   color: Colors.white70,
@@ -1152,7 +1125,7 @@ class _AdminModerationPageState extends State<AdminModerationPage>
         borderRadius: BorderRadius.circular(99),
         border: Border.all(color: color.withValues(alpha: 0.28)),
       ),
-      child: Text(
+      child: UiText(
         _suggestionStatusLabel(status).toUpperCase(),
         style: TextStyle(
           color: color,
@@ -1200,7 +1173,7 @@ class _AdminModerationPageState extends State<AdminModerationPage>
           colors: [_adminCyan, _adminViolet, _adminPurple],
         ).createShader(bounds);
       },
-      child: Text(
+      child: UiText(
         text,
         style: const TextStyle(
           color: Colors.white,
@@ -1219,7 +1192,7 @@ class _AdminModerationPageState extends State<AdminModerationPage>
           colors: [_adminCyan, _adminViolet, _adminPurple],
         ).createShader(bounds);
       },
-      child: Text(
+      child: UiText(
         text,
         style: const TextStyle(
           fontSize: 28,
@@ -1235,16 +1208,13 @@ class _AdminModerationPageState extends State<AdminModerationPage>
     if (!_allowed) {
       return const Scaffold(
         backgroundColor: _adminBackground,
-        body: Center(child: Text('Developer access required.')),
+        body: Center(child: UiText('Developer access required.')),
       );
     }
 
     return Scaffold(
       backgroundColor: _adminBackground,
-      appBar: AppBar(
-        backgroundColor: _adminBackground,
-        elevation: 0,
-      ),
+      appBar: AppBar(backgroundColor: _adminBackground, elevation: 0),
       body: Column(
         children: [
           Padding(
@@ -1254,7 +1224,7 @@ class _AdminModerationPageState extends State<AdminModerationPage>
               children: [
                 _gradientTitle('Admin Moderation'),
                 const SizedBox(height: 5),
-                const Text(
+                const UiText(
                   'Review reports, resolve bugs and decide which community feature ideas become public.',
                   style: TextStyle(
                     color: Colors.white54,
@@ -1290,19 +1260,19 @@ class _AdminModerationPageState extends State<AdminModerationPage>
                     tabs: const [
                       Tab(
                         icon: Icon(Icons.person_outline_rounded, size: 18),
-                        text: 'Users',
+                        child: UiText('Users'),
                       ),
                       Tab(
                         icon: Icon(Icons.forum_outlined, size: 18),
-                        text: 'Comments',
+                        child: UiText('Comments'),
                       ),
                       Tab(
                         icon: Icon(Icons.bug_report_outlined, size: 18),
-                        text: 'Bugs',
+                        child: UiText('Bugs'),
                       ),
                       Tab(
                         icon: Icon(Icons.lightbulb_outline_rounded, size: 18),
-                        text: 'Suggestions',
+                        child: UiText('Suggestions'),
                       ),
                     ],
                   ),

@@ -9,11 +9,11 @@ class ProfileService extends ChangeNotifier {
   SupabaseClient get client => Supabase.instance.client;
 
   String displayName = '';
-String username = '';
-String? avatarUrl;
+  String username = '';
+  String? avatarUrl;
 
-bool isDeveloper = false;
-bool followedDeveloperAchievement = false;
+  bool isDeveloper = false;
+  bool followedDeveloperAchievement = false;
 
   int? bannerTmdbId;
   String? bannerMediaType;
@@ -35,9 +35,9 @@ bool followedDeveloperAchievement = false;
     final user = client.auth.currentUser;
 
     if (user == null) {
-  clear();
-  return;
-}
+      clear();
+      return;
+    }
 
     isLoading = true;
     notifyListeners();
@@ -59,12 +59,10 @@ bool followedDeveloperAchievement = false;
 
       avatarUrl = data?['avatar_url']?.toString();
 
-      isDeveloper =
-    data?['is_developer'] == true;
+      isDeveloper = data?['is_developer'] == true;
 
-    followedDeveloperAchievement =
-    data?['followed_developer_achievement'] ==
-        true;
+      followedDeveloperAchievement =
+          data?['followed_developer_achievement'] == true;
 
       final rawBannerId = data?['banner_tmdb_id'];
 
@@ -177,77 +175,59 @@ bool followedDeveloperAchievement = false;
         .eq('id', user.id);
   }
 
-  Future<bool>
-    claimFollowDeveloperAchievement() async {
-  final user =
-      client.auth.currentUser;
+  Future<bool> claimFollowDeveloperAchievement() async {
+    final user = client.auth.currentUser;
 
-  if (user == null) {
-    return false;
+    if (user == null) {
+      return false;
+    }
+
+    if (isDeveloper || followedDeveloperAchievement) {
+      return false;
+    }
+
+    await client
+        .from('profiles')
+        .update({'followed_developer_achievement': true})
+        .eq('id', user.id);
+
+    final data = await client
+        .from('profiles')
+        .select('followed_developer_achievement')
+        .eq('id', user.id)
+        .maybeSingle();
+
+    final unlocked = data?['followed_developer_achievement'] == true;
+
+    if (!unlocked) {
+      return false;
+    }
+
+    followedDeveloperAchievement = true;
+
+    notifyListeners();
+
+    return true;
   }
-
-  if (isDeveloper ||
-      followedDeveloperAchievement) {
-    return false;
-  }
-
-  await client
-      .from('profiles')
-      .update({
-        'followed_developer_achievement':
-            true,
-      })
-      .eq(
-        'id',
-        user.id,
-      );
-
-  final data = await client
-      .from('profiles')
-      .select(
-        'followed_developer_achievement',
-      )
-      .eq(
-        'id',
-        user.id,
-      )
-      .maybeSingle();
-
-  final unlocked =
-      data?['followed_developer_achievement'] ==
-          true;
-
-  if (!unlocked) {
-    return false;
-  }
-
-  followedDeveloperAchievement =
-      true;
-
-  notifyListeners();
-
-  return true;
-}
 
   void clear() {
-  displayName = '';
-  username = '';
+    displayName = '';
+    username = '';
 
-  avatarUrl = null;
+    avatarUrl = null;
 
-  isDeveloper = false;
+    isDeveloper = false;
 
-  bannerTmdbId = null;
+    bannerTmdbId = null;
 
-  bannerMediaType = null;
+    bannerMediaType = null;
 
-  bannerPath = null;
+    bannerPath = null;
 
-  isLoading = false;
+    isLoading = false;
 
-  followedDeveloperAchievement = false;
+    followedDeveloperAchievement = false;
 
-  notifyListeners();
-}
-
+    notifyListeners();
+  }
 }

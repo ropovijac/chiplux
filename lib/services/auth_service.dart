@@ -208,38 +208,34 @@ class AuthService {
   }
 
   // =====================================================
-// CHANGE PASSWORD
-// =====================================================
+  // CHANGE PASSWORD
+  // =====================================================
 
-Future<void> changePassword({
-  required String currentPassword,
-  required String newPassword,
-}) async {
-  final user = currentUser;
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final user = currentUser;
 
-  if (user == null) {
-    throw const AuthException('You must be signed in.');
+    if (user == null) {
+      throw const AuthException('You must be signed in.');
+    }
+
+    final email = user.email?.trim();
+
+    if (email == null || email.isEmpty) {
+      throw const AuthException('Could not find your account email.');
+    }
+
+    // Verify the user's current password first.
+    await client.auth.signInWithPassword(
+      email: email,
+      password: currentPassword,
+    );
+
+    // Change to the new password.
+    await client.auth.updateUser(UserAttributes(password: newPassword));
   }
-
-  final email = user.email?.trim();
-
-  if (email == null || email.isEmpty) {
-    throw const AuthException('Could not find your account email.');
-  }
-
-  // Verify the user's current password first.
-  await client.auth.signInWithPassword(
-    email: email,
-    password: currentPassword,
-  );
-
-  // Change to the new password.
-  await client.auth.updateUser(
-    UserAttributes(
-      password: newPassword,
-    ),
-  );
-}
 
   // =====================================================
   // DELETE ACCOUNT
@@ -263,7 +259,8 @@ Future<void> changePassword({
         .eq('id', user.id)
         .maybeSingle();
 
-    final actualUsername = profile?['username']?.toString().trim().toLowerCase() ?? '';
+    final actualUsername =
+        profile?['username']?.toString().trim().toLowerCase() ?? '';
 
     if (actualUsername.isEmpty || enteredUsername != actualUsername) {
       throw const AuthException('Username does not match this account.');
@@ -280,10 +277,7 @@ Future<void> changePassword({
     }
 
     // Re-authenticate immediately before the destructive action.
-    await client.auth.signInWithPassword(
-      email: email,
-      password: password,
-    );
+    await client.auth.signInWithPassword(email: email, password: password);
 
     await client.rpc('delete_my_account');
 

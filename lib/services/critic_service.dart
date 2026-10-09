@@ -202,28 +202,28 @@ class CriticService extends ChangeNotifier {
   final Map<int, int> ratingDistribution = {for (int i = 1; i <= 5; i++) i: 0};
 
   Future<void> saveEpisodeRating({
-  required int showId,
-  required int seasonNumber,
-  required int episodeNumber,
-  required int rating,
-}) async {
-  final user = client.auth.currentUser;
+    required int showId,
+    required int seasonNumber,
+    required int episodeNumber,
+    required int rating,
+  }) async {
+    final user = client.auth.currentUser;
 
-  if (user == null) {
-    throw Exception('You must be signed in.');
-  }
+    if (user == null) {
+      throw Exception('You must be signed in.');
+    }
 
-  final bool watched = LibraryService.instance.isEpisodeWatched(
-    showId,
-    seasonNumber,
-    episodeNumber,
-  );
+    final bool watched = LibraryService.instance.isEpisodeWatched(
+      showId,
+      seasonNumber,
+      episodeNumber,
+    );
 
-  if (!watched) {
-    throw Exception('Mark this episode as watched before rating it.');
-  }
+    if (!watched) {
+      throw Exception('Mark this episode as watched before rating it.');
+    }
 
-  _episodeRatings[_episodeKey(showId, seasonNumber, episodeNumber)] = rating;
+    _episodeRatings[_episodeKey(showId, seasonNumber, episodeNumber)] = rating;
 
     notifyListeners();
 
@@ -409,9 +409,7 @@ class CriticService extends ChangeNotifier {
       // Movie = 10 XP
       // Overall TV show rating = 10 XP
       totalXp =
-          episodeRatingCount * 5 +
-          movieRatingCount * 10 +
-          tvRatingCount * 10;
+          episodeRatingCount * 5 + movieRatingCount * 10 + tvRatingCount * 10;
 
       for (int i = 1; i <= 5; i++) {
         ratingDistribution[i] = 0;

@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import 'locale_service.dart';
+
 class TmdbService {
   static const String apiKey = '37c51a3dfe32f43b32a7e91b0ac855a1';
 
@@ -35,7 +37,6 @@ class TmdbService {
     throw Exception('Failed to search TMDB');
   }
 
-
   Future<List<dynamic>> searchPeople(String query) async {
     final clean = query.trim();
 
@@ -58,7 +59,9 @@ class TmdbService {
     }
 
     final data = jsonDecode(response.body);
-    final List<dynamic> results = List<dynamic>.from(data['results'] ?? const []);
+    final List<dynamic> results = List<dynamic>.from(
+      data['results'] ?? const [],
+    );
 
     results.sort((a, b) {
       final aPopularity = a is Map && a['popularity'] is num
@@ -73,39 +76,121 @@ class TmdbService {
     return results;
   }
 
+  String get _overviewLanguage =>
+      LocaleService.instance.effectiveLanguageCode == 'hr' ? 'hr-HR' : 'en-US';
+
+  Future<Map<String, dynamic>> _getJsonMap(Uri url) async {
+    final response = await http.get(url);
+
+    if (response.statusCode != 200) {
+      throw Exception('TMDB request failed: ${response.statusCode}');
+    }
+
+    return Map<String, dynamic>.from(jsonDecode(response.body));
+  }
+
+  Future<List<dynamic>> _getEpisodeList(Uri url) async {
+    final data = await _getJsonMap(url);
+
+    return List<dynamic>.from(data['episodes'] ?? const []);
+  }
+
   Future<Map<String, dynamic>> getDetails(int id, String mediaType) async {
     final append = mediaType == 'movie' ? 'release_dates' : 'content_ratings';
 
-    final url = Uri.parse(
-      '$baseUrl/$mediaType/$id'
-      '?api_key=$apiKey'
-      '&append_to_response=$append',
+    // Keep all normal TMDB fields (especially movie/TV titles) in English.
+    final english = await _getJsonMap(
+      _buildUri(
+        '/$mediaType/$id',
+        query: {'append_to_response': append, 'language': 'en-US'},
+      ),
     );
 
-    final response = await http.get(url);
-
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
+    if (_overviewLanguage != 'hr-HR') {
+      return english;
     }
 
-    throw Exception('Failed to load details');
+    // Croatian is used only for translatable descriptive text.
+    // This intentionally does NOT replace title/name fields.
+    try {
+      final croatian = await _getJsonMap(
+        _buildUri(
+          '/$mediaType/$id',
+          query: {'append_to_response': append, 'language': 'hr-HR'},
+        ),
+      );
+
+      final localizedOverview = croatian['overview']?.toString().trim();
+
+      if (localizedOverview != null && localizedOverview.isNotEmpty) {
+        english['overview'] = localizedOverview;
+      }
+    } catch (_) {
+      // If TMDB has no usable Croatian response, keep the English overview.
+    }
+
+    return english;
   }
 
   Future<List<dynamic>> getSeasonEpisodes(int showId, int seasonNumber) async {
-    final url = Uri.parse(
-      '$baseUrl/tv/$showId/season/$seasonNumber'
-      '?api_key=$apiKey',
+    // Fetch the normal English episode data first so episode names stay
+    // exactly as before.
+    final englishEpisodes = await _getEpisodeList(
+      _buildUri(
+        '/tv/$showId/season/$seasonNumber',
+        query: const {'language': 'en-US'},
+      ),
     );
 
-    final response = await http.get(url);
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-
-      return data['episodes'] ?? [];
+    if (_overviewLanguage != 'hr-HR') {
+      return englishEpisodes;
     }
 
-    throw Exception('Failed to load episodes');
+    try {
+      final croatianEpisodes = await _getEpisodeList(
+        _buildUri(
+          '/tv/$showId/season/$seasonNumber',
+          query: const {'language': 'hr-HR'},
+        ),
+      );
+
+      final localizedOverviews = <int, String>{};
+
+      for (final raw in croatianEpisodes) {
+        if (raw is! Map) {
+          continue;
+        }
+
+        final number = raw['episode_number'];
+        final overview = raw['overview']?.toString().trim();
+
+        if (number is num && overview != null && overview.isNotEmpty) {
+          localizedOverviews[number.toInt()] = overview;
+        }
+      }
+
+      return englishEpisodes.map((raw) {
+        if (raw is! Map) {
+          return raw;
+        }
+
+        final episode = Map<String, dynamic>.from(raw);
+        final number = episode['episode_number'];
+
+        if (number is num) {
+          final localizedOverview = localizedOverviews[number.toInt()];
+
+          if (localizedOverview != null && localizedOverview.isNotEmpty) {
+            episode['overview'] = localizedOverview;
+          }
+        }
+
+        return episode;
+      }).toList();
+    } catch (_) {
+      // If Croatian episode descriptions are unavailable, keep English.
+      return englishEpisodes;
+    }
   }
 
   Future<List<dynamic>> getTrendingTv() async {

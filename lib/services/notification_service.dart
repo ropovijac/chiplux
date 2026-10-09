@@ -23,10 +23,10 @@ class ChipluxNotification {
   final String? commentId;
   final String? parentCommentId;
 
-final String? achievementId;
-final String? achievementTitle;
+  final String? achievementId;
+  final String? achievementTitle;
 
-final bool isRead;
+  final bool isRead;
 
   final DateTime createdAt;
 
@@ -42,15 +42,13 @@ final bool isRead;
     required this.episodeNumber,
     required this.commentId,
     required this.parentCommentId,
-required this.achievementId,
-required this.achievementTitle,
-required this.isRead,
+    required this.achievementId,
+    required this.achievementTitle,
+    required this.isRead,
     required this.createdAt,
   });
 
-  factory ChipluxNotification.fromMap(
-    Map<String, dynamic> map,
-  ) {
+  factory ChipluxNotification.fromMap(Map<String, dynamic> map) {
     final rawTmdbId = map['tmdb_id'];
 
     final rawSeason = map['season_number'];
@@ -60,52 +58,34 @@ required this.isRead,
     return ChipluxNotification(
       id: map['id']?.toString() ?? '',
 
-      type:
-          map['type']?.toString() ?? 'notification',
+      type: map['type']?.toString() ?? 'notification',
 
-      title:
-          map['title']?.toString() ?? 'Notification',
+      title: map['title']?.toString() ?? 'Notification',
 
-      body:
-          map['body']?.toString() ?? '',
+      body: map['body']?.toString() ?? '',
 
-      actorUserId:
-          map['actor_user_id']?.toString(),
+      actorUserId: map['actor_user_id']?.toString(),
 
-      mediaType:
-          map['media_type']?.toString(),
+      mediaType: map['media_type']?.toString(),
 
-      tmdbId: rawTmdbId is num
-          ? rawTmdbId.toInt()
-          : null,
+      tmdbId: rawTmdbId is num ? rawTmdbId.toInt() : null,
 
-      seasonNumber: rawSeason is num
-          ? rawSeason.toInt()
-          : null,
+      seasonNumber: rawSeason is num ? rawSeason.toInt() : null,
 
-      episodeNumber: rawEpisode is num
-          ? rawEpisode.toInt()
-          : null,
+      episodeNumber: rawEpisode is num ? rawEpisode.toInt() : null,
 
-      commentId:
-          map['comment_id']?.toString(),
+      commentId: map['comment_id']?.toString(),
 
-      parentCommentId:
-    map['parent_comment_id']?.toString(),
+      parentCommentId: map['parent_comment_id']?.toString(),
 
-achievementId:
-    map['achievement_id']?.toString(),
+      achievementId: map['achievement_id']?.toString(),
 
-achievementTitle:
-    map['achievement_title']?.toString(),
+      achievementTitle: map['achievement_title']?.toString(),
 
-isRead:
-    map['is_read'] == true,
+      isRead: map['is_read'] == true,
 
       createdAt:
-          DateTime.tryParse(
-            map['created_at']?.toString() ?? '',
-          )?.toLocal() ??
+          DateTime.tryParse(map['created_at']?.toString() ?? '')?.toLocal() ??
           DateTime.now(),
     );
   }
@@ -114,11 +94,9 @@ isRead:
 class NotificationService extends ChangeNotifier {
   NotificationService._();
 
-  static final NotificationService instance =
-      NotificationService._();
+  static final NotificationService instance = NotificationService._();
 
-  final SupabaseClient client =
-      Supabase.instance.client;
+  final SupabaseClient client = Supabase.instance.client;
 
   List<ChipluxNotification> _notifications = [];
 
@@ -138,12 +116,7 @@ class NotificationService extends ChangeNotifier {
   String? _subscribedUserId;
 
   int get unreadCount {
-    return _notifications
-        .where(
-          (notification) =>
-              !notification.isRead,
-        )
-        .length;
+    return _notifications.where((notification) => !notification.isRead).length;
   }
 
   // =====================================================
@@ -159,8 +132,7 @@ class NotificationService extends ChangeNotifier {
       return;
     }
 
-    if (_subscribedUserId != null &&
-        _subscribedUserId != user.id) {
+    if (_subscribedUserId != null && _subscribedUserId != user.id) {
       if (_channel != null) {
         await _channel!.unsubscribe();
       }
@@ -196,31 +168,20 @@ class NotificationService extends ChangeNotifier {
       final rows = await client
           .from('notifications')
           .select()
-          .eq(
-            'recipient_user_id',
-            user.id,
-          )
-          .order(
-            'created_at',
-            ascending: false,
-          )
+          .eq('recipient_user_id', user.id)
+          .order('created_at', ascending: false)
           .limit(100);
 
       _notifications = rows
           .map(
             (row) =>
-                ChipluxNotification.fromMap(
-              Map<String, dynamic>.from(row),
-            ),
+                ChipluxNotification.fromMap(Map<String, dynamic>.from(row)),
           )
           .toList();
     } catch (e) {
-      debugPrint(
-        'Could not load notifications: $e',
-      );
+      debugPrint('Could not load notifications: $e');
 
-      _errorMessage =
-          'Could not load notifications.';
+      _errorMessage = 'Could not load notifications.';
     } finally {
       _loading = false;
 
@@ -232,9 +193,7 @@ class NotificationService extends ChangeNotifier {
   // MARK ONE READ
   // =====================================================
 
-  Future<void> markRead(
-    String notificationId,
-  ) async {
+  Future<void> markRead(String notificationId) async {
     final user = client.auth.currentUser;
 
     if (user == null) {
@@ -242,8 +201,7 @@ class NotificationService extends ChangeNotifier {
     }
 
     final index = _notifications.indexWhere(
-      (notification) =>
-          notification.id == notificationId,
+      (notification) => notification.id == notificationId,
     );
 
     if (index == -1) {
@@ -258,17 +216,9 @@ class NotificationService extends ChangeNotifier {
 
     await client
         .from('notifications')
-        .update({
-          'is_read': true,
-        })
-        .eq(
-          'id',
-          notificationId,
-        )
-        .eq(
-          'recipient_user_id',
-          user.id,
-        );
+        .update({'is_read': true})
+        .eq('id', notificationId)
+        .eq('recipient_user_id', user.id);
 
     await refresh();
   }
@@ -286,17 +236,9 @@ class NotificationService extends ChangeNotifier {
 
     await client
         .from('notifications')
-        .update({
-          'is_read': true,
-        })
-        .eq(
-          'recipient_user_id',
-          user.id,
-        )
-        .eq(
-          'is_read',
-          false,
-        );
+        .update({'is_read': true})
+        .eq('recipient_user_id', user.id)
+        .eq('is_read', false);
 
     await refresh();
   }
@@ -305,81 +247,58 @@ class NotificationService extends ChangeNotifier {
   // DELETE
   // =====================================================
 
-  Future<void> deleteNotification(
-  String notificationId,
-) async {
-  final user = client.auth.currentUser;
+  Future<void> deleteNotification(String notificationId) async {
+    final user = client.auth.currentUser;
 
-  if (user == null) {
-    return;
-  }
+    if (user == null) {
+      return;
+    }
 
-  final previousNotifications =
-      List<ChipluxNotification>.from(
-    _notifications,
-  );
+    final previousNotifications = List<ChipluxNotification>.from(
+      _notifications,
+    );
 
-  // Remove immediately from the UI.
-  _notifications =
-      _notifications
-          .where(
-            (notification) =>
-                notification.id !=
-                notificationId,
-          )
-          .toList();
-
-  notifyListeners();
-
-  try {
-    await client
-        .from('notifications')
-        .delete()
-        .eq(
-          'id',
-          notificationId,
-        )
-        .eq(
-          'recipient_user_id',
-          user.id,
-        );
-  } catch (e) {
-    // Restore it if the database delete failed.
-    _notifications =
-        previousNotifications;
-
-    _errorMessage =
-        'Could not delete notification.';
+    // Remove immediately from the UI.
+    _notifications = _notifications
+        .where((notification) => notification.id != notificationId)
+        .toList();
 
     notifyListeners();
 
-    debugPrint(
-      'Could not delete notification: $e',
-    );
+    try {
+      await client
+          .from('notifications')
+          .delete()
+          .eq('id', notificationId)
+          .eq('recipient_user_id', user.id);
+    } catch (e) {
+      // Restore it if the database delete failed.
+      _notifications = previousNotifications;
+
+      _errorMessage = 'Could not delete notification.';
+
+      notifyListeners();
+
+      debugPrint('Could not delete notification: $e');
+    }
   }
-}
 
   // =====================================================
   // REALTIME
   // =====================================================
 
   void _startRealtime(String userId) {
-    if (_channel != null &&
-        _subscribedUserId == userId) {
+    if (_channel != null && _subscribedUserId == userId) {
       return;
     }
 
     if (_channel != null) {
-      unawaited(
-        _channel!.unsubscribe(),
-      );
+      unawaited(_channel!.unsubscribe());
     }
 
     _subscribedUserId = userId;
 
-    _channel = client.channel(
-      'own_notifications_${userId}_$hashCode',
-    );
+    _channel = client.channel('own_notifications_${userId}_$hashCode');
 
     _channel!
         .onPostgresChanges(
@@ -387,8 +306,7 @@ class NotificationService extends ChangeNotifier {
           schema: 'public',
           table: 'notifications',
           callback: (payload) {
-            final currentUser =
-                client.auth.currentUser;
+            final currentUser = client.auth.currentUser;
 
             if (currentUser?.id != userId) {
               return;

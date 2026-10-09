@@ -1,0 +1,162 @@
+{
+  "@@locale": "hr",
+  "appName": "Chiplux",
+  "discover": "Otkrivaj",
+  "search": "Pretraži",
+  "watch": "Gledaj",
+  "community": "Zajednica",
+  "profile": "Profil",
+  "customize": "PRILAGODI",
+  "settings": "POSTAVKE",
+  "help": "POMOĆ",
+  "account": "Račun",
+  "accountSubtitle": "Podaci o vašem Chiplux računu i prijavi.",
+  "email": "E-pošta",
+  "notAvailable": "Nije dostupno",
+  "changePassword": "Promijeni lozinku",
+  "changePasswordSubtitle": "Ažurirajte lozinku računa",
+  "adminModeration": "Administratorska moderacija",
+  "adminModerationSubtitle": "Pregled prijava korisnika, komentara, grešaka i prijedloga",
+  "preferences": "Postavke",
+  "preferencesSubtitle": "Odaberite kako se Chiplux ponaša na ovom uređaju.",
+  "notifications": "Obavijesti",
+  "notificationsSubtitle": "Epizode, izdanja i aktivnost zajednice",
+  "privacy": "Privatnost",
+  "privacySubtitle": "Kontrole profila, aktivnosti i interakcija",
+  "dataExport": "Podaci i izvoz",
+  "dataExportSubtitle": "Izvezite svoje Chiplux podatke i zakažite sigurnosne kopije",
+  "language": "Jezik",
+  "languageSubtitle": "Odaberite jezik Chiplux sučelja.",
+  "systemDefault": "Jezik uređaja",
+  "english": "English",
+  "croatian": "Hrvatski",
+  "languagePageSubtitle": "Odaberite jezik izbornika, gumba i poruka u Chipluxu. Ova postavka nikada ne prevodi naslove sadržaja ni sadržaj korisnika.",
+  "languageChanged": "Jezik je promijenjen.",
+  "signOut": "Odjava",
+  "deleteAccount": "Izbriši račun",
+  "helpSubtitle": "Podrška, pravila i odgovori o Chipluxu.",
+  "faq": "Česta pitanja",
+  "faqSubtitle": "Česta pitanja o Chipluxu",
+  "contact": "Kontakt",
+  "contactSubtitle": "Kontaktni podaci i podrška",
+  "privacyPolicy": "Pravila privatnosti",
+  "privacyPolicySubtitle": "Kako Chiplux postupa s podacima",
+  "terms": "Uvjeti",
+  "termsSubtitle": "Uvjeti korištenja",
+  "suggestFeature": "Predloži značajku",
+  "suggestFeatureSubtitle": "Podijelite ideju s Chiplux developerom",
+  "reportBug": "Prijavi grešku",
+  "reportBugSubtitle": "Pošaljite problem izravno Chipluxu",
+  "informationSupport": "Informacije i podrška za Chiplux.",
+  "commentsLockedEpisode": "Komentari su zaključani dok ne pogledate ovu epizodu.",
+  "commentsLockedTitle": "Komentari su zaključani dok ne dovršite ovaj naslov.",
+  "couldNotLoadComments": "Nije moguće učitati komentare.",
+  "letsComment": "Komentiraj",
+  "reply": "Odgovori",
+  "replies": "Odgovori",
+  "cancel": "Odustani",
+  "delete": "Izbriši",
+  "save": "Spremi",
+  "edit": "Uredi",
+  "report": "Prijavi",
+  "block": "Blokiraj",
+  "unblock": "Odblokiraj",
+  "spoiler": "Spojler",
+  "showSpoiler": "Prikaži spojler",
+  "dataExportPageSubtitle": "Sigurnosno kopirajte podatke Chiplux računa ili izradite izvoz kad god želite.",
+  "automaticBackup": "Automatska sigurnosna kopija",
+  "automaticBackupDescription": "Odaberite koliko često Chiplux treba izraditi lokalnu JSON sigurnosnu kopiju.",
+  "everyDay": "Svaki dan",
+  "everyWeek": "Svaki tjedan",
+  "everyMonth": "Svaki mjesec",
+  "off": "Isključeno",
+  "exportNow": "Izvezi sada",
+  "exportNowSubtitle": "Izradite JSON sigurnosnu kopiju i odaberite gdje je želite spremiti ili podijeliti.",
+  "automaticBackupInfo": "Automatske sigurnosne kopije provjeravaju se kada se Chiplux otvori. Ako je interval prošao dok je aplikacija bila zatvorena, sigurnosna kopija izrađuje se pri sljedećem pokretanju.",
+  "exportIncludes": "Izvoz uključuje postavke profila, biblioteku, pogledane epizode, ocjene, komentare, aktivnosti, popis praćenja, obavijesti, prijave, prijedloge značajki i popis blokiranih korisnika.",
+  "couldNotExportData": "Nije moguće izvesti podatke: {error}",
+  "whileChipluxUsed": "{cadence} dok se Chiplux koristi",
+  "users": "Korisnici",
+  "comments": "Komentari",
+  "bugs": "Greške",
+  "suggestions": "Prijedlozi",
+  "pending": "Na čekanju",
+  "inProgress": "U izradi",
+  "implemented": "Implementirano",
+  "rejected": "Odbijeno",
+  "ignored": "Ignorirano",
+  "resolve": "Riješi",
+  "dismiss": "Odbaci",
+  "reviewing": "U pregledu",
+  "deleteComment": "Izbriši komentar",
+  "developerAccessRequired": "Potreban je developerski pristup.",
+  "couldNotLoadModeration": "Nije moguće učitati prijave za moderaciju: {error}",
+  "resolveBugQuestion": "Označiti grešku riješenom?",
+  "resolveBugBody": "Greška će biti označena kao riješena i uklonjena iz aktivnog popisa grešaka.",
+  "deleteReportedComment": "Izbrisati prijavljeni komentar?",
+  "deleteReportedCommentBody": "Ovo trajno uklanja komentar.",
+  "ignoreSuggestionQuestion": "Ignorirati prijedlog?",
+  "ignoreSuggestionBody": "Prijedlog se neće pojaviti na Ploči prijedloga i bit će trajno izbrisan. Korisnikovo ograničenje od 30 dana ostaje aktivno.",
+  "publishAs": "Objavi kao: {status}",
+  "optionalDeveloperNote": "Možete dodati neobaveznu poruku developera. Bit će javno prikazana na Ploči prijedloga.",
+  "optionalChipluxUpdate": "Neobavezna Chiplux objava…",
+  "rejectionReasonHint": "Zašto je ovaj prijedlog odbijen?",
+  "couldNotUpdateSuggestion": "Nije moguće ažurirati prijedlog značajke: {error}",
+  "couldNotIgnoreSuggestion": "Nije moguće ignorirati prijedlog značajke: {error}",
+  "featureBoard": "Ploča prijedloga",
+  "all": "Sve",
+  "suggestedByUser": "Predložio/la {user}",
+  "suggestedByCommunity": "Predložio korisnik Chipluxa",
+  "developerUpdate": "CHIPLUX NOVOST",
+  "noFeatureSuggestions": "Ovdje još nema prijedloga značajki.",
+  "languageMediaRule": "Filmovi, serije, nazivi epizoda i budući nazivi glazbe ostaju u izvornom obliku.",
+  "@couldNotExportData": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "@whileChipluxUsed": {
+    "placeholders": {
+      "cadence": {
+        "type": "String"
+      }
+    }
+  },
+  "@couldNotLoadModeration": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "@publishAs": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "@couldNotUpdateSuggestion": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "@couldNotIgnoreSuggestion": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "@suggestedByUser": {
+    "placeholders": {
+      "user": {
+        "type": "String"
+      }
+    }
+  }
+}

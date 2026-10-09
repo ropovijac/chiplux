@@ -4,8 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class PrivacySettingsService extends ChangeNotifier {
   PrivacySettingsService._();
 
-  static final PrivacySettingsService instance =
-      PrivacySettingsService._();
+  static final PrivacySettingsService instance = PrivacySettingsService._();
 
   SupabaseClient get client => Supabase.instance.client;
 
@@ -107,8 +106,7 @@ class PrivacySettingsService extends ChangeNotifier {
       followPermission =
           row?['privacy_follow_permission']?.toString() ?? 'everyone';
 
-      allowCommentReplies =
-          row?['privacy_allow_comment_replies'] != false;
+      allowCommentReplies = row?['privacy_allow_comment_replies'] != false;
 
       featureSuggestionAttribution =
           row?['privacy_feature_suggestion_attribution'] != false;
@@ -120,20 +118,14 @@ class PrivacySettingsService extends ChangeNotifier {
     }
   }
 
-  Future<void> _update(
-    String column,
-    Object? value,
-  ) async {
+  Future<void> _update(String column, Object? value) async {
     final user = client.auth.currentUser;
 
     if (user == null) {
       throw Exception('You must be signed in.');
     }
 
-    await client
-        .from('profiles')
-        .update({column: value})
-        .eq('id', user.id);
+    await client.from('profiles').update({column: value}).eq('id', user.id);
   }
 
   Future<void> setProfileVisibility(String value) async {
@@ -283,10 +275,7 @@ class PrivacySettingsService extends ChangeNotifier {
         continue;
       }
 
-      result.add({
-        ...profile,
-        'blocked_at': block['created_at'],
-      });
+      result.add({...profile, 'blocked_at': block['created_at']});
     }
 
     return result;

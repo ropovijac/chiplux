@@ -15,8 +15,7 @@ class FeatureSubmissionAvailability {
 class FeatureSuggestionService {
   FeatureSuggestionService._();
 
-  static final FeatureSuggestionService instance =
-      FeatureSuggestionService._();
+  static final FeatureSuggestionService instance = FeatureSuggestionService._();
 
   SupabaseClient get client => Supabase.instance.client;
 
@@ -29,9 +28,7 @@ class FeatureSuggestionService {
   }
 
   Future<FeatureSubmissionAvailability> getSubmissionAvailability() async {
-    final raw = await client.rpc(
-      'get_feature_suggestion_submission_status',
-    );
+    final raw = await client.rpc('get_feature_suggestion_submission_status');
 
     Map<String, dynamic>? row;
 
@@ -95,27 +92,27 @@ class FeatureSuggestionService {
     final rawLikes = featureIds.isEmpty
         ? <dynamic>[]
         : await client
-            .from('feature_suggestion_likes')
-            .select('feature_id, user_id, created_at')
-            .inFilter('feature_id', featureIds);
+              .from('feature_suggestion_likes')
+              .select('feature_id, user_id, created_at')
+              .inFilter('feature_id', featureIds);
 
     final rawComments = featureIds.isEmpty
         ? <dynamic>[]
         : await client
-            .from('feature_suggestion_comments')
-            .select('id, feature_id, user_id, body, created_at')
-            .inFilter('feature_id', featureIds)
-            .order('created_at', ascending: true);
+              .from('feature_suggestion_comments')
+              .select('id, feature_id, user_id, body, created_at')
+              .inFilter('feature_id', featureIds)
+              .order('created_at', ascending: true);
 
     final rawProfiles = userIds.isEmpty
         ? <dynamic>[]
         : await client
-            .from('profiles')
-            .select(
-              'id, display_name, username, avatar_url, '
-              'privacy_feature_suggestion_attribution',
-            )
-            .inFilter('id', userIds);
+              .from('profiles')
+              .select(
+                'id, display_name, username, avatar_url, '
+                'privacy_feature_suggestion_attribution',
+              )
+              .inFilter('id', userIds);
 
     final likes = List<Map<String, dynamic>>.from(rawLikes);
     final comments = List<Map<String, dynamic>>.from(rawComments);
@@ -136,8 +133,7 @@ class FeatureSuggestionService {
         continue;
       }
 
-      likeCountByFeature[featureId] =
-          (likeCountByFeature[featureId] ?? 0) + 1;
+      likeCountByFeature[featureId] = (likeCountByFeature[featureId] ?? 0) + 1;
 
       if (user != null && like['user_id']?.toString() == user.id) {
         likedByMe.add(featureId);
@@ -167,7 +163,8 @@ class FeatureSuggestionService {
           suggestion['public_attribution'] != false;
       final profileAllowsAttribution =
           profile?['privacy_feature_suggestion_attribution'] != false;
-      final showAttribution = suggestionUserId != null &&
+      final showAttribution =
+          suggestionUserId != null &&
           suggestionAllowsAttribution &&
           profileAllowsAttribution;
 
@@ -175,8 +172,8 @@ class FeatureSuggestionService {
         ...suggestion,
         'like_count': likeCountByFeature[featureId] ?? 0,
         'liked_by_me': likedByMe.contains(featureId),
-        'developer_updates': commentsByFeature[featureId] ??
-            <Map<String, dynamic>>[],
+        'developer_updates':
+            commentsByFeature[featureId] ?? <Map<String, dynamic>>[],
         'show_attribution': showAttribution,
         'suggested_by_user_id': suggestionUserId,
         'suggested_by_display_name': showAttribution && profile != null
@@ -229,10 +226,7 @@ class FeatureSuggestionService {
   }) async {
     await client.rpc(
       'add_feature_suggestion_update',
-      params: {
-        'p_feature_id': featureId,
-        'p_body': body.trim(),
-      },
+      params: {'p_feature_id': featureId, 'p_body': body.trim()},
     );
   }
 }
