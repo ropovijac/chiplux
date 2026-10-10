@@ -3822,9 +3822,7 @@ class _LoginPageState extends State<LoginPage> {
                       textInputAction: TextInputAction.next,
 
                       decoration: InputDecoration(
-                        label: UiText(
-                          signupMode ? 'Email' : 'Email or username',
-                        ),
+                        label: UiText(signupMode ? 'Email' : 'Email or username'),
 
                         prefixIcon: Icon(
                           signupMode
@@ -3853,9 +3851,7 @@ class _LoginPageState extends State<LoginPage> {
                       },
 
                       decoration: InputDecoration(
-                        label: UiText(
-                          signupMode ? 'Create Password' : 'Password',
-                        ),
+                        label: UiText(signupMode ? 'Create Password' : 'Password'),
 
                         prefixIcon: const Icon(Icons.lock_outline),
 
@@ -3980,9 +3976,7 @@ class _LoginPageState extends State<LoginPage> {
                                     strokeWidth: 2,
                                   ),
                                 )
-                              : UiText(
-                                  signupMode ? 'Create Account' : 'Sign In',
-                                ),
+                              : UiText(signupMode ? 'Create Account' : 'Sign In'),
                         ),
                       ),
                     ),
@@ -4241,13 +4235,20 @@ class _MainScreenState extends State<MainScreen> {
       body: ChipluxBackground(style: _backgroundStyle, child: _currentPage()),
 
       bottomNavigationBar: AnimatedBuilder(
-        animation: profile,
+        animation: Listenable.merge([
+          profile,
+          ProfilePageFrameService.instance,
+        ]),
 
         builder: (context, _) {
           return _ChipluxBottomNav(
             currentIndex: currentIndex,
 
             avatarUrl: profile.avatarUrl,
+
+            profilePageFrameId: currentIndex == 4
+                ? ProfilePageFrameService.instance.frameId
+                : null,
 
             onTap: (index) {
               setState(() {
@@ -7069,10 +7070,7 @@ class _PublicCompletedTvShowsPageState
 
             const SizedBox(height: 12),
 
-            UiText(
-              errorMessage!,
-              style: const TextStyle(color: Colors.white54),
-            ),
+            UiText(errorMessage!, style: const TextStyle(color: Colors.white54)),
 
             const SizedBox(height: 16),
 
@@ -7525,10 +7523,7 @@ class _PublicWatchedMoviesPageState extends State<_PublicWatchedMoviesPage> {
 
             const SizedBox(height: 12),
 
-            UiText(
-              errorMessage!,
-              style: const TextStyle(color: Colors.white54),
-            ),
+            UiText(errorMessage!, style: const TextStyle(color: Colors.white54)),
 
             const SizedBox(height: 16),
 
@@ -8278,9 +8273,8 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
         return;
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: UiText('Could not block user.')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: UiText('Could not block user.')));
     }
   }
 
@@ -8364,9 +8358,9 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: UiText('Could not submit report.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: UiText('Could not submit report.')));
     }
   }
 
@@ -9633,7 +9627,10 @@ class _PublicGenreRuntimeCardState extends State<_PublicGenreRuntimeCard> {
                   alignment: Alignment.centerLeft,
                   child: UiText(
                     'Genre Runtime',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
@@ -9927,17 +9924,21 @@ class _PublicRatingDistributionCard extends StatelessWidget {
 class _ChipluxBottomNav extends StatelessWidget {
   final int currentIndex;
   final String? avatarUrl;
+  final String? profilePageFrameId;
   final ValueChanged<int> onTap;
 
   const _ChipluxBottomNav({
     required this.currentIndex,
     required this.avatarUrl,
+    required this.profilePageFrameId,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final showProfileFrame =
+        currentIndex == 4 && profilePageFrameId != null;
 
     final items = [
       (
@@ -9970,7 +9971,11 @@ class _ChipluxBottomNav extends StatelessWidget {
         decoration: BoxDecoration(
           color: const Color(0xFF091521),
           border: Border(
-            top: BorderSide(color: Colors.white.withValues(alpha: 0.04)),
+            top: BorderSide(
+              color: showProfileFrame
+                  ? Colors.transparent
+                  : Colors.white.withValues(alpha: 0.04),
+            ),
           ),
         ),
         child: LayoutBuilder(
@@ -10025,6 +10030,13 @@ class _ChipluxBottomNav extends StatelessWidget {
                       ),
                   ],
                 ),
+
+                if (showProfileFrame)
+                  Positioned.fill(
+                    child: _profileNavigationFrameWidget(
+                      profilePageFrameId,
+                    )!,
+                  ),
               ],
             );
           },
@@ -16045,13 +16057,11 @@ class _LibraryListCard extends StatelessWidget {
                                         context,
                                         '$watched / ${item.totalEpisodes} episodes',
                                       ),
-                                      if (genre.isNotEmpty)
-                                        trUi(context, genre),
+                                      if (genre.isNotEmpty) trUi(context, genre),
                                     ].join(' • ')
                                   : [
                                       if (item.year.isNotEmpty) item.year,
-                                      if (genre.isNotEmpty)
-                                        trUi(context, genre),
+                                      if (genre.isNotEmpty) trUi(context, genre),
                                     ].join(' • '),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -20679,22 +20689,26 @@ class _ProfileTitleLabel extends StatelessWidget {
 }
 
 class _Tier3ProfilePageFrame extends StatelessWidget {
-  const _Tier3ProfilePageFrame();
+  final bool edgeToEdge;
+
+  const _Tier3ProfilePageFrame({this.edgeToEdge = false});
 
   @override
   Widget build(BuildContext context) {
-    return const IgnorePointer(
+    return IgnorePointer(
       child: CustomPaint(
-        painter: _Tier3ProfilePageFramePainter(),
+        painter: _Tier3ProfilePageFramePainter(edgeToEdge: edgeToEdge),
 
-        child: SizedBox.expand(),
+        child: const SizedBox.expand(),
       ),
     );
   }
 }
 
 class _Tier3ProfilePageFramePainter extends CustomPainter {
-  const _Tier3ProfilePageFramePainter();
+  final bool edgeToEdge;
+
+  const _Tier3ProfilePageFramePainter({this.edgeToEdge = false});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -20702,9 +20716,14 @@ class _Tier3ProfilePageFramePainter extends CustomPainter {
       return;
     }
 
-    final rect = Rect.fromLTWH(5, 5, size.width - 10, size.height - 10);
+    final rect = edgeToEdge
+        ? Rect.fromLTWH(1.05, 1.05, size.width - 2.1, size.height - 1.05)
+        : Rect.fromLTWH(5, 5, size.width - 10, size.height - 10);
 
-    final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(24));
+    final rrect = RRect.fromRectAndRadius(
+      rect,
+      edgeToEdge ? Radius.zero : const Radius.circular(24),
+    );
 
     final shader = const LinearGradient(
       begin: Alignment.topLeft,
@@ -20719,30 +20738,46 @@ class _Tier3ProfilePageFramePainter extends CustomPainter {
       ],
     ).createShader(rect);
 
-    final glow = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 5
-      ..shader = shader
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
-
-    canvas.drawRRect(rrect, glow);
-
     final frame = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.1
       ..shader = shader;
 
-    canvas.drawRRect(rrect, frame);
+    if (edgeToEdge) {
+      final path = Path()
+        ..moveTo(rect.left, size.height)
+        ..lineTo(rect.left, rect.top)
+        ..lineTo(rect.right, rect.top)
+        ..lineTo(rect.right, size.height);
 
-    final innerRect = Rect.fromLTWH(8, 8, size.width - 16, size.height - 16);
+      canvas.drawPath(path, frame);
+    } else {
+      canvas.drawRRect(rrect, frame);
+    }
 
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(innerRect, const Radius.circular(21)),
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 0.7
-        ..color = Colors.white.withValues(alpha: 0.12),
-    );
+    final innerRect = edgeToEdge
+        ? Rect.fromLTWH(3.6, 3.6, size.width - 7.2, size.height - 3.6)
+        : Rect.fromLTWH(8, 8, size.width - 16, size.height - 16);
+
+    final innerPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.7
+      ..color = Colors.white.withValues(alpha: 0.12);
+
+    if (edgeToEdge) {
+      final innerPath = Path()
+        ..moveTo(innerRect.left, size.height)
+        ..lineTo(innerRect.left, innerRect.top)
+        ..lineTo(innerRect.right, innerRect.top)
+        ..lineTo(innerRect.right, size.height);
+
+      canvas.drawPath(innerPath, innerPaint);
+    } else {
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(innerRect, const Radius.circular(21)),
+        innerPaint,
+      );
+    }
   }
 
   @override
@@ -20751,21 +20786,31 @@ class _Tier3ProfilePageFramePainter extends CustomPainter {
   }
 }
 
-Widget? _profilePageFrameWidget(String? frameId) {
+Widget? _profilePageFrameWidget(
+  String? frameId, {
+  bool edgeToEdge = false,
+}) {
   switch (frameId) {
     case developerProfilePageFrameId:
-      return const _DeveloperProfilePageFrame();
+      return _DeveloperProfilePageFrame(edgeToEdge: edgeToEdge);
 
     case followDeveloperProfilePageFrameId:
-      return const _Tier3ProfilePageFrame();
+      return _Tier3ProfilePageFrame(edgeToEdge: edgeToEdge);
 
     default:
       return null;
   }
 }
 
+double _developerProfileFramePhase() {
+  const cycleMs = 5000;
+  return (DateTime.now().millisecondsSinceEpoch % cycleMs) / cycleMs;
+}
+
 class _DeveloperProfilePageFrame extends StatefulWidget {
-  const _DeveloperProfilePageFrame();
+  final bool edgeToEdge;
+
+  const _DeveloperProfilePageFrame({this.edgeToEdge = false});
 
   @override
   State<_DeveloperProfilePageFrame> createState() =>
@@ -20797,7 +20842,10 @@ class _DeveloperProfilePageFrameState extends State<_DeveloperProfilePageFrame>
   Widget build(BuildContext context) {
     return IgnorePointer(
       child: CustomPaint(
-        painter: _DeveloperProfileFramePainter(animation: _controller),
+        painter: _DeveloperProfileFramePainter(
+          animation: _controller,
+          edgeToEdge: widget.edgeToEdge,
+        ),
         child: const SizedBox.expand(),
       ),
     );
@@ -20806,9 +20854,12 @@ class _DeveloperProfilePageFrameState extends State<_DeveloperProfilePageFrame>
 
 class _DeveloperProfileFramePainter extends CustomPainter {
   final Animation<double> animation;
+  final bool edgeToEdge;
 
-  _DeveloperProfileFramePainter({required this.animation})
-    : super(repaint: animation);
+  _DeveloperProfileFramePainter({
+    required this.animation,
+    this.edgeToEdge = false,
+  }) : super(repaint: animation);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -20816,14 +20867,16 @@ class _DeveloperProfileFramePainter extends CustomPainter {
       return;
     }
 
-    final rect = Rect.fromLTWH(5, 5, size.width - 10, size.height - 10);
+    final rect = edgeToEdge
+        ? Rect.fromLTWH(1.1, 1.1, size.width - 2.2, size.height - 1.1)
+        : Rect.fromLTWH(5, 5, size.width - 10, size.height - 10);
 
     final roundedRect = RRect.fromRectAndRadius(
       rect,
-      const Radius.circular(24),
+      edgeToEdge ? Radius.zero : const Radius.circular(24),
     );
 
-    final rotation = animation.value * 6.28318530718;
+    final rotation = _developerProfileFramePhase() * 6.28318530718;
 
     final shader = SweepGradient(
       colors: const [
@@ -20837,18 +20890,6 @@ class _DeveloperProfileFramePainter extends CustomPainter {
     ).createShader(rect);
 
     // =========================
-    // SOFT OUTER GLOW
-    // =========================
-
-    final glowPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 6
-      ..shader = shader
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
-
-    canvas.drawRRect(roundedRect, glowPaint);
-
-    // =========================
     // MAIN DEVELOPER FRAME
     // =========================
 
@@ -20857,17 +20898,29 @@ class _DeveloperProfileFramePainter extends CustomPainter {
       ..strokeWidth = 2.2
       ..shader = shader;
 
-    canvas.drawRRect(roundedRect, framePaint);
+    if (edgeToEdge) {
+      final path = Path()
+        ..moveTo(rect.left, size.height)
+        ..lineTo(rect.left, rect.top)
+        ..lineTo(rect.right, rect.top)
+        ..lineTo(rect.right, size.height);
+
+      canvas.drawPath(path, framePaint);
+    } else {
+      canvas.drawRRect(roundedRect, framePaint);
+    }
 
     // =========================
     // SUBTLE INNER LINE
     // =========================
 
-    final innerRect = Rect.fromLTWH(8, 8, size.width - 16, size.height - 16);
+    final innerRect = edgeToEdge
+        ? Rect.fromLTWH(3.7, 3.7, size.width - 7.4, size.height - 3.7)
+        : Rect.fromLTWH(8, 8, size.width - 16, size.height - 16);
 
     final innerRoundedRect = RRect.fromRectAndRadius(
       innerRect,
-      const Radius.circular(21),
+      edgeToEdge ? Radius.zero : const Radius.circular(21),
     );
 
     final innerPaint = Paint()
@@ -20875,11 +20928,236 @@ class _DeveloperProfileFramePainter extends CustomPainter {
       ..strokeWidth = 0.7
       ..color = Colors.white.withValues(alpha: 0.16);
 
-    canvas.drawRRect(innerRoundedRect, innerPaint);
+    if (edgeToEdge) {
+      final innerPath = Path()
+        ..moveTo(innerRect.left, size.height)
+        ..lineTo(innerRect.left, innerRect.top)
+        ..lineTo(innerRect.right, innerRect.top)
+        ..lineTo(innerRect.right, size.height);
+
+      canvas.drawPath(innerPath, innerPaint);
+    } else {
+      canvas.drawRRect(innerRoundedRect, innerPaint);
+    }
   }
 
   @override
   bool shouldRepaint(covariant _DeveloperProfileFramePainter oldDelegate) {
+    return false;
+  }
+}
+
+
+Widget? _profileNavigationFrameWidget(String? frameId) {
+  switch (frameId) {
+    case developerProfilePageFrameId:
+      return const _DeveloperNavigationFrame();
+
+    case followDeveloperProfilePageFrameId:
+      return const _Tier3NavigationFrame();
+
+    default:
+      return null;
+  }
+}
+
+class _Tier3NavigationFrame extends StatelessWidget {
+  const _Tier3NavigationFrame();
+
+  @override
+  Widget build(BuildContext context) {
+    return const IgnorePointer(
+      child: CustomPaint(
+        painter: _Tier3NavigationFramePainter(),
+        child: SizedBox.expand(),
+      ),
+    );
+  }
+}
+
+class _Tier3NavigationFramePainter extends CustomPainter {
+  const _Tier3NavigationFramePainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.width <= 0 || size.height <= 0) {
+      return;
+    }
+
+    final rect = Rect.fromLTWH(
+      1.05,
+      0,
+      size.width - 2.1,
+      size.height - 1.05,
+    );
+
+    final shader = const LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [
+        Color(0xFFA855F7),
+        Color(0xFFD946EF),
+        Color(0xFF6366F1),
+        Color(0xFFA855F7),
+      ],
+    ).createShader(rect);
+
+    final frame = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.1
+      ..strokeJoin = StrokeJoin.miter
+      ..shader = shader;
+
+    final path = Path()
+      ..moveTo(rect.left, 0)
+      ..lineTo(rect.left, rect.bottom)
+      ..lineTo(rect.right, rect.bottom)
+      ..lineTo(rect.right, 0);
+
+    canvas.drawPath(path, frame);
+
+    final innerRect = Rect.fromLTWH(
+      3.6,
+      0,
+      size.width - 7.2,
+      size.height - 3.6,
+    );
+
+    final innerPath = Path()
+      ..moveTo(innerRect.left, 0)
+      ..lineTo(innerRect.left, innerRect.bottom)
+      ..lineTo(innerRect.right, innerRect.bottom)
+      ..lineTo(innerRect.right, 0);
+
+    canvas.drawPath(
+      innerPath,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.7
+        ..strokeJoin = StrokeJoin.miter
+        ..color = Colors.white.withValues(alpha: 0.12),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _Tier3NavigationFramePainter oldDelegate) {
+    return false;
+  }
+}
+
+class _DeveloperNavigationFrame extends StatefulWidget {
+  const _DeveloperNavigationFrame();
+
+  @override
+  State<_DeveloperNavigationFrame> createState() =>
+      _DeveloperNavigationFrameState();
+}
+
+class _DeveloperNavigationFrameState extends State<_DeveloperNavigationFrame>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 5),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: CustomPaint(
+        painter: _DeveloperNavigationFramePainter(animation: _controller),
+        child: const SizedBox.expand(),
+      ),
+    );
+  }
+}
+
+class _DeveloperNavigationFramePainter extends CustomPainter {
+  final Animation<double> animation;
+
+  _DeveloperNavigationFramePainter({required this.animation})
+      : super(repaint: animation);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.width <= 0 || size.height <= 0) {
+      return;
+    }
+
+    final rect = Rect.fromLTWH(
+      1.1,
+      0,
+      size.width - 2.2,
+      size.height - 1.1,
+    );
+
+    final rotation = _developerProfileFramePhase() * 6.28318530718;
+
+    final shader = SweepGradient(
+      colors: const [
+        Color(0xFF00E5FF),
+        Color(0xFF875CFF),
+        Color(0xFFFF4FD8),
+        Color(0xFFFFD166),
+        Color(0xFF00E5FF),
+      ],
+      transform: GradientRotation(rotation),
+    ).createShader(rect);
+
+    final frame = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.2
+      ..strokeJoin = StrokeJoin.miter
+      ..shader = shader;
+
+    final path = Path()
+      ..moveTo(rect.left, 0)
+      ..lineTo(rect.left, rect.bottom)
+      ..lineTo(rect.right, rect.bottom)
+      ..lineTo(rect.right, 0);
+
+    canvas.drawPath(path, frame);
+
+    final innerRect = Rect.fromLTWH(
+      3.7,
+      0,
+      size.width - 7.4,
+      size.height - 3.7,
+    );
+
+    final innerPath = Path()
+      ..moveTo(innerRect.left, 0)
+      ..lineTo(innerRect.left, innerRect.bottom)
+      ..lineTo(innerRect.right, innerRect.bottom)
+      ..lineTo(innerRect.right, 0);
+
+    canvas.drawPath(
+      innerPath,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.7
+        ..strokeJoin = StrokeJoin.miter
+        ..color = Colors.white.withValues(alpha: 0.16),
+    );
+  }
+
+  @override
+  bool shouldRepaint(
+    covariant _DeveloperNavigationFramePainter oldDelegate,
+  ) {
     return false;
   }
 }
@@ -21738,7 +22016,10 @@ class _ProfilePageState extends State<ProfilePage> {
                   alignment: Alignment.centerLeft,
                   child: UiText(
                     'Genre Runtime',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
@@ -22092,6 +22373,7 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     return SafeArea(
+      bottom: false,
       child: AnimatedBuilder(
         animation: Listenable.merge([
           library,
@@ -22233,6 +22515,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
           final selectedPageFrame = _profilePageFrameWidget(
             ProfilePageFrameService.instance.frameId,
+            edgeToEdge: true,
           );
 
           final selectedMedalCollectionStyle =
@@ -22430,10 +22713,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                               ),
 
                                               IconButton(
-                                                tooltip: trUi(
-                                                  context,
-                                                  'Profile Menu',
-                                                ),
+                                                tooltip: trUi(context, 'Profile Menu'),
                                                 visualDensity:
                                                     VisualDensity.compact,
                                                 onPressed: () async {
@@ -26287,6 +26567,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
 
     if (!mounted) return;
     setState(() => saving = false);
+
   }
 
   Widget _languageOption({
@@ -26502,9 +26783,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: UiText('Could not update notification setting.'),
-        ),
+        const SnackBar(content: UiText('Could not update notification setting.')),
       );
     }
   }
@@ -27499,9 +27778,9 @@ class _BlockedUsersPageState extends State<BlockedUsersPage> {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: UiText('Could not unblock user.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: UiText('Could not unblock user.')));
     }
   }
 
@@ -29777,9 +30056,7 @@ class _ReportBugPageState extends State<_ReportBugPage> {
     if (text.length < 10) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: UiText(
-            'Please describe the problem in a little more detail.',
-          ),
+          content: UiText('Please describe the problem in a little more detail.'),
         ),
       );
 
@@ -31722,10 +31999,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
         if (errorMessage != null) ...[
           const SizedBox(height: 14),
-          UiText(
-            errorMessage!,
-            style: const TextStyle(color: Colors.redAccent),
-          ),
+          UiText(errorMessage!, style: const TextStyle(color: Colors.redAccent)),
         ],
 
         const SizedBox(height: 24),
@@ -32197,9 +32471,8 @@ class _EpisodeRatingCardState extends State<_EpisodeRatingCard> {
         rating = oldRating;
       });
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: UiText('Could not remove rating: $e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: UiText('Could not remove rating: $e')));
     }
   }
 
@@ -32950,9 +33223,9 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
         );
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: UiText('Could not update favorite: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: UiText('Could not update favorite: $e')));
     }
   }
 
@@ -33014,9 +33287,8 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
         );
       });
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: UiText('Could not remove rating: $e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: UiText('Could not remove rating: $e')));
     }
   }
 
@@ -34389,8 +34661,7 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
                       final int seasonNumber = (season['season_number'] as num)
                           .toInt();
 
-                      final String seasonName =
-                          season['name'] ??
+                      final String seasonName = season['name'] ??
                           trUi(context, 'Season $seasonNumber');
 
                       final String? seasonPosterPath = season['poster_path']
@@ -36899,10 +37170,7 @@ class _EpisodeInfoMeta extends StatelessWidget {
 
         const SizedBox(width: 5),
 
-        UiText(
-          text,
-          style: const TextStyle(color: Colors.white60, fontSize: 14),
-        ),
+        UiText(text, style: const TextStyle(color: Colors.white60, fontSize: 14)),
       ],
     );
   }

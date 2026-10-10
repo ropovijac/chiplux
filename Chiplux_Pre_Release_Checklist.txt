@@ -1,0 +1,189 @@
+CHIPLUX PRE-RELEASE CHECKLIST
+=============================
+
+1. SECURITY & SUPABASE
+----------------------
+[ ] Audit every Supabase table.
+[ ] Verify Row Level Security (RLS) is enabled where appropriate.
+[ ] Confirm users can only read/write data they are allowed to access.
+[ ] Check public vs private profile fields.
+[ ] Review permissions for profiles, library items, ratings, watched episodes, comments, comment likes, follows, blocks, notifications, reports, feature suggestions, activity, and data export.
+[ ] Verify admin-only actions cannot be triggered by normal users.
+[ ] Confirm no Supabase service-role key is present in the Flutter app.
+[ ] Confirm no other private API secrets are bundled into the APK/IPA.
+[ ] Review third-party SDKs and packages for unnecessary data access.
+
+2. ACCOUNT DELETION & DATA LIFECYCLE
+------------------------------------
+[ ] Add/verify in-app account deletion.
+[ ] Add an external account-deletion request page if required for Google Play.
+[ ] Decide exactly what happens to profile, avatar, comments, likes, follows, ratings, watched history, notifications, reports, blocked users and activity.
+[ ] Test deletion from start to finish.
+[ ] Confirm deleted users cannot sign back in with stale sessions.
+[ ] Confirm orphaned data is handled correctly.
+
+3. COMMENTS, COMMUNITY & MODERATION
+-----------------------------------
+[ ] Verify Terms of Use acceptance before users create user-generated content.
+[ ] Confirm users can report comments/users/content.
+[ ] Confirm users can block other users.
+[ ] Verify blocked users behave correctly across the app.
+[ ] Test moderation/admin review workflow.
+[ ] Add/verify objectionable-content handling.
+[ ] Provide a visible support/contact method.
+[ ] Test spam, abusive content and repeated reporting scenarios.
+
+4. GOOGLE PLAY / ANDROID REQUIREMENTS
+-------------------------------------
+[ ] Verify targetSdk meets current Google Play requirements.
+[ ] Confirm Android package name is final.
+[ ] Confirm versionName/versionCode strategy.
+[ ] Verify signing setup for release builds.
+[ ] Build and test a release AAB.
+[ ] Verify app installs correctly from a release build.
+[ ] Check whether closed testing requirements apply to the developer account.
+
+5. REAL-DEVICE BETA TESTING
+---------------------------
+[ ] Test fresh install.
+[ ] Test update over an older version.
+[ ] Test signup.
+[ ] Test login/logout.
+[ ] Test password reset.
+[ ] Test deleted account.
+[ ] Test expired Supabase session.
+[ ] Test weak connection.
+[ ] Test no internet.
+[ ] Test slow TMDB/Supabase responses.
+[ ] Test empty account/library.
+[ ] Test large library.
+[ ] Test many comments/replies.
+[ ] Test blocked users.
+[ ] Test push notifications.
+[ ] Test notification deep links.
+[ ] Test background/foreground app transitions.
+[ ] Test Android back navigation.
+[ ] Test on small and large phones.
+
+6. CRASH & ERROR HANDLING
+-------------------------
+[ ] Add crash reporting before public release.
+[ ] Make sure API errors do not crash pages.
+[ ] Add retry states where appropriate.
+[ ] Add loading states where appropriate.
+[ ] Add empty states where appropriate.
+[ ] Add fallback images for missing posters/avatars.
+[ ] Handle missing TMDB data safely.
+[ ] Handle missing translations safely.
+[ ] Handle invalid notification targets safely.
+[ ] Avoid exposing technical error messages directly to users.
+
+7. PERFORMANCE
+--------------
+[ ] Measure cold startup time.
+[ ] Measure Today first-load time.
+[ ] Measure For You first-load time.
+[ ] Measure profile/public-profile load time.
+[ ] Check large library performance.
+[ ] Check long comment-thread performance.
+[ ] Reduce duplicate TMDB requests.
+[ ] Reduce duplicate Supabase queries.
+[ ] Add caching where useful.
+[ ] Add pagination where large lists may grow.
+[ ] Confirm image caching works well.
+[ ] Check unnecessary widget rebuilds.
+[ ] Review large main.dart sections for performance-sensitive rebuilds.
+
+8. LOCALIZATION & UI QA
+-----------------------
+[ ] Test the full app in English.
+[ ] Test the full app in Croatian.
+[ ] Check every page title, tab, pill, button, dialog, SnackBar, filter, error message, empty state, tooltip, achievement and profile statistic.
+[ ] Check long Croatian strings for overflow.
+[ ] Test small-screen layouts.
+[ ] Test larger system font/text scaling.
+[ ] Confirm movie/TV/episode names remain unchanged.
+[ ] Confirm usernames/display names/user-written content remain unchanged.
+[ ] Confirm summaries use Croatian where available and fall back safely.
+
+9. PRIVACY, LEGAL & STORE DECLARATIONS
+--------------------------------------
+[ ] Create final Privacy Policy.
+[ ] Create final Terms of Use.
+[ ] Create support/contact page or email.
+[ ] Review what data Supabase stores.
+[ ] Review what Firebase collects.
+[ ] Review what notification services collect.
+[ ] Review what analytics/ads SDKs collect.
+[ ] Complete Google Play Data Safety accurately.
+[ ] Complete Apple App Privacy accurately.
+[ ] Confirm privacy wording matches actual app behavior.
+
+10. ADS & CONSENT
+-----------------
+[ ] Decide whether ads are included at initial release.
+[ ] If using AdMob, implement appropriate EEA/UK/Switzerland consent flow.
+[ ] Use a compliant CMP where required.
+[ ] Allow users to revisit privacy/ad-consent choices.
+[ ] Test personalized vs non-personalized ad behavior.
+[ ] Confirm ad SDK does not receive unnecessary Chiplux user data.
+[ ] Verify ads do not interfere with navigation or critical actions.
+
+11. PUSH NOTIFICATIONS
+----------------------
+[ ] Test notification permission timing.
+[ ] Test foreground notifications.
+[ ] Test background notifications.
+[ ] Test app-closed notifications.
+[ ] Check for duplicate notifications.
+[ ] Handle stale Firebase tokens.
+[ ] Remove/refresh tokens correctly after logout.
+[ ] Verify notification settings/muting.
+[ ] Verify notification deep links.
+[ ] Make sure notifications do not reveal private data for another account on a shared device.
+
+12. STORE RELEASE PREPARATION
+-----------------------------
+[ ] Final app icon.
+[ ] Final splash screen.
+[ ] Google Play screenshots.
+[ ] App Store screenshots.
+[ ] Feature graphic where required.
+[ ] English store description.
+[ ] Croatian store description.
+[ ] Privacy Policy URL.
+[ ] Support URL/contact.
+[ ] Age/content rating.
+[ ] App category.
+[ ] Final pricing/free status.
+[ ] Reviewer instructions.
+[ ] Reviewer/demo account if needed.
+[ ] Explain any external services required for review.
+[ ] Verify production Supabase/Firebase configuration.
+[ ] Verify production API keys/configuration.
+[ ] Test final signed release build.
+
+RECOMMENDED ORDER
+=================
+1. Security / RLS audit
+2. Account deletion
+3. Moderation
+4. Crash and error handling
+5. Performance
+6. Localization and full QA
+7. Legal / privacy / ads setup
+8. Closed beta
+9. Final store preparation
+10. Release
+
+POST-RELEASE ITEMS TO PREPARE
+=============================
+[ ] Monitor crashes.
+[ ] Monitor API errors.
+[ ] Monitor Supabase usage/costs.
+[ ] Monitor TMDB/music API usage.
+[ ] Monitor abuse/reports.
+[ ] Respond to user reviews.
+[ ] Track retention and feature usage.
+[ ] Maintain a changelog.
+[ ] Plan first bug-fix update.
