@@ -253,6 +253,9 @@ String _translateCroatianPattern(String value) {
   match = RegExp(r'^(\d+) / (\d+) watched$').firstMatch(value);
   if (match != null) return '${match.group(1)} / ${match.group(2)} pogledano';
 
+  match = RegExp(r'^(\d+) / (\d+) listened$').firstMatch(value);
+  if (match != null) return '${match.group(1)} / ${match.group(2)} poslušano';
+
   match = RegExp(
     r'^No (in progress|implemented|rejected|pending) suggestions\.$',
     caseSensitive: false,
@@ -296,6 +299,67 @@ String _translateCroatianPattern(String value) {
     if (value.startsWith(entry.key)) {
       return '${entry.value}${value.substring(entry.key.length)}';
     }
+  }
+
+  const musicTitleSuffixes = <String, String>{
+    'ROCKER': 'ROKER',
+    'METALHEAD': 'METALAC',
+    'PUNK': 'PUNKER',
+    'BEATHEAD': 'BEATHEAD',
+    'RAVER': 'REJVER',
+    'JAZZ CAT': 'LJUBITELJ JAZZA',
+    'VIRTUOSO': 'VIRTUOZ',
+    'OUTLAW': 'ODMETNIK',
+    'BLUES SOUL': 'BLUES DUŠA',
+    'GROOVER': 'GROOVER',
+    'TROUBADOUR': 'TRUBADUR',
+    'REGGAE SOUL': 'REGGAE DUŠA',
+    'FUNKSTER': 'FUNKER',
+    'POPSTER': 'POP FAN',
+    'MUSIC LOVER': 'LJUBITELJ GLAZBE',
+  };
+
+  const runtimePrefixes = <String, String>{
+    'COMEDIC': 'KOMIČNI',
+    'ACTION': 'AKCIJSKI',
+    'EXPLORING': 'ISTRAŽIVAČKI',
+    'ANIMATED': 'ANIMIRANI',
+    'OUTLAW': 'ODMETNIČKI',
+    'DOCUMENTARY': 'DOKUMENTARNI',
+    'DRAMATIC': 'DRAMATIČNI',
+    'HEARTWARMING': 'TOPLI',
+    'FANTASTICAL': 'FANTASTIČNI',
+    'HISTORIC': 'POVIJESNI',
+    'DARK': 'MRAČNI',
+    'MUSICAL': 'GLAZBENI',
+    'MYSTERIOUS': 'MISTERIOZNI',
+    'ROMANTIC': 'ROMANTIČNI',
+    'FUTURISTIC': 'FUTURISTIČKI',
+    'THRILLING': 'NAPETI',
+    'STRATEGIC': 'STRATEŠKI',
+    'WESTERN': 'VESTERN',
+    'ADVENTUROUS': 'AVANTURISTIČKI',
+    'YOUTHFUL': 'MLADENAČKI',
+    'NEWS': 'NOVINSKI',
+    'REALITY': 'REALITY',
+    'SCI-FI': 'ZNANSTVENOFANTASTIČNI',
+    'SOAP': 'SAPUNIČARSKI',
+    'TALKATIVE': 'RAZGOVORLJIVI',
+  };
+
+  for (final suffix in musicTitleSuffixes.entries) {
+    if (value == suffix.key) {
+      return suffix.value;
+    }
+
+    final ending = ' ${suffix.key}';
+    if (!value.endsWith(ending)) {
+      continue;
+    }
+
+    final prefix = value.substring(0, value.length - ending.length);
+    final translatedPrefix = runtimePrefixes[prefix] ?? prefix;
+    return '$translatedPrefix ${suffix.value}';
   }
 
   return value;
@@ -499,6 +563,8 @@ const Map<String, String> _hrExact = {
       "Komentari su zaključani dok ne dovršite ovaj naslov.",
   "Comments are locked until you watch this episode.":
       "Komentari su zaključani dok ne pogledate ovu epizodu.",
+  "Comments are locked until you listen to this album.":
+      "Komentari su zaključani dok ne poslušaš ovaj album.",
   "Comments, reviews, profile information and other content you choose to make public may be visible to other users according to your privacy settings. If a feature suggestion is published to the Feature Board, Chiplux may show your username and link to your profile when public suggestion attribution is enabled; otherwise the suggestion is shown without identifying you publicly. You should not post personal information that you do not want other people to see.": "Komentari, recenzije, podaci profila i drugi sadržaj koji odlučiš učiniti javnim mogu biti vidljivi drugim korisnicima prema tvojim postavkama privatnosti. Ako se prijedlog značajke objavi na Ploči prijedloga, Chiplux može prikazati tvoje korisničko ime i poveznicu na profil kada je uključeno javno pripisivanje prijedloga; u suprotnom se prijedlog prikazuje bez javnog otkrivanja tvog identiteta. Nemoj objavljivati osobne podatke koje ne želiš da drugi vide.",
   "Committed Regular": "Predani redoviti korisnik",
   "Common Chiplux questions": "Česta pitanja o Chipluxu",
@@ -792,12 +858,22 @@ const Map<String, String> _hrExact = {
   "Movie Critic": "Filmski kritičar",
   "Movies": "Filmovi",
   "Movies & TV": "Filmovi i serije",
+  "Movies & TV Shows": "Filmovi i serije",
+  "Library": "Kolekcija",
+  "Library status": "Status u kolekciji",
+  "Albums": "Albumi",
+  "Songs": "Pjesme",
+  "Albums Listened": "Poslušani albumi",
+  "Songs Listened": "Poslušane pjesme",
+  "Albums Rated": "Ocijenjeni albumi",
+  "Songs Rated": "Ocijenjene pjesme",
+  "Remove from Library": "Ukloni iz kolekcije",
   "Movies Rated": "Ocijenjeni filmovi",
   "Movies Watched": "Pogledani filmovi",
   "Movies, TV shows, episode titles and future music titles remain in their original form.": "Filmovi, serije, nazivi epizoda i budući nazivi glazbe ostaju u izvornom obliku.",
   "Movies, TV shows, episodes and watched runtime.":
       "Filmovi, serije, epizode i vrijeme gledanja.",
-  "Music": "Glazbeni",
+  "Music": "Glazba",
   "Mystery": "Misterij",
   "NEW": "NOVO",
   "NEW CRITIC": "NOVI KRITIČAR",
@@ -972,6 +1048,7 @@ const Map<String, String> _hrExact = {
   "Remove from Watch": "Ukloni iz Gledaj",
   "Remove from favorites": "Ukloni iz omiljenog",
   "Remove rating": "Ukloni ocjenu",
+  "Remove library status": "Ukloni status iz kolekcije",
   "Replies": "Odgovori",
   "Replies, followers, achievements and Chiplux activity will appear here.": "Ovdje će se prikazivati odgovori, pratitelji, postignuća i Chiplux aktivnosti.",
   "Reply": "Odgovori",
@@ -1267,6 +1344,45 @@ const Map<String, String> _hrExact = {
   "watched": "pogledao/la je",
   "watched a season of": "pogledao/la je sezonu serije",
   "watched an episode of": "pogledao/la je epizodu serije",
+  "Actors, directors, musicians and bands": "Glumci, redatelji, glazbenici i bendovi",
+  "Actors, directors and musicians": "Glumci, redatelji i glazbenici",
+  "Bands / Groups": "Bendovi / grupe",
+  "Could not load music tracking.": "Nije moguće učitati praćenje glazbe.",
+  "Could not update music tracking.": "Nije moguće ažurirati praćenje glazbe.",
+  "Listened": "Poslušano",
+  "Mark listened": "Označi kao poslušano",
+  "Mark album as not listened first.":
+      "Najprije ukloni oznaku Poslušano s albuma.",
+  "Rate": "Ocijeni",
+  "Search bands and groups": "Pretraži bendove i grupe",
+  "Search bands, albums and songs": "Pretraži bendove, albume i pjesme",
+  "Song": "Pjesma",
+  "Drop": "Odbaci",
+  "Listen to the full album to rate it.": "Poslušaj cijeli album kako bi ga mogao/la ocijeniti.",
+  "Album": "Album",
+  "Band / Group": "Bend / grupa",
+  "Choir": "Zbor",
+  "Could not load album tracks.": "Nije moguće učitati pjesme albuma.",
+  "Could not load discography.": "Nije moguće učitati diskografiju.",
+  "Could not load music artist.": "Nije moguće učitati glazbenog izvođača.",
+  "Country": "Država",
+  "Genre": "Žanr",
+  "Members": "Članovi",
+  "Music Artist": "Glazbeni izvođač",
+  "Musician": "Glazbenik",
+  "No studio albums found.": "Nisu pronađeni studijski albumi.",
+  "No tracks found.": "Nisu pronađene pjesme.",
+  "Orchestra": "Orkestar",
+  "Present": "danas",
+  "Studio Albums": "Studijski albumi",
+  "Tracks": "Pjesme",
+  "Groups": "Grupe",
+  "Search albums": "Pretraži albume",
+  "Search songs": "Pretraži pjesme",
+  "Search bands, groups, choirs and orchestras":
+      "Pretraži bendove, grupe, zborove i orkestre",
+  "Your Album": "Tvoj album",
+  "Album Progress": "Napredak albuma",
   "• edited": "• uređeno",
 };
 

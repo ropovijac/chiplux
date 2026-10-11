@@ -22,6 +22,9 @@ class CommentsPage extends StatefulWidget {
 
   final int tmdbId;
 
+  // MusicBrainz release-group ID when mediaType == 'music_album'.
+  final String? musicAlbumId;
+
   final Future<void> Function(String userId)? onProfileTap;
 
   final int? seasonNumber;
@@ -47,6 +50,8 @@ class CommentsPage extends StatefulWidget {
 
     required this.tmdbId,
 
+    this.musicAlbumId,
+
     required this.title,
 
     this.subtitle,
@@ -71,6 +76,8 @@ class CommentCountLabel extends StatefulWidget {
 
   final int tmdbId;
 
+  final String? musicAlbumId;
+
   final int? seasonNumber;
 
   final int? episodeNumber;
@@ -81,6 +88,8 @@ class CommentCountLabel extends StatefulWidget {
     required this.mediaType,
 
     required this.tmdbId,
+
+    this.musicAlbumId,
 
     this.seasonNumber,
 
@@ -109,15 +118,20 @@ class _CommentCountLabelState extends State<CommentCountLabel> {
 
   Future<void> _loadCount() async {
     try {
-      final count = await CommentService.instance.countComments(
-        mediaType: widget.mediaType,
+      final albumId = widget.musicAlbumId?.trim();
 
-        tmdbId: widget.tmdbId,
-
-        seasonNumber: widget.seasonNumber,
-
-        episodeNumber: widget.episodeNumber,
-      );
+      final count = widget.mediaType == 'music_album' &&
+              albumId != null &&
+              albumId.isNotEmpty
+          ? await CommentService.instance.countMusicAlbumComments(
+              albumId: albumId,
+            )
+          : await CommentService.instance.countComments(
+              mediaType: widget.mediaType,
+              tmdbId: widget.tmdbId,
+              seasonNumber: widget.seasonNumber,
+              episodeNumber: widget.episodeNumber,
+            );
 
       if (!mounted) {
         return;
@@ -146,10 +160,18 @@ class _CommentCountLabelState extends State<CommentCountLabel> {
   void _startRealtime() {
     final client = Supabase.instance.client;
 
+    final albumId = widget.musicAlbumId?.trim();
+    final targetId = widget.mediaType == 'music_album'
+        ? (albumId ?? 'unknown')
+        : widget.tmdbId.toString();
+    final table = widget.mediaType == 'music_album'
+        ? 'music_album_comments'
+        : 'media_comments';
+
     _channel = client.channel(
       'comment_count_'
       '${widget.mediaType}_'
-      '${widget.tmdbId}_'
+      '${targetId}_'
       '${widget.seasonNumber ?? 0}_'
       '${widget.episodeNumber ?? 0}_'
       '$hashCode',
@@ -161,7 +183,7 @@ class _CommentCountLabelState extends State<CommentCountLabel> {
 
           schema: 'public',
 
-          table: 'media_comments',
+          table: table,
 
           callback: (payload) {
             _scheduleReload();
@@ -195,6 +217,12 @@ class _CommentCountLabelState extends State<CommentCountLabel> {
 
 class _CommentsPageState extends State<CommentsPage> {
   final CommentService service = CommentService.instance;
+
+  bool get _isMusicAlbum =>
+      widget.mediaType == 'music_album' &&
+      (widget.musicAlbumId?.trim().isNotEmpty ?? false);
+
+  String get _musicAlbumId => widget.musicAlbumId!.trim();
 
   List<Map<String, dynamic>> comments = [];
 
@@ -452,10 +480,19 @@ class _CommentsPageState extends State<CommentsPage> {
 
     // =========================================
 
+    final targetId = _isMusicAlbum
+        ? _musicAlbumId
+        : widget.tmdbId.toString();
+    final commentsTable =
+        _isMusicAlbum ? 'music_album_comments' : 'media_comments';
+    final likesTable = _isMusicAlbum
+        ? 'music_album_comment_likes'
+        : 'comment_likes';
+
     _commentsChannel = client.channel(
       'comments_'
       '${widget.mediaType}_'
-      '${widget.tmdbId}_'
+      '${targetId}_'
       '${widget.seasonNumber ?? 0}_'
       '${widget.episodeNumber ?? 0}_'
       '$hashCode',
@@ -467,7 +504,7 @@ class _CommentsPageState extends State<CommentsPage> {
 
           schema: 'public',
 
-          table: 'media_comments',
+          table: commentsTable,
 
           callback: (payload) {
             _scheduleRealtimeReload();
@@ -489,7 +526,7 @@ class _CommentsPageState extends State<CommentsPage> {
 
           schema: 'public',
 
-          table: 'comment_likes',
+          table: likesTable,
 
           callback: (payload) {
             _scheduleRealtimeReload();
@@ -512,15 +549,16 @@ class _CommentsPageState extends State<CommentsPage> {
     }
 
     try {
-      final allowed = await service.canAccess(
-        mediaType: widget.mediaType,
-
-        tmdbId: widget.tmdbId,
-
-        seasonNumber: widget.seasonNumber,
-
-        episodeNumber: widget.episodeNumber,
-      );
+      final allowed = _isMusicAlbum
+          ? await service.canAccessMusicAlbumComments(
+              albumId: _musicAlbumId,
+            )
+          : await service.canAccess(
+              mediaType: widget.mediaType,
+              tmdbId: widget.tmdbId,
+              seasonNumber: widget.seasonNumber,
+              episodeNumber: widget.episodeNumber,
+            );
 
       if (!mounted) {
         return;
@@ -532,7 +570,9 @@ class _CommentsPageState extends State<CommentsPage> {
 
           loading = false;
 
-          errorMessage = widget.mediaType == 'episode'
+          errorMessage = _isMusicAlbum
+              ? 'Comments are locked until you listen to this album.'
+              : widget.mediaType == 'episode'
               ? 'Comments are locked until you watch this episode.'
               : 'Comments are locked until you finish this title.';
         });
@@ -540,15 +580,14 @@ class _CommentsPageState extends State<CommentsPage> {
         return;
       }
 
-      final loadedComments = await service.loadComments(
-        mediaType: widget.mediaType,
-
-        tmdbId: widget.tmdbId,
-
-        seasonNumber: widget.seasonNumber,
-
-        episodeNumber: widget.episodeNumber,
-      );
+      final loadedComments = _isMusicAlbum
+          ? await service.loadMusicAlbumComments(albumId: _musicAlbumId)
+          : await service.loadComments(
+              mediaType: widget.mediaType,
+              tmdbId: widget.tmdbId,
+              seasonNumber: widget.seasonNumber,
+              episodeNumber: widget.episodeNumber,
+            );
 
       if (!mounted) {
         return;
@@ -710,37 +749,55 @@ class _CommentsPageState extends State<CommentsPage> {
 
               try {
                 if (isEditing) {
-                  await service.editComment(
-                    commentId: editingComment['id'].toString(),
-
-                    body: text,
-                  );
+                  if (_isMusicAlbum) {
+                    await service.editMusicAlbumComment(
+                      commentId: editingComment['id'].toString(),
+                      body: text,
+                    );
+                  } else {
+                    await service.editComment(
+                      commentId: editingComment['id'].toString(),
+                      body: text,
+                    );
+                  }
                 } else if (isReply) {
-                  await service.addReply(
-                    parentCommentId: parentComment['id'].toString(),
-
-                    mediaType: widget.mediaType,
-
-                    tmdbId: widget.tmdbId,
-
-                    seasonNumber: widget.seasonNumber,
-
-                    episodeNumber: widget.episodeNumber,
-
-                    body: text,
-                  );
+                  if (_isMusicAlbum) {
+                    await service.addMusicAlbumReply(
+                      parentCommentId: parentComment['id'].toString(),
+                      albumId: _musicAlbumId,
+                      albumTitle: widget.title,
+                      artistName: widget.subtitle ?? '',
+                      coverUrl: widget.imagePath,
+                      body: text,
+                    );
+                  } else {
+                    await service.addReply(
+                      parentCommentId: parentComment['id'].toString(),
+                      mediaType: widget.mediaType,
+                      tmdbId: widget.tmdbId,
+                      seasonNumber: widget.seasonNumber,
+                      episodeNumber: widget.episodeNumber,
+                      body: text,
+                    );
+                  }
                 } else {
-                  await service.addComment(
-                    mediaType: widget.mediaType,
-
-                    tmdbId: widget.tmdbId,
-
-                    seasonNumber: widget.seasonNumber,
-
-                    episodeNumber: widget.episodeNumber,
-
-                    body: text,
-                  );
+                  if (_isMusicAlbum) {
+                    await service.addMusicAlbumComment(
+                      albumId: _musicAlbumId,
+                      albumTitle: widget.title,
+                      artistName: widget.subtitle ?? '',
+                      coverUrl: widget.imagePath,
+                      body: text,
+                    );
+                  } else {
+                    await service.addComment(
+                      mediaType: widget.mediaType,
+                      tmdbId: widget.tmdbId,
+                      seasonNumber: widget.seasonNumber,
+                      episodeNumber: widget.episodeNumber,
+                      body: text,
+                    );
+                  }
                 }
 
                 if (!sheetContext.mounted) {
@@ -993,10 +1050,15 @@ class _CommentsPageState extends State<CommentsPage> {
     }
 
     try {
-      final spoilerCount = await service.reportComment(
-        commentId: commentId,
-        reportType: reportType,
-      );
+      final spoilerCount = _isMusicAlbum
+          ? await service.reportMusicAlbumComment(
+              commentId: commentId,
+              reportType: reportType,
+            )
+          : await service.reportComment(
+              commentId: commentId,
+              reportType: reportType,
+            );
 
       if (!mounted) {
         return;
@@ -1075,7 +1137,13 @@ class _CommentsPageState extends State<CommentsPage> {
     }
 
     try {
-      await service.deleteComment(commentId: comment['id'].toString());
+      if (_isMusicAlbum) {
+        await service.deleteMusicAlbumComment(
+          commentId: comment['id'].toString(),
+        );
+      } else {
+        await service.deleteComment(commentId: comment['id'].toString());
+      }
 
       await _load();
     } catch (e) {
@@ -1117,9 +1185,13 @@ class _CommentsPageState extends State<CommentsPage> {
     });
 
     try {
-      final actualLiked = await service.toggleLike(
-        commentId: comment['id'].toString(),
-      );
+      final actualLiked = _isMusicAlbum
+          ? await service.toggleMusicAlbumCommentLike(
+              commentId: comment['id'].toString(),
+            )
+          : await service.toggleLike(
+              commentId: comment['id'].toString(),
+            );
 
       if (!mounted) {
         return;
@@ -1873,9 +1945,11 @@ class _CommentsPageState extends State<CommentsPage> {
   // =====================================================
 
   Widget _buildHeader() {
-    final imageUrl = widget.imagePath != null && widget.imagePath!.isNotEmpty
-        ? 'https://image.tmdb.org/t/p/w780'
-              '${widget.imagePath}'
+    final rawImage = widget.imagePath?.trim();
+    final imageUrl = rawImage != null && rawImage.isNotEmpty
+        ? (rawImage.startsWith('http://') || rawImage.startsWith('https://')
+              ? rawImage
+              : 'https://image.tmdb.org/t/p/w780$rawImage')
         : null;
 
     int totalComments = comments.length;

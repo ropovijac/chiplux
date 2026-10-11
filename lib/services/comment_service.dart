@@ -419,6 +419,346 @@ class CommentService {
 
   // =====================================================
 
+  // MUSIC ALBUM COMMENTS
+
+  // Only listened albums are accessible. Songs, artists and bands never
+  // use this comment path.
+
+  // =====================================================
+
+  Future<bool> canAccessMusicAlbumComments({required String albumId}) async {
+    final user = client.auth.currentUser;
+
+    if (user == null || albumId.trim().isEmpty) {
+      return false;
+    }
+
+    final row = await client
+        .from('music_user_data')
+        .select('entity_id')
+        .eq('user_id', user.id)
+        .eq('entity_type', 'album')
+        .eq('entity_id', albumId)
+        .eq('is_listened', true)
+        .maybeSingle();
+
+    return row != null;
+  }
+
+  Future<int> countMusicAlbumComments({required String albumId}) async {
+    if (!await canAccessMusicAlbumComments(albumId: albumId)) {
+      return 0;
+    }
+
+    final rows = await client
+        .from('music_album_comments')
+        .select('id')
+        .eq('album_id', albumId);
+
+    return rows.length;
+  }
+
+  Future<List<Map<String, dynamic>>> loadMusicAlbumComments({
+    required String albumId,
+  }) async {
+    if (!await canAccessMusicAlbumComments(albumId: albumId)) {
+      return <Map<String, dynamic>>[];
+    }
+
+    final raw = await client
+        .from('music_album_comments')
+        .select()
+        .eq('album_id', albumId);
+
+    final comments = <Map<String, dynamic>>[];
+
+    for (final item in raw) {
+      comments.add(Map<String, dynamic>.from(item));
+    }
+
+    await Future.wait(comments.map(_enrichMusicAlbumComment));
+
+    final byId = <String, Map<String, dynamic>>{};
+
+    for (final comment in comments) {
+      comment['replies'] = <Map<String, dynamic>>[];
+      final id = comment['id']?.toString();
+      if (id != null) {
+        byId[id] = comment;
+      }
+    }
+
+    final mainComments = <Map<String, dynamic>>[];
+
+    for (final comment in comments) {
+      final parentId = comment['parent_comment_id']?.toString();
+
+      if (parentId == null || parentId.isEmpty) {
+        mainComments.add(comment);
+        continue;
+      }
+
+      final parent = byId[parentId];
+      if (parent == null) {
+        continue;
+      }
+
+      final replies = parent['replies'];
+      if (replies is List<Map<String, dynamic>>) {
+        replies.add(comment);
+      }
+    }
+
+    mainComments.sort((a, b) {
+      final aDate =
+          DateTime.tryParse(a['created_at']?.toString() ?? '') ?? DateTime(1970);
+      final bDate =
+          DateTime.tryParse(b['created_at']?.toString() ?? '') ?? DateTime(1970);
+      return bDate.compareTo(aDate);
+    });
+
+    for (final comment in mainComments) {
+      final replies = comment['replies'];
+      if (replies is List<Map<String, dynamic>>) {
+        replies.sort((a, b) {
+          final aDate =
+              DateTime.tryParse(a['created_at']?.toString() ?? '') ??
+              DateTime(1970);
+          final bDate =
+              DateTime.tryParse(b['created_at']?.toString() ?? '') ??
+              DateTime(1970);
+          return aDate.compareTo(bDate);
+        });
+      }
+    }
+
+    return mainComments;
+  }
+
+  Future<void> _enrichMusicAlbumComment(Map<String, dynamic> comment) async {
+    final commentId = comment['id']?.toString();
+    final userId = comment['user_id']?.toString();
+
+    if (commentId == null || userId == null) {
+      return;
+    }
+
+    final profileFuture = client
+        .from('profiles')
+        .select(
+          'id, '
+          'display_name, '
+          'username, '
+          'avatar_url, '
+          'is_developer, '
+          'privacy_allow_comment_replies',
+        )
+        .eq('id', userId)
+        .maybeSingle();
+
+    final likesFuture = client
+        .from('music_album_comment_likes')
+        .select('user_id')
+        .eq('comment_id', commentId);
+
+    final spoilerCountFuture = client.rpc(
+      'count_music_album_comment_reports',
+      params: {
+        'p_comment_id': commentId,
+        'p_report_type': 'spoiler',
+      },
+    );
+
+    final profile = await profileFuture;
+    final likes = await likesFuture;
+    final spoilerCountRaw = await spoilerCountFuture;
+    final currentUserId = client.auth.currentUser?.id;
+
+    comment['profile'] = profile != null
+        ? Map<String, dynamic>.from(profile)
+        : null;
+    comment['like_count'] = likes.length;
+    comment['liked_by_me'] =
+        currentUserId != null &&
+        likes.any((row) => row['user_id']?.toString() == currentUserId);
+    final spoilerCount =
+        spoilerCountRaw is num ? spoilerCountRaw.toInt() : 0;
+    comment['spoiler_hidden'] = spoilerCount >= 3;
+  }
+
+  Future<Map<String, dynamic>> addMusicAlbumComment({
+    required String albumId,
+    required String albumTitle,
+    required String artistName,
+    required String? coverUrl,
+    required String body,
+  }) async {
+    final text = body.trim();
+
+    if (text.isEmpty) {
+      throw Exception('Comment cannot be empty.');
+    }
+
+    if (text.length > 4000) {
+      throw Exception('Comment is too long.');
+    }
+
+    if (!await canAccessMusicAlbumComments(albumId: albumId)) {
+      throw Exception('Comments are locked until you listen to this album.');
+    }
+
+    final row = await client
+        .from('music_album_comments')
+        .insert({
+          'user_id': _userId,
+          'album_id': albumId,
+          'album_title': albumTitle,
+          'artist_name': artistName,
+          'cover_url': coverUrl,
+          'parent_comment_id': null,
+          'body': text,
+        })
+        .select()
+        .single();
+
+    final comment = Map<String, dynamic>.from(row);
+    await _enrichMusicAlbumComment(comment);
+    comment['replies'] = <Map<String, dynamic>>[];
+    return comment;
+  }
+
+  Future<Map<String, dynamic>> addMusicAlbumReply({
+    required String parentCommentId,
+    required String albumId,
+    required String albumTitle,
+    required String artistName,
+    required String? coverUrl,
+    required String body,
+  }) async {
+    final text = body.trim();
+
+    if (text.isEmpty) {
+      throw Exception('Reply cannot be empty.');
+    }
+
+    if (text.length > 4000) {
+      throw Exception('Reply is too long.');
+    }
+
+    if (!await canAccessMusicAlbumComments(albumId: albumId)) {
+      throw Exception('Comments are locked until you listen to this album.');
+    }
+
+    final row = await client
+        .from('music_album_comments')
+        .insert({
+          'user_id': _userId,
+          'album_id': albumId,
+          'album_title': albumTitle,
+          'artist_name': artistName,
+          'cover_url': coverUrl,
+          'parent_comment_id': parentCommentId,
+          'body': text,
+        })
+        .select()
+        .single();
+
+    final reply = Map<String, dynamic>.from(row);
+    await _enrichMusicAlbumComment(reply);
+    reply['replies'] = <Map<String, dynamic>>[];
+    return reply;
+  }
+
+  Future<void> editMusicAlbumComment({
+    required String commentId,
+    required String body,
+  }) async {
+    final text = body.trim();
+
+    if (text.isEmpty) {
+      throw Exception('Comment cannot be empty.');
+    }
+
+    if (text.length > 4000) {
+      throw Exception('Comment is too long.');
+    }
+
+    final now = DateTime.now().toUtc().toIso8601String();
+
+    await client
+        .from('music_album_comments')
+        .update({'body': text, 'updated_at': now, 'edited_at': now})
+        .eq('id', commentId)
+        .eq('user_id', _userId);
+  }
+
+  Future<void> deleteMusicAlbumComment({required String commentId}) async {
+    await client
+        .from('music_album_comments')
+        .delete()
+        .eq('id', commentId)
+        .eq('user_id', _userId);
+  }
+
+  Future<bool> toggleMusicAlbumCommentLike({
+    required String commentId,
+  }) async {
+    final userId = _userId;
+
+    final existing = await client
+        .from('music_album_comment_likes')
+        .select('comment_id')
+        .eq('comment_id', commentId)
+        .eq('user_id', userId)
+        .maybeSingle();
+
+    if (existing != null) {
+      await client
+          .from('music_album_comment_likes')
+          .delete()
+          .eq('comment_id', commentId)
+          .eq('user_id', userId);
+      return false;
+    }
+
+    await client.from('music_album_comment_likes').insert({
+      'comment_id': commentId,
+      'user_id': userId,
+    });
+
+    return true;
+  }
+
+  Future<int> reportMusicAlbumComment({
+    required String commentId,
+    required String reportType,
+    String? details,
+  }) async {
+    final userId = _userId;
+
+    await client.from('music_album_comment_reports').upsert(
+      {
+        'comment_id': commentId,
+        'reporter_id': userId,
+        'report_type': reportType,
+        'details': details,
+      },
+      onConflict: 'comment_id,reporter_id,report_type',
+    );
+
+    final count = await client.rpc(
+      'count_music_album_comment_reports',
+      params: {
+        'p_comment_id': commentId,
+        'p_report_type': reportType,
+      },
+    );
+
+    return count is num ? count.toInt() : 0;
+  }
+
+  // =====================================================
+
   // OWNERSHIP
 
   // =====================================================

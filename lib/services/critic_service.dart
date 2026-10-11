@@ -138,6 +138,8 @@ class CriticService extends ChangeNotifier {
   int movieRatingCount = 0;
   int tvRatingCount = 0;
   int episodeRatingCount = 0;
+  int albumRatingCount = 0;
+  int songRatingCount = 0;
 
   double averageStars = 0;
 
@@ -309,17 +311,28 @@ class CriticService extends ChangeNotifier {
               'rating',
             )
             .eq('user_id', user.id),
+
+        client
+            .from('music_user_data')
+            .select('entity_type, rating, is_listened')
+            .eq('user_id', user.id),
       ]);
 
       final movieRows = results[0];
 
       final episodeRows = results[1];
 
+      final musicRows = results[2];
+
       final movieRatings = <int>[];
 
       final tvRatings = <int>[];
 
       final episodeRatings = <int>[];
+
+      final albumRatings = <int>[];
+
+      final songRatings = <int>[];
 
       _ratedMovieIds.clear();
 
@@ -395,21 +408,58 @@ class CriticService extends ChangeNotifier {
         }
       }
 
+      int listenedAlbumCount = 0;
+
+      for (final row in musicRows) {
+        final entityType = row['entity_type']?.toString();
+
+        if (entityType == 'album' && row['is_listened'] == true) {
+          listenedAlbumCount++;
+        }
+
+        final rawRating = row['rating'];
+        if (rawRating is! num) {
+          continue;
+        }
+
+        final rating = rawRating.toInt();
+
+        if (entityType == 'album') {
+          albumRatings.add(rating);
+        } else if (entityType == 'track') {
+          songRatings.add(rating);
+        }
+      }
+
       movieRatingCount = movieRatings.length;
 
       tvRatingCount = tvRatings.length;
 
       episodeRatingCount = episodeRatings.length;
 
-      final allRatings = [...movieRatings, ...tvRatings, ...episodeRatings];
+      albumRatingCount = albumRatings.length;
+
+      songRatingCount = songRatings.length;
+
+      final allRatings = [
+        ...movieRatings,
+        ...tvRatings,
+        ...episodeRatings,
+        ...albumRatings,
+        ...songRatings,
+      ];
 
       totalRatings = allRatings.length;
 
-      // Episode = 5 XP
-      // Movie = 10 XP
-      // Overall TV show rating = 10 XP
+      // Keep the existing Chiplux weighting:
+      // short-form items (episodes / songs) = 5 XP
+      // long-form items (movies / TV titles / albums) = 10 XP
       totalXp =
-          episodeRatingCount * 5 + movieRatingCount * 10 + tvRatingCount * 10;
+          episodeRatingCount * 5 +
+          songRatingCount * 5 +
+          movieRatingCount * 10 +
+          tvRatingCount * 10 +
+          albumRatingCount * 10;
 
       for (int i = 1; i <= 5; i++) {
         ratingDistribution[i] = 0;
@@ -433,7 +483,7 @@ class CriticService extends ChangeNotifier {
 
       _calculateLevel();
       _calculateTitle();
-      _calculateCoverage();
+      _calculateCoverage(listenedAlbums: listenedAlbumCount);
     } catch (e) {
       debugPrint('Could not refresh critic stats: $e');
     } finally {
@@ -478,13 +528,13 @@ class CriticService extends ChangeNotifier {
     }
   }
 
-  void _calculateCoverage() {
+  void _calculateCoverage({required int listenedAlbums}) {
     final library = LibraryService.instance;
 
     // --------------------------------
-    // TITLES
-    // TV shows count as one title each.
-    // Movies count as one title each.
+    // LONG-FORM TITLES
+    // TV shows, movies and listened albums
+    // each count as one long-form title.
     // --------------------------------
 
     final int watchedTvShows = library.items.where((item) {
@@ -498,9 +548,9 @@ class CriticService extends ChangeNotifier {
 
     final int watchedMovies = library.moviesWatchedCount;
 
-    final int watchedTitles = watchedTvShows + watchedMovies;
+    final int watchedTitles = watchedTvShows + watchedMovies + listenedAlbums;
 
-    final int ratedTitles = tvRatingCount + movieRatingCount;
+    final int ratedTitles = tvRatingCount + movieRatingCount + albumRatingCount;
 
     if (watchedTitles <= 0) {
       titleRatingCoverage = 0.0;
@@ -553,6 +603,8 @@ class CriticService extends ChangeNotifier {
     movieRatingCount = 0;
     tvRatingCount = 0;
     episodeRatingCount = 0;
+    albumRatingCount = 0;
+    songRatingCount = 0;
 
     averageStars = 0;
 
