@@ -227,58 +227,16 @@ class PrivacySettingsService extends ChangeNotifier {
       return [];
     }
 
-    final rows = await client
-        .from('user_blocks')
-        .select('blocked_id, created_at')
-        .eq('blocker_id', user.id)
-        .order('created_at', ascending: false);
+    final raw = await client.rpc('get_my_blocked_profile_cards');
 
-    final blockRows = List<Map<String, dynamic>>.from(rows);
-
-    if (blockRows.isEmpty) {
+    if (raw is! List) {
       return [];
     }
 
-    final ids = blockRows
-        .map((row) => row['blocked_id']?.toString())
-        .whereType<String>()
+    return raw
+        .whereType<Map>()
+        .map((row) => Map<String, dynamic>.from(row))
         .toList();
-
-    if (ids.isEmpty) {
-      return [];
-    }
-
-    final profiles = await client
-        .from('profiles')
-        .select('id, display_name, username, avatar_url')
-        .inFilter('id', ids);
-
-    final profileRows = List<Map<String, dynamic>>.from(profiles);
-
-    final byId = <String, Map<String, dynamic>>{
-      for (final profile in profileRows)
-        if (profile['id'] != null) profile['id'].toString(): profile,
-    };
-
-    final result = <Map<String, dynamic>>[];
-
-    for (final block in blockRows) {
-      final id = block['blocked_id']?.toString();
-
-      if (id == null) {
-        continue;
-      }
-
-      final profile = byId[id];
-
-      if (profile == null) {
-        continue;
-      }
-
-      result.add({...profile, 'blocked_at': block['created_at']});
-    }
-
-    return result;
   }
 
   Future<void> blockUser(String userId) async {
@@ -327,12 +285,14 @@ class PrivacySettingsService extends ChangeNotifier {
       return;
     }
 
-    await client.from('user_reports').insert({
-      'reporter_id': user.id,
-      'reported_user_id': userId,
-      'reason': reason.trim(),
-      'details': details?.trim(),
-    });
+    await client.rpc(
+      'report_user',
+      params: {
+        'p_reported_user_id': userId,
+        'p_reason': reason.trim(),
+        'p_details': details?.trim(),
+      },
+    );
   }
 
   Future<bool> canFollowUser(String userId) async {

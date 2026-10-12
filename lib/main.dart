@@ -744,7 +744,260 @@ String _combinedViewerTitle(String viewerTitle) {
   };
 
   final prefix = prefixes[viewerTitle] ?? viewerTitle;
+
+  if (prefix == musicSuffix) {
+    return prefix;
+  }
+
   return '$prefix $musicSuffix';
+}
+
+_AchievementGroup _albumsListenedAchievementGroupFor(int albumsListened) {
+  return _AchievementGroup(
+    id: 'albums_listened',
+    title: 'Albums Listened',
+    description: 'Listen to full albums to upgrade your Albums Listened stat border.',
+    icon: Icons.album_rounded,
+    current: albumsListened,
+    tiers: [
+      _Achievement(
+        id: 'albums_listened_2',
+        title: 'First Spin',
+        description: 'Listen to 2 albums',
+        icon: Icons.album_outlined,
+        current: albumsListened,
+        target: 2,
+        rarity: _AchievementRarity.common,
+        visualTier: 1,
+      ),
+      _Achievement(
+        id: 'albums_listened_8',
+        title: 'Album Explorer',
+        description: 'Listen to 8 albums',
+        icon: Icons.library_music_outlined,
+        current: albumsListened,
+        target: 8,
+        rarity: _AchievementRarity.uncommon,
+        visualTier: 2,
+      ),
+      _Achievement(
+        id: 'albums_listened_32',
+        title: 'Album Collector',
+        description: 'Listen to 32 albums',
+        icon: Icons.library_music_rounded,
+        current: albumsListened,
+        target: 32,
+        rarity: _AchievementRarity.rare,
+        visualTier: 3,
+      ),
+      _Achievement(
+        id: 'albums_listened_64',
+        title: 'Deep Listener',
+        description: 'Listen to 64 albums',
+        icon: Icons.headphones_rounded,
+        current: albumsListened,
+        target: 64,
+        rarity: _AchievementRarity.epic,
+        visualTier: 4,
+      ),
+      _Achievement(
+        id: 'albums_listened_128',
+        title: 'Discography Diver',
+        description: 'Listen to 128 albums',
+        icon: Icons.graphic_eq_rounded,
+        current: albumsListened,
+        target: 128,
+        rarity: _AchievementRarity.legendary,
+        visualTier: 5,
+      ),
+    ],
+  );
+}
+
+_AchievementGroup _songsListenedAchievementGroupFor(int songsListened) {
+  return _AchievementGroup(
+    id: 'songs_listened',
+    title: 'Songs Listened',
+    description: 'Listen to songs to upgrade your Songs Listened stat border.',
+    icon: Icons.music_note_rounded,
+    current: songsListened,
+    tiers: [
+      _Achievement(
+        id: 'songs_listened_32',
+        title: 'Track Starter',
+        description: 'Listen to 32 songs',
+        icon: Icons.music_note_outlined,
+        current: songsListened,
+        target: 32,
+        rarity: _AchievementRarity.common,
+        visualTier: 1,
+      ),
+      _Achievement(
+        id: 'songs_listened_128',
+        title: 'Track Regular',
+        description: 'Listen to 128 songs',
+        icon: Icons.queue_music_rounded,
+        current: songsListened,
+        target: 128,
+        rarity: _AchievementRarity.uncommon,
+        visualTier: 2,
+      ),
+      _Achievement(
+        id: 'songs_listened_512',
+        title: 'Song Collector',
+        description: 'Listen to 512 songs',
+        icon: Icons.library_music_rounded,
+        current: songsListened,
+        target: 512,
+        rarity: _AchievementRarity.rare,
+        visualTier: 3,
+      ),
+      _Achievement(
+        id: 'songs_listened_1024',
+        title: 'Playlist Veteran',
+        description: 'Listen to 1024 songs',
+        icon: Icons.playlist_play_rounded,
+        current: songsListened,
+        target: 1024,
+        rarity: _AchievementRarity.epic,
+        visualTier: 4,
+      ),
+      _Achievement(
+        id: 'songs_listened_2048',
+        title: 'Song Legend',
+        description: 'Listen to 2048 songs',
+        icon: Icons.equalizer_rounded,
+        current: songsListened,
+        target: 2048,
+        rarity: _AchievementRarity.legendary,
+        visualTier: 5,
+      ),
+    ],
+  );
+}
+
+_AchievementGroup _albumsRatedAchievementGroupFor(int albumsRated) {
+  return _AchievementGroup(
+    id: 'albums_rated',
+    title: 'Albums Rated',
+    description: 'Rate listened albums to upgrade your Albums Rated stat border.',
+    icon: Icons.star_rate_rounded,
+    current: albumsRated,
+    tiers: [
+      _Achievement(
+        id: 'albums_rated_2',
+        title: 'First Album Verdict',
+        description: 'Rate 2 albums',
+        icon: Icons.star_outline_rounded,
+        current: albumsRated,
+        target: 2,
+        rarity: _AchievementRarity.common,
+        visualTier: 1,
+      ),
+      _Achievement(
+        id: 'albums_rated_8',
+        title: 'Album Reviewer',
+        description: 'Rate 8 albums',
+        icon: Icons.rate_review_outlined,
+        current: albumsRated,
+        target: 8,
+        rarity: _AchievementRarity.uncommon,
+        visualTier: 2,
+      ),
+      _Achievement(
+        id: 'albums_rated_32',
+        title: 'Record Critic',
+        description: 'Rate 32 albums',
+        icon: Icons.reviews_rounded,
+        current: albumsRated,
+        target: 32,
+        rarity: _AchievementRarity.rare,
+        visualTier: 3,
+      ),
+      _Achievement(
+        id: 'albums_rated_64',
+        title: 'Album Analyst',
+        description: 'Rate 64 albums',
+        icon: Icons.fact_check_rounded,
+        current: albumsRated,
+        target: 64,
+        rarity: _AchievementRarity.epic,
+        visualTier: 4,
+      ),
+      _Achievement(
+        id: 'albums_rated_128',
+        title: 'Album Authority',
+        description: 'Rate 128 albums',
+        icon: Icons.workspace_premium_rounded,
+        current: albumsRated,
+        target: 128,
+        rarity: _AchievementRarity.legendary,
+        visualTier: 5,
+      ),
+    ],
+  );
+}
+
+_AchievementGroup _songsRatedAchievementGroupFor(int songsRated) {
+  return _AchievementGroup(
+    id: 'songs_rated',
+    title: 'Songs Rated',
+    description: 'Rate songs to upgrade your Songs Rated stat border.',
+    icon: Icons.stars_rounded,
+    current: songsRated,
+    tiers: [
+      _Achievement(
+        id: 'songs_rated_16',
+        title: 'First Track Reviews',
+        description: 'Rate 16 songs',
+        icon: Icons.star_outline_rounded,
+        current: songsRated,
+        target: 16,
+        rarity: _AchievementRarity.common,
+        visualTier: 1,
+      ),
+      _Achievement(
+        id: 'songs_rated_64',
+        title: 'Song Reviewer',
+        description: 'Rate 64 songs',
+        icon: Icons.rate_review_outlined,
+        current: songsRated,
+        target: 64,
+        rarity: _AchievementRarity.uncommon,
+        visualTier: 2,
+      ),
+      _Achievement(
+        id: 'songs_rated_256',
+        title: 'Track Critic',
+        description: 'Rate 256 songs',
+        icon: Icons.reviews_rounded,
+        current: songsRated,
+        target: 256,
+        rarity: _AchievementRarity.rare,
+        visualTier: 3,
+      ),
+      _Achievement(
+        id: 'songs_rated_512',
+        title: 'Song Analyst',
+        description: 'Rate 512 songs',
+        icon: Icons.fact_check_rounded,
+        current: songsRated,
+        target: 512,
+        rarity: _AchievementRarity.epic,
+        visualTier: 4,
+      ),
+      _Achievement(
+        id: 'songs_rated_1024',
+        title: 'Track Authority',
+        description: 'Rate 1024 songs',
+        icon: Icons.workspace_premium_rounded,
+        current: songsRated,
+        target: 1024,
+        rarity: _AchievementRarity.legendary,
+        visualTier: 5,
+      ),
+    ],
+  );
 }
 
 _AchievementGroup _runtimeLevelAchievementGroupFor(int runtimeLevel) {
@@ -1468,6 +1721,114 @@ Future<void> _checkEpisodeAchievementUnlock(
   }
 }
 
+Future<void> _checkMusicAchievementUnlock(
+  BuildContext context, {
+  required int previousCount,
+  required int currentCount,
+  required _AchievementGroup Function(int) groupBuilder,
+  required String debugLabel,
+}) async {
+  if (currentCount <= previousCount) {
+    return;
+  }
+
+  final group = groupBuilder(currentCount);
+
+  final newlyReached = group.tiers.where((achievement) {
+    return previousCount < achievement.target &&
+        currentCount >= achievement.target;
+  }).toList();
+
+  for (final achievement in newlyReached) {
+    if (!context.mounted) {
+      return;
+    }
+
+    await Future<void>.delayed(const Duration(milliseconds: 550));
+
+    if (!context.mounted) {
+      return;
+    }
+
+    try {
+      await CommunityService.instance.deleteActivity(
+        activityType: 'achievement_unlocked',
+        achievementId: achievement.id,
+      );
+
+      await CommunityService.instance.tryCreateActivity(
+        activityType: 'achievement_unlocked',
+        achievementId: achievement.id,
+        achievementTitle: achievement.title,
+      );
+    } catch (e) {
+      debugPrint('Could not create $debugLabel achievement activity: $e');
+    }
+
+    if (!context.mounted) {
+      return;
+    }
+
+    await _showAchievementUnlocked(context, achievement);
+  }
+}
+
+Future<void> _checkAlbumsListenedAchievementUnlock(
+  BuildContext context, {
+  required int previousCount,
+  required int currentCount,
+}) {
+  return _checkMusicAchievementUnlock(
+    context,
+    previousCount: previousCount,
+    currentCount: currentCount,
+    groupBuilder: _albumsListenedAchievementGroupFor,
+    debugLabel: 'Albums Listened',
+  );
+}
+
+Future<void> _checkSongsListenedAchievementUnlock(
+  BuildContext context, {
+  required int previousCount,
+  required int currentCount,
+}) {
+  return _checkMusicAchievementUnlock(
+    context,
+    previousCount: previousCount,
+    currentCount: currentCount,
+    groupBuilder: _songsListenedAchievementGroupFor,
+    debugLabel: 'Songs Listened',
+  );
+}
+
+Future<void> _checkAlbumsRatedAchievementUnlock(
+  BuildContext context, {
+  required int previousCount,
+  required int currentCount,
+}) {
+  return _checkMusicAchievementUnlock(
+    context,
+    previousCount: previousCount,
+    currentCount: currentCount,
+    groupBuilder: _albumsRatedAchievementGroupFor,
+    debugLabel: 'Albums Rated',
+  );
+}
+
+Future<void> _checkSongsRatedAchievementUnlock(
+  BuildContext context, {
+  required int previousCount,
+  required int currentCount,
+}) {
+  return _checkMusicAchievementUnlock(
+    context,
+    previousCount: previousCount,
+    currentCount: currentCount,
+    groupBuilder: _songsRatedAchievementGroupFor,
+    debugLabel: 'Songs Rated',
+  );
+}
+
 Future<void> _checkDailyLoginAchievementUnlock(
   BuildContext context, {
   required int previousCount,
@@ -1631,6 +1992,14 @@ Future<void> _autoApplyAchievementReward(_Achievement achievement) async {
 
     if (id.startsWith('followers_')) {
       groupId = 'followers';
+    } else if (id.startsWith('albums_listened_')) {
+      groupId = 'albums_listened';
+    } else if (id.startsWith('songs_listened_')) {
+      groupId = 'songs_listened';
+    } else if (id.startsWith('albums_rated_')) {
+      groupId = 'albums_rated';
+    } else if (id.startsWith('songs_rated_')) {
+      groupId = 'songs_rated';
     } else if (id.startsWith('movies_rated_')) {
       groupId = 'movies_rated';
     } else if (id.startsWith('tv_rated_')) {
@@ -4676,6 +5045,97 @@ class _CommunityPageState extends State<CommunityPage>
     }
   }
 
+  Future<void> _openCommunityMusic(
+    Map<String, dynamic> activity,
+  ) async {
+    final mediaType = activity['media_type']?.toString();
+
+    if (mediaType != 'music_album' && mediaType != 'music_track') {
+      return;
+    }
+
+    // New Stage 7 columns are the primary source. The compact JSON payload
+    // stored in episode_title is a compatibility fallback in case an older
+    // get_visible_community_activity RPC returns only its original columns.
+    final payload = <String, dynamic>{};
+    final rawPayload = activity['episode_title']?.toString();
+
+    if (rawPayload != null && rawPayload.startsWith('{')) {
+      try {
+        final decoded = jsonDecode(rawPayload);
+        if (decoded is Map) {
+          payload.addAll(Map<String, dynamic>.from(decoded));
+        }
+      } catch (_) {
+        // Ignore malformed/legacy episode_title values.
+      }
+    }
+
+    String? value(String key) {
+      final direct = activity[key]?.toString();
+      if (direct != null && direct.isNotEmpty) {
+        return direct;
+      }
+
+      final fallback = payload[key]?.toString();
+      return fallback == null || fallback.isEmpty ? null : fallback;
+    }
+
+    final externalId = value('external_id');
+    final parentExternalId = value('parent_external_id');
+
+    final albumId = mediaType == 'music_album'
+        ? externalId
+        : parentExternalId;
+
+    final albumTitle = mediaType == 'music_album'
+        ? activity['media_title']?.toString()
+        : value('external_parent_title');
+
+    final artistId = value('external_artist_id');
+    final artistName = value('external_artist_name');
+
+    if (albumId == null ||
+        albumId.isEmpty ||
+        albumTitle == null ||
+        albumTitle.isEmpty ||
+        artistId == null ||
+        artistId.isEmpty ||
+        artistName == null ||
+        artistName.isEmpty) {
+      return;
+    }
+
+    final directGenres = activity['external_genres'];
+    final fallbackGenres = payload['external_genres'];
+    final rawGenres = directGenres is List ? directGenres : fallbackGenres;
+    final genres = rawGenres is List
+        ? rawGenres
+              .map((value) => value.toString())
+              .where((value) => value.isNotEmpty)
+              .toList()
+        : <String>[];
+
+    final album = MusicAlbum(
+      id: albumId,
+      title: albumTitle,
+      artistId: artistId,
+      artistName: artistName,
+      firstReleaseDate: value('external_year') ?? '',
+      genres: genres,
+    );
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MusicAlbumPage(
+          album: album,
+          initialTrackId: mediaType == 'music_track' ? externalId : null,
+        ),
+      ),
+    );
+  }
+
   Future<void> _openActivity(Map<String, dynamic> activity) async {
     final type = activity['activity_type']?.toString();
 
@@ -4684,6 +5144,14 @@ class _CommunityPageState extends State<CommunityPage>
         context,
         MaterialPageRoute(builder: (_) => const AchievementsPage()),
       );
+
+      return;
+    }
+
+    final mediaType = activity['media_type']?.toString();
+
+    if (mediaType == 'music_album' || mediaType == 'music_track') {
+      await _openCommunityMusic(activity);
 
       return;
     }
@@ -6305,9 +6773,14 @@ class _FriendsWatchRow extends StatelessWidget {
 
   String _prefixText() {
     final type = activity['activity_type']?.toString();
+    final mediaType = activity['media_type']?.toString();
 
     switch (type) {
       case 'episode_watched':
+        if (mediaType == 'music_track') {
+          return 'listened to';
+        }
+
         final season = activity['season_number'];
 
         final episode = activity['episode_number'];
@@ -6330,6 +6803,10 @@ class _FriendsWatchRow extends StatelessWidget {
             : 'watched a season of';
 
       case 'movie_watched':
+        if (mediaType == 'music_album') {
+          return 'listened to';
+        }
+
         return 'watched';
 
       case 'tv_watched':
@@ -6354,7 +6831,9 @@ class _FriendsWatchRow extends StatelessWidget {
         return 'rated';
 
       case 'plan_to_watch':
-        return 'plans to watch';
+        return mediaType == 'music_album'
+            ? 'plans to listen to'
+            : 'plans to watch';
 
       case 'dropped':
         return 'dropped';
@@ -6646,6 +7125,22 @@ class PublicStatsSyncService {
       critic.movieRatingCount,
     );
 
+    final albumsListenedAchievementGroup = _albumsListenedAchievementGroupFor(
+      MusicUserDataService.instance.listenedAlbumCount,
+    );
+
+    final songsListenedAchievementGroup = _songsListenedAchievementGroupFor(
+      MusicUserDataService.instance.listenedTrackCount,
+    );
+
+    final albumsRatedAchievementGroup = _albumsRatedAchievementGroupFor(
+      critic.albumRatingCount,
+    );
+
+    final songsRatedAchievementGroup = _songsRatedAchievementGroupFor(
+      critic.songRatingCount,
+    );
+
     // =========================
     // ACHIEVEMENT GROUPS
     // =========================
@@ -6732,6 +7227,22 @@ class PublicStatsSyncService {
       ...moviesRatedAchievementGroup.tiers
           .where((achievement) => achievement.unlocked)
           .map((achievement) => achievement.id),
+
+      ...albumsListenedAchievementGroup.tiers
+          .where((achievement) => achievement.unlocked)
+          .map((achievement) => achievement.id),
+
+      ...songsListenedAchievementGroup.tiers
+          .where((achievement) => achievement.unlocked)
+          .map((achievement) => achievement.id),
+
+      ...albumsRatedAchievementGroup.tiers
+          .where((achievement) => achievement.unlocked)
+          .map((achievement) => achievement.id),
+
+      ...songsRatedAchievementGroup.tiers
+          .where((achievement) => achievement.unlocked)
+          .map((achievement) => achievement.id),
     ];
 
     // =========================
@@ -6744,11 +7255,25 @@ class PublicStatsSyncService {
     // RATING DISTRIBUTION
     // =========================
 
-    final distribution = <String, int>{};
-
-    for (int rating = 1; rating <= 5; rating++) {
-      distribution['$rating'] = critic.ratingDistribution[rating] ?? 0;
+    Map<String, int> encodeDistribution(Map<int, int> source) {
+      return {
+        for (int rating = 1; rating <= 5; rating++)
+          '$rating': source[rating] ?? 0,
+      };
     }
+
+    final distribution = encodeDistribution(critic.ratingDistribution);
+
+    final ratingDistributions = <String, Map<String, int>>{
+      'all': distribution,
+      'movies': encodeDistribution(critic.movieRatingDistribution),
+      'tv': encodeDistribution(critic.tvRatingDistribution),
+      'episodes': encodeDistribution(critic.episodeRatingDistribution),
+      'albums': encodeDistribution(critic.albumRatingDistribution),
+      'songs': encodeDistribution(critic.songRatingDistribution),
+    };
+
+    final musicGenreRuntime = _buildMusicGenreRuntime();
 
     // =========================
     // SYNC
@@ -6828,7 +7353,11 @@ class PublicStatsSyncService {
 
               'rating_distribution': distribution,
 
+              'rating_distributions': ratingDistributions,
+
               'genre_runtime': genreRuntime,
+
+              'music_genre_runtime': musicGenreRuntime,
 
               'unlocked_achievement_ids': unlockedIds,
             },
@@ -6839,6 +7368,67 @@ class PublicStatsSyncService {
           .eq('id', user.id);
     } catch (e) {
       debugPrint('Could not sync public profile stats: $e');
+    }
+  }
+
+  String _screenGenreName(int genreId) {
+    switch (genreId) {
+      case 28:
+        return 'Action';
+      case 12:
+        return 'Adventure';
+      case 16:
+        return 'Animation';
+      case 35:
+        return 'Comedy';
+      case 80:
+        return 'Crime';
+      case 99:
+        return 'Documentary';
+      case 18:
+        return 'Drama';
+      case 10751:
+        return 'Family';
+      case 14:
+        return 'Fantasy';
+      case 36:
+        return 'History';
+      case 27:
+        return 'Horror';
+      case 10402:
+        return 'Music';
+      case 9648:
+        return 'Mystery';
+      case 10749:
+        return 'Romance';
+      case 878:
+        return 'Science Fiction';
+      case 10770:
+        return 'TV Movie';
+      case 53:
+        return 'Thriller';
+      case 10752:
+        return 'War';
+      case 37:
+        return 'Western';
+      case 10759:
+        return 'Action & Adventure';
+      case 10762:
+        return 'Kids';
+      case 10763:
+        return 'News';
+      case 10764:
+        return 'Reality';
+      case 10765:
+        return 'Sci-Fi & Fantasy';
+      case 10766:
+        return 'Soap';
+      case 10767:
+        return 'Talk';
+      case 10768:
+        return 'War & Politics';
+      default:
+        return 'Other';
     }
   }
 
@@ -6878,16 +7468,39 @@ class PublicStatsSyncService {
       result.add({
         'genre_id': genreId,
 
+        'genre': _screenGenreName(genreId),
+
         'title_count': titleCounts[genreId] ?? 0,
 
         'minutes': minutes,
 
-        'percentage': total <= 0 ? 0.0 : minutes / total,
+        'percentage': total <= 0 ? 0.0 : (minutes / total) * 100,
       });
     }
 
     result.sort((a, b) => (b['minutes'] as int).compareTo(a['minutes'] as int));
 
+    return result;
+  }
+
+  List<Map<String, dynamic>> _buildMusicGenreRuntime() {
+    final music = MusicUserDataService.instance;
+    final runtimes = music.listenedGenreRuntimeMinutes;
+    final counts = music.listenedGenreTrackCounts;
+
+    final total = runtimes.values.fold<int>(0, (sum, minutes) => sum + minutes);
+    final result = <Map<String, dynamic>>[];
+
+    for (final entry in runtimes.entries) {
+      result.add({
+        'genre': entry.key,
+        'title_count': counts[entry.key] ?? 0,
+        'minutes': entry.value,
+        'percentage': total <= 0 ? 0.0 : (entry.value / total) * 100,
+      });
+    }
+
+    result.sort((a, b) => (b['minutes'] as int).compareTo(a['minutes'] as int));
     return result;
   }
 }
@@ -8572,6 +9185,14 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
 
     final episodeGroup = _episodeAchievementGroupFor(episodesWatched);
 
+    final albumsListenedGroup = _albumsListenedAchievementGroupFor(
+      albumsListened,
+    );
+
+    final songsListenedGroup = _songsListenedAchievementGroupFor(
+      songsListened,
+    );
+
     // =========================
     // DAILY LOGIN
     // =========================
@@ -8622,6 +9243,10 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
 
     final moviesRatedGroup = _moviesRatedAchievementGroupFor(movieRatings);
 
+    final albumsRatedGroup = _albumsRatedAchievementGroupFor(albumRatings);
+
+    final songsRatedGroup = _songsRatedAchievementGroupFor(songRatings);
+
     // =========================
     // CRITIC STATS
     // =========================
@@ -8646,6 +9271,10 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
       episodeRatedGroup,
       tvShowsRatedGroup,
       moviesRatedGroup,
+      albumsListenedGroup,
+      songsListenedGroup,
+      albumsRatedGroup,
+      songsRatedGroup,
       runtimeLevelGroup,
       ratingsLevelGroup,
     ];
@@ -8727,20 +9356,56 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
       }
     }
 
+    final musicGenreRuntime = <Map<String, dynamic>>[];
+
+    final rawMusicGenreRuntime = publicStats['music_genre_runtime'];
+
+    if (rawMusicGenreRuntime is List) {
+      for (final item in rawMusicGenreRuntime) {
+        if (item is Map) {
+          musicGenreRuntime.add(Map<String, dynamic>.from(item));
+        }
+      }
+    }
+
     // =========================
     // RATING DISTRIBUTION
     // =========================
 
-    final ratingDistribution = <int, int>{1: 0, 2: 0, 3: 0, 4: 0, 5: 0};
+    Map<int, int> decodeDistribution(dynamic raw) {
+      final result = <int, int>{1: 0, 2: 0, 3: 0, 4: 0, 5: 0};
+      if (raw is Map) {
+        for (int rating = 1; rating <= 5; rating++) {
+          final value = raw['$rating'];
+          if (value is num) {
+            result[rating] = value.toInt();
+          }
+        }
+      }
+      return result;
+    }
 
-    final rawDistribution = publicStats['rating_distribution'];
+    final ratingDistribution = decodeDistribution(
+      publicStats['rating_distribution'],
+    );
 
-    if (rawDistribution is Map) {
-      for (int rating = 1; rating <= 5; rating++) {
-        final value = rawDistribution['$rating'];
+    final ratingDistributions = <String, Map<int, int>>{
+      'all': ratingDistribution,
+    };
 
-        if (value is num) {
-          ratingDistribution[rating] = value.toInt();
+    final rawRatingDistributions = publicStats['rating_distributions'];
+    if (rawRatingDistributions is Map) {
+      for (final key in const [
+        'all',
+        'movies',
+        'tv',
+        'episodes',
+        'albums',
+        'songs',
+      ]) {
+        final rawCategory = rawRatingDistributions[key];
+        if (rawCategory is Map) {
+          ratingDistributions[key] = decodeDistribution(rawCategory);
         }
       }
     }
@@ -8837,6 +9502,14 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
         ? tvShowsRatedGroup.highestUnlockedTier
         : pinnedId == moviesRatedGroup.id
         ? moviesRatedGroup.highestUnlockedTier
+        : pinnedId == albumsListenedGroup.id
+        ? albumsListenedGroup.highestUnlockedTier
+        : pinnedId == songsListenedGroup.id
+        ? songsListenedGroup.highestUnlockedTier
+        : pinnedId == albumsRatedGroup.id
+        ? albumsRatedGroup.highestUnlockedTier
+        : pinnedId == songsRatedGroup.id
+        ? songsRatedGroup.highestUnlockedTier
         : pinnedId == runtimeLevelGroup.id
         ? runtimeLevelGroup.highestUnlockedTier
         : pinnedId == ratingsLevelGroup.id
@@ -9448,6 +10121,9 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                     label: 'Albums Listened',
                                     runtimeMinutes: albumListenedMinutes,
                                     icon: Icons.album_rounded,
+                                    frameAchievement: selectedPublicCosmetic(
+                                      albumsListenedGroup,
+                                    ),
                                   ),
                                   const SizedBox(height: 7),
                                   _WatchStatCard(
@@ -9455,6 +10131,9 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                     label: 'Songs Listened',
                                     runtimeMinutes: songListenedMinutes,
                                     icon: Icons.music_note_rounded,
+                                    frameAchievement: selectedPublicCosmetic(
+                                      songsListenedGroup,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -9559,12 +10238,18 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                     value: albumRatings,
                                     label: 'Albums Rated',
                                     icon: Icons.album_outlined,
+                                    frameAchievement: selectedPublicCosmetic(
+                                      albumsRatedGroup,
+                                    ),
                                   ),
                                   const SizedBox(height: 7),
                                   _RatingStatCard(
                                     value: songRatings,
                                     label: 'Songs Rated',
                                     icon: Icons.music_note_outlined,
+                                    frameAchievement: selectedPublicCosmetic(
+                                      songsRatedGroup,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -9572,13 +10257,27 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
 
                             if (showGenreStats) ...[
                               const SizedBox(height: 20),
-                              _PublicGenreRuntimeCard(stats: genreRuntime),
+                              if (genreRuntime.isNotEmpty)
+                                _PublicGenreRuntimeCard(
+                                  title: 'Screen Genre Runtime',
+                                  icon: Icons.movie_filter_rounded,
+                                  stats: genreRuntime,
+                                ),
+                              if (genreRuntime.isNotEmpty &&
+                                  musicGenreRuntime.isNotEmpty)
+                                const SizedBox(height: 12),
+                              if (musicGenreRuntime.isNotEmpty)
+                                _PublicGenreRuntimeCard(
+                                  title: 'Music Genre Runtime',
+                                  icon: Icons.library_music_rounded,
+                                  stats: musicGenreRuntime,
+                                ),
                             ],
 
                             if (showRatingStats) ...[
                               const SizedBox(height: 24),
                               _PublicRatingDistributionCard(
-                                distribution: ratingDistribution,
+                                distributions: ratingDistributions,
                               ),
                             ],
                           ],
@@ -9670,9 +10369,15 @@ _Achievement? _findProfileTitleAchievement(
 }
 
 class _PublicGenreRuntimeCard extends StatefulWidget {
+  final String title;
+  final IconData icon;
   final List<Map<String, dynamic>> stats;
 
-  const _PublicGenreRuntimeCard({required this.stats});
+  const _PublicGenreRuntimeCard({
+    required this.title,
+    required this.icon,
+    required this.stats,
+  });
 
   @override
   State<_PublicGenreRuntimeCard> createState() =>
@@ -9730,19 +10435,19 @@ class _PublicGenreRuntimeCardState extends State<_PublicGenreRuntimeCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.bar_chart_rounded, color: chipluxCyan, size: 27),
+              Icon(widget.icon, color: chipluxCyan, size: 27),
 
-              SizedBox(width: 10),
+              const SizedBox(width: 10),
 
               Expanded(
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.centerLeft,
                   child: UiText(
-                    'Genre Runtime',
-                    style: TextStyle(
+                    widget.title,
+                    style: const TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
                     ),
@@ -9799,9 +10504,13 @@ class _PublicGenreRuntimeCardState extends State<_PublicGenreRuntimeCard> {
                       ? (stat['minutes'] as num).toInt()
                       : 0;
 
-                  final percentage = stat['percentage'] is num
+                  final rawPercentage = stat['percentage'] is num
                       ? (stat['percentage'] as num).toDouble()
                       : 0.0;
+
+                  final percentage = rawPercentage > 0 && rawPercentage <= 1
+                      ? rawPercentage * 100
+                      : rawPercentage;
 
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 8),
@@ -9903,31 +10612,115 @@ class _PublicGenreRuntimeCardState extends State<_PublicGenreRuntimeCard> {
   }
 }
 
-class _PublicRatingDistributionCard extends StatelessWidget {
-  final Map<int, int> distribution;
+class _RatingDistributionFilterBar extends StatelessWidget {
+  final String selected;
+  final ValueChanged<String> onSelected;
+  final Set<String>? available;
 
-  const _PublicRatingDistributionCard({required this.distribution});
+  const _RatingDistributionFilterBar({
+    required this.selected,
+    required this.onSelected,
+    this.available,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const filters = <(String, String)>[
+      ('all', 'All'),
+      ('movies', 'Movies'),
+      ('tv', 'TV Shows'),
+      ('episodes', 'Episodes'),
+      ('albums', 'Albums'),
+      ('songs', 'Songs'),
+    ];
+
+    final visibleFilters = available == null
+        ? filters
+        : filters.where((filter) => available!.contains(filter.$1)).toList();
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: visibleFilters.map((filter) {
+          final active = selected == filter.$1;
+
+          return Padding(
+            padding: const EdgeInsets.only(right: 7),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(999),
+              onTap: () => onSelected(filter.$1),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(999),
+                  gradient: active
+                      ? LinearGradient(
+                          colors: [
+                            chipluxCyan.withValues(alpha: 0.24),
+                            chipluxViolet.withValues(alpha: 0.22),
+                            chipluxPurple.withValues(alpha: 0.22),
+                          ],
+                        )
+                      : null,
+                  color: active ? null : chipluxSurfaceLight,
+                  border: Border.all(
+                    color: active
+                        ? chipluxViolet.withValues(alpha: 0.38)
+                        : Colors.white.withValues(alpha: 0.06),
+                  ),
+                ),
+                child: UiText(
+                  filter.$2,
+                  style: TextStyle(
+                    color: active ? Colors.white : Colors.white60,
+                    fontSize: 12,
+                    fontWeight: active ? FontWeight.w700 : FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+class _PublicRatingDistributionCard extends StatefulWidget {
+  final Map<String, Map<int, int>> distributions;
+
+  const _PublicRatingDistributionCard({required this.distributions});
+
+  @override
+  State<_PublicRatingDistributionCard> createState() =>
+      _PublicRatingDistributionCardState();
+}
+
+class _PublicRatingDistributionCardState
+    extends State<_PublicRatingDistributionCard> {
+  String selected = 'all';
 
   @override
   Widget build(BuildContext context) {
     const criticGold = Color(0xFFFFC857);
-
     const criticOrange = Color(0xFFFF8A4C);
+
+    final distribution = widget.distributions[selected] ??
+        widget.distributions['all'] ??
+        <int, int>{1: 0, 2: 0, 3: 0, 4: 0, 5: 0};
 
     final total = distribution.values.fold<int>(0, (sum, value) => sum + value);
 
     Color ratingColor(int rating) {
       final t = (rating - 1) / 4;
-
       if (t < 0.5) {
         return Color.lerp(criticOrange, criticGold, t * 2)!;
       }
-
       return Color.lerp(criticGold, chipluxPurple, (t - 0.5) * 2)!;
     }
 
     final active = <int>[];
-
     for (int rating = 1; rating <= 5; rating++) {
       if ((distribution[rating] ?? 0) > 0) {
         active.add(rating);
@@ -9948,18 +10741,30 @@ class _PublicRatingDistributionCard extends StatelessWidget {
           const Row(
             children: [
               Icon(Icons.star_rate_rounded, color: criticGold, size: 27),
-
               SizedBox(width: 10),
-
-              UiText(
-                'Rating Distribution',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              Expanded(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: UiText(
+                    'Rating Distribution',
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  ),
+                ),
               ),
             ],
           ),
-
+          const SizedBox(height: 15),
+          _RatingDistributionFilterBar(
+            selected: selected,
+            available: widget.distributions.keys.toSet(),
+            onSelected: (value) {
+              setState(() {
+                selected = value;
+              });
+            },
+          ),
           const SizedBox(height: 20),
-
           ClipRRect(
             borderRadius: BorderRadius.circular(30),
             child: Container(
@@ -9970,7 +10775,6 @@ class _PublicRatingDistributionCard extends StatelessWidget {
                   : Row(
                       children: active.map((rating) {
                         final count = distribution[rating] ?? 0;
-
                         return Expanded(
                           flex: count,
                           child: Container(color: ratingColor(rating)),
@@ -9979,14 +10783,11 @@ class _PublicRatingDistributionCard extends StatelessWidget {
                     ),
             ),
           ),
-
           const SizedBox(height: 18),
-
           for (int rating = 1; rating <= 5; rating++) ...[
             Builder(
               builder: (context) {
                 final count = distribution[rating] ?? 0;
-
                 final percentage = total > 0 ? (count / total) * 100 : 0.0;
 
                 return Padding(
@@ -9998,9 +10799,7 @@ class _PublicRatingDistributionCard extends StatelessWidget {
                         color: ratingColor(rating),
                         size: 18,
                       ),
-
                       const SizedBox(width: 8),
-
                       SizedBox(
                         width: 50,
                         child: UiText(
@@ -10008,14 +10807,12 @@ class _PublicRatingDistributionCard extends StatelessWidget {
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ),
-
                       Expanded(
                         child: UiText(
                           '$count ${count == 1 ? 'rating' : 'ratings'}',
                           style: const TextStyle(color: Colors.white60),
                         ),
                       ),
-
                       SizedBox(
                         width: 64,
                         child: UiText(
@@ -16460,13 +17257,45 @@ class _WatchingTvCardState extends State<_WatchingTvCard> {
     }
 
     final int previousEpisodeCount = library.watchedEpisodeCount;
+    final int previousTvCount = library.completedTvShowsCount;
 
-    await library.toggleEpisode(
+    final bool autoCompletedShow = await library.toggleEpisode(
       widget.item.id,
       seasonNumber!,
       episodeNumber!,
       runtimeMinutes: runtime ?? 0,
     );
+
+    if (!mounted) {
+      return false;
+    }
+
+    // Every newly watched episode gets the same completion burst
+    // used when a movie or TV show is marked complete.
+    showCompletionBurst(context);
+
+    if (autoCompletedShow) {
+      await Future<void>.delayed(const Duration(milliseconds: 320));
+
+      if (!mounted) {
+        return false;
+      }
+
+      await _showTvShowAutoCompletedPopup(
+        context,
+        showTitle: widget.item.title,
+      );
+
+      if (!mounted) {
+        return false;
+      }
+
+      await _checkTvAchievementUnlock(
+        context,
+        previousCount: previousTvCount,
+        currentCount: library.completedTvShowsCount,
+      );
+    }
 
     if (!mounted) {
       return false;
@@ -18201,6 +19030,22 @@ class _PublicAchievementsPage extends StatelessWidget {
         progressText = '${group.current} movies rated';
         break;
 
+      case 'albums_listened':
+        progressText = '${group.current} albums listened';
+        break;
+
+      case 'songs_listened':
+        progressText = '${group.current} songs listened';
+        break;
+
+      case 'albums_rated':
+        progressText = '${group.current} albums rated';
+        break;
+
+      case 'songs_rated':
+        progressText = '${group.current} songs rated';
+        break;
+
       case 'runtime_level':
         progressText = 'Runtime level ${group.current}';
         break;
@@ -18582,7 +19427,20 @@ class _AchievementsPageState extends State<AchievementsPage> {
 
     final bool isMoviesRatedGroup = group.id == 'movies_rated';
 
+    final bool isAlbumsListenedGroup = group.id == 'albums_listened';
+
+    final bool isSongsListenedGroup = group.id == 'songs_listened';
+
+    final bool isAlbumsRatedGroup = group.id == 'albums_rated';
+
+    final bool isSongsRatedGroup = group.id == 'songs_rated';
+
     final bool isTitleRatedGroup = isTvShowsRatedGroup || isMoviesRatedGroup;
+
+    final bool isMusicStatGroup = isAlbumsListenedGroup ||
+        isSongsListenedGroup ||
+        isAlbumsRatedGroup ||
+        isSongsRatedGroup;
 
     final bool isFollowersGroup = group.id == 'followers';
 
@@ -18649,6 +19507,22 @@ class _AchievementsPageState extends State<AchievementsPage> {
 
       case 'movies_rated':
         progressText = '${group.current} movies rated';
+        break;
+
+      case 'albums_listened':
+        progressText = '${group.current} albums listened';
+        break;
+
+      case 'songs_listened':
+        progressText = '${group.current} songs listened';
+        break;
+
+      case 'albums_rated':
+        progressText = '${group.current} albums rated';
+        break;
+
+      case 'songs_rated':
+        progressText = '${group.current} songs rated';
         break;
 
       case 'runtime_level':
@@ -18769,6 +19643,18 @@ class _AchievementsPageState extends State<AchievementsPage> {
                       accent: accent,
                       icon: Icons.border_style_rounded,
                       text: 'Unlock borders for your Episodes Watched stat.',
+                    ),
+                  ],
+
+                  // =========================
+                  // MUSIC STATS
+                  // =========================
+                  if (isMusicStatGroup) ...[
+                    const SizedBox(height: 11),
+                    _achievementRewardInfo(
+                      accent: accent,
+                      icon: Icons.border_style_rounded,
+                      text: 'Unlock borders for your ${group.title} stat.',
                     ),
                   ],
 
@@ -19086,9 +19972,11 @@ class _AchievementsPageState extends State<AchievementsPage> {
 
     final followerCountService = FollowerCountService.instance;
 
+    final musicUserData = MusicUserDataService.instance;
+
     return DefaultTabController(
-      length: 4,
-      initialIndex: widget.initialTabIndex.clamp(0, 3),
+      length: 5,
+      initialIndex: widget.initialTabIndex.clamp(0, 4),
       child: Scaffold(
         backgroundColor: chipluxBackground,
         appBar: AppBar(
@@ -19109,6 +19997,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
               profileViewService,
               critic,
               followerCountService,
+              musicUserData,
             ]),
             builder: (context, _) {
               final int moviesWatched = library.moviesWatchedCount;
@@ -19153,6 +20042,22 @@ class _AchievementsPageState extends State<AchievementsPage> {
                 critic.movieRatingCount,
               );
 
+              final albumsListenedGroup = _albumsListenedAchievementGroupFor(
+                musicUserData.listenedAlbumCount,
+              );
+
+              final songsListenedGroup = _songsListenedAchievementGroupFor(
+                musicUserData.listenedTrackCount,
+              );
+
+              final albumsRatedGroup = _albumsRatedAchievementGroupFor(
+                critic.albumRatingCount,
+              );
+
+              final songsRatedGroup = _songsRatedAchievementGroupFor(
+                critic.songRatingCount,
+              );
+
               final runtimeLevel = _runtimeLevelForMinutes(
                 _combinedRuntimeMinutes(library),
               );
@@ -19181,6 +20086,13 @@ class _AchievementsPageState extends State<AchievementsPage> {
                 episodeRatedGroup,
               ];
 
+              final musicGroups = <_AchievementGroup>[
+                albumsListenedGroup,
+                songsListenedGroup,
+                albumsRatedGroup,
+                songsRatedGroup,
+              ];
+
               final communityGroups = <_AchievementGroup>[
                 profileViewGroup,
                 followerGroup,
@@ -19205,6 +20117,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
               final allGroups = <_AchievementGroup>[
                 ...movieGroups,
                 ...tvGroups,
+                ...musicGroups,
                 ...communityGroups,
                 ...chipluxGroups,
               ];
@@ -19386,6 +20299,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
                         tabs: const [
                           Tab(child: UiText('Movies')),
                           Tab(child: UiText('TV Shows')),
+                          Tab(child: UiText('Music')),
                           Tab(child: UiText('Community')),
                           Tab(child: UiText('Chiplux')),
                         ],
@@ -19409,6 +20323,11 @@ class _AchievementsPageState extends State<AchievementsPage> {
                         _buildAchievementCategory(
                           context,
                           tvGroups,
+                          pinService,
+                        ),
+                        _buildAchievementCategory(
+                          context,
+                          musicGroups,
                           pinService,
                         ),
                         _buildAchievementCategory(
@@ -22884,6 +23803,10 @@ class _ProfilePageState extends State<ProfilePage> {
 
   bool _genreRuntimeExpanded = false;
 
+  bool _musicGenreRuntimeExpanded = false;
+
+  String _ratingDistributionFilter = 'all';
+
   @override
   void initState() {
     super.initState();
@@ -23183,15 +24106,54 @@ class _ProfilePageState extends State<ProfilePage> {
   // GENRE RUNTIME PANEL
   // =====================================================
 
-  Widget _buildGenreRuntimeSection() {
-    final stats = _buildGenreRuntimeStats();
+  List<_GenreRuntimeStat> _buildMusicGenreRuntimeStats() {
+    final runtimes = musicUserData.listenedGenreRuntimeMinutes;
+    final counts = musicUserData.listenedGenreTrackCounts;
 
+    if (runtimes.isEmpty) {
+      return [];
+    }
+
+    final total = runtimes.values.fold<int>(0, (sum, minutes) => sum + minutes);
+    final result = <_GenreRuntimeStat>[];
+
+    for (final entry in runtimes.entries) {
+      final minutes = entry.value;
+      final percentage = total > 0 ? (minutes / total) * 100 : 0.0;
+
+      result.add(
+        _GenreRuntimeStat(
+          genre: entry.key,
+          titleCount: counts[entry.key] ?? 0,
+          watchedMinutes: minutes,
+          percentage: percentage,
+        ),
+      );
+    }
+
+    result.sort((a, b) {
+      final runtimeComparison = b.watchedMinutes.compareTo(a.watchedMinutes);
+      if (runtimeComparison != 0) {
+        return runtimeComparison;
+      }
+      return b.titleCount.compareTo(a.titleCount);
+    });
+
+    return result;
+  }
+
+  Widget _buildGenreRuntimeCard({
+    required String title,
+    required IconData icon,
+    required List<_GenreRuntimeStat> stats,
+    required bool expanded,
+    required VoidCallback onToggleExpanded,
+  }) {
     if (stats.isEmpty) {
       return const SizedBox.shrink();
     }
 
-    final visibleStats = _genreRuntimeExpanded ? stats : stats.take(4).toList();
-
+    final visibleStats = expanded ? stats : stats.take(4).toList();
     final canExpand = stats.length > 4;
 
     const genreColors = <Color>[
@@ -23211,17 +24173,14 @@ class _ProfilePageState extends State<ProfilePage> {
 
     String formatRuntime(int totalMinutes) {
       final hours = totalMinutes ~/ 60;
-
       final minutes = totalMinutes % 60;
 
       if (hours > 0 && minutes > 0) {
         return '${hours}h ${minutes}m';
       }
-
       if (hours > 0) {
         return '${hours}h';
       }
-
       return '${minutes}m';
     }
 
@@ -23248,19 +24207,17 @@ class _ProfilePageState extends State<ProfilePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.bar_chart_rounded, color: chipluxCyan, size: 27),
-
-              SizedBox(width: 10),
-
+              Icon(icon, color: chipluxCyan, size: 27),
+              const SizedBox(width: 10),
               Expanded(
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.centerLeft,
                   child: UiText(
-                    'Genre Runtime',
-                    style: TextStyle(
+                    title,
+                    style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
                     ),
@@ -23269,10 +24226,7 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             ],
           ),
-
           const SizedBox(height: 24),
-
-          // LARGE SEGMENTED BAR
           ClipRRect(
             borderRadius: BorderRadius.circular(30),
             child: SizedBox(
@@ -23280,19 +24234,14 @@ class _ProfilePageState extends State<ProfilePage> {
               child: Row(
                 children: stats.asMap().entries.map((entry) {
                   final index = entry.key;
-
                   final stat = entry.value;
-
                   final normalized = totalGenreWeight > 0
                       ? stat.percentage / totalGenreWeight
                       : 0.0;
-
                   int flex = (normalized * 10000).round();
-
                   if (flex < 1) {
                     flex = 1;
                   }
-
                   return Expanded(
                     flex: flex,
                     child: Container(color: genreColor(index)),
@@ -23301,16 +24250,11 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             ),
           ),
-
           const SizedBox(height: 20),
-
           ...visibleStats.asMap().entries.map((entry) {
             final index = entry.key;
-
             final stat = entry.value;
-
             final color = genreColor(index);
-
             final isLast = index == visibleStats.length - 1;
 
             return Column(
@@ -23333,9 +24277,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           ],
                         ),
                       ),
-
                       const SizedBox(width: 11),
-
                       Expanded(
                         child: UiText(
                           stat.genre,
@@ -23347,9 +24289,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                         ),
                       ),
-
                       const SizedBox(width: 8),
-
                       SizedBox(
                         width: 72,
                         height: 22,
@@ -23367,9 +24307,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                         ),
                       ),
-
                       const SizedBox(width: 12),
-
                       SizedBox(
                         width: 78,
                         child: Text(
@@ -23385,7 +24323,6 @@ class _ProfilePageState extends State<ProfilePage> {
                     ],
                   ),
                 ),
-
                 if (!isLast)
                   Divider(
                     height: 1,
@@ -23395,17 +24332,11 @@ class _ProfilePageState extends State<ProfilePage> {
               ],
             );
           }),
-
           if (canExpand) ...[
             const SizedBox(height: 10),
-
             InkWell(
               borderRadius: BorderRadius.circular(14),
-              onTap: () {
-                setState(() {
-                  _genreRuntimeExpanded = !_genreRuntimeExpanded;
-                });
-              },
+              onTap: onToggleExpanded,
               child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(
@@ -23420,20 +24351,16 @@ class _ProfilePageState extends State<ProfilePage> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     UiText(
-                      _genreRuntimeExpanded
-                          ? 'Show less'
-                          : 'Show all ${stats.length} genres',
+                      expanded ? 'Show less' : 'Show all ${stats.length} genres',
                       style: const TextStyle(
                         color: chipluxCyan,
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-
                     const SizedBox(width: 6),
-
                     Icon(
-                      _genreRuntimeExpanded
+                      expanded
                           ? Icons.keyboard_arrow_up_rounded
                           : Icons.keyboard_arrow_down_rounded,
                       color: chipluxCyan,
@@ -23449,34 +24376,71 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  Widget _buildGenreRuntimeSection() {
+    final screenStats = _buildGenreRuntimeStats();
+    final musicStats = _buildMusicGenreRuntimeStats();
+
+    if (screenStats.isEmpty && musicStats.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      children: [
+        if (screenStats.isNotEmpty)
+          _buildGenreRuntimeCard(
+            title: 'Screen Genre Runtime',
+            icon: Icons.movie_filter_rounded,
+            stats: screenStats,
+            expanded: _genreRuntimeExpanded,
+            onToggleExpanded: () {
+              setState(() {
+                _genreRuntimeExpanded = !_genreRuntimeExpanded;
+              });
+            },
+          ),
+        if (screenStats.isNotEmpty && musicStats.isNotEmpty)
+          const SizedBox(height: 12),
+        if (musicStats.isNotEmpty)
+          _buildGenreRuntimeCard(
+            title: 'Music Genre Runtime',
+            icon: Icons.library_music_rounded,
+            stats: musicStats,
+            expanded: _musicGenreRuntimeExpanded,
+            onToggleExpanded: () {
+              setState(() {
+                _musicGenreRuntimeExpanded = !_musicGenreRuntimeExpanded;
+              });
+            },
+          ),
+      ],
+    );
+  }
+
   // =====================================================
   // RATING DISTRIBUTION PANEL
   // =====================================================
 
   Widget _buildRatingDistributionSection() {
     const criticGold = Color(0xFFFFC857);
-
     const criticOrange = Color(0xFFFF8A4C);
 
-    final int distributionTotal = critic.ratingDistribution.values.fold(
+    final distribution = critic.distributionFor(_ratingDistributionFilter);
+    final int distributionTotal = distribution.values.fold(
       0,
       (sum, count) => sum + count,
     );
 
     Color ratingColor(int rating) {
       final t = (rating - 1) / 4;
-
       if (t < 0.5) {
         return Color.lerp(criticOrange, criticGold, t * 2)!;
       }
-
       return Color.lerp(criticGold, chipluxPurple, (t - 0.5) * 2)!;
     }
 
     final activeRatings = <int>[];
-
     for (int rating = 1; rating <= 5; rating++) {
-      if ((critic.ratingDistribution[rating] ?? 0) > 0) {
+      if ((distribution[rating] ?? 0) > 0) {
         activeRatings.add(rating);
       }
     }
@@ -23501,19 +24465,29 @@ class _ProfilePageState extends State<ProfilePage> {
           const Row(
             children: [
               Icon(Icons.star_rate_rounded, color: criticGold, size: 27),
-
               SizedBox(width: 10),
-
-              UiText(
-                'Rating Distribution',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              Expanded(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: UiText(
+                    'Rating Distribution',
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  ),
+                ),
               ),
             ],
           ),
-
+          const SizedBox(height: 16),
+          _RatingDistributionFilterBar(
+            selected: _ratingDistributionFilter,
+            onSelected: (value) {
+              setState(() {
+                _ratingDistributionFilter = value;
+              });
+            },
+          ),
           const SizedBox(height: 22),
-
-          // LARGE SEGMENTED BAR
           ClipRRect(
             borderRadius: BorderRadius.circular(30),
             child: Container(
@@ -23523,8 +24497,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   ? const SizedBox.expand()
                   : Row(
                       children: activeRatings.map((rating) {
-                        final count = critic.ratingDistribution[rating] ?? 0;
-
+                        final count = distribution[rating] ?? 0;
                         return Expanded(
                           flex: count,
                           child: Container(color: ratingColor(rating)),
@@ -23533,18 +24506,14 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
             ),
           ),
-
           const SizedBox(height: 20),
-
           for (int rating = 1; rating <= 5; rating++) ...[
             Builder(
               builder: (context) {
-                final count = critic.ratingDistribution[rating] ?? 0;
-
+                final count = distribution[rating] ?? 0;
                 final double percentage = distributionTotal > 0
                     ? (count.toDouble() / distributionTotal.toDouble()) * 100.0
                     : 0.0;
-
                 final color = ratingColor(rating);
 
                 return Padding(
@@ -23552,10 +24521,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   child: Row(
                     children: [
                       Icon(Icons.star_rounded, color: color, size: 18),
-
                       const SizedBox(width: 8),
-
-                      // More room for 10/10
                       SizedBox(
                         width: 58,
                         child: UiText(
@@ -23566,20 +24532,16 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                         ),
                       ),
-
                       const SizedBox(width: 12),
-
                       Expanded(
                         child: UiText(
-                          '$count '
-                          '${count == 1 ? 'rating' : 'ratings'}',
+                          '$count ${count == 1 ? 'rating' : 'ratings'}',
                           style: const TextStyle(
                             color: Colors.white60,
                             fontSize: 13,
                           ),
                         ),
                       ),
-
                       SizedBox(
                         width: 64,
                         height: 20,
@@ -23601,7 +24563,6 @@ class _ProfilePageState extends State<ProfilePage> {
                 );
               },
             ),
-
             if (rating != 5)
               Divider(height: 1, color: Colors.white.withValues(alpha: 0.06)),
           ],
@@ -23665,6 +24626,14 @@ class _ProfilePageState extends State<ProfilePage> {
             library.watchedEpisodeCount,
           );
 
+          final albumsListenedGroup = _albumsListenedAchievementGroupFor(
+            musicUserData.listenedAlbumCount,
+          );
+
+          final songsListenedGroup = _songsListenedAchievementGroupFor(
+            musicUserData.listenedTrackCount,
+          );
+
           final episodeRatedGroup = _episodeRatedAchievementGroupFor(
             critic.episodeRatingCount,
           );
@@ -23677,6 +24646,14 @@ class _ProfilePageState extends State<ProfilePage> {
 
           final moviesRatedGroup = _moviesRatedAchievementGroupFor(
             critic.movieRatingCount,
+          );
+
+          final albumsRatedGroup = _albumsRatedAchievementGroupFor(
+            critic.albumRatingCount,
+          );
+
+          final songsRatedGroup = _songsRatedAchievementGroupFor(
+            critic.songRatingCount,
           );
 
           final dailyLoginGroup = _dailyLoginAchievementGroupFor(
@@ -23701,6 +24678,10 @@ class _ProfilePageState extends State<ProfilePage> {
             episodeRatedGroup,
             tvShowsRatedGroup,
             moviesRatedGroup,
+            albumsListenedGroup,
+            songsListenedGroup,
+            albumsRatedGroup,
+            songsRatedGroup,
             runtimeLevelGroup,
             ratingsLevelGroup,
           ];
@@ -24238,6 +25219,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                     musicUserData.listenedAlbumRuntimeMinutes,
                                 label: 'Albums Listened',
                                 icon: Icons.album_rounded,
+                                frameAchievement: achievementCosmetics
+                                    .selectedAchievement(albumsListenedGroup),
                               ),
 
                               const SizedBox(height: 7),
@@ -24248,6 +25231,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                     musicUserData.listenedTrackRuntimeMinutes,
                                 label: 'Songs Listened',
                                 icon: Icons.music_note_rounded,
+                                frameAchievement: achievementCosmetics
+                                    .selectedAchievement(songsListenedGroup),
                               ),
                             ],
                           ),
@@ -24319,6 +25304,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                 value: critic.albumRatingCount,
                                 label: 'Albums Rated',
                                 icon: Icons.album_outlined,
+                                frameAchievement: achievementCosmetics
+                                    .selectedAchievement(albumsRatedGroup),
                               ),
 
                               const SizedBox(height: 7),
@@ -24327,6 +25314,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                 value: critic.songRatingCount,
                                 label: 'Songs Rated',
                                 icon: Icons.music_note_outlined,
+                                frameAchievement: achievementCosmetics
+                                    .selectedAchievement(songsRatedGroup),
                               ),
                             ],
                           ),
@@ -36080,12 +37069,47 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
                                     return;
                                   }
 
-                                  await library.markSeason(
-                                    widget.id,
-                                    seasonNumber,
-                                    episodes,
-                                    !allWatched,
-                                  );
+                                  final int previousTvCount =
+                                      library.completedTvShowsCount;
+
+                                  final bool autoCompletedShow =
+                                      await library.markSeason(
+                                        widget.id,
+                                        seasonNumber,
+                                        episodes,
+                                        !allWatched,
+                                      );
+
+                                  if (!allWatched && context.mounted) {
+                                    showCompletionBurst(context);
+
+                                    if (autoCompletedShow) {
+                                      await Future<void>.delayed(
+                                        const Duration(milliseconds: 320),
+                                      );
+
+                                      if (!context.mounted) {
+                                        return;
+                                      }
+
+                                      await _showTvShowAutoCompletedPopup(
+                                        context,
+                                        showTitle: title,
+                                      );
+
+                                      if (!context.mounted) {
+                                        return;
+                                      }
+
+                                      await _checkTvAchievementUnlock(
+                                        context,
+                                        previousCount: previousTvCount,
+                                        currentCount:
+                                            library.completedTvShowsCount,
+                                      );
+                                    }
+                                  }
+
                                   if (allWatched) {
                                     await CriticService.instance
                                         .clearSeasonAfterUnwatch(
@@ -37356,19 +38380,20 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
     super.dispose();
   }
 
-  Future<void> _runTrackingAction(Future<void> Function() action) async {
+  Future<bool> _runTrackingAction(Future<void> Function() action) async {
     try {
       await action();
+      return true;
     } catch (e) {
       debugPrint('Could not update music tracking: $e');
 
-      if (!mounted) {
-        return;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: UiText('Could not update music tracking.')),
+        );
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: UiText('Could not update music tracking.')),
-      );
+      return false;
     }
   }
 
@@ -37455,6 +38480,103 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
     });
   }
 
+  Future<void> _deleteMusicActivity({
+    required String activityType,
+    required String mediaType,
+    required String externalId,
+    String? parentExternalId,
+  }) async {
+    try {
+      await CommunityService.instance.deleteActivity(
+        activityType: activityType,
+        mediaType: mediaType,
+        externalId: externalId,
+        parentExternalId: parentExternalId,
+      );
+    } catch (e) {
+      debugPrint('Could not remove music activity: $e');
+    }
+  }
+
+  Future<void> _deleteAlbumStatusActivities() async {
+    await Future.wait([
+      _deleteMusicActivity(
+        activityType: 'plan_to_watch',
+        mediaType: 'music_album',
+        externalId: widget.album.id,
+      ),
+      _deleteMusicActivity(
+        activityType: 'dropped',
+        mediaType: 'music_album',
+        externalId: widget.album.id,
+      ),
+    ]);
+  }
+
+  Future<void> _createMusicActivity({
+    required String activityType,
+    required String mediaType,
+    required String externalId,
+    required String mediaTitle,
+    String? parentExternalId,
+    String? parentTitle,
+    int? ratingStars,
+  }) async {
+    await CommunityService.instance.tryCreateActivity(
+      activityType: activityType,
+      mediaType: mediaType,
+      mediaTitle: mediaTitle,
+
+      // Compatibility payload for an older Friends Watch RPC signature.
+      // New Stage 7 clients primarily use the dedicated external_* columns.
+      episodeTitle: jsonEncode({
+        'external_id': externalId,
+        'parent_external_id': parentExternalId,
+        'external_artist_id': widget.album.artistId,
+        'external_artist_name': widget.album.artistName,
+        'external_parent_title': parentTitle,
+        'external_year': widget.album.year,
+        'external_genres': widget.album.genres,
+      }),
+
+      ratingStars: ratingStars,
+      externalId: externalId,
+      parentExternalId: parentExternalId,
+      externalArtistId: widget.album.artistId,
+      externalArtistName: widget.album.artistName,
+      externalParentTitle: parentTitle,
+      externalYear: widget.album.year,
+      externalGenres: widget.album.genres,
+    );
+  }
+
+  Future<void> _replaceMusicActivity({
+    required String activityType,
+    required String mediaType,
+    required String externalId,
+    required String mediaTitle,
+    String? parentExternalId,
+    String? parentTitle,
+    int? ratingStars,
+  }) async {
+    await _deleteMusicActivity(
+      activityType: activityType,
+      mediaType: mediaType,
+      externalId: externalId,
+      parentExternalId: parentExternalId,
+    );
+
+    await _createMusicActivity(
+      activityType: activityType,
+      mediaType: mediaType,
+      externalId: externalId,
+      mediaTitle: mediaTitle,
+      parentExternalId: parentExternalId,
+      parentTitle: parentTitle,
+      ratingStars: ratingStars,
+    );
+  }
+
   Future<void> _saveAlbumRating() async {
     final loaded = details;
     final stars = _albumDraftRatingStars;
@@ -37472,6 +38594,9 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
       return;
     }
 
+    final critic = CriticService.instance;
+    final previousCount = critic.albumRatingCount;
+
     try {
       await userData.setAlbumRating(
         album: widget.album,
@@ -37479,7 +38604,23 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
         stars: stars,
       );
 
-      await CriticService.instance.refresh();
+      await critic.refresh();
+
+      if (mounted) {
+        await _checkAlbumsRatedAchievementUnlock(
+          context,
+          previousCount: previousCount,
+          currentCount: critic.albumRatingCount,
+        );
+      }
+
+      await _replaceMusicActivity(
+        activityType: 'rated',
+        mediaType: 'music_album',
+        externalId: widget.album.id,
+        mediaTitle: widget.album.title,
+        ratingStars: stars,
+      );
 
       if (mounted) {
         setState(() {
@@ -37514,6 +38655,12 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
 
       await CriticService.instance.refresh();
 
+      await _deleteMusicActivity(
+        activityType: 'rated',
+        mediaType: 'music_album',
+        externalId: widget.album.id,
+      );
+
       if (mounted) {
         setState(() {
           _albumDraftRatingStars = null;
@@ -37535,11 +38682,15 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
   Future<void> _rateTrack(MusicTrack track) async {
     final current = userData.trackState(track.id).ratingStars;
     final selected = await _pickRating(currentStars: current);
+
     if (selected == null) {
       return;
     }
 
-    await _runTrackingAction(() {
+    final critic = CriticService.instance;
+    final previousCount = critic.songRatingCount;
+
+    final success = await _runTrackingAction(() {
       return userData.setTrackRating(
         album: widget.album,
         track: track,
@@ -37547,7 +38698,38 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
       );
     });
 
-    await CriticService.instance.refresh();
+    if (!success) {
+      return;
+    }
+
+    await critic.refresh();
+
+    if (mounted) {
+      await _checkSongsRatedAchievementUnlock(
+        context,
+        previousCount: previousCount,
+        currentCount: critic.songRatingCount,
+      );
+    }
+
+    if (selected == 0) {
+      await _deleteMusicActivity(
+        activityType: 'rated',
+        mediaType: 'music_track',
+        externalId: track.id,
+        parentExternalId: widget.album.id,
+      );
+    } else {
+      await _replaceMusicActivity(
+        activityType: 'rated',
+        mediaType: 'music_track',
+        externalId: track.id,
+        parentExternalId: widget.album.id,
+        parentTitle: widget.album.title,
+        mediaTitle: track.title,
+        ratingStars: selected,
+      );
+    }
   }
 
   Future<void> _setAlbumLibraryStatus(String? status) async {
@@ -37571,13 +38753,300 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
       return;
     }
 
-    await _runTrackingAction(() {
+    final previousStatus = state.libraryStatus;
+
+    final success = await _runTrackingAction(() {
       return userData.setAlbumLibraryStatus(
         album: widget.album,
         tracks: loaded.tracks,
         status: status,
       );
     });
+
+    if (!success) {
+      return;
+    }
+
+    // Keep Friends Watch in lock-step with the actual album library state.
+    // Switching Plan <-> Dropped or clearing the status must remove the stale
+    // activity from the previous state.
+    if (previousStatus != status) {
+      if (previousStatus == 'plan') {
+        await _deleteMusicActivity(
+          activityType: 'plan_to_watch',
+          mediaType: 'music_album',
+          externalId: widget.album.id,
+        );
+      } else if (previousStatus == 'dropped') {
+        await _deleteMusicActivity(
+          activityType: 'dropped',
+          mediaType: 'music_album',
+          externalId: widget.album.id,
+        );
+      }
+    }
+
+    if (status == 'plan') {
+      await _replaceMusicActivity(
+        activityType: 'plan_to_watch',
+        mediaType: 'music_album',
+        externalId: widget.album.id,
+        mediaTitle: widget.album.title,
+      );
+    } else if (status == 'dropped') {
+      await _replaceMusicActivity(
+        activityType: 'dropped',
+        mediaType: 'music_album',
+        externalId: widget.album.id,
+        mediaTitle: widget.album.title,
+      );
+    }
+  }
+
+  Future<void> _toggleAlbumListened(List<MusicTrack> tracks) async {
+    final before = userData.albumState(widget.album.id);
+    final nextListened = !before.isListened;
+    final previousAlbumCount = userData.listenedAlbumCount;
+    final previousSongCount = userData.listenedTrackCount;
+
+    final success = await _runTrackingAction(() {
+      return userData.setAlbumListened(
+        album: widget.album,
+        tracks: tracks,
+        listened: nextListened,
+      );
+    });
+
+    if (!success) {
+      return;
+    }
+
+    await CriticService.instance.refresh();
+
+    if (nextListened) {
+      // Listening the album clears Plan/Dropped in music_user_data. Remove the
+      // corresponding community activity as well so Library and Friends Watch
+      // cannot disagree.
+      await _deleteAlbumStatusActivities();
+
+      await _replaceMusicActivity(
+        activityType: 'movie_watched',
+        mediaType: 'music_album',
+        externalId: widget.album.id,
+        mediaTitle: widget.album.title,
+      );
+    } else {
+      await _deleteMusicActivity(
+        activityType: 'movie_watched',
+        mediaType: 'music_album',
+        externalId: widget.album.id,
+      );
+      await _deleteMusicActivity(
+        activityType: 'rated',
+        mediaType: 'music_album',
+        externalId: widget.album.id,
+      );
+
+      for (final track in tracks) {
+        await _deleteMusicActivity(
+          activityType: 'episode_watched',
+          mediaType: 'music_track',
+          externalId: track.id,
+          parentExternalId: widget.album.id,
+        );
+      }
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    await _checkAlbumsListenedAchievementUnlock(
+      context,
+      previousCount: previousAlbumCount,
+      currentCount: userData.listenedAlbumCount,
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    await _checkSongsListenedAchievementUnlock(
+      context,
+      previousCount: previousSongCount,
+      currentCount: userData.listenedTrackCount,
+    );
+
+    if (!context.mounted) {
+      return;
+    }
+
+    setState(() {
+      _albumDraftRatingStars = null;
+    });
+  }
+
+  Future<void> _toggleTrackListened(
+    MusicTrack track,
+    List<MusicTrack> tracks,
+  ) async {
+    final beforeTrack = userData.trackState(track.id);
+    final beforeAlbum = userData.albumState(widget.album.id);
+    final nextListened = !beforeTrack.isListened;
+    final previousAlbumCount = userData.listenedAlbumCount;
+    final previousSongCount = userData.listenedTrackCount;
+
+    final success = await _runTrackingAction(() {
+      return userData.setTrackListened(
+        album: widget.album,
+        allTracks: tracks,
+        track: track,
+        listened: nextListened,
+      );
+    });
+
+    if (!success) {
+      return;
+    }
+
+    await CriticService.instance.refresh();
+
+    if (nextListened) {
+      if (beforeAlbum.libraryStatus != null) {
+        await _deleteAlbumStatusActivities();
+      }
+
+      await _replaceMusicActivity(
+        activityType: 'episode_watched',
+        mediaType: 'music_track',
+        externalId: track.id,
+        parentExternalId: widget.album.id,
+        parentTitle: widget.album.title,
+        mediaTitle: track.title,
+      );
+    } else {
+      await _deleteMusicActivity(
+        activityType: 'episode_watched',
+        mediaType: 'music_track',
+        externalId: track.id,
+        parentExternalId: widget.album.id,
+      );
+    }
+
+    final afterAlbum = userData.albumState(widget.album.id);
+
+    if (!beforeAlbum.isListened && afterAlbum.isListened) {
+      await _replaceMusicActivity(
+        activityType: 'movie_watched',
+        mediaType: 'music_album',
+        externalId: widget.album.id,
+        mediaTitle: widget.album.title,
+      );
+    } else if (beforeAlbum.isListened && !afterAlbum.isListened) {
+      await _deleteMusicActivity(
+        activityType: 'movie_watched',
+        mediaType: 'music_album',
+        externalId: widget.album.id,
+      );
+      await _deleteMusicActivity(
+        activityType: 'rated',
+        mediaType: 'music_album',
+        externalId: widget.album.id,
+      );
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    await _checkSongsListenedAchievementUnlock(
+      context,
+      previousCount: previousSongCount,
+      currentCount: userData.listenedTrackCount,
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    await _checkAlbumsListenedAchievementUnlock(
+      context,
+      previousCount: previousAlbumCount,
+      currentCount: userData.listenedAlbumCount,
+    );
+
+    if (!context.mounted) {
+      return;
+    }
+
+    setState(() {
+      _albumDraftRatingStars = null;
+    });
+  }
+
+  Future<void> _toggleAlbumFavorite(List<MusicTrack> tracks) async {
+    final before = userData.albumState(widget.album.id);
+    final nextFavorite = !before.isFavorite;
+
+    final success = await _runTrackingAction(() {
+      return userData.toggleAlbumFavorite(
+        album: widget.album,
+        tracks: tracks,
+      );
+    });
+
+    if (!success) {
+      return;
+    }
+
+    if (nextFavorite) {
+      await _replaceMusicActivity(
+        activityType: 'favorite',
+        mediaType: 'music_album',
+        externalId: widget.album.id,
+        mediaTitle: widget.album.title,
+      );
+    } else {
+      await _deleteMusicActivity(
+        activityType: 'favorite',
+        mediaType: 'music_album',
+        externalId: widget.album.id,
+      );
+    }
+  }
+
+  Future<void> _toggleTrackFavorite(MusicTrack track) async {
+    final before = userData.trackState(track.id);
+    final nextFavorite = !before.isFavorite;
+
+    final success = await _runTrackingAction(() {
+      return userData.toggleTrackFavorite(
+        album: widget.album,
+        track: track,
+      );
+    });
+
+    if (!success) {
+      return;
+    }
+
+    if (nextFavorite) {
+      await _replaceMusicActivity(
+        activityType: 'favorite',
+        mediaType: 'music_track',
+        externalId: track.id,
+        parentExternalId: widget.album.id,
+        parentTitle: widget.album.title,
+        mediaTitle: track.title,
+      );
+    } else {
+      await _deleteMusicActivity(
+        activityType: 'favorite',
+        mediaType: 'music_track',
+        externalId: track.id,
+        parentExternalId: widget.album.id,
+      );
+    }
   }
 
   Widget _albumAction({
@@ -37885,20 +39354,8 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
                                 accent: const Color(0xFF7BE8A8),
                                 active: albumState.isListened,
                                 onTap: trackingEnabled
-                                    ? () async {
-                                        await _runTrackingAction(() {
-                                          return userData.setAlbumListened(
-                                            album: widget.album,
-                                            tracks: tracks,
-                                            listened: !albumState.isListened,
-                                          );
-                                        });
-                                        await CriticService.instance.refresh();
-                                        if (mounted) {
-                                          setState(() {
-                                            _albumDraftRatingStars = null;
-                                          });
-                                        }
+                                    ? () {
+                                        unawaited(_toggleAlbumListened(tracks));
                                       }
                                     : null,
                               ),
@@ -37963,13 +39420,9 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
                                       ),
                                       onPressed: trackingEnabled
                                           ? () {
-                                              _runTrackingAction(() {
-                                                return userData
-                                                    .toggleAlbumFavorite(
-                                                  album: widget.album,
-                                                  tracks: tracks,
-                                                );
-                                              });
+                                              unawaited(
+                                                _toggleAlbumFavorite(tracks),
+                                              );
                                             }
                                           : null,
                                       icon: TweenAnimationBuilder<double>(
@@ -38386,27 +39839,13 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
                                             ),
                                             padding: EdgeInsets.zero,
                                             onPressed: trackingEnabled
-                                                ? () async {
-                                                    await _runTrackingAction(
-                                                      () {
-                                                        return userData
-                                                            .setTrackListened(
-                                                          album: widget.album,
-                                                          allTracks: tracks,
-                                                          track: track,
-                                                          listened:
-                                                              !state.isListened,
-                                                        );
-                                                      },
+                                                ? () {
+                                                    unawaited(
+                                                      _toggleTrackListened(
+                                                        track,
+                                                        tracks,
+                                                      ),
                                                     );
-                                                    await CriticService.instance
-                                                        .refresh();
-                                                    if (mounted) {
-                                                      setState(() {
-                                                        _albumDraftRatingStars =
-                                                            null;
-                                                      });
-                                                    }
                                                   }
                                                 : null,
                                             icon: Icon(
@@ -38430,13 +39869,11 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
                                             padding: EdgeInsets.zero,
                                             onPressed: trackingEnabled
                                                 ? () {
-                                                    _runTrackingAction(() {
-                                                      return userData
-                                                          .toggleTrackFavorite(
-                                                        album: widget.album,
-                                                        track: track,
-                                                      );
-                                                    });
+                                                    unawaited(
+                                                      _toggleTrackFavorite(
+                                                        track,
+                                                      ),
+                                                    );
                                                   }
                                                 : null,
                                             icon: Icon(
@@ -39216,15 +40653,53 @@ class _EpisodeTile extends StatelessWidget {
 
                         final int previousEpisodeCount =
                             library.watchedEpisodeCount;
+                        final int previousTvCount =
+                            library.completedTvShowsCount;
 
-                        await library.toggleEpisode(
-                          showId,
-                          seasonNumber,
-                          episodeNumber,
-                          runtimeMinutes: runtime ?? 0,
-                        );
+                        final bool autoCompletedShow =
+                            await library.toggleEpisode(
+                              showId,
+                              seasonNumber,
+                              episodeNumber,
+                              runtimeMinutes: runtime ?? 0,
+                            );
 
                         if (!wasWatched && context.mounted) {
+                          showCompletionBurst(context);
+
+                          if (autoCompletedShow) {
+                            await Future<void>.delayed(
+                              const Duration(milliseconds: 320),
+                            );
+
+                            if (!context.mounted) {
+                              return;
+                            }
+
+                            final showTitle =
+                                library.getItem(showId, 'tv')?.title ??
+                                'TV Show';
+
+                            await _showTvShowAutoCompletedPopup(
+                              context,
+                              showTitle: showTitle,
+                            );
+
+                            if (!context.mounted) {
+                              return;
+                            }
+
+                            await _checkTvAchievementUnlock(
+                              context,
+                              previousCount: previousTvCount,
+                              currentCount: library.completedTvShowsCount,
+                            );
+                          }
+
+                          if (!context.mounted) {
+                            return;
+                          }
+
                           await _checkEpisodeAchievementUnlock(
                             context,
                             previousCount: previousEpisodeCount,
@@ -40085,15 +41560,53 @@ class EpisodeInfoPage extends StatelessWidget {
                     final bool wasWatched = watched;
                     final int previousEpisodeCount =
                         library.watchedEpisodeCount;
+                    final int previousTvCount =
+                        library.completedTvShowsCount;
 
-                    await library.toggleEpisode(
-                      showId,
-                      seasonNumber,
-                      episodeNumber,
-                      runtimeMinutes: runtime ?? 0,
-                    );
+                    final bool autoCompletedShow =
+                        await library.toggleEpisode(
+                          showId,
+                          seasonNumber,
+                          episodeNumber,
+                          runtimeMinutes: runtime ?? 0,
+                        );
 
                     if (!wasWatched && context.mounted) {
+                      showCompletionBurst(context);
+
+                      if (autoCompletedShow) {
+                        await Future<void>.delayed(
+                          const Duration(milliseconds: 320),
+                        );
+
+                        if (!context.mounted) {
+                          return;
+                        }
+
+                        final resolvedShowTitle = showTitle.trim().isNotEmpty
+                            ? showTitle
+                            : library.getItem(showId, 'tv')?.title ?? 'TV Show';
+
+                        await _showTvShowAutoCompletedPopup(
+                          context,
+                          showTitle: resolvedShowTitle,
+                        );
+
+                        if (!context.mounted) {
+                          return;
+                        }
+
+                        await _checkTvAchievementUnlock(
+                          context,
+                          previousCount: previousTvCount,
+                          currentCount: library.completedTvShowsCount,
+                        );
+                      }
+
+                      if (!context.mounted) {
+                        return;
+                      }
+
                       await _checkEpisodeAchievementUnlock(
                         context,
                         previousCount: previousEpisodeCount,
@@ -40451,6 +41964,152 @@ class _FavoriteBurstPainter extends CustomPainter {
   bool shouldRepaint(covariant _FavoriteBurstPainter oldDelegate) {
     return oldDelegate.progress != progress;
   }
+}
+
+
+Future<void> _showTvShowAutoCompletedPopup(
+  BuildContext context, {
+  required String showTitle,
+}) async {
+  if (!context.mounted) {
+    return;
+  }
+
+  await showGeneralDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    barrierLabel: trUi(context, 'TV Show Completed'),
+    barrierColor: Colors.black.withValues(alpha: 0.78),
+    transitionDuration: const Duration(milliseconds: 300),
+    transitionBuilder: (context, animation, secondaryAnimation, child) {
+      final curved = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutBack,
+      );
+
+      return FadeTransition(
+        opacity: animation,
+        child: ScaleTransition(
+          scale: Tween<double>(begin: 0.86, end: 1.0).animate(curved),
+          child: child,
+        ),
+      );
+    },
+    pageBuilder: (dialogContext, animation, secondaryAnimation) {
+      return Center(
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            width: 330,
+            margin: const EdgeInsets.symmetric(horizontal: 24),
+            padding: const EdgeInsets.all(1.2),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(24),
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  chipluxCyan,
+                  chipluxViolet,
+                  chipluxPurple,
+                ],
+              ),
+            ),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(22, 24, 22, 20),
+              decoration: BoxDecoration(
+                color: chipluxSurface,
+                borderRadius: BorderRadius.circular(23),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 68,
+                    height: 68,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: const Color(0xFF173A29),
+                      border: Border.all(
+                        color: const Color(0xFF7BE8A8),
+                        width: 1.7,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF7BE8A8)
+                              .withValues(alpha: 0.18),
+                          blurRadius: 20,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.check_rounded,
+                      color: Color(0xFF7BE8A8),
+                      size: 40,
+                    ),
+                  ),
+                  const SizedBox(height: 17),
+                  const UiText(
+                    'TV Show Completed',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                  const SizedBox(height: 9),
+                  Text(
+                    showTitle,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: chipluxCyan,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 11),
+                  const UiText(
+                    'All episodes are watched. The show has been moved to Completed.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white60,
+                      fontSize: 13,
+                      height: 1.35,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: () {
+                        Navigator.pop(dialogContext);
+                      },
+                      style: FilledButton.styleFrom(
+                        backgroundColor: chipluxCyan,
+                        foregroundColor: chipluxBackground,
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: const UiText(
+                        'Got it',
+                        style: TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    },
+  );
 }
 
 void showCompletionBurst(BuildContext context) {

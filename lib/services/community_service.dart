@@ -13,6 +13,35 @@ class CommunityService {
 
   User? get currentUser => client.auth.currentUser;
 
+
+  Future<List<Map<String, dynamic>>> _loadSafeProfiles(
+    Iterable<String> userIds,
+  ) async {
+    final ids = userIds
+        .map((id) => id.trim())
+        .where((id) => id.isNotEmpty)
+        .toSet()
+        .toList();
+
+    if (ids.isEmpty) {
+      return [];
+    }
+
+    final raw = await client.rpc(
+      'get_safe_profile_cards',
+      params: {'p_user_ids': ids},
+    );
+
+    if (raw is! List) {
+      return [];
+    }
+
+    return raw
+        .whereType<Map>()
+        .map((row) => Map<String, dynamic>.from(row))
+        .toList();
+  }
+
   // =====================================================
 
   // FOLLOW / UNFOLLOW
@@ -130,14 +159,7 @@ class CommunityService {
       return [];
     }
 
-    final profiles = await client
-        .from('profiles')
-        .select(
-          'id, display_name, username, avatar_url, banner_tmdb_id, banner_media_type, banner_path',
-        )
-        .inFilter('id', ids);
-
-    final profileRows = List<Map<String, dynamic>>.from(profiles);
+    final profileRows = await _loadSafeProfiles(ids);
 
     final byId = <String, Map<String, dynamic>>{};
 
@@ -177,19 +199,13 @@ class CommunityService {
   // =====================================================
 
   Future<Map<String, dynamic>?> getProfile(String userId) async {
-    final data = await client
-        .from('profiles')
-        .select(
-          'id, display_name, username, avatar_url, banner_tmdb_id, banner_media_type, banner_path',
-        )
-        .eq('id', userId)
-        .maybeSingle();
+    final profiles = await _loadSafeProfiles([userId]);
 
-    if (data == null) {
+    if (profiles.isEmpty) {
       return null;
     }
 
-    return Map<String, dynamic>.from(data);
+    return profiles.first;
   }
 
   // =====================================================
@@ -206,7 +222,7 @@ class CommunityService {
     }
 
     final activity = await client.rpc(
-      'get_visible_community_activity',
+      'get_visible_community_activity_v2',
       params: {'p_limit': limit},
     );
 
@@ -233,12 +249,7 @@ class CommunityService {
       return [];
     }
 
-    final profiles = await client
-        .from('profiles')
-        .select('id, display_name, username, avatar_url')
-        .inFilter('id', userIds);
-
-    final profileRows = List<Map<String, dynamic>>.from(profiles);
+    final profileRows = await _loadSafeProfiles(userIds);
 
     final byId = <String, Map<String, dynamic>>{};
 
@@ -291,6 +302,20 @@ class CommunityService {
     String? achievementId,
 
     String? achievementTitle,
+
+    String? externalId,
+
+    String? parentExternalId,
+
+    String? externalArtistId,
+
+    String? externalArtistName,
+
+    String? externalParentTitle,
+
+    String? externalYear,
+
+    List<String>? externalGenres,
   }) async {
     final user = currentUser;
 
@@ -321,29 +346,28 @@ class CommunityService {
       return;
     }
 
-    await client.from('community_activity').insert({
-      'user_id': user.id,
-
-      'activity_type': activityType,
-
-      'media_type': mediaType,
-
-      'tmdb_id': tmdbId,
-
-      'media_title': mediaTitle,
-
-      'season_number': seasonNumber,
-
-      'episode_number': episodeNumber,
-
-      'episode_title': episodeTitle,
-
-      'rating_stars': ratingStars,
-
-      'achievement_id': achievementId,
-
-      'achievement_title': achievementTitle,
-    });
+    await client.rpc(
+      'record_my_community_activity',
+      params: {
+        'p_activity_type': activityType,
+        'p_media_type': mediaType,
+        'p_tmdb_id': tmdbId,
+        'p_media_title': mediaTitle,
+        'p_season_number': seasonNumber,
+        'p_episode_number': episodeNumber,
+        'p_episode_title': episodeTitle,
+        'p_rating_stars': ratingStars,
+        'p_achievement_id': achievementId,
+        'p_achievement_title': achievementTitle,
+        'p_external_id': externalId,
+        'p_parent_external_id': parentExternalId,
+        'p_external_artist_id': externalArtistId,
+        'p_external_artist_name': externalArtistName,
+        'p_external_parent_title': externalParentTitle,
+        'p_external_year': externalYear,
+        'p_external_genres': externalGenres ?? const <String>[],
+      },
+    );
   }
 
   // =====================================================
@@ -364,6 +388,10 @@ class CommunityService {
     int? episodeNumber,
 
     String? achievementId,
+
+    String? externalId,
+
+    String? parentExternalId,
 
     bool titleLevelOnly = false,
   }) async {
@@ -405,6 +433,14 @@ class CommunityService {
       query = query.eq('achievement_id', achievementId);
     }
 
+    if (externalId != null) {
+      query = query.eq('external_id', externalId);
+    }
+
+    if (parentExternalId != null) {
+      query = query.eq('parent_external_id', parentExternalId);
+    }
+
     await query;
   }
 
@@ -434,6 +470,20 @@ class CommunityService {
     String? achievementId,
 
     String? achievementTitle,
+
+    String? externalId,
+
+    String? parentExternalId,
+
+    String? externalArtistId,
+
+    String? externalArtistName,
+
+    String? externalParentTitle,
+
+    String? externalYear,
+
+    List<String>? externalGenres,
   }) async {
     try {
       await createActivity(
@@ -456,6 +506,20 @@ class CommunityService {
         achievementId: achievementId,
 
         achievementTitle: achievementTitle,
+
+        externalId: externalId,
+
+        parentExternalId: parentExternalId,
+
+        externalArtistId: externalArtistId,
+
+        externalArtistName: externalArtistName,
+
+        externalParentTitle: externalParentTitle,
+
+        externalYear: externalYear,
+
+        externalGenres: externalGenres,
       );
     } catch (e) {
       debugPrint('Community activity failed: $e');

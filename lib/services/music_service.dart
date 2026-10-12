@@ -961,13 +961,26 @@ class MusicService {
     for (int attempt = 0; attempt < 2; attempt++) {
       _lastRequestAt = DateTime.now();
 
-      final response = await http.get(
-        uri,
-        headers: const {
-          'Accept': 'application/json',
-          'User-Agent': _userAgent,
-        },
-      );
+      late final http.Response response;
+
+      try {
+        response = await http
+            .get(
+              uri,
+              headers: const {
+                'Accept': 'application/json',
+                'User-Agent': _userAgent,
+              },
+            )
+            .timeout(const Duration(seconds: 12));
+      } on TimeoutException {
+        if (attempt == 0) {
+          await Future<void>.delayed(const Duration(seconds: 2));
+          continue;
+        }
+
+        throw Exception('MusicBrainz request timed out.');
+      }
 
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);

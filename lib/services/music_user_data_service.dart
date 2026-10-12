@@ -184,7 +184,17 @@ class MusicUserDataService extends ChangeNotifier {
   final Map<String, MusicUserDataState> _cache = {};
   final Map<String, Map<String, dynamic>> _allRows = {};
 
+  // Changes whenever the visible account state is reset/reloaded. Async music
+  // requests capture this value so a response from an old account can never
+  // repopulate the cache after logout/account switching.
+  int _stateGeneration = 0;
+
   String _key(String entityType, String entityId) => '$entityType:$entityId';
+
+  bool _sessionStillCurrent(int generation, String userId) {
+    return generation == _stateGeneration &&
+        client.auth.currentUser?.id == userId;
+  }
 
   List<MusicLibraryEntry> get allEntries => _allRows.values
       .map((row) => MusicLibraryEntry.fromRow(row))
@@ -223,77 +233,155 @@ class MusicUserDataService extends ChangeNotifier {
     return (totalMs / 60000).round();
   }
 
-  String? get dominantGenre {
-    final weighted = <String, int>{};
+  String _canonicalMusicGenre(List<String> genres) {
+    final normalized = genres
+        .map((value) => value.trim().toLowerCase())
+        .where((value) => value.isNotEmpty)
+        .toList(growable: false);
 
-    for (final entry in trackEntries.where((entry) => entry.isListened)) {
-      final weight = entry.durationMs > 0 ? entry.durationMs : 1;
-      for (final genre in entry.genres.toSet()) {
-        final clean = genre.trim();
-        if (clean.isEmpty) continue;
-        weighted[clean] = (weighted[clean] ?? 0) + weight;
-      }
+    bool hasAny(List<String> needles) {
+      return normalized.any(
+        (genre) => needles.any((needle) => genre.contains(needle)),
+      );
     }
 
-    if (weighted.isEmpty) return null;
-    return weighted.entries.reduce((a, b) => a.value >= b.value ? a : b).key;
+    if (hasAny(['metal'])) return 'Metal';
+    if (hasAny(['punk'])) return 'Punk';
+    if (hasAny(['hip hop', 'hip-hop', 'rap'])) return 'Hip-Hop';
+    if (hasAny(['electronic', 'techno', 'house', 'trance', 'edm', 'dance'])) {
+      return 'Electronic';
+    }
+    if (hasAny(['jazz'])) return 'Jazz';
+    if (hasAny(['classical', 'orchestral', 'baroque', 'romantic era'])) {
+      return 'Classical';
+    }
+    if (hasAny(['country', 'americana'])) return 'Country Music';
+    if (hasAny(['blues'])) return 'Blues';
+    if (hasAny(['r&b', 'rhythm and blues', 'soul', 'neo soul'])) return 'R&B / Soul';
+    if (hasAny(['folk', 'singer-songwriter'])) return 'Folk';
+    if (hasAny(['reggae', 'ska', 'dub'])) return 'Reggae';
+    if (hasAny(['funk'])) return 'Funk';
+    if (hasAny(['latin', 'salsa', 'bachata', 'reggaeton', 'bossa nova'])) {
+      return 'Latin';
+    }
+    if (hasAny(['rock', 'grunge', 'alternative', 'shoegaze', 'indie rock'])) {
+      return 'Rock';
+    }
+    if (hasAny(['pop', 'indie pop', 'synthpop'])) return 'Pop';
+    if (hasAny(['world', 'afrobeat', 'afrobeats', 'k-pop', 'j-pop'])) {
+      return 'World Music';
+    }
+
+    return 'Other';
+  }
+
+  Map<String, int> get listenedGenreRuntimeMinutes {
+    final totalsMs = <String, int>{};
+
+    for (final entry in trackEntries.where((entry) => entry.isListened)) {
+      final genre = _canonicalMusicGenre(entry.genres);
+      final duration = entry.durationMs > 0 ? entry.durationMs : 0;
+      totalsMs[genre] = (totalsMs[genre] ?? 0) + duration;
+    }
+
+    final result = <String, int>{};
+    for (final entry in totalsMs.entries) {
+      result[entry.key] = (entry.value / 60000).round();
+    }
+
+    return result;
+  }
+
+  Map<String, int> get listenedGenreTrackCounts {
+    final counts = <String, int>{};
+
+    for (final entry in trackEntries.where((entry) => entry.isListened)) {
+      final genre = _canonicalMusicGenre(entry.genres);
+      counts[genre] = (counts[genre] ?? 0) + 1;
+    }
+
+    return counts;
+  }
+
+  String? get dominantGenre {
+    final runtime = listenedGenreRuntimeMinutes;
+    final trackCounts = listenedGenreTrackCounts;
+
+    if (runtime.isEmpty) return null;
+
+    final entries = runtime.entries.toList()
+      ..sort((a, b) {
+        final runtimeCompare = b.value.compareTo(a.value);
+        if (runtimeCompare != 0) return runtimeCompare;
+        return (trackCounts[b.key] ?? 0).compareTo(trackCounts[a.key] ?? 0);
+      });
+
+    final winner = entries.first.key;
+    return winner == 'Other' ? null : winner;
   }
 
   String? get musicTitleSuffix {
-    final genre = dominantGenre?.toLowerCase();
-    if (genre == null || genre.isEmpty) return null;
-
-    if (genre.contains('metal')) return 'METALHEAD';
-    if (genre.contains('punk')) return 'PUNK';
-    if (genre.contains('hip hop') ||
-        genre.contains('hip-hop') ||
-        genre == 'rap' ||
-        genre.contains(' rap')) {
-      return 'BEATHEAD';
+    switch (dominantGenre) {
+      case 'Metal':
+        return 'METALHEAD';
+      case 'Punk':
+        return 'PUNK';
+      case 'Hip-Hop':
+        return 'BEATHEAD';
+      case 'Electronic':
+        return 'RAVER';
+      case 'Jazz':
+        return 'JAZZ CAT';
+      case 'Classical':
+        return 'VIRTUOSO';
+      case 'Country Music':
+        return 'OUTLAW';
+      case 'Blues':
+        return 'BLUES SOUL';
+      case 'R&B / Soul':
+        return 'GROOVER';
+      case 'Folk':
+        return 'TROUBADOUR';
+      case 'Reggae':
+        return 'REGGAE SOUL';
+      case 'Funk':
+        return 'FUNKSTER';
+      case 'Rock':
+        return 'ROCKER';
+      case 'Pop':
+        return 'POPSTER';
+      case 'Latin':
+        return 'RHYTHM RIDER';
+      case 'World Music':
+        return 'WORLD LISTENER';
+      default:
+        return null;
     }
-    if (genre.contains('electronic') ||
-        genre.contains('techno') ||
-        genre.contains('house') ||
-        genre.contains('trance') ||
-        genre.contains('dance')) {
-      return 'RAVER';
-    }
-    if (genre.contains('jazz')) return 'JAZZ CAT';
-    if (genre.contains('classical') || genre.contains('orchestral')) {
-      return 'VIRTUOSO';
-    }
-    if (genre.contains('country')) return 'OUTLAW';
-    if (genre.contains('blues')) return 'BLUES SOUL';
-    if (genre.contains('r&b') ||
-        genre.contains('rhythm and blues') ||
-        genre == 'soul') {
-      return 'GROOVER';
-    }
-    if (genre.contains('folk')) return 'TROUBADOUR';
-    if (genre.contains('reggae')) return 'REGGAE SOUL';
-    if (genre.contains('funk')) return 'FUNKSTER';
-    if (genre.contains('rock') ||
-        genre.contains('grunge') ||
-        genre.contains('alternative')) {
-      return 'ROCKER';
-    }
-    if (genre.contains('pop')) return 'POPSTER';
-    return 'MUSIC LOVER';
   }
 
   Future<void> loadAll() async {
+    final generation = ++_stateGeneration;
     final user = client.auth.currentUser;
+
+    // Clear synchronously so a newly signed-in account never sees the previous
+    // account's music state while its own rows are downloading.
+    _cache.clear();
     _allRows.clear();
+    notifyListeners();
 
     if (user == null) {
-      notifyListeners();
       return;
     }
 
+    final userId = user.id;
     final rows = await client
         .from('music_user_data')
         .select()
-        .eq('user_id', user.id);
+        .eq('user_id', userId);
+
+    if (!_sessionStillCurrent(generation, userId)) {
+      return;
+    }
 
     for (final raw in rows) {
       _rememberRow(Map<String, dynamic>.from(raw));
@@ -312,6 +400,7 @@ class MusicUserDataService extends ChangeNotifier {
 
   Future<void> loadAlbum(MusicAlbum album, List<MusicTrack> tracks) async {
     final user = client.auth.currentUser;
+    final generation = _stateGeneration;
 
     if (user == null) {
       _clearAlbumCache(album.id, tracks);
@@ -342,6 +431,11 @@ class MusicUserDataService extends ChangeNotifier {
     }
 
     final results = await Future.wait<dynamic>([albumFuture, trackFuture]);
+
+    if (!_sessionStillCurrent(generation, user.id)) {
+      return;
+    }
+
     final rawAlbum = results[0];
     final rawTracks = List<dynamic>.from(results[1] as List? ?? const []);
 
@@ -351,10 +445,14 @@ class MusicUserDataService extends ChangeNotifier {
       _rememberRow(row);
     } else {
       _cache[_key('album', album.id)] = const MusicUserDataState.empty();
+      _allRows.remove(_key('album', album.id));
     }
 
+    // Reset every requested track before applying the server response. This
+    // also removes stale rows if a track was deleted/cleared on another device.
     for (final track in tracks) {
       _cache[_key('track', track.id)] = const MusicUserDataState.empty();
+      _allRows.remove(_key('track', track.id));
     }
 
     for (final raw in rawTracks) {
@@ -399,7 +497,14 @@ class MusicUserDataService extends ChangeNotifier {
           album,
           tracks,
           reconciled,
+          expectedGeneration: generation,
+          expectedUserId: user.id,
         );
+
+        if (!_sessionStillCurrent(generation, user.id)) {
+          return;
+        }
+
         _cache[_key('album', album.id)] = reconciled;
       }
     }
@@ -412,7 +517,8 @@ class MusicUserDataService extends ChangeNotifier {
     required List<MusicTrack> tracks,
     required bool listened,
   }) async {
-    _requireUser();
+    final user = _requireUser();
+    final generation = _stateGeneration;
 
     final now = DateTime.now().toUtc();
     final albumCurrent = albumState(album.id);
@@ -450,6 +556,10 @@ class MusicUserDataService extends ChangeNotifier {
       onConflict: 'user_id,entity_type,entity_id',
     );
 
+    if (!_sessionStillCurrent(generation, user.id)) {
+      return;
+    }
+
     for (final row in rows) {
       _rememberRow(row);
     }
@@ -468,7 +578,8 @@ class MusicUserDataService extends ChangeNotifier {
     required MusicTrack track,
     required bool listened,
   }) async {
-    _requireUser();
+    final user = _requireUser();
+    final generation = _stateGeneration;
 
     final now = DateTime.now().toUtc();
     final currentTrack = trackState(track.id);
@@ -505,8 +616,14 @@ class MusicUserDataService extends ChangeNotifier {
       );
     } catch (_) {
       // Restore the previous local state if the database write failed.
-      _cache[_key('track', track.id)] = currentTrack;
+      if (_sessionStillCurrent(generation, user.id)) {
+        _cache[_key('track', track.id)] = currentTrack;
+      }
       rethrow;
+    }
+
+    if (!_sessionStillCurrent(generation, user.id)) {
+      return;
     }
 
     for (final row in rows) {
@@ -522,7 +639,8 @@ class MusicUserDataService extends ChangeNotifier {
     required List<MusicTrack> tracks,
     required String? status,
   }) async {
-    _requireUser();
+    final user = _requireUser();
+    final generation = _stateGeneration;
 
     if (status != null && status != 'plan' && status != 'dropped') {
       throw ArgumentError.value(
@@ -542,7 +660,18 @@ class MusicUserDataService extends ChangeNotifier {
 
     final next = current.copyWith(libraryStatus: status);
 
-    await _upsertAlbum(album, tracks, next);
+    await _upsertAlbum(
+      album,
+      tracks,
+      next,
+      expectedGeneration: generation,
+      expectedUserId: user.id,
+    );
+
+    if (!_sessionStillCurrent(generation, user.id)) {
+      return;
+    }
+
     _cache[_key('album', album.id)] = next;
     notifyListeners();
   }
@@ -551,12 +680,24 @@ class MusicUserDataService extends ChangeNotifier {
     required MusicAlbum album,
     required List<MusicTrack> tracks,
   }) async {
-    _requireUser();
+    final user = _requireUser();
+    final generation = _stateGeneration;
 
     final current = albumState(album.id);
     final next = current.copyWith(isFavorite: !current.isFavorite);
 
-    await _upsertAlbum(album, tracks, next);
+    await _upsertAlbum(
+      album,
+      tracks,
+      next,
+      expectedGeneration: generation,
+      expectedUserId: user.id,
+    );
+
+    if (!_sessionStillCurrent(generation, user.id)) {
+      return;
+    }
+
     _cache[_key('album', album.id)] = next;
     notifyListeners();
   }
@@ -565,12 +706,24 @@ class MusicUserDataService extends ChangeNotifier {
     required MusicAlbum album,
     required MusicTrack track,
   }) async {
-    _requireUser();
+    final user = _requireUser();
+    final generation = _stateGeneration;
 
     final current = trackState(track.id);
     final next = current.copyWith(isFavorite: !current.isFavorite);
 
-    await _upsertTrack(album, track, next);
+    await _upsertTrack(
+      album,
+      track,
+      next,
+      expectedGeneration: generation,
+      expectedUserId: user.id,
+    );
+
+    if (!_sessionStillCurrent(generation, user.id)) {
+      return;
+    }
+
     _cache[_key('track', track.id)] = next;
     notifyListeners();
   }
@@ -580,7 +733,8 @@ class MusicUserDataService extends ChangeNotifier {
     required List<MusicTrack> tracks,
     required int? stars,
   }) async {
-    _requireUser();
+    final user = _requireUser();
+    final generation = _stateGeneration;
 
     if (stars != null && (stars < 1 || stars > 5)) {
       throw ArgumentError.value(stars, 'stars', 'Rating must be 1–5.');
@@ -598,7 +752,18 @@ class MusicUserDataService extends ChangeNotifier {
       ratedAt: stars == null ? null : now,
     );
 
-    await _upsertAlbum(album, tracks, next);
+    await _upsertAlbum(
+      album,
+      tracks,
+      next,
+      expectedGeneration: generation,
+      expectedUserId: user.id,
+    );
+
+    if (!_sessionStillCurrent(generation, user.id)) {
+      return;
+    }
+
     _cache[_key('album', album.id)] = next;
     notifyListeners();
   }
@@ -608,7 +773,8 @@ class MusicUserDataService extends ChangeNotifier {
     required MusicTrack track,
     required int? stars,
   }) async {
-    _requireUser();
+    final user = _requireUser();
+    final generation = _stateGeneration;
 
     if (stars != null && (stars < 1 || stars > 5)) {
       throw ArgumentError.value(stars, 'stars', 'Rating must be 1–5.');
@@ -621,7 +787,18 @@ class MusicUserDataService extends ChangeNotifier {
       ratedAt: stars == null ? null : now,
     );
 
-    await _upsertTrack(album, track, next);
+    await _upsertTrack(
+      album,
+      track,
+      next,
+      expectedGeneration: generation,
+      expectedUserId: user.id,
+    );
+
+    if (!_sessionStillCurrent(generation, user.id)) {
+      return;
+    }
+
     _cache[_key('track', track.id)] = next;
     notifyListeners();
   }
@@ -629,26 +806,42 @@ class MusicUserDataService extends ChangeNotifier {
   Future<void> _upsertAlbum(
     MusicAlbum album,
     List<MusicTrack> tracks,
-    MusicUserDataState state,
-  ) async {
+    MusicUserDataState state, {
+    int? expectedGeneration,
+    String? expectedUserId,
+  }) async {
     final row = _albumRow(album, tracks, state);
     await client.from('music_user_data').upsert(
       row,
       onConflict: 'user_id,entity_type,entity_id',
     );
+
+    if (expectedGeneration != null && expectedUserId != null &&
+        !_sessionStillCurrent(expectedGeneration, expectedUserId)) {
+      return;
+    }
+
     _rememberRow(row);
   }
 
   Future<void> _upsertTrack(
     MusicAlbum album,
     MusicTrack track,
-    MusicUserDataState state,
-  ) async {
+    MusicUserDataState state, {
+    int? expectedGeneration,
+    String? expectedUserId,
+  }) async {
     final row = _trackRow(album, track, state);
     await client.from('music_user_data').upsert(
       row,
       onConflict: 'user_id,entity_type,entity_id',
     );
+
+    if (expectedGeneration != null && expectedUserId != null &&
+        !_sessionStillCurrent(expectedGeneration, expectedUserId)) {
+      return;
+    }
+
     _rememberRow(row);
   }
 
@@ -759,12 +952,15 @@ class MusicUserDataService extends ChangeNotifier {
 
   void _clearAlbumCache(String albumId, List<MusicTrack> tracks) {
     _cache.remove(_key('album', albumId));
+    _allRows.remove(_key('album', albumId));
     for (final track in tracks) {
       _cache.remove(_key('track', track.id));
+      _allRows.remove(_key('track', track.id));
     }
   }
 
   void clearCache() {
+    _stateGeneration++;
     _cache.clear();
     _allRows.clear();
     notifyListeners();

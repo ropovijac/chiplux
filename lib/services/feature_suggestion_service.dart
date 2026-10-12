@@ -106,13 +106,10 @@ class FeatureSuggestionService {
 
     final rawProfiles = userIds.isEmpty
         ? <dynamic>[]
-        : await client
-              .from('profiles')
-              .select(
-                'id, display_name, username, avatar_url, '
-                'privacy_feature_suggestion_attribution',
-              )
-              .inFilter('id', userIds);
+        : await client.rpc(
+            'get_safe_profile_cards',
+            params: {'p_user_ids': userIds},
+          );
 
     final likes = List<Map<String, dynamic>>.from(rawLikes);
     final comments = List<Map<String, dynamic>>.from(rawComments);

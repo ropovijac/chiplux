@@ -7,6 +7,28 @@ class CommentService {
 
   final SupabaseClient client = Supabase.instance.client;
 
+
+  Future<Map<String, dynamic>?> _loadSafeProfile(String userId) async {
+    final raw = await client.rpc(
+      'get_safe_profile_cards',
+      params: {
+        'p_user_ids': [userId],
+      },
+    );
+
+    if (raw is! List || raw.isEmpty) {
+      return null;
+    }
+
+    final first = raw.first;
+
+    if (first is! Map) {
+      return null;
+    }
+
+    return Map<String, dynamic>.from(first);
+  }
+
   String get _userId {
     final user = client.auth.currentUser;
 
@@ -172,18 +194,7 @@ class CommentService {
       return;
     }
 
-    final profileFuture = client
-        .from('profiles')
-        .select(
-          'id, '
-          'display_name, '
-          'username, '
-          'avatar_url, '
-          'is_developer, '
-          'privacy_allow_comment_replies',
-        )
-        .eq('id', userId)
-        .maybeSingle();
+    final profileFuture = _loadSafeProfile(userId);
 
     final likesFuture = client
         .from('comment_likes')
@@ -543,18 +554,7 @@ class CommentService {
       return;
     }
 
-    final profileFuture = client
-        .from('profiles')
-        .select(
-          'id, '
-          'display_name, '
-          'username, '
-          'avatar_url, '
-          'is_developer, '
-          'privacy_allow_comment_replies',
-        )
-        .eq('id', userId)
-        .maybeSingle();
+    final profileFuture = _loadSafeProfile(userId);
 
     final likesFuture = client
         .from('music_album_comment_likes')
@@ -734,23 +734,16 @@ class CommentService {
     required String reportType,
     String? details,
   }) async {
-    final userId = _userId;
-
-    await client.from('music_album_comment_reports').upsert(
-      {
-        'comment_id': commentId,
-        'reporter_id': userId,
-        'report_type': reportType,
-        'details': details,
-      },
-      onConflict: 'comment_id,reporter_id,report_type',
-    );
+    if (client.auth.currentUser == null) {
+      throw Exception('You must be signed in.');
+    }
 
     final count = await client.rpc(
-      'count_music_album_comment_reports',
+      'report_music_album_comment',
       params: {
         'p_comment_id': commentId,
         'p_report_type': reportType,
+        'p_details': details,
       },
     );
 

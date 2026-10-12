@@ -139,15 +139,14 @@ class ProfileService extends ChangeNotifier {
 
     notifyListeners();
 
-    await client.from('profiles').upsert({
-      'id': user.id,
-      'display_name': displayName,
-      'username': username.isEmpty ? null : username,
-      'avatar_url': avatarUrl,
-      'banner_tmdb_id': tmdbId,
-      'banner_media_type': mediaType,
-      'banner_path': bannerPath,
-    });
+    await client
+        .from('profiles')
+        .update({
+          'banner_tmdb_id': tmdbId,
+          'banner_media_type': mediaType,
+          'banner_path': bannerPath,
+        })
+        .eq('id', user.id);
   }
 
   Future<void> removeBanner() async {

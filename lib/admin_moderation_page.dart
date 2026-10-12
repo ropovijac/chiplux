@@ -184,12 +184,18 @@ class _AdminModerationPageState extends State<AdminModerationPage>
       final loadedProfiles = <Map<String, dynamic>>[];
 
       if (profileIds.isNotEmpty) {
-        final rows = await client
-            .from('profiles')
-            .select('id, display_name, username, avatar_url')
-            .inFilter('id', profileIds.toList());
+        final rows = await client.rpc(
+          'get_safe_profile_cards',
+          params: {'p_user_ids': profileIds.toList()},
+        );
 
-        loadedProfiles.addAll(List<Map<String, dynamic>>.from(rows));
+        if (rows is List) {
+          loadedProfiles.addAll(
+            rows
+                .whereType<Map>()
+                .map((row) => Map<String, dynamic>.from(row)),
+          );
+        }
       }
 
       if (!mounted) return;

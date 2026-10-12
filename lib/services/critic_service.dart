@@ -203,6 +203,40 @@ class CriticService extends ChangeNotifier {
 
   final Map<int, int> ratingDistribution = {for (int i = 1; i <= 5; i++) i: 0};
 
+  final Map<int, int> movieRatingDistribution = {
+    for (int i = 1; i <= 5; i++) i: 0,
+  };
+  final Map<int, int> tvRatingDistribution = {
+    for (int i = 1; i <= 5; i++) i: 0,
+  };
+  final Map<int, int> episodeRatingDistribution = {
+    for (int i = 1; i <= 5; i++) i: 0,
+  };
+  final Map<int, int> albumRatingDistribution = {
+    for (int i = 1; i <= 5; i++) i: 0,
+  };
+  final Map<int, int> songRatingDistribution = {
+    for (int i = 1; i <= 5; i++) i: 0,
+  };
+
+  Map<int, int> distributionFor(String category) {
+    switch (category) {
+      case 'movies':
+        return movieRatingDistribution;
+      case 'tv':
+        return tvRatingDistribution;
+      case 'episodes':
+        return episodeRatingDistribution;
+      case 'albums':
+        return albumRatingDistribution;
+      case 'songs':
+        return songRatingDistribution;
+      case 'all':
+      default:
+        return ratingDistribution;
+    }
+  }
+
   Future<void> saveEpisodeRating({
     required int showId,
     required int seasonNumber,
@@ -463,13 +497,29 @@ class CriticService extends ChangeNotifier {
 
       for (int i = 1; i <= 5; i++) {
         ratingDistribution[i] = 0;
+        movieRatingDistribution[i] = 0;
+        tvRatingDistribution[i] = 0;
+        episodeRatingDistribution[i] = 0;
+        albumRatingDistribution[i] = 0;
+        songRatingDistribution[i] = 0;
       }
 
-      for (final rating in allRatings) {
-        final int stars = _storedRatingToStars(rating);
-
-        ratingDistribution[stars] = (ratingDistribution[stars] ?? 0) + 1;
+      void addRatingsToDistribution(
+        Iterable<int> ratings,
+        Map<int, int> target,
+      ) {
+        for (final rating in ratings) {
+          final int stars = _storedRatingToStars(rating);
+          target[stars] = (target[stars] ?? 0) + 1;
+        }
       }
+
+      addRatingsToDistribution(allRatings, ratingDistribution);
+      addRatingsToDistribution(movieRatings, movieRatingDistribution);
+      addRatingsToDistribution(tvRatings, tvRatingDistribution);
+      addRatingsToDistribution(episodeRatings, episodeRatingDistribution);
+      addRatingsToDistribution(albumRatings, albumRatingDistribution);
+      addRatingsToDistribution(songRatings, songRatingDistribution);
 
       if (allRatings.isEmpty) {
         averageStars = 0;
@@ -619,6 +669,11 @@ class CriticService extends ChangeNotifier {
 
     for (int i = 1; i <= 5; i++) {
       ratingDistribution[i] = 0;
+      movieRatingDistribution[i] = 0;
+      tvRatingDistribution[i] = 0;
+      episodeRatingDistribution[i] = 0;
+      albumRatingDistribution[i] = 0;
+      songRatingDistribution[i] = 0;
     }
 
     notifyListeners();

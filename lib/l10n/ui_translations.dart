@@ -59,6 +59,69 @@ class UiText extends StatelessWidget {
 String _translateCroatianPattern(String value) {
   RegExpMatch? match;
 
+  const combinedRuntimePrefixes = <String, String>{
+    'COMEDIC': 'KOMIČNI',
+    'ACTION': 'AKCIJSKI',
+    'EXPLORING': 'ISTRAŽIVAČKI',
+    'ANIMATED': 'ANIMIRANI',
+    'OUTLAW': 'ODMETNIČKI',
+    'DOCUMENTARY': 'DOKUMENTARNI',
+    'DRAMATIC': 'DRAMATIČNI',
+    'HEARTWARMING': 'TOPLI',
+    'FANTASTICAL': 'FANTASTIČNI',
+    'HISTORIC': 'POVIJESNI',
+    'DARK': 'MRAČNI',
+    'MUSICAL': 'GLAZBENI',
+    'MYSTERIOUS': 'MISTERIOZNI',
+    'ROMANTIC': 'ROMANTIČNI',
+    'FUTURISTIC': 'FUTURISTIČKI',
+    'THRILLING': 'NAPETI',
+    'STRATEGIC': 'STRATEŠKI',
+    'WESTERN': 'VESTERN',
+    'ADVENTUROUS': 'AVANTURISTIČKI',
+    'YOUTHFUL': 'MLADENAČKI',
+    'NEWS': 'INFORMATIVNI',
+    'REALITY': 'REALITY',
+    'SCI-FI': 'SF',
+    'SOAP': 'SAPUNIČARSKI',
+    'TALKATIVE': 'RAZGOVORLJIVI',
+  };
+
+  const musicTitleSuffixes = <String, String>{
+    'ROCKER': 'ROKER',
+    'METALHEAD': 'METALAC',
+    'PUNK': 'PUNKER',
+    'BEATHEAD': 'BEATHEAD',
+    'RAVER': 'REJVER',
+    'JAZZ CAT': 'LJUBITELJ JAZZA',
+    'VIRTUOSO': 'VIRTUOZ',
+    'OUTLAW': 'ODMETNIK',
+    'BLUES SOUL': 'BLUES DUŠA',
+    'GROOVER': 'GROOVER',
+    'TROUBADOUR': 'TRUBADUR',
+    'REGGAE SOUL': 'REGGAE DUŠA',
+    'FUNKSTER': 'FUNKER',
+    'POPSTER': 'POP FAN',
+    'RHYTHM RIDER': 'JAHAČ RITMA',
+    'WORLD LISTENER': 'SVJETSKI SLUŠATELJ',
+    'MUSIC LOVER': 'LJUBITELJ GLAZBE',
+  };
+
+  for (final suffix in musicTitleSuffixes.entries) {
+    if (value == suffix.key) {
+      return suffix.value;
+    }
+
+    final ending = ' ${suffix.key}';
+    if (!value.endsWith(ending)) {
+      continue;
+    }
+
+    final prefix = value.substring(0, value.length - ending.length);
+    final translatedPrefix = combinedRuntimePrefixes[prefix] ?? prefix;
+    return '$translatedPrefix ${suffix.value}';
+  }
+
   match = RegExp(r'^Watch (\d+) movies$').firstMatch(value);
   if (match != null) return 'Pogledaj ${match.group(1)} filmova';
 
@@ -76,6 +139,37 @@ String _translateCroatianPattern(String value) {
 
   match = RegExp(r'^Rate (\d+) movies$').firstMatch(value);
   if (match != null) return 'Ocijeni ${match.group(1)} filmova';
+
+  match = RegExp(r'^Listen to (\d+) albums$').firstMatch(value);
+  if (match != null) return 'Poslušaj ${match.group(1)} albuma';
+
+  match = RegExp(r'^Listen to (\d+) songs$').firstMatch(value);
+  if (match != null) return 'Poslušaj ${match.group(1)} pjesama';
+
+  match = RegExp(r'^Rate (\d+) albums$').firstMatch(value);
+  if (match != null) return 'Ocijeni ${match.group(1)} albuma';
+
+  match = RegExp(r'^Rate (\d+) songs$').firstMatch(value);
+  if (match != null) return 'Ocijeni ${match.group(1)} pjesama';
+
+  match = RegExp(r'^(\d+) albums listened$').firstMatch(value);
+  if (match != null) return '${match.group(1)} poslušanih albuma';
+
+  match = RegExp(r'^(\d+) songs listened$').firstMatch(value);
+  if (match != null) return '${match.group(1)} poslušanih pjesama';
+
+  match = RegExp(r'^(\d+) albums rated$').firstMatch(value);
+  if (match != null) return '${match.group(1)} ocijenjenih albuma';
+
+  match = RegExp(r'^(\d+) songs rated$').firstMatch(value);
+  if (match != null) return '${match.group(1)} ocijenjenih pjesama';
+
+  match = RegExp(r'^Unlock borders for your (.+) stat\.$').firstMatch(value);
+  if (match != null) {
+    final title = match.group(1)!;
+    final translated = _hrExact[title] ?? title;
+    return 'Otključaj okvire za statistiku $translated.';
+  }
 
   match = RegExp(r'^Reach Runtime Level (\d+)$').firstMatch(value);
   if (match != null) return 'Dosegni razinu gledanja ${match.group(1)}';
@@ -299,67 +393,6 @@ String _translateCroatianPattern(String value) {
     if (value.startsWith(entry.key)) {
       return '${entry.value}${value.substring(entry.key.length)}';
     }
-  }
-
-  const musicTitleSuffixes = <String, String>{
-    'ROCKER': 'ROKER',
-    'METALHEAD': 'METALAC',
-    'PUNK': 'PUNKER',
-    'BEATHEAD': 'BEATHEAD',
-    'RAVER': 'REJVER',
-    'JAZZ CAT': 'LJUBITELJ JAZZA',
-    'VIRTUOSO': 'VIRTUOZ',
-    'OUTLAW': 'ODMETNIK',
-    'BLUES SOUL': 'BLUES DUŠA',
-    'GROOVER': 'GROOVER',
-    'TROUBADOUR': 'TRUBADUR',
-    'REGGAE SOUL': 'REGGAE DUŠA',
-    'FUNKSTER': 'FUNKER',
-    'POPSTER': 'POP FAN',
-    'MUSIC LOVER': 'LJUBITELJ GLAZBE',
-  };
-
-  const runtimePrefixes = <String, String>{
-    'COMEDIC': 'KOMIČNI',
-    'ACTION': 'AKCIJSKI',
-    'EXPLORING': 'ISTRAŽIVAČKI',
-    'ANIMATED': 'ANIMIRANI',
-    'OUTLAW': 'ODMETNIČKI',
-    'DOCUMENTARY': 'DOKUMENTARNI',
-    'DRAMATIC': 'DRAMATIČNI',
-    'HEARTWARMING': 'TOPLI',
-    'FANTASTICAL': 'FANTASTIČNI',
-    'HISTORIC': 'POVIJESNI',
-    'DARK': 'MRAČNI',
-    'MUSICAL': 'GLAZBENI',
-    'MYSTERIOUS': 'MISTERIOZNI',
-    'ROMANTIC': 'ROMANTIČNI',
-    'FUTURISTIC': 'FUTURISTIČKI',
-    'THRILLING': 'NAPETI',
-    'STRATEGIC': 'STRATEŠKI',
-    'WESTERN': 'VESTERN',
-    'ADVENTUROUS': 'AVANTURISTIČKI',
-    'YOUTHFUL': 'MLADENAČKI',
-    'NEWS': 'NOVINSKI',
-    'REALITY': 'REALITY',
-    'SCI-FI': 'ZNANSTVENOFANTASTIČNI',
-    'SOAP': 'SAPUNIČARSKI',
-    'TALKATIVE': 'RAZGOVORLJIVI',
-  };
-
-  for (final suffix in musicTitleSuffixes.entries) {
-    if (value == suffix.key) {
-      return suffix.value;
-    }
-
-    final ending = ' ${suffix.key}';
-    if (!value.endsWith(ending)) {
-      continue;
-    }
-
-    final prefix = value.substring(0, value.length - ending.length);
-    final translatedPrefix = runtimePrefixes[prefix] ?? prefix;
-    return '$translatedPrefix ${suffix.value}';
   }
 
   return value;
@@ -1168,6 +1201,8 @@ const Map<String, String> _hrExact = {
   "TV Legend": "TV legenda",
   "TV Movie": "TV film",
   "TV Show": "Serija",
+  "TV Show Completed": "Serija dovršena",
+  "All episodes are watched. The show has been moved to Completed.": "Sve epizode su pogledane. Serija je premještena u Dovršeno.",
   "TV Shows": "Serije",
   "TV Shows Rated": "Ocijenjene serije",
   "TV Shows Watched": "Pogledane serije",
@@ -1383,6 +1418,69 @@ const Map<String, String> _hrExact = {
       "Pretraži bendove, grupe, zborove i orkestre",
   "Your Album": "Tvoj album",
   "Album Progress": "Napredak albuma",
+  "listened to": "poslušao/la je",
+  "plans to listen to": "planira poslušati",
+  "Listen to full albums to upgrade your Albums Listened stat border.":
+      "Poslušaj cijele albume kako bi unaprijedio/la okvir statistike Poslušani albumi.",
+  "Listen to songs to upgrade your Songs Listened stat border.":
+      "Slušaj pjesme kako bi unaprijedio/la okvir statistike Poslušane pjesme.",
+  "Rate listened albums to upgrade your Albums Rated stat border.":
+      "Ocjenjuj poslušane albume kako bi unaprijedio/la okvir statistike Ocijenjeni albumi.",
+  "Rate songs to upgrade your Songs Rated stat border.":
+      "Ocjenjuj pjesme kako bi unaprijedio/la okvir statistike Ocijenjene pjesme.",
+  "First Spin": "Prvo preslušavanje",
+  "Album Explorer": "Istraživač albuma",
+  "Album Collector": "Kolekcionar albuma",
+  "Deep Listener": "Dubinski slušatelj",
+  "Discography Diver": "Istraživač diskografija",
+  "Track Starter": "Početnik pjesama",
+  "Track Regular": "Redoviti slušatelj",
+  "Song Collector": "Kolekcionar pjesama",
+  "Playlist Veteran": "Veteran playlista",
+  "Song Legend": "Legenda pjesama",
+  "First Album Verdict": "Prvi sud o albumu",
+  "Album Reviewer": "Recenzent albuma",
+  "Record Critic": "Kritičar albuma",
+  "Album Analyst": "Analitičar albuma",
+  "Album Authority": "Autoritet za albume",
+  "First Track Reviews": "Prve ocjene pjesama",
+  "Song Reviewer": "Recenzent pjesama",
+  "Track Critic": "Kritičar pjesama",
+  "Song Analyst": "Analitičar pjesama",
+  "Track Authority": "Autoritet za pjesme",
+  "Screen Genre Runtime": "Vrijeme gledanja po filmskim/TV žanrovima",
+  "Music Genre Runtime": "Vrijeme slušanja po glazbenom žanru",
+  "Rock": "Rock",
+  "Metal": "Metal",
+  "Punk": "Punk",
+  "Hip-Hop": "Hip-hop",
+  "Electronic": "Elektronička",
+  "Jazz": "Jazz",
+  "Classical": "Klasična",
+  "Country Music": "Country glazba",
+  "Blues": "Blues",
+  "R&B / Soul": "R&B / Soul",
+  "Folk": "Folk",
+  "Reggae": "Reggae",
+  "Funk": "Funk",
+  "Pop": "Pop",
+  "Latin": "Latino",
+  "World Music": "World glazba",
+  "METALHEAD": "METALAC",
+  "PUNK": "PUNKER",
+  "BEATHEAD": "BEATHEAD",
+  "RAVER": "REJVER",
+  "JAZZ CAT": "JAZZER",
+  "VIRTUOSO": "VIRTUOZ",
+  "BLUES SOUL": "BLUES DUŠA",
+  "GROOVER": "GROOVER",
+  "TROUBADOUR": "TRUBADUR",
+  "REGGAE SOUL": "REGGAE DUŠA",
+  "FUNKSTER": "FUNKSTER",
+  "ROCKER": "ROKER",
+  "POPSTER": "POPSTER",
+  "RHYTHM RIDER": "JAHAČ RITMA",
+  "WORLD LISTENER": "SVJETSKI SLUŠATELJ",
   "• edited": "• uređeno",
 };
 

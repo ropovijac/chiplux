@@ -820,6 +820,66 @@ class LibraryService extends ChangeNotifier {
     );
   }
 
+  int _watchedRegularEpisodeCountForShow(int showId) {
+    final prefix = '$showId:';
+
+    return _watchedEpisodes.where((key) {
+      if (!key.startsWith(prefix)) {
+        return false;
+      }
+
+      // Season 0 is TMDB's specials season and should not
+      // count toward normal-show completion.
+      return !key.startsWith('$showId:0:');
+    }).length;
+  }
+
+  Future<bool> _autoCompleteTvShowIfFullyWatched(int showId) async {
+    final index = _items.indexWhere(
+      (item) => item.id == showId && item.mediaType == 'tv',
+    );
+
+    if (index == -1) {
+      return false;
+    }
+
+    final item = _items[index];
+
+    // Auto-completion only applies to a show that is currently
+    // being watched. Manually completed/plan/dropped states
+    // are not touched here.
+    if (item.status != 'watching' || item.totalEpisodes <= 0) {
+      return false;
+    }
+
+    final watchedRegularEpisodes = _watchedRegularEpisodeCountForShow(showId);
+
+    if (watchedRegularEpisodes < item.totalEpisodes) {
+      return false;
+    }
+
+    _items[index] = item.copyWith(status: 'completed');
+
+    notifyListeners();
+
+    await _saveLibrary();
+
+    try {
+      await CommunityService.instance.tryCreateActivity(
+        activityType: 'tv_watched',
+        mediaType: 'tv',
+        tmdbId: showId,
+        mediaTitle: item.title,
+      );
+    } catch (e) {
+      debugPrint('Could not create completed TV activity: $e');
+    }
+
+    _scheduleCloudSync();
+
+    return true;
+  }
+
   // =====================================================
   // TOGGLE ONE EPISODE
   // =====================================================
@@ -962,7 +1022,7 @@ class LibraryService extends ChangeNotifier {
   // TOGGLE ONE EPISODE
   // =====================================================
 
-  Future<void> toggleEpisode(
+  Future<bool> toggleEpisode(
     int showId,
     int seasonNumber,
     int episodeNumber, {
@@ -1026,6 +1086,12 @@ class LibraryService extends ChangeNotifier {
       await _saveLibrary();
     }
 
+    bool autoCompletedShow = false;
+
+    if (!wasWatched) {
+      autoCompletedShow = await _autoCompleteTvShowIfFullyWatched(showId);
+    }
+
     // =====================================
     // COMMUNITY ACTIVITY
     // =====================================
@@ -1059,13 +1125,15 @@ class LibraryService extends ChangeNotifier {
     }
 
     _scheduleCloudSync();
+
+    return autoCompletedShow;
   }
 
   // =====================================================
   // MARK WHOLE SEASON
   // =====================================================
 
-  Future<void> markSeason(
+  Future<bool> markSeason(
     int showId,
     int seasonNumber,
     List<dynamic> episodes,
@@ -1145,6 +1213,12 @@ class LibraryService extends ChangeNotifier {
       await _saveLibrary();
     }
 
+    bool autoCompletedShow = false;
+
+    if (watched) {
+      autoCompletedShow = await _autoCompleteTvShowIfFullyWatched(showId);
+    }
+
     // =====================================
     // COMMUNITY ACTIVITY
     // =====================================
@@ -1175,6 +1249,8 @@ class LibraryService extends ChangeNotifier {
     }
 
     _scheduleCloudSync();
+
+    return autoCompletedShow;
   }
 
   // =====================================================
