@@ -12,6 +12,7 @@ import 'services/library_service.dart';
 import 'services/cloud_sync_service.dart';
 import 'comments_page.dart';
 import 'services/tmdb_service.dart';
+import 'services/discover_catalog_service.dart';
 import 'services/music_service.dart';
 import 'services/music_user_data_service.dart';
 import 'services/auth_service.dart';
@@ -50,6 +51,9 @@ import 'admin_moderation_page.dart';
 import 'data_export_page.dart';
 import 'services/data_export_service.dart';
 import 'services/feature_suggestion_service.dart';
+
+part 'discover_browser.dart';
+part 'discover_vector_icons.dart';
 
 const Color chipluxBackground = Color(0xFF07111C);
 
@@ -11272,21 +11276,6 @@ class _HomePageState extends State<HomePage> {
   // TRENDING CACHE
   // ====================================================
 
-  static const String _discoverCacheKey = 'chiplux_discover_cache_v1';
-
-  static List<dynamic>? _memoryTv;
-  static List<dynamic>? _memoryMovies;
-  static List<dynamic>? _memoryAnime;
-
-  static int? _memoryUpdatedAt;
-
-  List<dynamic> trendingTv = [];
-  List<dynamic> trendingMovies = [];
-  List<dynamic> trendingAnime = [];
-
-  bool loading = true;
-  String? errorMessage;
-
   // ====================================================
   // TODAY
   // ====================================================
@@ -11312,9 +11301,9 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
 
-    _loadCachedThenRefresh();
+    unawaited(DiscoverCatalogService.instance.preload());
 
-    // Preload Today + For You in the background.
+    // Preload Today in the background.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) {
         return;
@@ -11328,258 +11317,56 @@ class _HomePageState extends State<HomePage> {
   // TRENDING
   // ====================================================
 
-  bool _cacheIsOld(int? updatedAt) {
-    if (updatedAt == null) {
-      return true;
-    }
-
-    final age = DateTime.now().millisecondsSinceEpoch - updatedAt;
-
-    return age > const Duration(minutes: 30).inMilliseconds;
-  }
-
-  Future<void> _loadCachedThenRefresh() async {
-    if (_memoryTv != null && _memoryMovies != null && _memoryAnime != null) {
-      trendingTv = List<dynamic>.from(_memoryTv!);
-
-      trendingMovies = List<dynamic>.from(_memoryMovies!);
-
-      trendingAnime = List<dynamic>.from(_memoryAnime!);
-
-      loading = false;
-      errorMessage = null;
-
-      if (_cacheIsOld(_memoryUpdatedAt)) {
-        unawaited(loadTrending(showLoader: false));
-      }
-
-      return;
-    }
-
-    try {
-      final prefs = await SharedPreferences.getInstance();
-
-      final raw = prefs.getString(_discoverCacheKey);
-
-      if (raw != null && raw.isNotEmpty) {
-        final decoded = jsonDecode(raw);
-
-        if (decoded is Map) {
-          final tv = decoded['tv'];
-
-          final movies = decoded['movies'];
-
-          final anime = decoded['anime'];
-
-          final updatedAt = decoded['updatedAt'];
-
-          if (tv is List && movies is List && anime is List) {
-            _memoryTv = List<dynamic>.from(tv);
-
-            _memoryMovies = List<dynamic>.from(movies);
-
-            _memoryAnime = List<dynamic>.from(anime);
-
-            _memoryUpdatedAt = updatedAt is num ? updatedAt.toInt() : null;
-
-            if (!mounted) return;
-
-            setState(() {
-              trendingTv = List<dynamic>.from(_memoryTv!);
-
-              trendingMovies = List<dynamic>.from(_memoryMovies!);
-
-              trendingAnime = List<dynamic>.from(_memoryAnime!);
-
-              loading = false;
-              errorMessage = null;
-            });
-
-            if (_cacheIsOld(_memoryUpdatedAt)) {
-              unawaited(loadTrending(showLoader: false));
-            }
-
-            return;
-          }
-        }
-      }
-    } catch (e) {
-      debugPrint('Could not load Discover cache: $e');
-    }
-
-    await loadTrending(showLoader: true);
-  }
-
-  Future<void> _saveDiscoverCache() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-
-      await prefs.setString(
-        _discoverCacheKey,
-        jsonEncode({
-          'updatedAt': DateTime.now().millisecondsSinceEpoch,
-          'tv': trendingTv,
-          'movies': trendingMovies,
-          'anime': trendingAnime,
-        }),
-      );
-    } catch (e) {
-      debugPrint('Could not save Discover cache: $e');
-    }
-  }
-
-  Future<void> loadTrending({bool showLoader = true}) async {
-    final hasExistingContent =
-        trendingTv.isNotEmpty ||
-        trendingMovies.isNotEmpty ||
-        trendingAnime.isNotEmpty;
-
-    if (showLoader && !hasExistingContent && mounted) {
-      setState(() {
-        loading = true;
-        errorMessage = null;
-      });
-    }
-
-    try {
-      final results = await Future.wait([
-        tmdbService.getTrendingTv(),
-        tmdbService.getTrendingMovies(),
-        tmdbService.getTrendingAnime(),
-      ]);
-
-      if (!mounted) return;
-
-      final now = DateTime.now().millisecondsSinceEpoch;
-
-      setState(() {
-        trendingTv = results[0];
-
-        trendingMovies = results[1];
-
-        trendingAnime = results[2];
-
-        loading = false;
-        errorMessage = null;
-      });
-
-      _memoryTv = List<dynamic>.from(results[0]);
-
-      _memoryMovies = List<dynamic>.from(results[1]);
-
-      _memoryAnime = List<dynamic>.from(results[2]);
-
-      _memoryUpdatedAt = now;
-
-      unawaited(_saveDiscoverCache());
-    } catch (e) {
-      if (!mounted) return;
-
-      if (hasExistingContent) {
-        setState(() {
-          loading = false;
-        });
-
-        return;
-      }
-
-      setState(() {
-        loading = false;
-        errorMessage = 'Could not load trending titles.';
-      });
-    }
-  }
-
-  // ====================================================
-  // DISCOVER TABS
-  // ====================================================
-
   void _selectDiscoverTab(int index) {
-    if (discoverTab == index) {
-      return;
-    }
-
-    setState(() {
-      discoverTab = index;
-    });
-
-    // Today + For You both use
-    // the existing Today data loader.
-    if (index == 2 || index == 3) {
-      unawaited(_loadToday());
-    }
+    if (discoverTab == index) { return; }
+    setState(() { discoverTab = index; });
+    if (index == 2 || index == 3) { unawaited(_loadToday()); }
   }
 
   Widget _buildDiscoverTabs() {
     const labels = ['Trending', '100 Lists', 'Today', 'For You'];
-
+    const icons = [Icons.trending_up_rounded, Icons.format_list_numbered_rounded,
+      Icons.today_rounded, Icons.auto_awesome_rounded];
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
       child: Container(
-        height: 54,
-        padding: const EdgeInsets.all(5),
+        height: 78,
+        padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
-          color: chipluxSurface,
+          color: chipluxSurface.withValues(alpha: .75),
           borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: chipluxCyan.withValues(alpha: .16)),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .18),
+            blurRadius: 12, offset: const Offset(0, 4))],
         ),
-        child: Row(
-          children: [
-            for (int i = 0; i < labels.length; i++)
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 1),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(14),
-                    onTap: () {
-                      _selectDiscoverTab(i);
-                    },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 250),
-                      curve: Curves.easeInOutCubic,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(14),
-                        gradient: discoverTab == i
-                            ? LinearGradient(
-                                colors: [
-                                  chipluxCyan.withValues(alpha: .22),
-                                  chipluxViolet.withValues(alpha: .22),
-                                  chipluxPurple.withValues(alpha: .22),
-                                ],
-                              )
-                            : null,
-                        border: Border.all(
-                          color: discoverTab == i
-                              ? chipluxViolet.withValues(alpha: .30)
-                              : Colors.transparent,
-                        ),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: UiText(
-                            labels[i],
-                            textAlign: TextAlign.center,
-                            maxLines: 1,
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: discoverTab == i
-                                  ? FontWeight.bold
-                                  : FontWeight.w500,
-                              color: discoverTab == i
-                                  ? Colors.white
-                                  : Colors.white54,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
+        child: Row(children: [
+          for (var i = 0; i < labels.length; i++)
+            Expanded(child: InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: () => _selectDiscoverTab(i),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  gradient: discoverTab == i ? LinearGradient(
+                    begin: Alignment.topLeft, end: Alignment.bottomRight,
+                    colors: [chipluxCyan.withValues(alpha: .20),
+                      chipluxViolet.withValues(alpha: .18),
+                      chipluxPurple.withValues(alpha: .12)]) : null,
+                  border: Border.all(color: discoverTab == i
+                    ? chipluxCyan.withValues(alpha: .35) : Colors.transparent),
                 ),
+                child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  Icon(icons[i], size: 20, color: discoverTab == i ? chipluxCyan : Colors.white54),
+                  const SizedBox(height: 7),
+                  Padding(padding: const EdgeInsets.symmetric(horizontal: 3),
+                    child: FittedBox(fit: BoxFit.scaleDown, child: UiText(labels[i],
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900,
+                        letterSpacing: .7, color: discoverTab == i ? chipluxCyan : Colors.white54)))),
+                ]),
               ),
-          ],
-        ),
+            )),
+        ]),
       ),
     );
   }
@@ -11969,82 +11756,15 @@ class _HomePageState extends State<HomePage> {
   // PAGES
   // ====================================================
 
-  Widget _buildTrendingPage() {
-    return RefreshIndicator(
-      color: chipluxCyan,
-      backgroundColor: chipluxSurface,
-      onRefresh: () {
-        return loadTrending(showLoader: false);
-      },
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.only(top: 18, bottom: 30),
-        children: [
-          if (loading)
-            const Padding(
-              padding: EdgeInsets.only(top: 90),
-              child: Center(child: CircularProgressIndicator()),
-            ),
+  Widget _buildTrendingPage() => _DiscoverBrowsePage(
+    key: ValueKey('discover-trending-${LocaleService.instance.effectiveLanguageCode}'),
+    mode: DiscoverMode.trending,
+  );
 
-          if (errorMessage != null)
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: UiText(
-                errorMessage!,
-                style: const TextStyle(color: Colors.redAccent),
-              ),
-            ),
-
-          if (!loading && errorMessage == null) ...[
-            const _SectionTitle(title: 'Trending TV Shows'),
-
-            const SizedBox(height: 14),
-
-            _TrendingRow(items: trendingTv, mediaType: 'tv'),
-
-            const SizedBox(height: 32),
-
-            const _SectionTitle(title: 'Trending Movies'),
-
-            const SizedBox(height: 14),
-
-            _TrendingRow(items: trendingMovies, mediaType: 'movie'),
-
-            const SizedBox(height: 32),
-
-            const _SectionTitle(title: 'Trending Anime'),
-
-            const SizedBox(height: 14),
-
-            _TrendingRow(items: trendingAnime, mediaType: 'tv'),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildListsPage() {
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(20, 22, 20, 35),
-      itemCount: chipluxTopLists.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 12),
-      itemBuilder: (context, index) {
-        final definition = chipluxTopLists[index];
-
-        return _DiscoverListCard(
-          definition: definition,
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => DiscoverTop100Page(definition: definition),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
+  Widget _buildListsPage() => _DiscoverBrowsePage(
+    key: ValueKey('discover-top100-${LocaleService.instance.effectiveLanguageCode}'),
+    mode: DiscoverMode.top100,
+  );
 
   Widget _buildTodayPage() {
     if (todayLoading) {
@@ -12202,111 +11922,10 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildForYouPage() {
-    if (todayLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (todayError != null) {
-      return RefreshIndicator(
-        color: chipluxCyan,
-
-        onRefresh: () {
-          return _loadToday(forceRefresh: true);
-        },
-
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-
-          children: [
-            const SizedBox(height: 120),
-
-            Center(
-              child: UiText(
-                todayError!,
-                style: const TextStyle(color: Colors.redAccent),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (todaysMovie == null && todaysTvShow == null) {
-      unawaited(_loadToday());
-
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    return RefreshIndicator(
-      color: chipluxCyan,
-
-      backgroundColor: chipluxSurface,
-
-      onRefresh: () {
-        return _loadToday(forceRefresh: true);
-      },
-
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-
-        padding: const EdgeInsets.fromLTRB(20, 22, 20, 35),
-
-        children: [
-          // =========================
-          // MOVIE FOR YOU
-          // =========================
-
-          const UiText(
-            'Today\'s Movie for You',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-          ),
-
-          const SizedBox(height: 12),
-
-          _TodayMediaCard(
-            item: todaysMovie,
-
-            mediaType: 'movie',
-
-            emptyText: 'No movie recommendation available.',
-
-            onTap: todaysMovie == null
-                ? null
-                : () {
-                    _openTodayItem(todaysMovie!, 'movie');
-                  },
-          ),
-
-          const SizedBox(height: 28),
-
-          // =========================
-          // TV SHOW FOR YOU
-          // =========================
-          const UiText(
-            'Today\'s TV Show for You',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-          ),
-
-          const SizedBox(height: 12),
-
-          _TodayMediaCard(
-            item: todaysTvShow,
-
-            mediaType: 'tv',
-
-            emptyText: 'No TV recommendation available.',
-
-            onTap: todaysTvShow == null
-                ? null
-                : () {
-                    _openTodayItem(todaysTvShow!, 'tv');
-                  },
-          ),
-        ],
-      ),
-    );
-  }
+  Widget _buildForYouPage() => _DiscoverBrowsePage(
+    key: ValueKey('discover-for-you-${LocaleService.instance.effectiveLanguageCode}'),
+    mode: DiscoverMode.forYou,
+  );
 
   // ====================================================
   // BUILD
@@ -12363,121 +11982,6 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _DiscoverListCard extends StatelessWidget {
-  final ChipluxListDefinition definition;
-
-  final VoidCallback onTap;
-
-  const _DiscoverListCard({required this.definition, required this.onTap});
-
-  Color _accentColor() {
-    switch (definition.type) {
-      case ChipluxTopListType.movies:
-        return chipluxCyan;
-
-      case ChipluxTopListType.tvShows:
-        return chipluxViolet;
-
-      case ChipluxTopListType.shortMovies:
-        return const Color(0xFF43D9C5);
-
-      case ChipluxTopListType.superheroMovies:
-        return chipluxPurple;
-
-      case ChipluxTopListType.hiddenGems:
-        return const Color(0xFFFFB84D);
-    }
-  }
-
-  List<Color> _backgroundColors() {
-    final accent = _accentColor();
-
-    return [
-      Color.alphaBlend(accent.withValues(alpha: 0.16), chipluxSurface),
-      Color.alphaBlend(chipluxViolet.withValues(alpha: 0.08), chipluxSurface),
-      chipluxSurface,
-    ];
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: _backgroundColors(),
-            ),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: _accentColor().withValues(alpha: 0.22)),
-            boxShadow: [
-              BoxShadow(
-                color: _accentColor().withValues(alpha: 0.06),
-                blurRadius: 18,
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 54,
-                height: 54,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      _accentColor().withValues(alpha: 0.40),
-                      chipluxPurple.withValues(alpha: 0.30),
-                    ],
-                  ),
-                ),
-                child: Icon(definition.icon, color: _accentColor(), size: 27),
-              ),
-
-              const SizedBox(width: 15),
-
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    UiText(
-                      definition.title,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-
-                    const SizedBox(height: 5),
-
-                    UiText(
-                      definition.subtitle,
-                      style: const TextStyle(
-                        color: Colors.white54,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const Icon(Icons.chevron_right_rounded, color: Colors.white38),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -13033,159 +12537,7 @@ class _BirthdayActorFallback extends StatelessWidget {
   }
 }
 
-class _TodayMediaCard extends StatelessWidget {
-  final Map<String, dynamic>? item;
 
-  final String mediaType;
-  final String emptyText;
-  final VoidCallback? onTap;
-
-  const _TodayMediaCard({
-    required this.item,
-    required this.mediaType,
-    required this.emptyText,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (item == null) {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(22),
-        decoration: BoxDecoration(
-          color: chipluxSurface,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: UiText(emptyText, style: const TextStyle(color: Colors.white54)),
-      );
-    }
-
-    final title = item!['title'] ?? item!['name'] ?? 'Unknown';
-
-    final posterPath = item!['poster_path'];
-
-    final posterUrl = posterPath != null
-        ? 'https://image.tmdb.org/t/p/w342$posterPath'
-        : null;
-
-    final date = item!['release_date'] ?? item!['first_air_date'] ?? '';
-
-    final year = date.toString().length >= 4
-        ? date.toString().substring(0, 4)
-        : '';
-
-    final rating = item!['vote_average'] is num
-        ? (item!['vote_average'] as num).toDouble()
-        : 0.0;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          constraints: const BoxConstraints(minHeight: 165),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: chipluxSurface,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: chipluxViolet.withValues(alpha: .12)),
-          ),
-          child: Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-
-                child: posterUrl != null
-                    ? Image.network(
-                        posterUrl,
-                        width: 96,
-                        height: 141,
-                        fit: BoxFit.cover,
-
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            width: 96,
-                            height: 141,
-                            color: chipluxSurfaceLight,
-                            child: const Icon(
-                              Icons.movie_outlined,
-                              color: Colors.white38,
-                            ),
-                          );
-                        },
-                      )
-                    : Container(
-                        width: 96,
-                        height: 141,
-                        color: chipluxSurfaceLight,
-                        child: const Icon(
-                          Icons.movie_outlined,
-                          color: Colors.white38,
-                        ),
-                      ),
-              ),
-
-              const SizedBox(width: 15),
-
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 19,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-
-                    const SizedBox(height: 8),
-
-                    UiText(
-                      mediaType == 'tv' ? 'TV Show' : 'Movie',
-                      style: const TextStyle(
-                        color: chipluxCyan,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-
-                    if (year.isNotEmpty) ...[
-                      const SizedBox(height: 5),
-
-                      Text(year, style: const TextStyle(color: Colors.white54)),
-                    ],
-
-                    const SizedBox(height: 10),
-
-                    Row(
-                      children: [
-                        const Icon(Icons.star, color: Colors.amber, size: 18),
-
-                        const SizedBox(width: 5),
-
-                        Text(
-                          rating > 0 ? rating.toStringAsFixed(1) : '--',
-                          style: const TextStyle(color: Colors.white70),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              const Icon(Icons.chevron_right_rounded, color: Colors.white38),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 class _TodayCompactMediaCard extends StatelessWidget {
   final Map<String, dynamic>? item;
@@ -13341,7 +12693,16 @@ class _DiscoverTop100PageState extends State<DiscoverTop100Page> {
     _load();
   }
 
-  Future<List<dynamic>> _fetchList() {
+  Future<List<dynamic>> _fetchList() async {
+    final category=widget.definition.type==ChipluxTopListType.tvShows?DiscoverCategory.tvShows:DiscoverCategory.movies;
+    final id=switch(widget.definition.type){
+      ChipluxTopListType.shortMovies=>-1,
+      ChipluxTopListType.superheroMovies=>-2,
+      ChipluxTopListType.hiddenGems=>-3,
+      _=>0,
+    };
+    final shared=await DiscoverCatalogService.instance.specialList(category,id);
+    if(shared!=null){return shared;}
     switch (widget.definition.type) {
       case ChipluxTopListType.movies:
         return tmdb.getTop100Movies();
@@ -14030,22 +13391,7 @@ class _TrendingCard extends StatelessWidget {
   }
 }
 
-class _SectionTitle extends StatelessWidget {
-  final String title;
 
-  const _SectionTitle({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: UiText(
-        title,
-        style: const TextStyle(fontSize: 21, fontWeight: FontWeight.bold),
-      ),
-    );
-  }
-}
 
 String _statusLabel(String status) {
   switch (status) {
@@ -14133,10 +13479,8 @@ class _SearchPageState extends State<SearchPage> {
         results = searchResults;
       });
     } catch (e) {
-      if (!mounted) {
-        return;
-      }
-
+      if (!mounted || controller.text.trim()!=query || category!=requestedCategory ||
+          (requestedCategory==_SearchCategory.music&&musicScope!=requestedMusicScope)) { return; }
       setState(() {
         errorMessage = 'Search failed';
       });
@@ -14409,6 +13753,10 @@ class _SearchPageState extends State<SearchPage> {
           artistId: artistId,
           initialName: item['name']?.toString() ?? 'Unknown',
           initialType: item['artist_type']?.toString() ?? 'Other',
+          initialArtist:MusicArtist(id:artistId,name:item['name']?.toString()??'Unknown',
+            type:item['artist_type']?.toString()??'Other',country:item['country']?.toString(),
+            beginDate:item['begin_date']?.toString(),endDate:item['end_date']?.toString(),
+            ended:item['ended']==true,disambiguation:item['disambiguation']?.toString()??''),
         ),
       ),
     );
@@ -14922,6 +14270,55 @@ class _SearchPageState extends State<SearchPage> {
   }
 }
 
+class _MusicArtistPhotoView extends StatefulWidget {
+  final String artistId;
+  final bool isGroup;
+  final double borderRadius;
+  final bool banner;
+  const _MusicArtistPhotoView({required this.artistId,required this.isGroup,this.borderRadius=12,this.banner=false});
+  @override State<_MusicArtistPhotoView> createState()=>_MusicArtistPhotoViewState();
+}
+class _MusicArtistPhotoViewState extends State<_MusicArtistPhotoView> {
+  late Future<MusicArtistPhoto?> photo;
+  @override void initState(){
+    super.initState();
+    photo=MusicService.instance.getArtistPhoto(widget.artistId);
+  }
+  @override void didUpdateWidget(covariant _MusicArtistPhotoView oldWidget){
+    super.didUpdateWidget(oldWidget);
+    if(oldWidget.artistId!=widget.artistId){ photo=MusicService.instance.getArtistPhoto(widget.artistId); }
+  }
+  Widget placeholder()=>Icon(widget.isGroup?Icons.groups_rounded:Icons.music_note_rounded,
+    color:chipluxPurple,size:34);
+  @override Widget build(BuildContext context)=>ClipRRect(
+    borderRadius:BorderRadius.circular(widget.borderRadius),
+    child:FutureBuilder<MusicArtistPhoto?>(future:photo,builder:(context,snapshot){
+      final image=snapshot.data;
+      if(image==null){ return placeholder(); }
+      return Stack(fit:StackFit.expand,children:[
+        Image.network(widget.banner?(image.bannerUrl??image.url):image.url,fit:BoxFit.cover,
+          errorBuilder:(_,_,_)=>placeholder(),
+          loadingBuilder:(context,child,progress)=>progress==null?child:placeholder()),
+        Positioned(right:2,bottom:2,child:Material(color:Colors.black54,borderRadius:BorderRadius.circular(20),
+          child:InkWell(borderRadius:BorderRadius.circular(20),
+            onTap:()=>showDialog<void>(context:context,builder:(context)=>AlertDialog(
+              title:Text(_discoverText(context,'Photo credit','Autor fotografije')),
+              content:SingleChildScrollView(child:SelectableText([
+                if(image.credit.isNotEmpty) image.credit,
+                if(image.license.isNotEmpty) image.license,
+                image.sourceUrl,
+                if(image.licenseUrl.isNotEmpty) image.licenseUrl,
+              ].join('\n\n'))),
+              actions:[TextButton(onPressed:()=>Navigator.pop(context),
+                child:Text(_discoverText(context,'Close','Zatvori')))],
+            )),
+            child:const Padding(padding:EdgeInsets.all(5),child:Icon(Icons.info_outline_rounded,size:14,color:Colors.white)),
+          ))),
+      ]);
+    }),
+  );
+}
+
 class _MusicArtistSearchCard extends StatelessWidget {
   final Map<String, dynamic> artist;
   final VoidCallback onTap;
@@ -14982,10 +14379,10 @@ class _MusicArtistSearchCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                child: Icon(
-                  isGroup ? Icons.groups_rounded : Icons.music_note_rounded,
-                  color: chipluxPurple,
-                  size: 34,
+                child: _MusicArtistPhotoView(
+                  artistId: artist['id']?.toString() ?? '',
+                  isGroup: isGroup,
+                  borderRadius: 12,
                 ),
               ),
               const SizedBox(width: 14),
@@ -15208,8 +14605,8 @@ class _MusicSongSearchCard extends StatelessWidget {
                 child: coverUrl != null && coverUrl.isNotEmpty
                     ? Image.network(
                         coverUrl,
-                        width: 76,
-                        height: 76,
+                        width: 58,
+                        height: 58,
                         fit: BoxFit.cover,
                         errorBuilder: (_, _, _) => _musicSearchCoverFallback(
                           Icons.music_note_rounded,
@@ -15227,7 +14624,7 @@ class _MusicSongSearchCard extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 16,
+                        fontSize: 12,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -15236,7 +14633,7 @@ class _MusicSongSearchCard extends StatelessWidget {
                       children: [
                         const UiText(
                           'Song',
-                          style: TextStyle(
+                          style: TextStyle(fontSize: 10,
                             color: chipluxCyan,
                             fontWeight: FontWeight.w700,
                           ),
@@ -15297,8 +14694,8 @@ class _MusicSongSearchCard extends StatelessWidget {
 
 Widget _musicSearchCoverFallback(IconData icon) {
   return Container(
-    width: 76,
-    height: 76,
+    width: 58,
+    height: 58,
     color: chipluxSurfaceLight,
     alignment: Alignment.center,
     child: Icon(
@@ -37718,12 +37115,14 @@ class MusicArtistPage extends StatefulWidget {
   final String artistId;
   final String initialName;
   final String initialType;
+  final MusicArtist? initialArtist;
 
   const MusicArtistPage({
     super.key,
     required this.artistId,
     required this.initialName,
     required this.initialType,
+    this.initialArtist,
   });
 
   @override
@@ -37742,54 +37141,43 @@ class _MusicArtistPageState extends State<MusicArtistPage> {
   String? artistError;
   String? albumsError;
 
-  @override
-  void initState() {
+  int loadGeneration=0;
+  @override void initState(){
     super.initState();
-    _load();
+    artist=music.cachedArtist(widget.artistId)??widget.initialArtist;
+    unawaited(_load());
   }
-
   Future<void> _load() async {
-    MusicArtist? loadedArtist;
-
-    try {
-      loadedArtist = await music.getArtistDetails(widget.artistId);
-
-      if (mounted) {
-        setState(() {
-          artist = loadedArtist;
-          loadingArtist = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          loadingArtist = false;
-          artistError = 'Could not load music artist.';
-        });
-      }
+    final generation=++loadGeneration;
+    // Details and albums are independent; a failed detail request cannot
+    // hold the entire page or discography behind it.
+    await Future.wait([_loadArtist(generation),_loadAlbums(generation)]);
+  }
+  Future<void> _loadArtist(int generation) async {
+    try{
+      final result=await music.getArtistDetails(widget.artistId).timeout(const Duration(seconds:12));
+      if(!mounted||generation!=loadGeneration){return;}
+      setState((){artist=result;loadingArtist=false;artistError=null;});
+    }catch(_){
+      if(!mounted||generation!=loadGeneration){return;}
+      setState((){loadingArtist=false;artistError='Additional band information could not load. Tap Retry.';});
     }
-
-    try {
-      final loadedAlbums = await music.getStudioAlbums(
-        widget.artistId,
-        fallbackArtistName: loadedArtist?.name ?? widget.initialName,
-        fallbackGenres: loadedArtist?.genres ?? const [],
-      );
-
-      if (mounted) {
-        setState(() {
-          albums = loadedAlbums;
-          loadingAlbums = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          loadingAlbums = false;
-          albumsError = 'Could not load discography.';
-        });
-      }
-    }
+  }
+  Future<void> _loadAlbums(int generation) async {
+    var accepting=true;
+    try{
+      final result=await music.getStudioAlbums(widget.artistId,
+        fallbackArtistName:artist?.name??widget.initialName,fallbackGenres:artist?.genres??const [],
+        onPage:(page){if(mounted&&accepting&&generation==loadGeneration){
+          setState((){albums=page;if(page.isNotEmpty){loadingAlbums=false;}});
+        }},
+      ).timeout(const Duration(seconds:20));
+      if(!mounted||generation!=loadGeneration){return;}
+      setState((){albums=result;loadingAlbums=false;albumsError=null;});
+    }catch(_){
+      if(!mounted||generation!=loadGeneration){return;}
+      setState((){loadingAlbums=false;albumsError='Album loading stopped. Tap Retry.';});
+    }finally{accepting=false;}
   }
 
   @override
@@ -37838,6 +37226,11 @@ class _MusicArtistPageState extends State<MusicArtistPage> {
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(20, 10, 20, 34),
             children: [
+              SizedBox(height:210,child:OverflowBox(
+                minWidth:MediaQuery.sizeOf(context).width,maxWidth:MediaQuery.sizeOf(context).width,
+                minHeight:210,maxHeight:210,child:_MusicArtistPhotoView(
+                  artistId:widget.artistId,isGroup:isGroupLike,borderRadius:0,banner:true))),
+              const SizedBox(height:14),
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -37864,12 +37257,10 @@ class _MusicArtistPageState extends State<MusicArtistPage> {
                           ],
                         ),
                       ),
-                      child: Icon(
-                        isGroupLike
-                            ? Icons.groups_rounded
-                            : Icons.music_note_rounded,
-                        color: chipluxPurple,
-                        size: 42,
+                      child: _MusicArtistPhotoView(
+                        artistId: widget.artistId,
+                        isGroup: isGroupLike,
+                        borderRadius: 18,
                       ),
                     ),
                     const SizedBox(width: 15),
@@ -37915,7 +37306,12 @@ class _MusicArtistPageState extends State<MusicArtistPage> {
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height:16),
+              if(artistError!=null||albumsError!=null) Align(alignment:Alignment.centerLeft,
+                child:TextButton.icon(icon:const Icon(Icons.refresh),label:const UiText('Retry'),onPressed:(){
+                  setState((){loadingArtist=true;loadingAlbums=albums.isEmpty;artistError=null;albumsError=null;});
+                  unawaited(_load());
+                })),
               if (artistError != null)
                 _MusicInfoNotice(
                   icon: Icons.info_outline_rounded,
@@ -37983,7 +37379,7 @@ class _MusicArtistPageState extends State<MusicArtistPage> {
                   padding: EdgeInsets.symmetric(vertical: 30),
                   child: Center(child: CircularProgressIndicator()),
                 )
-              else if (albumsError != null)
+              else if (albumsError != null && albums.isEmpty)
                 _MusicInfoNotice(
                   icon: Icons.album_outlined,
                   text: albumsError!,
@@ -37999,10 +37395,10 @@ class _MusicArtistPageState extends State<MusicArtistPage> {
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
+                    crossAxisCount: 1,
                     crossAxisSpacing: 12,
                     mainAxisSpacing: 12,
-                    childAspectRatio: 0.70,
+                    mainAxisExtent: 108,
                   ),
                   itemCount: albums.length,
                   itemBuilder: (context, index) {
@@ -38152,76 +37548,24 @@ class _MusicMemberWrap extends StatelessWidget {
 }
 
 class _MusicAlbumCard extends StatelessWidget {
-  final MusicAlbum album;
-  final VoidCallback onTap;
-
-  const _MusicAlbumCard({
-    required this.album,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: chipluxSurface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: chipluxViolet.withValues(alpha: 0.12),
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(11),
-                  child: SizedBox.expand(
-                    child: Image.network(
-                      album.coverUrl,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => Container(
-                        color: chipluxSurfaceLight,
-                        child: const Icon(
-                          Icons.album_rounded,
-                          color: Colors.white30,
-                          size: 42,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 9),
-              Text(
-                album.title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                album.year.isNotEmpty ? album.year : '—',
-                style: const TextStyle(
-                  color: Colors.white54,
-                  fontSize: 11,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+ final MusicAlbum album;final VoidCallback onTap;
+ const _MusicAlbumCard({required this.album,required this.onTap});
+ @override Widget build(BuildContext context)=>Material(color:Colors.transparent,child:InkWell(
+  borderRadius:BorderRadius.circular(16),onTap:onTap,
+  child:Container(padding:const EdgeInsets.all(12),decoration:BoxDecoration(
+    borderRadius:BorderRadius.circular(16),gradient:LinearGradient(colors:[chipluxViolet.withValues(alpha:.14),chipluxSurface]),
+    border:Border.all(color:chipluxViolet.withValues(alpha:.22))),
+    child:Row(children:[
+      ClipRRect(borderRadius:BorderRadius.circular(12),child:Image.network(album.coverUrl,width:76,height:76,fit:BoxFit.cover,
+        errorBuilder:(_,_,_)=>const SizedBox(width:76,height:76,child:Icon(Icons.album_rounded,color:Colors.white30)))),
+      const SizedBox(width:14),Expanded(child:Column(mainAxisAlignment:MainAxisAlignment.center,crossAxisAlignment:CrossAxisAlignment.start,children:[
+        Text(album.title,maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:14,fontWeight:FontWeight.w800)),
+        const SizedBox(height:5),Text(album.artistName,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:11,color:chipluxPurple)),
+        const SizedBox(height:4),Text(album.year,style:const TextStyle(fontSize:10,color:Colors.white54)),
+      ])),const Icon(Icons.chevron_right_rounded,size:18,color:Colors.white38),
+    ]),
+  ),
+ ));
 }
 
 class _MusicInfoNotice extends StatelessWidget {
@@ -39204,7 +38548,7 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
                       fit: StackFit.expand,
                       children: [
                         Image.network(
-                          widget.album.coverUrl,
+                          widget.album.coverUrl.replaceAll('front-250','front-1200'),
                           fit: BoxFit.cover,
                           errorBuilder: (_, _, _) => Container(
                             color: chipluxSurface,
@@ -39232,46 +38576,6 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
                             ),
                           ),
                         ),
-                        Center(
-                          child: Container(
-                            width: 136,
-                            height: 136,
-                            padding: const EdgeInsets.all(1.3),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(22),
-                              gradient: const LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  chipluxCyan,
-                                  chipluxViolet,
-                                  chipluxPurple,
-                                ],
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: chipluxPurple.withValues(alpha: 0.16),
-                                  blurRadius: 20,
-                                ),
-                              ],
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(20.7),
-                              child: Image.network(
-                                widget.album.coverUrl,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, _, _) => Container(
-                                  color: chipluxSurfaceLight,
-                                  child: const Icon(
-                                    Icons.album_rounded,
-                                    color: Colors.white30,
-                                    size: 54,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
                       ],
                     ),
                   ),
@@ -39284,23 +38588,17 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            widget.album.title,
-                            style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: -0.35,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            widget.album.artistName,
-                            style: const TextStyle(
-                              color: chipluxPurple,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
+                          Row(crossAxisAlignment:CrossAxisAlignment.center,children:[
+                            ClipRRect(borderRadius:BorderRadius.circular(14),child:Image.network(
+                              widget.album.coverUrl,width:88,height:88,fit:BoxFit.cover,
+                              errorBuilder:(_,_,_)=>const SizedBox(width:88,height:88,child:Icon(Icons.album,size:42)))),
+                            const SizedBox(width:14),
+                            Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                              Text(widget.album.title,style:const TextStyle(fontSize:20,fontWeight:FontWeight.w900)),
+                              const SizedBox(height:6),
+                              Text(widget.album.artistName,style:const TextStyle(color:chipluxPurple,fontSize:13,fontWeight:FontWeight.w700)),
+                            ])),
+                          ]),
                           const SizedBox(height: 10),
                           Wrap(
                             spacing: 7,
@@ -39814,7 +39112,7 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
                                           color: state.isListened
                                               ? const Color(0xFF7BE8A8)
                                               : Colors.white,
-                                          fontSize: 14,
+                                          fontSize: 12,
                                           fontWeight: FontWeight.w700,
                                         ),
                                       ),

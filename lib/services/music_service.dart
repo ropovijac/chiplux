@@ -1,7 +1,25 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+class MusicArtistPhoto {
+  final String url;
+  final String sourceUrl;
+  final String? bannerUrl;
+  final String credit;
+  final String license;
+  final String licenseUrl;
+  const MusicArtistPhoto({required this.url, required this.sourceUrl,
+    required this.credit, required this.license, required this.licenseUrl,this.bannerUrl});
+  Map<String,dynamic> toJson() => {'url':url,'sourceUrl':sourceUrl,
+    'credit':credit,'license':license,'licenseUrl':licenseUrl,'bannerUrl':bannerUrl};
+  factory MusicArtistPhoto.fromJson(Map<String,dynamic> data) => MusicArtistPhoto(
+    url:data['url'] as String,sourceUrl:data['sourceUrl'] as String,
+    credit:data['credit'] as String,license:data['license'] as String,
+    licenseUrl:data['licenseUrl'] as String,bannerUrl:data['bannerUrl']?.toString());
+}
 
 class MusicMember {
   final String id;
@@ -292,15 +310,6 @@ class MusicService {
   static const String _host = 'musicbrainz.org';
   static const String _basePath = '/ws/2';
 
-  // MusicBrainz asks clients to identify themselves. For production, set a
-  // contactable value at build time, for example:
-  // --dart-define=MUSICBRAINZ_USER_AGENT="Chiplux/1.0 (you@example.com)"
-  static const String _userAgent = String.fromEnvironment(
-    'MUSICBRAINZ_USER_AGENT',
-    defaultValue: 'Chiplux/1.0 (development build)',
-  );
-
-  static const Duration _minimumRequestSpacing = Duration(milliseconds: 1100);
 
   final Map<String, List<MusicArtist>> _artistSearchCache = {};
   final Map<String, List<MusicAlbumSearchResult>> _albumSearchCache = {};
@@ -309,8 +318,78 @@ class MusicService {
   final Map<String, List<MusicAlbum>> _discographyCache = {};
   final Map<String, MusicAlbumDetails> _albumDetailsCache = {};
 
-  Future<void> _requestQueue = Future<void>.value();
-  DateTime _lastRequestAt = DateTime.fromMillisecondsSinceEpoch(0);
+  final _jsonRequests=<String,Future<Map<String,dynamic>>>{};
+  final _jsonMemory=<String,Map<String,dynamic>>{};
+  Future<void> _photoQueue=Future<void>.value();
+  MusicArtist? cachedArtist(String id)=>_artistDetailsCache[id];
+
+  final _photoRequests = <String,Future<MusicArtistPhoto?>>{};
+  Future<MusicArtistPhoto?> getArtistPhoto(String artistId) {
+    return _photoRequests.putIfAbsent(artistId,()=>_loadArtistPhoto(artistId).catchError((Object _){
+      _photoRequests.remove(artistId);return null;
+    }));
+  }
+  Future<dynamic> _fetchPhoto(String artistId){
+    final result=Completer<dynamic>();
+    _photoQueue=_photoQueue.then((_) async {
+      try{
+        final response=await Supabase.instance.client.functions.invoke('music-catalog',body:{'operation':'photo','artist_id':artistId})
+          .timeout(const Duration(seconds:10));
+        result.complete(response.data);
+      }catch(error,stack){result.completeError(error,stack);}
+    });
+    return result.future;
+  }
+  Future<MusicArtistPhoto?> _loadArtistPhoto(String artistId) async {
+    if(!RegExp(r'^[a-f0-9-]{36}$',caseSensitive:false).hasMatch(artistId)){return null;}
+    final preferences=await SharedPreferences.getInstance();
+    final key='chiplux_artist_photo_v5:$artistId';
+    final saved=preferences.getString(key);
+    if(saved!=null){
+      try{final decoded=jsonDecode(saved) as Map;
+        if(DateTime.now().difference(DateTime.parse(decoded['time'] as String))<const Duration(days:1)){
+          return MusicArtistPhoto.fromJson(Map<String,dynamic>.from(decoded['photo'] as Map));
+        }
+      }catch(_){/* Retry malformed cache. */}
+    }
+    final payload=await _fetchPhoto(artistId);
+    final data=payload is Map ? payload['data'] : null;
+    if(data is! Map){_photoRequests.remove(artistId);return null;}
+    final photo=MusicArtistPhoto.fromJson(Map<String,dynamic>.from(data));
+    unawaited(preferences.setString(key,jsonEncode({'time':DateTime.now().toIso8601String(),'photo':photo.toJson()})).then<void>((_) {},onError:(Object _) {}));
+    return photo;
+  }
+
+  final _songMappings=<String,Future<Map<String,dynamic>?>>{};
+  Future<void> _resolutionQueue=Future<void>.value();
+  Future<Map<String,dynamic>?> resolveChartSong(Map<String,dynamic> item){
+    final key='${item['id']}:${item['name']}:${item['artist_name']}';
+    return _songMappings.putIfAbsent(key,(){
+      final completer=Completer<Map<String,dynamic>?>();
+      _resolutionQueue=_resolutionQueue.then((_) async {
+        try{
+          final response=await Supabase.instance.client.functions.invoke('music-catalog',body:{
+            'operation':'resolve_song','title':item['name']?.toString()??'',
+            'artist':item['artist_name']?.toString()??'',
+          });
+          final payload=response.data;
+          final data=payload is Map?payload['data']:null;
+          completer.complete(data is Map?{...item,'album_mapping':Map<String,dynamic>.from(data)}:null);
+        }catch(error,stack){_songMappings.remove(key);completer.completeError(error,stack);}
+      });
+      return completer.future;
+    });
+  }
+  Future<List<Map<String,dynamic>>> prepareChartSongs(List<Map<String,dynamic>> items) async {
+    final rows=<Map<String,dynamic>>[];
+    for(final item in items){final resolved=await resolveChartSong(item);if(resolved!=null){rows.add(resolved);}}
+    return rows;
+  }
+  MusicAlbum albumFromMapping(Map mapping)=>MusicAlbum(
+    id:mapping['album_id'].toString(),title:mapping['album_title'].toString(),
+    artistId:mapping['artist_id']?.toString()??'',artistName:mapping['artist_name']?.toString()??'',
+    firstReleaseDate:mapping['release_date']?.toString()??'',primaryType:'Album',secondaryTypes:const [],
+  );
 
   Future<List<MusicArtist>> searchArtists(String query) async {
     final clean = query.trim();
@@ -326,7 +405,7 @@ class MusicService {
 
     final data = await _getJson(
       _uri('/artist', {
-        'query': clean,
+        'query': clean.contains(':')?clean:'artist:"${clean.replaceAll(RegExp(r'[\"\\]'), ' ')}"',
         'limit': '12',
         'offset': '0',
       }),
@@ -351,6 +430,11 @@ class MusicService {
       artists.add(artist);
     }
 
+    final exact=artists.where((artist)=>artist.name.toLowerCase()==clean.toLowerCase()).toList();
+    if(exact.isNotEmpty){
+      final top=exact.first;
+      unawaited(getArtistDetails(top.id).then<void>((_) {},onError:(Object _) {}));
+    }
     _artistSearchCache[cacheKey] = artists;
     return List<MusicArtist>.unmodifiable(artists);
   }
@@ -579,7 +663,13 @@ class MusicService {
     return List<MusicSongSearchResult>.unmodifiable(results);
   }
 
-  Future<MusicArtist> getArtistDetails(String artistId) async {
+  final _artistDetailsRequests = <String,Future<MusicArtist>>{};
+  Future<MusicArtist> getArtistDetails(String artistId) {
+    final id=artistId.trim();
+    return _artistDetailsRequests.putIfAbsent(id,()=>_fetchArtistDetails(id)
+      .whenComplete(()=>_artistDetailsRequests.remove(id)));
+  }
+  Future<MusicArtist> _fetchArtistDetails(String artistId) async {
     final cleanId = artistId.trim();
     final cached = _artistDetailsCache[cleanId];
     if (cached != null) {
@@ -588,7 +678,7 @@ class MusicService {
 
     final data = await _getJson(
       _uri('/artist/$cleanId', {
-        'inc': 'genres+artist-rels',
+        'inc': 'genres+artist-rels+url-rels',
       }),
     );
 
@@ -601,10 +691,12 @@ class MusicService {
     String artistId, {
     String fallbackArtistName = '',
     List<String> fallbackGenres = const [],
+    void Function(List<MusicAlbum>)? onPage,
   }) async {
     final cleanId = artistId.trim();
     final cached = _discographyCache[cleanId];
     if (cached != null) {
+      onPage?.call(List<MusicAlbum>.unmodifiable(cached));
       return List<MusicAlbum>.unmodifiable(cached);
     }
 
@@ -677,6 +769,7 @@ class MusicService {
         );
       }
 
+      onPage?.call(List<MusicAlbum>.unmodifiable(albums));
       offset += rawGroups.length;
 
       if (rawGroups.isEmpty) {
@@ -830,6 +923,7 @@ class MusicService {
   }
 
   void clearMemoryCache() {
+    _jsonMemory.clear();
     _artistSearchCache.clear();
     _albumSearchCache.clear();
     _songSearchCache.clear();
@@ -937,71 +1031,41 @@ class MusicService {
     return genres.map((item) => item.name).toList(growable: false);
   }
 
-  Future<Map<String, dynamic>> _getJson(Uri uri) {
-    final completer = Completer<Map<String, dynamic>>();
-
-    _requestQueue = _requestQueue.then((_) async {
-      final elapsed = DateTime.now().difference(_lastRequestAt);
-      if (elapsed < _minimumRequestSpacing) {
-        await Future<void>.delayed(_minimumRequestSpacing - elapsed);
-      }
-
-      try {
-        final result = await _performRequest(uri);
-        completer.complete(result);
-      } catch (error, stackTrace) {
-        completer.completeError(error, stackTrace);
-      }
-    });
-
-    return completer.future;
+  Future<Map<String,dynamic>> _getJson(Uri uri) {
+    final key=uri.toString();
+    final saved=_jsonMemory[key];
+    if(saved!=null){return Future.value(saved);}
+    return _jsonRequests.putIfAbsent(key,()=>_readJson(uri).whenComplete(()=>_jsonRequests.remove(key)));
   }
-
-  Future<Map<String, dynamic>> _performRequest(Uri uri) async {
-    for (int attempt = 0; attempt < 2; attempt++) {
-      _lastRequestAt = DateTime.now();
-
-      late final http.Response response;
-
-      try {
-        response = await http
-            .get(
-              uri,
-              headers: const {
-                'Accept': 'application/json',
-                'User-Agent': _userAgent,
-              },
-            )
-            .timeout(const Duration(seconds: 12));
-      } on TimeoutException {
-        if (attempt == 0) {
-          await Future<void>.delayed(const Duration(seconds: 2));
-          continue;
+  Future<Map<String,dynamic>> _readJson(Uri uri) async {
+    final key=uri.toString();
+    final diskKey='chiplux_music_json_v1:${Uri.encodeComponent(key)}';
+    SharedPreferences? preferences;
+    try{
+      preferences=await SharedPreferences.getInstance();
+      final saved=preferences.getString(diskKey);
+      if(saved!=null){
+        final record=jsonDecode(saved) as Map;
+        if(DateTime.now().difference(DateTime.parse(record['time'] as String))<const Duration(days:1)){
+          final data=Map<String,dynamic>.from(record['data'] as Map);
+          _jsonMemory[key]=data;return data;
         }
-
-        throw Exception('MusicBrainz request timed out.');
       }
-
-      if (response.statusCode == 200) {
-        final decoded = jsonDecode(response.body);
-        if (decoded is Map) {
-          return Map<String, dynamic>.from(decoded);
-        }
-        throw Exception('MusicBrainz returned an invalid response.');
-      }
-
-      if ((response.statusCode == 503 || response.statusCode == 429) &&
-          attempt == 0) {
-        await Future<void>.delayed(const Duration(seconds: 2));
-        continue;
-      }
-
-      throw Exception(
-        'MusicBrainz request failed: ${response.statusCode}',
-      );
+    }catch(_){/* Local metadata caching is optional. */}
+    final query=Map<String,String>.from(uri.queryParameters)..remove('fmt');
+    final response=await Supabase.instance.client.functions.invoke('music-catalog',body:{
+      'operation':'musicbrainz','path':uri.path.substring(_basePath.length),'query':query,
+    }).timeout(const Duration(seconds:12));
+    final payload=response.data;
+    final raw=payload is Map?payload['data']:null;
+    if(raw is! Map){throw const FormatException('Invalid music catalog response');}
+    final data=Map<String,dynamic>.from(raw);
+    _jsonMemory[key]=data;
+    if(preferences!=null){
+      unawaited(preferences.setString(diskKey,jsonEncode({'time':DateTime.now().toIso8601String(),'data':data}))
+        .then<void>((_) {},onError:(Object _) {}));
     }
-
-    throw Exception('MusicBrainz request failed.');
+    return data;
   }
 
   Uri _uri(String path, Map<String, String> query) {
