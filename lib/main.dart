@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'l10n/generated/app_localizations.dart';
@@ -13425,6 +13426,8 @@ class _SearchPageState extends State<SearchPage> {
   final MusicService musicService = MusicService.instance;
 
   Timer? _searchDebounce;
+  Timer? _searchDeadline;
+  int _searchGeneration=0;
 
   List<dynamic> results = [];
 
@@ -13435,64 +13438,54 @@ class _SearchPageState extends State<SearchPage> {
   _SearchCategory category = _SearchCategory.titles;
   _MusicSearchScope musicScope = _MusicSearchScope.albums;
 
+  String _searchError(Object error) {
+    if(error is TimeoutException){return 'Search timed out after 12 seconds. Tap Retry.';}
+    final match=RegExp(r'\b(400|401|403|404|429|500|502|503|504)\b').firstMatch(error.toString());
+    final status=match?.group(1);
+    return switch(status){
+      '401'=>'Music catalog rejected the request (401). Check Verify JWT for music-catalog.',
+      '404'=>'Music catalog function was not found (404). Check its deployed name.',
+      '429'=>'Music provider is busy (429). Wait briefly, then retry.',
+      '503'=>'Music catalog is unavailable (503). Check its latest invocation/log.',
+      _=>'Search failed${status==null?'':' ($status)'}. Tap Retry.',
+    };
+  }
   Future<void> performSearch([String? value]) async {
-    final query = (value ?? controller.text).trim();
-
-    if (query.length < 2) {
-      setState(() {
-        results = [];
-        errorMessage = null;
-        isLoading = false;
-      });
-
-      return;
+    final query=(value??controller.text).trim();
+    final generation=++_searchGeneration;
+    _searchDeadline?.cancel();
+    if(query.length<2){
+      setState((){results=[];errorMessage=null;isLoading=false;});return;
     }
-
-    final requestedCategory = category;
-    final requestedMusicScope = musicScope;
-
-    setState(() {
-      isLoading = true;
-      errorMessage = null;
+    final requestedCategory=category;
+    final requestedScope=musicScope;
+    if(kDebugMode){debugPrint('[ChipluxMusic] search-start generation=$generation category=${requestedCategory.name} scope=${requestedScope.name}');}
+    setState((){isLoading=true;errorMessage=null;});
+    // This independent watchdog covers cache initialization, request queuing,
+    // provider calls and parsing; it does not rely on an HTTP future finishing.
+    _searchDeadline=Timer(const Duration(seconds:12),(){
+      if(!mounted||generation!=_searchGeneration){return;}
+      ++_searchGeneration;
+      if(kDebugMode){debugPrint('[ChipluxMusic] search-watchdog generation=$generation');}
+      setState((){isLoading=false;errorMessage='Search timed out after 12 seconds. Tap Retry.';});
     });
-
-    try {
-      late final List<dynamic> searchResults;
-
-      if (requestedCategory == _SearchCategory.titles) {
-        searchResults = await tmdbService.search(query);
-      } else if (requestedCategory == _SearchCategory.music) {
-        searchResults = await _searchMusic(query, requestedMusicScope);
-      } else {
-        searchResults = await _searchPeopleAndMusicians(query);
-      }
-
-      if (!mounted ||
-          controller.text.trim() != query ||
-          category != requestedCategory ||
-          (requestedCategory == _SearchCategory.music &&
-              musicScope != requestedMusicScope)) {
-        return;
-      }
-
-      setState(() {
-        results = searchResults;
-      });
-    } catch (e) {
-      if (!mounted || controller.text.trim()!=query || category!=requestedCategory ||
-          (requestedCategory==_SearchCategory.music&&musicScope!=requestedMusicScope)) { return; }
-      setState(() {
-        errorMessage = 'Search failed';
-      });
-    } finally {
-      if (mounted &&
-          controller.text.trim() == query &&
-          category == requestedCategory &&
-          (requestedCategory != _SearchCategory.music ||
-              musicScope == requestedMusicScope)) {
-        setState(() {
-          isLoading = false;
-        });
+    try{
+      final Future<List<dynamic>> request=switch(requestedCategory){
+        _SearchCategory.titles=>tmdbService.search(query),
+        _SearchCategory.music=>_searchMusic(query,requestedScope),
+        _SearchCategory.people=>_searchPeopleAndMusicians(query),
+      };
+      final rows=await request.timeout(const Duration(seconds:12));
+      if(!mounted||generation!=_searchGeneration){return;}
+      if(kDebugMode){debugPrint('[ChipluxMusic] search-results generation=$generation count=${rows.length}');}
+      setState((){results=rows;errorMessage=null;});
+    }catch(error){
+      if(!mounted||generation!=_searchGeneration){return;}
+      if(kDebugMode){debugPrint('[ChipluxMusic] search-error generation=$generation type=${error.runtimeType}');}
+      setState((){errorMessage=_searchError(error);});
+    }finally{
+      if(mounted&&generation==_searchGeneration){
+        _searchDeadline?.cancel();setState(()=>isLoading=false);
       }
     }
   }
@@ -13631,6 +13624,9 @@ class _SearchPageState extends State<SearchPage> {
 
   void onSearchChanged(String value) {
     _searchDebounce?.cancel();
+    _searchDeadline?.cancel();
+    ++_searchGeneration;
+    if(mounted){setState(()=>isLoading=false);}
 
     final query = value.trim();
 
@@ -13661,6 +13657,9 @@ class _SearchPageState extends State<SearchPage> {
     }
 
     _searchDebounce?.cancel();
+    _searchDeadline?.cancel();
+    ++_searchGeneration;
+    if(mounted){setState(()=>isLoading=false);}
 
     setState(() {
       category = value;
@@ -13679,6 +13678,9 @@ class _SearchPageState extends State<SearchPage> {
     }
 
     _searchDebounce?.cancel();
+    _searchDeadline?.cancel();
+    ++_searchGeneration;
+    if(mounted){setState(()=>isLoading=false);}
 
     setState(() {
       musicScope = value;
@@ -13820,6 +13822,8 @@ class _SearchPageState extends State<SearchPage> {
   @override
   void dispose() {
     _searchDebounce?.cancel();
+    _searchDeadline?.cancel();
+    ++_searchGeneration;
     controller.dispose();
     super.dispose();
   }
@@ -13971,6 +13975,7 @@ class _SearchPageState extends State<SearchPage> {
               errorMessage!,
               style: const TextStyle(color: Colors.redAccent),
             ),
+          if(errorMessage!=null) TextButton.icon(onPressed:()=>performSearch(),icon:const Icon(Icons.refresh),label:const UiText('Retry')),
 
           if (!isLoading)
             Expanded(
@@ -15225,9 +15230,11 @@ class _LibraryPageState extends State<LibraryPage> {
 
     mediaUserDataService.loadFavorites();
 
-    unawaited(musicUserDataService.loadAll());
-
-    unawaited(CriticService.instance.refresh());
+    WidgetsBinding.instance.addPostFrameCallback((_){
+      if(!mounted){return;}
+      unawaited(musicUserDataService.loadAll());
+      unawaited(CriticService.instance.refresh());
+    });
   }
 
   void _scrollFilterIntoView(int index) {
@@ -23208,7 +23215,7 @@ class _ProfilePageState extends State<ProfilePage> {
   void initState() {
     super.initState();
 
-    _refreshProfileInBackground();
+
 
     final followerService = FollowerCountService.instance;
 
@@ -23218,11 +23225,12 @@ class _ProfilePageState extends State<ProfilePage> {
 
     followerService.addListener(_handleFollowerCountChange);
 
-    unawaited(followerService.load());
-
-    unawaited(musicUserData.loadAll());
-
-    unawaited(critic.refresh());
+    WidgetsBinding.instance.addPostFrameCallback((_){
+      if(!mounted){return;}
+      _refreshProfileInBackground();
+      unawaited(followerService.load());
+      unawaited(critic.refresh());
+    });
   }
 
   // =====================================================

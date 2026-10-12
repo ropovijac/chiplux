@@ -2,7 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
 
 class MusicArtistPhoto {
   final String url;
@@ -19,6 +20,12 @@ class MusicArtistPhoto {
     url:data['url'] as String,sourceUrl:data['sourceUrl'] as String,
     credit:data['credit'] as String,license:data['license'] as String,
     licenseUrl:data['licenseUrl'] as String,bannerUrl:data['bannerUrl']?.toString());
+}
+
+class MusicCatalogException implements Exception {
+ final int status;
+ const MusicCatalogException(this.status);
+ @override String toString()=>'MusicCatalogException(status: $status)';
 }
 
 class MusicMember {
@@ -318,6 +325,37 @@ class MusicService {
   final Map<String, List<MusicAlbum>> _discographyCache = {};
   final Map<String, MusicAlbumDetails> _albumDetailsCache = {};
 
+  final _httpClient=http.Client();
+  int _requestSerial=0;
+  void _trace(String message){if(kDebugMode){debugPrint('[ChipluxMusic] $message');}}
+  Future<Map<String,dynamic>> _callCatalog(Map<String,dynamic> body) async {
+    const base=String.fromEnvironment('SUPABASE_URL');
+    const clientKey=String.fromEnvironment('SUPABASE_ANON_KEY');
+    final parsed=Uri.tryParse(base);
+    final number=++_requestSerial;
+    final operation=body['operation']?.toString()??'unknown';
+    _trace('request=$number operation=$operation host=${parsed?.host ?? "missing"} keyConfigured=${clientKey.isNotEmpty}');
+    if(parsed==null||parsed.scheme!='https'||parsed.host.isEmpty||clientKey.isEmpty){
+      _trace('request=$number configuration-invalid');
+      throw StateError('Music catalog URL/client configuration missing');
+    }
+    final uri=parsed.replace(path:'${parsed.path.replaceAll(RegExp(r"/+$"),"")}/functions/v1/music-catalog',query:null,fragment:null);
+    final watch=Stopwatch()..start();
+    try{
+      _trace('request=$number http-start');
+      final response=await _httpClient.post(uri,headers:{'Content-Type':'application/json','apikey':clientKey},body:jsonEncode(body))
+        .timeout(const Duration(seconds:10));
+      _trace('request=$number http-status=${response.statusCode} elapsedMs=${watch.elapsedMilliseconds}');
+      if(response.statusCode<200||response.statusCode>=300){throw MusicCatalogException(response.statusCode);}
+      final decoded=jsonDecode(response.body);
+      if(decoded is! Map){throw const FormatException('Invalid music catalog response');}
+      return Map<String,dynamic>.from(decoded);
+    }catch(error){
+      _trace('request=$number http-error=${error.runtimeType} elapsedMs=${watch.elapsedMilliseconds}');
+      rethrow;
+    }
+  }
+
   final _jsonRequests=<String,Future<Map<String,dynamic>>>{};
   final _jsonMemory=<String,Map<String,dynamic>>{};
   Future<void> _photoQueue=Future<void>.value();
@@ -333,16 +371,15 @@ class MusicService {
     final result=Completer<dynamic>();
     _photoQueue=_photoQueue.then((_) async {
       try{
-        final response=await Supabase.instance.client.functions.invoke('music-catalog',body:{'operation':'photo','artist_id':artistId})
-          .timeout(const Duration(seconds:10));
-        result.complete(response.data);
+        final payload=await _callCatalog({'operation':'photo','artist_id':artistId});
+        result.complete(payload);
       }catch(error,stack){result.completeError(error,stack);}
     });
     return result.future;
   }
   Future<MusicArtistPhoto?> _loadArtistPhoto(String artistId) async {
     if(!RegExp(r'^[a-f0-9-]{36}$',caseSensitive:false).hasMatch(artistId)){return null;}
-    final preferences=await SharedPreferences.getInstance();
+    final preferences=await SharedPreferences.getInstance().timeout(const Duration(seconds:2));
     final key='chiplux_artist_photo_v5:$artistId';
     final saved=preferences.getString(key);
     if(saved!=null){
@@ -368,12 +405,11 @@ class MusicService {
       final completer=Completer<Map<String,dynamic>?>();
       _resolutionQueue=_resolutionQueue.then((_) async {
         try{
-          final response=await Supabase.instance.client.functions.invoke('music-catalog',body:{
+          final payload=await _callCatalog({
             'operation':'resolve_song','title':item['name']?.toString()??'',
             'artist':item['artist_name']?.toString()??'',
           });
-          final payload=response.data;
-          final data=payload is Map?payload['data']:null;
+          final data = payload['data'];
           completer.complete(data is Map?{...item,'album_mapping':Map<String,dynamic>.from(data)}:null);
         }catch(error,stack){_songMappings.remove(key);completer.completeError(error,stack);}
       });
@@ -397,6 +433,7 @@ class MusicService {
       return const [];
     }
 
+    _trace('artist-search start chars=${clean.length}');
     final cacheKey = clean.toLowerCase();
     final cached = _artistSearchCache[cacheKey];
     if (cached != null) {
@@ -435,6 +472,7 @@ class MusicService {
       final top=exact.first;
       unawaited(getArtistDetails(top.id).then<void>((_) {},onError:(Object _) {}));
     }
+    _trace('artist-search parsed=${artists.length} groups=${artists.where((artist)=>artist.isGroupLike).length}');
     _artistSearchCache[cacheKey] = artists;
     return List<MusicArtist>.unmodifiable(artists);
   }
@@ -667,7 +705,7 @@ class MusicService {
   Future<MusicArtist> getArtistDetails(String artistId) {
     final id=artistId.trim();
     return _artistDetailsRequests.putIfAbsent(id,()=>_fetchArtistDetails(id)
-      .whenComplete(()=>_artistDetailsRequests.remove(id)));
+      .whenComplete((){_artistDetailsRequests.remove(id);}));
   }
   Future<MusicArtist> _fetchArtistDetails(String artistId) async {
     final cleanId = artistId.trim();
@@ -1034,30 +1072,32 @@ class MusicService {
   Future<Map<String,dynamic>> _getJson(Uri uri) {
     final key=uri.toString();
     final saved=_jsonMemory[key];
-    if(saved!=null){return Future.value(saved);}
-    return _jsonRequests.putIfAbsent(key,()=>_readJson(uri).whenComplete(()=>_jsonRequests.remove(key)));
+    if(saved!=null){_trace('metadata memory-hit path=${uri.path}');return Future.value(saved);}
+    return _jsonRequests.putIfAbsent(key,()=>_readJson(uri).whenComplete((){_jsonRequests.remove(key);}));
   }
   Future<Map<String,dynamic>> _readJson(Uri uri) async {
     final key=uri.toString();
+    _trace('metadata cache-start path=${uri.path}');
     final diskKey='chiplux_music_json_v1:${Uri.encodeComponent(key)}';
     SharedPreferences? preferences;
     try{
-      preferences=await SharedPreferences.getInstance();
+      preferences=await SharedPreferences.getInstance().timeout(const Duration(seconds:2));
+      _trace('metadata preferences-ready path=${uri.path}');
       final saved=preferences.getString(diskKey);
       if(saved!=null){
         final record=jsonDecode(saved) as Map;
         if(DateTime.now().difference(DateTime.parse(record['time'] as String))<const Duration(days:1)){
           final data=Map<String,dynamic>.from(record['data'] as Map);
+          _trace('metadata disk-hit path=${uri.path}');
           _jsonMemory[key]=data;return data;
         }
       }
-    }catch(_){/* Local metadata caching is optional. */}
+    }catch(error){_trace('metadata cache-error=${error.runtimeType}');}
     final query=Map<String,String>.from(uri.queryParameters)..remove('fmt');
-    final response=await Supabase.instance.client.functions.invoke('music-catalog',body:{
+    final payload=await _callCatalog({
       'operation':'musicbrainz','path':uri.path.substring(_basePath.length),'query':query,
-    }).timeout(const Duration(seconds:12));
-    final payload=response.data;
-    final raw=payload is Map?payload['data']:null;
+    });
+    final raw = payload['data'];
     if(raw is! Map){throw const FormatException('Invalid music catalog response');}
     final data=Map<String,dynamic>.from(raw);
     _jsonMemory[key]=data;

@@ -223,7 +223,7 @@ class DiscoverCatalogService {
       _cache[key] = (time: DateTime.now(), rows: rows);
       unawaited(_persist(key, rows));
       return rows;
-    }).whenComplete(() => _pending.remove(key));
+    }).whenComplete(() { _pending.remove(key); });
     _pending[key] = request;
     return request;
   }
