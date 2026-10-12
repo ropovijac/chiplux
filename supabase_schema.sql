@@ -3159,7 +3159,7 @@ CREATE OR REPLACE TRIGGER "protect_developer_flag" BEFORE INSERT OR UPDATE ON "p
 
 
 
-CREATE OR REPLACE TRIGGER "send-chiplux-push" AFTER INSERT ON "public"."notifications" FOR EACH ROW EXECUTE FUNCTION "supabase_functions"."http_request"('https://xjzjpfgxrvolghromjon.supabase.co/functions/v1/send-push-notification', 'POST', '{"x-push-secret":"9ef4e3d099f428f93ea3e7a60146eba79baaa42e798994334038d1ff666","Content-Type":"application/json"}', '{}', '5000');
+CREATE OR REPLACE TRIGGER "send-chiplux-push" AFTER INSERT ON "public"."notifications" FOR EACH ROW EXECUTE FUNCTION "supabase_functions"."http_request"('https://xjzjpfgxrvolghromjon.supabase.co/functions/v1/send-push-notification', 'POST', '{"x-push-secret":"[REDACTED]","Content-Type":"application/json"}', '{}', '5000');
 
 
 
