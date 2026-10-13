@@ -12,20 +12,38 @@ class MusicArtistPhoto {
   final String credit;
   final String license;
   final String licenseUrl;
-  const MusicArtistPhoto({required this.url, required this.sourceUrl,
-    required this.credit, required this.license, required this.licenseUrl,this.bannerUrl});
-  Map<String,dynamic> toJson() => {'url':url,'sourceUrl':sourceUrl,
-    'credit':credit,'license':license,'licenseUrl':licenseUrl,'bannerUrl':bannerUrl};
-  factory MusicArtistPhoto.fromJson(Map<String,dynamic> data) => MusicArtistPhoto(
-    url:data['url'] as String,sourceUrl:data['sourceUrl'] as String,
-    credit:data['credit'] as String,license:data['license'] as String,
-    licenseUrl:data['licenseUrl'] as String,bannerUrl:data['bannerUrl']?.toString());
+  const MusicArtistPhoto({
+    required this.url,
+    required this.sourceUrl,
+    required this.credit,
+    required this.license,
+    required this.licenseUrl,
+    this.bannerUrl,
+  });
+  Map<String, dynamic> toJson() => {
+    'url': url,
+    'sourceUrl': sourceUrl,
+    'credit': credit,
+    'license': license,
+    'licenseUrl': licenseUrl,
+    'bannerUrl': bannerUrl,
+  };
+  factory MusicArtistPhoto.fromJson(Map<String, dynamic> data) =>
+      MusicArtistPhoto(
+        url: data['url'] as String,
+        sourceUrl: data['sourceUrl'] as String,
+        credit: data['credit'] as String,
+        license: data['license'] as String,
+        licenseUrl: data['licenseUrl'] as String,
+        bannerUrl: data['bannerUrl']?.toString(),
+      );
 }
 
 class MusicCatalogException implements Exception {
- final int status;
- const MusicCatalogException(this.status);
- @override String toString()=>'MusicCatalogException(status: $status)';
+  final int status;
+  const MusicCatalogException(this.status);
+  @override
+  String toString() => 'MusicCatalogException(status: $status)';
 }
 
 class MusicMember {
@@ -95,10 +113,7 @@ class MusicArtist {
     }
   }
 
-  String yearsActive({
-    String present = 'Present',
-    String unknown = 'Unknown',
-  }) {
+  String yearsActive({String present = 'Present', String unknown = 'Unknown'}) {
     final beginYear = _year(beginDate);
     final endYear = _year(endDate);
 
@@ -255,15 +270,11 @@ class MusicAlbumDetails {
   }
 }
 
-
 class MusicAlbumSearchResult {
   final MusicAlbum album;
   final int score;
 
-  const MusicAlbumSearchResult({
-    required this.album,
-    required this.score,
-  });
+  const MusicAlbumSearchResult({required this.album, required this.score});
 
   Map<String, dynamic> toSearchMap() {
     return {
@@ -317,7 +328,6 @@ class MusicService {
   static const String _host = 'musicbrainz.org';
   static const String _basePath = '/ws/2';
 
-
   final Map<String, List<MusicArtist>> _artistSearchCache = {};
   final Map<String, List<MusicAlbumSearchResult>> _albumSearchCache = {};
   final Map<String, List<MusicSongSearchResult>> _songSearchCache = {};
@@ -325,106 +335,226 @@ class MusicService {
   final Map<String, List<MusicAlbum>> _discographyCache = {};
   final Map<String, MusicAlbumDetails> _albumDetailsCache = {};
 
-  final _httpClient=http.Client();
-  int _requestSerial=0;
-  void _trace(String message){if(kDebugMode){debugPrint('[ChipluxMusic] $message');}}
-  Future<Map<String,dynamic>> _callCatalog(Map<String,dynamic> body) async {
-    const base=String.fromEnvironment('SUPABASE_URL');
-    const clientKey=String.fromEnvironment('SUPABASE_ANON_KEY');
-    final parsed=Uri.tryParse(base);
-    final number=++_requestSerial;
-    final operation=body['operation']?.toString()??'unknown';
-    _trace('request=$number operation=$operation host=${parsed?.host ?? "missing"} keyConfigured=${clientKey.isNotEmpty}');
-    if(parsed==null||parsed.scheme!='https'||parsed.host.isEmpty||clientKey.isEmpty){
+  final _httpClient = http.Client();
+  int _requestSerial = 0;
+  void _trace(String message) {
+    if (kDebugMode) {
+      debugPrint('[ChipluxMusic] $message');
+    }
+  }
+
+  Future<Map<String, dynamic>> _callCatalog(Map<String, dynamic> body) async {
+    const base = String.fromEnvironment('SUPABASE_URL');
+    const clientKey = String.fromEnvironment('SUPABASE_ANON_KEY');
+    final parsed = Uri.tryParse(base);
+    final number = ++_requestSerial;
+    final operation = body['operation']?.toString() ?? 'unknown';
+    _trace(
+      'request=$number operation=$operation host=${parsed?.host ?? "missing"} keyConfigured=${clientKey.isNotEmpty}',
+    );
+    if (parsed == null ||
+        parsed.scheme != 'https' ||
+        parsed.host.isEmpty ||
+        clientKey.isEmpty) {
       _trace('request=$number configuration-invalid');
       throw StateError('Music catalog URL/client configuration missing');
     }
-    final uri=parsed.replace(path:'${parsed.path.replaceAll(RegExp(r"/+$"),"")}/functions/v1/music-catalog',query:null,fragment:null);
-    final watch=Stopwatch()..start();
-    try{
+    final uri = parsed.replace(
+      path:
+          '${parsed.path.replaceAll(RegExp(r"/+$"), "")}/functions/v1/music-catalog',
+      query: null,
+      fragment: null,
+    );
+    final watch = Stopwatch()..start();
+    try {
       _trace('request=$number http-start');
-      final response=await _httpClient.post(uri,headers:{'Content-Type':'application/json','apikey':clientKey},body:jsonEncode(body))
-        .timeout(const Duration(seconds:10));
-      _trace('request=$number http-status=${response.statusCode} elapsedMs=${watch.elapsedMilliseconds}');
-      if(response.statusCode<200||response.statusCode>=300){throw MusicCatalogException(response.statusCode);}
-      final decoded=jsonDecode(response.body);
-      if(decoded is! Map){throw const FormatException('Invalid music catalog response');}
-      return Map<String,dynamic>.from(decoded);
-    }catch(error){
-      _trace('request=$number http-error=${error.runtimeType} elapsedMs=${watch.elapsedMilliseconds}');
+      final response = await _httpClient
+          .post(
+            uri,
+            headers: {'Content-Type': 'application/json', 'apikey': clientKey},
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 10));
+      _trace(
+        'request=$number http-status=${response.statusCode} elapsedMs=${watch.elapsedMilliseconds}',
+      );
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw MusicCatalogException(response.statusCode);
+      }
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map) {
+        throw const FormatException('Invalid music catalog response');
+      }
+      return Map<String, dynamic>.from(decoded);
+    } catch (error) {
+      _trace(
+        'request=$number http-error=${error.runtimeType} elapsedMs=${watch.elapsedMilliseconds}',
+      );
       rethrow;
     }
   }
 
-  final _jsonRequests=<String,Future<Map<String,dynamic>>>{};
-  final _jsonMemory=<String,Map<String,dynamic>>{};
-  Future<void> _photoQueue=Future<void>.value();
-  MusicArtist? cachedArtist(String id)=>_artistDetailsCache[id];
+  final _jsonRequests = <String, Future<Map<String, dynamic>>>{};
+  final _jsonMemory = <String, Map<String, dynamic>>{};
+  final _photoPool = _MusicPhotoPool();
+  MusicArtist? cachedArtist(String id) => _artistDetailsCache[id];
+  MusicAlbumDetails? cachedAlbumDetails(String id) => _albumDetailsCache[id];
 
-  final _photoRequests = <String,Future<MusicArtistPhoto?>>{};
+  final _photoRequests = <String, Future<MusicArtistPhoto?>>{};
   Future<MusicArtistPhoto?> getArtistPhoto(String artistId) {
-    return _photoRequests.putIfAbsent(artistId,()=>_loadArtistPhoto(artistId).catchError((Object _){
-      _photoRequests.remove(artistId);return null;
-    }));
+    return _photoRequests.putIfAbsent(
+      artistId,
+      () => _loadArtistPhoto(artistId).catchError((Object _) {
+        _photoRequests.remove(artistId);
+        return null;
+      }),
+    );
   }
-  Future<dynamic> _fetchPhoto(String artistId){
-    final result=Completer<dynamic>();
-    _photoQueue=_photoQueue.then((_) async {
-      try{
-        final payload=await _callCatalog({'operation':'photo','artist_id':artistId});
-        result.complete(payload);
-      }catch(error,stack){result.completeError(error,stack);}
-    });
-    return result.future;
-  }
+
+  Future<Map<String, dynamic>> _fetchPhoto(String artistId) => _photoPool.run(
+    () => _callCatalog({'operation': 'photo', 'artist_id': artistId}),
+  );
   Future<MusicArtistPhoto?> _loadArtistPhoto(String artistId) async {
-    if(!RegExp(r'^[a-f0-9-]{36}$',caseSensitive:false).hasMatch(artistId)){return null;}
-    final preferences=await SharedPreferences.getInstance().timeout(const Duration(seconds:2));
-    final key='chiplux_artist_photo_v5:$artistId';
-    final saved=preferences.getString(key);
-    if(saved!=null){
-      try{final decoded=jsonDecode(saved) as Map;
-        if(DateTime.now().difference(DateTime.parse(decoded['time'] as String))<const Duration(days:1)){
-          return MusicArtistPhoto.fromJson(Map<String,dynamic>.from(decoded['photo'] as Map));
-        }
-      }catch(_){/* Retry malformed cache. */}
+    if (!RegExp(r'^[a-f0-9-]{36}$', caseSensitive: false).hasMatch(artistId)) {
+      return null;
     }
-    final payload=await _fetchPhoto(artistId);
-    final data=payload is Map ? payload['data'] : null;
-    if(data is! Map){_photoRequests.remove(artistId);return null;}
-    final photo=MusicArtistPhoto.fromJson(Map<String,dynamic>.from(data));
-    unawaited(preferences.setString(key,jsonEncode({'time':DateTime.now().toIso8601String(),'photo':photo.toJson()})).then<void>((_) {},onError:(Object _) {}));
+    final preferences = await SharedPreferences.getInstance().timeout(
+      const Duration(seconds: 2),
+    );
+    final key = 'chiplux_artist_photo_v5:$artistId';
+    final saved = preferences.getString(key);
+    if (saved != null) {
+      try {
+        final decoded = jsonDecode(saved) as Map;
+        if (DateTime.now().difference(
+              DateTime.parse(decoded['time'] as String),
+            ) <
+            const Duration(days: 30)) {
+          return MusicArtistPhoto.fromJson(
+            Map<String, dynamic>.from(decoded['photo'] as Map),
+          );
+        }
+      } catch (_) {
+        /* Retry malformed cache. */
+      }
+    }
+    final payload = await _fetchPhoto(artistId);
+    final data = payload['data'];
+    if (data is! Map) {
+      _photoRequests.remove(artistId);
+      return null;
+    }
+    final photo = MusicArtistPhoto.fromJson(Map<String, dynamic>.from(data));
+    unawaited(
+      preferences
+          .setString(
+            key,
+            jsonEncode({
+              'time': DateTime.now().toIso8601String(),
+              'photo': photo.toJson(),
+            }),
+          )
+          .then<void>((_) {}, onError: (Object _) {}),
+    );
     return photo;
   }
 
-  final _songMappings=<String,Future<Map<String,dynamic>?>>{};
-  Future<void> _resolutionQueue=Future<void>.value();
-  Future<Map<String,dynamic>?> resolveChartSong(Map<String,dynamic> item){
-    final key='${item['id']}:${item['name']}:${item['artist_name']}';
-    return _songMappings.putIfAbsent(key,(){
-      final completer=Completer<Map<String,dynamic>?>();
-      _resolutionQueue=_resolutionQueue.then((_) async {
-        try{
-          final payload=await _callCatalog({
-            'operation':'resolve_song','title':item['name']?.toString()??'',
-            'artist':item['artist_name']?.toString()??'',
-          });
-          final data = payload['data'];
-          completer.complete(data is Map?{...item,'album_mapping':Map<String,dynamic>.from(data)}:null);
-        }catch(error,stack){_songMappings.remove(key);completer.completeError(error,stack);}
+  final _songMappings = <String, Future<Map<String, dynamic>?>>{};
+  final _songPool = _MusicPhotoPool();
+  Future<Map<String, dynamic>?> resolveChartSong(
+    Map<String, dynamic> item,
+  ) async {
+    final key = '${item['id']}:${item['name']}:${item['artist_name']}';
+    final mapping = await _songMappings.putIfAbsent(
+      key,
+      () => _resolveSongMapping(key, item).catchError((
+        Object error,
+        StackTrace stack,
+      ) {
+        _songMappings.remove(key);
+        Error.throwWithStackTrace(error, stack);
+      }),
+    );
+    return mapping == null ? null : {...item, 'album_mapping': mapping};
+  }
+
+  Future<Map<String, dynamic>?> _resolveSongMapping(
+    String key,
+    Map<String, dynamic> item,
+  ) async {
+    // Read local matches before acquiring a remote-request slot.
+    final diskKey = 'chiplux_song_album_v1:$key';
+    SharedPreferences? preferences;
+    try {
+      preferences = await SharedPreferences.getInstance().timeout(
+        const Duration(seconds: 2),
+      );
+    } catch (_) {
+      /* Metadata can still load if local storage is unavailable. */
+    }
+    final saved = preferences?.getString(diskKey);
+    if (saved != null) {
+      try {
+        final record = jsonDecode(saved) as Map;
+        if (DateTime.now().difference(
+              DateTime.parse(record['time'] as String),
+            ) <
+            const Duration(days: 30)) {
+          return Map<String, dynamic>.from(record['mapping'] as Map);
+        }
+      } catch (_) {
+        /* Fetch again if the cached mapping is malformed. */
+      }
+    }
+    return _songPool.run(() async {
+      final payload = await _callCatalog({
+        'operation': 'resolve_song',
+        'title': item['name']?.toString() ?? '',
+        'artist': item['artist_name']?.toString() ?? '',
       });
-      return completer.future;
+      final data = payload['data'];
+      if (data is! Map) {
+        return null;
+      }
+      final mapping = Map<String, dynamic>.from(data);
+      if (preferences != null) {
+        unawaited(
+          preferences
+              .setString(
+                diskKey,
+                jsonEncode({
+                  'time': DateTime.now().toIso8601String(),
+                  'mapping': mapping,
+                }),
+              )
+              .then<void>((_) {}, onError: (Object _) {}),
+        );
+      }
+      return mapping;
     });
   }
-  Future<List<Map<String,dynamic>>> prepareChartSongs(List<Map<String,dynamic>> items) async {
-    final rows=<Map<String,dynamic>>[];
-    for(final item in items){final resolved=await resolveChartSong(item);if(resolved!=null){rows.add(resolved);}}
+
+  Future<List<Map<String, dynamic>>> prepareChartSongs(
+    List<Map<String, dynamic>> items,
+  ) async {
+    final rows = <Map<String, dynamic>>[];
+    for (final item in items) {
+      final resolved = await resolveChartSong(item);
+      if (resolved != null) {
+        rows.add(resolved);
+      }
+    }
     return rows;
   }
-  MusicAlbum albumFromMapping(Map mapping)=>MusicAlbum(
-    id:mapping['album_id'].toString(),title:mapping['album_title'].toString(),
-    artistId:mapping['artist_id']?.toString()??'',artistName:mapping['artist_name']?.toString()??'',
-    firstReleaseDate:mapping['release_date']?.toString()??'',primaryType:'Album',secondaryTypes:const [],
+
+  MusicAlbum albumFromMapping(Map mapping) => MusicAlbum(
+    id: mapping['album_id'].toString(),
+    title: mapping['album_title'].toString(),
+    artistId: mapping['artist_id']?.toString() ?? '',
+    artistName: mapping['artist_name']?.toString() ?? '',
+    firstReleaseDate: mapping['release_date']?.toString() ?? '',
+    primaryType: 'Album',
+    secondaryTypes: const [],
   );
 
   Future<List<MusicArtist>> searchArtists(String query) async {
@@ -442,7 +572,9 @@ class MusicService {
 
     final data = await _getJson(
       _uri('/artist', {
-        'query': clean.contains(':')?clean:'artist:"${clean.replaceAll(RegExp(r'[\"\\]'), ' ')}"',
+        'query': clean.contains(':')
+            ? clean
+            : 'artist:"${clean.replaceAll(RegExp(r'[\"\\]'), ' ')}"',
         'limit': '12',
         'offset': '0',
       }),
@@ -460,19 +592,32 @@ class MusicService {
 
       // Chiplux's People search is for real musicians and musical groups.
       // Character/Other MusicBrainz artist types are intentionally excluded.
-      if (!const {'Person', 'Group', 'Orchestra', 'Choir'}.contains(artist.type)) {
+      if (!const {
+        'Person',
+        'Group',
+        'Orchestra',
+        'Choir',
+      }.contains(artist.type)) {
         continue;
       }
 
       artists.add(artist);
     }
 
-    final exact=artists.where((artist)=>artist.name.toLowerCase()==clean.toLowerCase()).toList();
-    if(exact.isNotEmpty){
-      final top=exact.first;
-      unawaited(getArtistDetails(top.id).then<void>((_) {},onError:(Object _) {}));
+    final exact = artists
+        .where((artist) => artist.name.toLowerCase() == clean.toLowerCase())
+        .toList();
+    if (exact.isNotEmpty) {
+      final top = exact.first;
+      // Start the most likely photo before search cards enqueue other matches.
+      unawaited(getArtistPhoto(top.id));
+      unawaited(
+        getArtistDetails(top.id).then<void>((_) {}, onError: (Object _) {}),
+      );
     }
-    _trace('artist-search parsed=${artists.length} groups=${artists.where((artist)=>artist.isGroupLike).length}');
+    _trace(
+      'artist-search parsed=${artists.length} groups=${artists.where((artist) => artist.isGroupLike).length}',
+    );
     _artistSearchCache[cacheKey] = artists;
     return List<MusicArtist>.unmodifiable(artists);
   }
@@ -491,7 +636,6 @@ class MusicService {
         .toList(growable: false);
   }
 
-
   Future<List<MusicAlbumSearchResult>> searchStudioAlbums(String query) async {
     final clean = query.trim();
     if (clean.length < 2) {
@@ -505,16 +649,10 @@ class MusicService {
     }
 
     final data = await _getJson(
-      _uri('/release-group', {
-        'query': clean,
-        'limit': '10',
-        'offset': '0',
-      }),
+      _uri('/release-group', {'query': clean, 'limit': '10', 'offset': '0'}),
     );
 
-    final rawGroups = List<dynamic>.from(
-      data['release-groups'] ?? const [],
-    );
+    final rawGroups = List<dynamic>.from(data['release-groups'] ?? const []);
     final results = <MusicAlbumSearchResult>[];
     final seen = <String>{};
 
@@ -576,16 +714,10 @@ class MusicService {
     }
 
     final data = await _getJson(
-      _uri('/recording', {
-        'query': clean,
-        'limit': '12',
-        'offset': '0',
-      }),
+      _uri('/recording', {'query': clean, 'limit': '12', 'offset': '0'}),
     );
 
-    final rawRecordings = List<dynamic>.from(
-      data['recordings'] ?? const [],
-    );
+    final rawRecordings = List<dynamic>.from(data['recordings'] ?? const []);
     final results = <MusicSongSearchResult>[];
     final seen = <String>{};
 
@@ -673,10 +805,9 @@ class MusicService {
         title: albumTitle,
         artistId: artistId,
         artistName: artistName.isEmpty ? 'Unknown' : artistName,
-        firstReleaseDate:
-            release['date']?.toString().trim().isNotEmpty == true
-                ? release['date'].toString().trim()
-                : map['first-release-date']?.toString().trim() ?? '',
+        firstReleaseDate: release['date']?.toString().trim().isNotEmpty == true
+            ? release['date'].toString().trim()
+            : map['first-release-date']?.toString().trim() ?? '',
         primaryType: 'Album',
         secondaryTypes: const [],
       );
@@ -701,12 +832,23 @@ class MusicService {
     return List<MusicSongSearchResult>.unmodifiable(results);
   }
 
-  final _artistDetailsRequests = <String,Future<MusicArtist>>{};
+  Future<Map<String, dynamic>> getMemberCredits(String artistId) => _getJson(
+    _uri('/artist/${artistId.trim()}', {
+      'inc': 'artist-rels+recording-rels+work-rels+release-group-rels',
+    }),
+  );
+
+  final _artistDetailsRequests = <String, Future<MusicArtist>>{};
   Future<MusicArtist> getArtistDetails(String artistId) {
-    final id=artistId.trim();
-    return _artistDetailsRequests.putIfAbsent(id,()=>_fetchArtistDetails(id)
-      .whenComplete((){_artistDetailsRequests.remove(id);}));
+    final id = artistId.trim();
+    return _artistDetailsRequests.putIfAbsent(
+      id,
+      () => _fetchArtistDetails(id).whenComplete(() {
+        _artistDetailsRequests.remove(id);
+      }),
+    );
   }
+
   Future<MusicArtist> _fetchArtistDetails(String artistId) async {
     final cleanId = artistId.trim();
     final cached = _artistDetailsCache[cleanId];
@@ -715,9 +857,7 @@ class MusicService {
     }
 
     final data = await _getJson(
-      _uri('/artist/$cleanId', {
-        'inc': 'genres+artist-rels+url-rels',
-      }),
+      _uri('/artist/$cleanId', {'inc': 'genres+artist-rels+url-rels'}),
     );
 
     final artist = _parseArtist(data, includeMembers: true);
@@ -755,9 +895,7 @@ class MusicService {
         }),
       );
 
-      final rawGroups = List<dynamic>.from(
-        data['release-groups'] ?? const [],
-      );
+      final rawGroups = List<dynamic>.from(data['release-groups'] ?? const []);
 
       totalCount = _asInt(data['release-group-count']) ?? rawGroups.length;
 
@@ -1069,51 +1207,80 @@ class MusicService {
     return genres.map((item) => item.name).toList(growable: false);
   }
 
-  Future<Map<String,dynamic>> _getJson(Uri uri) {
-    final key=uri.toString();
-    final saved=_jsonMemory[key];
-    if(saved!=null){_trace('metadata memory-hit path=${uri.path}');return Future.value(saved);}
-    return _jsonRequests.putIfAbsent(key,()=>_readJson(uri).whenComplete((){_jsonRequests.remove(key);}));
+  Future<Map<String, dynamic>> _getJson(Uri uri) {
+    final key = uri.toString();
+    final saved = _jsonMemory[key];
+    if (saved != null) {
+      _trace('metadata memory-hit path=${uri.path}');
+      return Future.value(saved);
+    }
+    return _jsonRequests.putIfAbsent(
+      key,
+      () => _readJson(uri).whenComplete(() {
+        _jsonRequests.remove(key);
+      }),
+    );
   }
-  Future<Map<String,dynamic>> _readJson(Uri uri) async {
-    final key=uri.toString();
+
+  Future<Map<String, dynamic>> _readJson(Uri uri) async {
+    final key = uri.toString();
     _trace('metadata cache-start path=${uri.path}');
-    final diskKey='chiplux_music_json_v1:${Uri.encodeComponent(key)}';
+    final diskKey = 'chiplux_music_json_v1:${Uri.encodeComponent(key)}';
     SharedPreferences? preferences;
-    try{
-      preferences=await SharedPreferences.getInstance().timeout(const Duration(seconds:2));
+    try {
+      preferences = await SharedPreferences.getInstance().timeout(
+        const Duration(seconds: 2),
+      );
       _trace('metadata preferences-ready path=${uri.path}');
-      final saved=preferences.getString(diskKey);
-      if(saved!=null){
-        final record=jsonDecode(saved) as Map;
-        if(DateTime.now().difference(DateTime.parse(record['time'] as String))<const Duration(days:1)){
-          final data=Map<String,dynamic>.from(record['data'] as Map);
+      final saved = preferences.getString(diskKey);
+      if (saved != null) {
+        final record = jsonDecode(saved) as Map;
+        if (DateTime.now().difference(
+              DateTime.parse(record['time'] as String),
+            ) <
+            const Duration(days: 1)) {
+          final data = Map<String, dynamic>.from(record['data'] as Map);
           _trace('metadata disk-hit path=${uri.path}');
-          _jsonMemory[key]=data;return data;
+          _jsonMemory[key] = data;
+          return data;
         }
       }
-    }catch(error){_trace('metadata cache-error=${error.runtimeType}');}
-    final query=Map<String,String>.from(uri.queryParameters)..remove('fmt');
-    final payload=await _callCatalog({
-      'operation':'musicbrainz','path':uri.path.substring(_basePath.length),'query':query,
+    } catch (error) {
+      _trace('metadata cache-error=${error.runtimeType}');
+    }
+    final query = Map<String, String>.from(uri.queryParameters)..remove('fmt');
+    final payload = await _callCatalog({
+      'operation': 'musicbrainz',
+      'path': uri.path.substring(_basePath.length),
+      'query': query,
     });
     final raw = payload['data'];
-    if(raw is! Map){throw const FormatException('Invalid music catalog response');}
-    final data=Map<String,dynamic>.from(raw);
-    _jsonMemory[key]=data;
-    if(preferences!=null){
-      unawaited(preferences.setString(diskKey,jsonEncode({'time':DateTime.now().toIso8601String(),'data':data}))
-        .then<void>((_) {},onError:(Object _) {}));
+    if (raw is! Map) {
+      throw const FormatException('Invalid music catalog response');
+    }
+    final data = Map<String, dynamic>.from(raw);
+    _jsonMemory[key] = data;
+    if (preferences != null) {
+      unawaited(
+        preferences
+            .setString(
+              diskKey,
+              jsonEncode({
+                'time': DateTime.now().toIso8601String(),
+                'data': data,
+              }),
+            )
+            .then<void>((_) {}, onError: (Object _) {}),
+      );
     }
     return data;
   }
 
   Uri _uri(String path, Map<String, String> query) {
-    return Uri.https(
-      _host,
-      '$_basePath$path',
-      <String, String>{...query, 'fmt': 'json'},
-    );
+    return Uri.https(_host, '$_basePath$path', <String, String>{
+      ...query,
+      'fmt': 'json',
+    });
   }
 
   static int? _asInt(dynamic value) {
@@ -1150,7 +1317,8 @@ class MusicService {
       }
 
       final map = Map<String, dynamic>.from(item);
-      final name = map['name']?.toString() ??
+      final name =
+          map['name']?.toString() ??
           (map['artist'] is Map
               ? (map['artist'] as Map)['name']?.toString()
               : null) ??
@@ -1162,7 +1330,6 @@ class MusicService {
 
     return buffer.toString().trim();
   }
-
 
   static String _firstArtistId(dynamic raw) {
     if (raw is! List) {
@@ -1210,5 +1377,29 @@ class MusicService {
     }
 
     return count;
+  }
+}
+
+// Limit parallel photo lookups without making every image wait for one queue.
+class _MusicPhotoPool {
+  int _active = 0;
+  final _waiting = <Completer<void>>[];
+  Future<T> run<T>(Future<T> Function() task) async {
+    if (_active >= 2) {
+      final ready = Completer<void>();
+      _waiting.add(ready);
+      await ready.future;
+    } else {
+      _active++;
+    }
+    try {
+      return await task();
+    } finally {
+      if (_waiting.isNotEmpty) {
+        _waiting.removeAt(0).complete();
+      } else {
+        _active--;
+      }
+    }
   }
 }

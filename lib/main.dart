@@ -54,6 +54,7 @@ import 'services/data_export_service.dart';
 import 'services/feature_suggestion_service.dart';
 
 part 'discover_browser.dart';
+part 'music_collection_ui.dart';
 part 'discover_vector_icons.dart';
 
 const Color chipluxBackground = Color(0xFF07111C);
@@ -14450,116 +14451,15 @@ class _MusicArtistSearchCard extends StatelessWidget {
 
 
 class _MusicAlbumSearchCard extends StatelessWidget {
-  final Map<String, dynamic> item;
+  final Map<String,dynamic> item;
   final VoidCallback onTap;
-
-  const _MusicAlbumSearchCard({
-    required this.item,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final title = item['name']?.toString() ?? 'Unknown';
-    final artistName = item['artist_name']?.toString() ?? '';
-    final year = item['year']?.toString() ?? '';
-    final coverUrl = item['cover_url']?.toString();
-
-    return InkWell(
-      borderRadius: BorderRadius.circular(17),
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(1.1),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(17),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              chipluxViolet.withValues(alpha: 0.36),
-              chipluxPurple.withValues(alpha: 0.28),
-              chipluxCyan.withValues(alpha: 0.22),
-            ],
-          ),
-        ),
-        child: Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: chipluxSurface,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: coverUrl != null && coverUrl.isNotEmpty
-                    ? Image.network(
-                        coverUrl,
-                        width: 76,
-                        height: 76,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => _musicSearchCoverFallback(
-                          Icons.album_rounded,
-                        ),
-                      )
-                    : _musicSearchCoverFallback(Icons.album_rounded),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    const UiText(
-                      'Album',
-                      style: TextStyle(
-                        color: chipluxPurple,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    if (artistName.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        artistName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white60,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                    if (year.isNotEmpty) ...[
-                      const SizedBox(height: 3),
-                      Text(
-                        year,
-                        style: const TextStyle(
-                          color: Colors.white38,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: Colors.white38,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+  const _MusicAlbumSearchCard({required this.item,required this.onTap});
+  @override Widget build(BuildContext context) {
+    final album=item['_music_album'];
+    if(album is MusicAlbum){return _MusicAlbumCard(album:album,onTap:onTap);}
+    return _CollectionCard(title:item['name']?.toString()??'',
+      subtitle:item['artist_name']?.toString()??'',meta:item['year']?.toString(),
+      coverUrl:item['cover_url']?.toString(),onTap:onTap,showTracking:false);
   }
 }
 
@@ -14966,8 +14866,11 @@ class _LibraryPageState extends State<LibraryPage> {
       selectedMediaType == 'album' || selectedMediaType == 'track';
 
   List<String> _mediaTypesForCurrentFilter() {
-    if (filter == 'favorites' || filter == 'completed') {
+    if (filter == 'favorites') {
       return const ['tv', 'movie', 'album', 'track'];
+    }
+    if (filter == 'completed') {
+      return const ['tv', 'movie', 'album'];
     }
 
     if (filter == 'plan' || filter == 'dropped') {
@@ -15478,7 +15381,7 @@ class _LibraryPageState extends State<LibraryPage> {
                   .toList(growable: false);
             } else if (filter == 'completed') {
               musicItems = musicItems
-                  .where((item) => item.isListened)
+                  .where((item) => item.isAlbum && item.isListened)
                   .toList(growable: false);
             } else {
               // Plan and Dropped are album-only Library buckets.
@@ -15684,7 +15587,7 @@ class _LibraryPageState extends State<LibraryPage> {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => MusicAlbumPage(album: album),
+                builder: (_) => MusicAlbumPage(album: album,initialTrackId:entry.isTrack?entry.entityId:null),
               ),
             );
           },
@@ -16063,189 +15966,20 @@ class _LibraryPageState extends State<LibraryPage> {
 class _MusicLibraryListCard extends StatelessWidget {
   final MusicLibraryEntry entry;
   final VoidCallback onTap;
-
-  const _MusicLibraryListCard({
-    required this.entry,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final coverUrl = entry.coverUrl?.trim();
-    final ratingStars = entry.ratingStars;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(9),
-          decoration: BoxDecoration(
-            color: chipluxSurface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: entry.isListened
-                  ? const Color(0xFF7BE8A8).withValues(alpha: 0.16)
-                  : chipluxViolet.withValues(alpha: 0.10),
-            ),
-          ),
-          child: Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(11),
-                child: coverUrl != null && coverUrl.isNotEmpty
-                    ? Image.network(
-                        coverUrl,
-                        width: 62,
-                        height: 62,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => _musicLibraryFallback(),
-                      )
-                    : _musicLibraryFallback(),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      entry.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      entry.isTrack && (entry.albumTitle?.isNotEmpty ?? false)
-                          ? '${entry.artistName} · ${entry.albumTitle}'
-                          : entry.artistName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white54,
-                        fontSize: 11,
-                      ),
-                    ),
-                    const SizedBox(height: 7),
-                    Wrap(
-                      spacing: 7,
-                      runSpacing: 5,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        _MusicLibraryStatusPill(
-                          icon: entry.isAlbum
-                              ? Icons.album_rounded
-                              : Icons.music_note_rounded,
-                          label: entry.isAlbum ? 'Album' : 'Song',
-                          color: chipluxPurple,
-                        ),
-                        if (entry.isPlanned)
-                          const _MusicLibraryStatusPill(
-                            icon: Icons.calendar_month_outlined,
-                            label: 'Plan',
-                            color: chipluxPurple,
-                          ),
-                        if (entry.isDropped)
-                          const _MusicLibraryStatusPill(
-                            icon: Icons.delete_outline_rounded,
-                            label: 'Dropped',
-                            color: Color(0xFFFF6B6B),
-                          ),
-                        if (entry.isListened)
-                          const _MusicLibraryStatusPill(
-                            icon: Icons.check_circle_rounded,
-                            label: 'Listened',
-                            color: Color(0xFF7BE8A8),
-                          ),
-                        if (entry.isFavorite)
-                          const _MusicLibraryStatusPill(
-                            icon: Icons.favorite_rounded,
-                            label: 'Favorite',
-                            color: Colors.pinkAccent,
-                          ),
-                        if (ratingStars != null)
-                          _MusicLibraryStatusPill(
-                            icon: Icons.star_rounded,
-                            label: '$ratingStars ★',
-                            color: Colors.amber,
-                          ),
-                        if (entry.runtimeMinutes > 0)
-                          _MusicLibraryStatusPill(
-                            icon: Icons.schedule_rounded,
-                            label: '${entry.runtimeMinutes}m',
-                            color: Colors.white54,
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 6),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: Colors.white38,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _musicLibraryFallback() {
-    return Container(
-      width: 62,
-      height: 62,
-      color: chipluxSurfaceLight,
-      alignment: Alignment.center,
-      child: Icon(
-        entry.isAlbum ? Icons.album_outlined : Icons.music_note_rounded,
-        color: Colors.white30,
-        size: 29,
-      ),
-    );
-  }
-}
-
-class _MusicLibraryStatusPill extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-
-  const _MusicLibraryStatusPill({
-    required this.icon,
-    required this.label,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withValues(alpha: 0.18)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 11, color: color),
-          const SizedBox(width: 4),
-          UiText(
-            label,
-            style: TextStyle(
-              color: color,
-              fontSize: 9.5,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
+  const _MusicLibraryListCard({required this.entry,required this.onTap});
+  @override Widget build(BuildContext context) {
+    final progress=entry.isAlbum?_musicAlbumRatingProgress(entry.entityId):null;
+    return _CollectionCard(
+      title:entry.title,
+      subtitle:entry.isTrack&&(entry.albumTitle?.isNotEmpty??false)
+        ? '${entry.artistName} · ${entry.albumTitle}':entry.artistName,
+      coverUrl:entry.coverUrl,meta:entry.releaseYear,onTap:onTap,
+      isFavorite:entry.isFavorite,
+      isCompleted:entry.isAlbum&&entry.isListened,
+      isRated:entry.rating!=null&&(progress?.complete??true),
+      ratingStars:entry.ratingStars,
+      ratingLabel:progress?.label,
+      status:entry.isPlanned?'Plan':entry.isDropped?'Dropped':null,
     );
   }
 }
@@ -37399,15 +37133,10 @@ class _MusicArtistPageState extends State<MusicArtistPage> {
                   text: 'No studio albums found.',
                 )
               else
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 1,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    mainAxisExtent: 108,
-                  ),
+                ListView.separated(
+                  shrinkWrap:true,
+                  physics:const NeverScrollableScrollPhysics(),
+                  separatorBuilder:(_,_)=>const SizedBox(height:12),
                   itemCount: albums.length,
                   itemBuilder: (context, index) {
                     final album = albums[index];
@@ -37511,7 +37240,11 @@ class _MusicMemberWrap extends StatelessWidget {
       spacing: 8,
       runSpacing: 8,
       children: members.map((member) {
-        return Container(
+        return InkWell(
+          borderRadius:BorderRadius.circular(12),
+          onTap:()=>Navigator.push(context,MaterialPageRoute(
+            builder:(_)=>MusicMemberWorksPage(member:member))),
+          child:Container(
           constraints: const BoxConstraints(maxWidth: 210),
           padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
           decoration: BoxDecoration(
@@ -37549,31 +37282,28 @@ class _MusicMemberWrap extends StatelessWidget {
               ],
             ],
           ),
-        );
+        ));
       }).toList(growable: false),
     );
   }
 }
 
 class _MusicAlbumCard extends StatelessWidget {
- final MusicAlbum album;final VoidCallback onTap;
- const _MusicAlbumCard({required this.album,required this.onTap});
- @override Widget build(BuildContext context)=>Material(color:Colors.transparent,child:InkWell(
-  borderRadius:BorderRadius.circular(16),onTap:onTap,
-  child:Container(padding:const EdgeInsets.all(12),decoration:BoxDecoration(
-    borderRadius:BorderRadius.circular(16),gradient:LinearGradient(colors:[chipluxViolet.withValues(alpha:.14),chipluxSurface]),
-    border:Border.all(color:chipluxViolet.withValues(alpha:.22))),
-    child:Row(children:[
-      ClipRRect(borderRadius:BorderRadius.circular(12),child:Image.network(album.coverUrl,width:76,height:76,fit:BoxFit.cover,
-        errorBuilder:(_,_,_)=>const SizedBox(width:76,height:76,child:Icon(Icons.album_rounded,color:Colors.white30)))),
-      const SizedBox(width:14),Expanded(child:Column(mainAxisAlignment:MainAxisAlignment.center,crossAxisAlignment:CrossAxisAlignment.start,children:[
-        Text(album.title,maxLines:2,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:14,fontWeight:FontWeight.w800)),
-        const SizedBox(height:5),Text(album.artistName,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontSize:11,color:chipluxPurple)),
-        const SizedBox(height:4),Text(album.year,style:const TextStyle(fontSize:10,color:Colors.white54)),
-      ])),const Icon(Icons.chevron_right_rounded,size:18,color:Colors.white38),
-    ]),
-  ),
- ));
+  final MusicAlbum album;
+  final VoidCallback onTap;
+  const _MusicAlbumCard({required this.album,required this.onTap});
+  @override Widget build(BuildContext context)=>AnimatedBuilder(
+    animation:MusicUserDataService.instance,
+    builder:(context,_) {
+      final state=MusicUserDataService.instance.albumState(album.id);
+      final progress=_musicAlbumRatingProgress(album.id);
+      return _CollectionCard(title:album.title,subtitle:album.artistName,
+        coverUrl:album.coverUrl,meta:album.year,onTap:onTap,
+        isFavorite:state.isFavorite,isCompleted:state.isListened,
+        isRated:state.rating!=null&&progress.complete,ratingStars:state.ratingStars,
+        ratingLabel:progress.label);
+    },
+  );
 }
 
 class _MusicInfoNotice extends StatelessWidget {
@@ -37712,7 +37442,7 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
 
     _didScrollToInitialTrack = true;
 
-    final target = (690.0 + (index * 82.0))
+    final target = (615.0 + (index * 100.0))
         .clamp(
           0.0,
           _trackScrollController.position.maxScrollExtent,
@@ -38463,7 +38193,6 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
       builder: (context, _) {
         final loaded = details;
         final tracks = loaded?.tracks ?? const <MusicTrack>[];
-        final multiDisc = tracks.any((track) => track.discNumber > 1);
         final albumState = userData.albumState(widget.album.id);
         final listenedTracks = tracks
             .where((track) => userData.trackState(track.id).isListened)
@@ -38543,7 +38272,7 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
               controller: _trackScrollController,
               slivers: [
                 SliverAppBar(
-                  expandedHeight: 235,
+                  expandedHeight: 180,
                   pinned: true,
                   backgroundColor: chipluxBackground,
                   title: const BrandedTitle(
@@ -38591,7 +38320,7 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
 
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
                     child: gradientCard(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -38604,7 +38333,18 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
                             Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
                               Text(widget.album.title,style:const TextStyle(fontSize:20,fontWeight:FontWeight.w900)),
                               const SizedBox(height:6),
-                              Text(widget.album.artistName,style:const TextStyle(color:chipluxPurple,fontSize:13,fontWeight:FontWeight.w700)),
+                              InkWell(
+                                borderRadius:BorderRadius.circular(8),
+                                onTap:widget.album.artistId.isEmpty?null:()=>Navigator.push(context,
+                                  MaterialPageRoute(builder:(_)=>MusicArtistPage(
+                                    artistId:widget.album.artistId,
+                                    initialName:widget.album.artistName,
+                                    initialType:music.cachedArtist(widget.album.artistId)?.type ?? '',
+                                  ))),
+                                child:Padding(padding:const EdgeInsets.symmetric(vertical:4),
+                                  child:Text(widget.album.artistName,maxLines:2,overflow:TextOverflow.ellipsis,
+                                    style:const TextStyle(color:chipluxPurple,fontSize:14,fontWeight:FontWeight.w700))),
+                              ),
                             ])),
                           ]),
                           const SizedBox(height: 10),
@@ -38704,8 +38444,6 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                sectionTitle('Your Album', Icons.tune_rounded),
-                                const SizedBox(height: 16),
                                 Row(
                                   children: [
                                     const Expanded(
@@ -39051,200 +38789,12 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
                         final state = userData.trackState(track.id);
                         final selectedFromSearch =
                             widget.initialTrackId == track.id;
-                        final number = multiDisc
-                            ? '${track.discNumber}.${track.number}'
-                            : track.number;
-
-                        final borderColor = selectedFromSearch
-                            ? chipluxPurple
-                            : state.isListened
-                            ? const Color(0xFF7BE8A8)
-                            : Colors.white;
-
-                        return Container(
-                          padding: const EdgeInsets.all(1),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(15),
-                            gradient: selectedFromSearch
-                                ? const LinearGradient(
-                                    colors: [
-                                      chipluxCyan,
-                                      chipluxViolet,
-                                      chipluxPurple,
-                                    ],
-                                  )
-                                : null,
-                            border: selectedFromSearch
-                                ? null
-                                : Border.all(
-                                    color: borderColor.withValues(
-                                      alpha: state.isListened ? 0.20 : 0.05,
-                                    ),
-                                  ),
-                          ),
-                          child: Container(
-                            padding:
-                                const EdgeInsets.fromLTRB(10, 9, 8, 7),
-                            decoration: BoxDecoration(
-                              color: state.isListened
-                                  ? const Color(0xFF173A29)
-                                  : chipluxSurface,
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                SizedBox(
-                                  width: 34,
-                                  child: Text(
-                                    number,
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(
-                                      color: Colors.white38,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 7),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        track.title,
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          color: state.isListened
-                                              ? const Color(0xFF7BE8A8)
-                                              : Colors.white,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Row(
-                                        children: [
-                                          if (track.durationLabel.isNotEmpty)
-                                            Text(
-                                              track.durationLabel,
-                                              style: const TextStyle(
-                                                color: Colors.white54,
-                                                fontSize: 10,
-                                              ),
-                                            ),
-                                          const Spacer(),
-                                          IconButton(
-                                            tooltip:
-                                                trUi(context, 'Listened'),
-                                            constraints: const BoxConstraints(
-                                              minWidth: 34,
-                                              minHeight: 34,
-                                            ),
-                                            padding: EdgeInsets.zero,
-                                            onPressed: trackingEnabled
-                                                ? () {
-                                                    unawaited(
-                                                      _toggleTrackListened(
-                                                        track,
-                                                        tracks,
-                                                      ),
-                                                    );
-                                                  }
-                                                : null,
-                                            icon: Icon(
-                                              state.isListened
-                                                  ? Icons.check_circle_rounded
-                                                  : Icons
-                                                      .radio_button_unchecked_rounded,
-                                              color: state.isListened
-                                                  ? const Color(0xFF7BE8A8)
-                                                  : Colors.white38,
-                                              size: 21,
-                                            ),
-                                          ),
-                                          IconButton(
-                                            tooltip:
-                                                trUi(context, 'Favorite'),
-                                            constraints: const BoxConstraints(
-                                              minWidth: 34,
-                                              minHeight: 34,
-                                            ),
-                                            padding: EdgeInsets.zero,
-                                            onPressed: trackingEnabled
-                                                ? () {
-                                                    unawaited(
-                                                      _toggleTrackFavorite(
-                                                        track,
-                                                      ),
-                                                    );
-                                                  }
-                                                : null,
-                                            icon: Icon(
-                                              state.isFavorite
-                                                  ? Icons.favorite_rounded
-                                                  : Icons.favorite_border_rounded,
-                                              color: state.isFavorite
-                                                  ? Colors.pinkAccent
-                                                  : Colors.white38,
-                                              size: 21,
-                                            ),
-                                          ),
-                                          InkWell(
-                                            borderRadius:
-                                                BorderRadius.circular(20),
-                                            onTap: trackingEnabled
-                                                ? () {
-                                                    _rateTrack(track);
-                                                  }
-                                                : null,
-                                            child: Padding(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                horizontal: 6,
-                                                vertical: 6,
-                                              ),
-                                              child: Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  Icon(
-                                                    state.ratingStars != null
-                                                        ? Icons.star_rounded
-                                                        : Icons
-                                                            .star_border_rounded,
-                                                    color:
-                                                        state.ratingStars != null
-                                                            ? Colors.amber
-                                                            : Colors.white38,
-                                                    size: 21,
-                                                  ),
-                                                  if (state.ratingStars !=
-                                                      null) ...[
-                                                    const SizedBox(width: 2),
-                                                    Text(
-                                                      '${state.ratingStars}',
-                                                      style: const TextStyle(
-                                                        color: Colors.amber,
-                                                        fontSize: 11,
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                        return _AlbumTrackCard(
+                          number:index+1,track:track,state:state,
+                          selected:selectedFromSearch,
+                          onListened:trackingEnabled?()=>unawaited(_toggleTrackListened(track,tracks)):null,
+                          onFavorite:trackingEnabled?()=>unawaited(_toggleTrackFavorite(track)):null,
+                          onRate:trackingEnabled?()=>_rateTrack(track):null,
                         );
                       },
                     ),
