@@ -254,6 +254,125 @@ class DiscoverCatalogService {
   static String mediaType(DiscoverCategory category) =>
       category == DiscoverCategory.movies ? 'movie' : 'tv';
 
+  // Curated discovery uses existing cached all-time/genre results for albums,
+  // and TMDB's discover endpoint for year and niche media filters.
+  Future<List<Map<String, dynamic>>> curatedList(
+    DiscoverCategory category, {
+    int? genreId,
+    int? startYear,
+    String? misc,
+    bool force = false,
+  }) async {
+    if (category == DiscoverCategory.albums) {
+      final effectiveGenre = switch (misc) {
+        'Instrumental' => 53,
+        'Soundtracks' => 16,
+        _ => genreId,
+      };
+      var rows = await load(category, DiscoverMode.top100,
+        genreId: effectiveGenre, force: force);
+      // Pool additional genres for albums so the decade selection has
+      // more than a single chart's candidates.
+      if (startYear != null || misc == 'Hidden Gems' || misc == 'Modern Classics' || misc == '90s Albums') {
+        final shared = await _sharedCategory(category, force: force);
+        final uniques = <String, Map<String, dynamic>>{};
+        for (final batch in shared.entries.where((entry) => entry.key.startsWith('studio:'))) {
+          for (final album in batch.value) {
+            final id = album['id']?.toString() ?? '';
+            if (id.isNotEmpty) uniques.putIfAbsent(id, () => album);
+          }
+        }
+        if (uniques.isNotEmpty) rows = uniques.values.toList();
+      }
+      int? yearOf(Map<String, dynamic> album) {
+        final date = album['first_release_date']?.toString() ?? '';
+        return date.length >= 4 ? int.tryParse(date.substring(0, 4)) : null;
+      }
+      if (startYear != null) {
+        rows = rows.where((album) =>
+          (yearOf(album) ?? 0) >= startYear && (yearOf(album) ?? 9999) < startYear + 10).toList();
+      }
+      if (misc == '90s Albums') {
+        rows = rows.where((a) => (yearOf(a) ?? 0) >= 1990 && (yearOf(a) ?? 9999) < 2000).toList();
+      } else if (misc == 'Modern Classics') {
+        rows = rows.where((a) => (yearOf(a) ?? 0) >= 2000 && (yearOf(a) ?? 9999) < 2020).toList();
+      } else if (misc == 'Hidden Gems') {
+        // Lower-charted catalog albums; an obscurity proxy, not a critic score.
+        rows = rows.where((a) => ((a['chart_rank'] as num?)?.toInt() ?? 0) >= 30).toList();
+      }
+      return rows.take(100).toList();
+    }
+    if (startYear == null && misc == null) {
+      return load(category, DiscoverMode.top100, genreId: genreId, force: force);
+    }
+    final type = mediaType(category);
+    final isMovie = type == 'movie';
+    int? effectiveGenre = genreId;
+    if (misc != null) {
+      effectiveGenre = switch (misc) {
+        'Animated Movies' => 16,
+        'Sitcoms & Comedy' => 35,
+        'Anime & Animation' => 16,
+        'Documentaries' => 99,
+        'Crime Series' => 80,
+        _ => null,
+      };
+    }
+    if (misc == 'Under 90 Minutes' || misc == 'Superhero Movies' || misc == 'Hidden Gems') {
+      final id = switch (misc) {
+        'Under 90 Minutes' => -1,
+        'Superhero Movies' => -2,
+        _ => -3,
+      };
+      final saved = await specialList(category, id);
+      if (saved != null && saved.isNotEmpty) return saved.take(100).toList();
+      // Runtime-specified lists use the existing TMDB service fallback.
+      final tmdb = TmdbService();
+      final List<dynamic> result = switch (id) {
+        -1 => await tmdb.getTop100ShortMovies(),
+        -2 => await tmdb.getTop100SuperheroMovies(),
+        _ => await tmdb.getTop100HiddenGems(),
+      };
+      return result.whereType<Map>().map((a) => Map<String, dynamic>.from(a)).take(100).toList();
+    }
+    final language = LocaleService.instance.effectiveLanguageCode == 'hr' ? 'hr-HR' : 'en-US';
+    final key = 'curated:${category.name}:$startYear:$misc:$effectiveGenre:$language';
+    if (!force && _cache.containsKey(key)) return _cache[key]!.rows;
+    final minVotes = isMovie ? '250' : '100';
+    final query = <String, String>{
+      'api_key': TmdbService.apiKey,
+      'language': language,
+      'include_adult': 'false',
+      'sort_by': 'vote_average.desc',
+      'vote_count.gte': minVotes,
+      if (effectiveGenre != null) 'with_genres': '$effectiveGenre',
+      if (startYear != null) '${isMovie ? 'primary_release_date' : 'first_air_date'}.gte': '$startYear-01-01',
+      if (startYear != null) '${isMovie ? 'primary_release_date' : 'first_air_date'}.lte': '${startYear + 9}-12-31',
+    };
+    final first = await _get(Uri.parse('${TmdbService.baseUrl}/discover/$type')
+      .replace(queryParameters: {...query, 'page': '1'}));
+    final totalPages = (first['total_pages'] as num?)?.toInt() ?? 1;
+    final pages = <Map<String, dynamic>>[first];
+    pages.addAll(await Future.wait([
+      for (var page = 2; page <= 5 && page <= totalPages; page++)
+        _get(Uri.parse('${TmdbService.baseUrl}/discover/$type')
+          .replace(queryParameters: {...query, 'page': '$page'})),
+    ]));
+    final seen = <int>{};
+    final rows = <Map<String, dynamic>>[];
+    for (final page in pages) {
+      for (final element in (page['results'] as List? ?? []).whereType<Map>()) {
+        final item = Map<String, dynamic>.from(element);
+        final id = (item['id'] as num?)?.toInt();
+        if (id != null && seen.add(id)) rows.add(item);
+      }
+    }
+    final result = rows.take(100).toList();
+    _cache[key] = (time: DateTime.now(), rows: result);
+    unawaited(_persist(key, result));
+    return result;
+  }
+
   Future<List<Map<String, dynamic>>> searchCachedAlbums(String query) async {
     final clean = query.trim().toLowerCase().replaceAll(
       RegExp(r'[^a-z0-9\u00c0-\u024f]+'),

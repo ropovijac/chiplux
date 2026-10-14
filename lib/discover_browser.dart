@@ -104,6 +104,7 @@ List<Map<String, dynamic>> _discoverPersonalize(
   List<Map<String, dynamic>> rows,
 ) {
   final weights = <int, double>{};
+  final artistWeights = <String, double>{};
   final seenNames = <String>{};
   final seenIds = <int>{};
   if (DiscoverCatalogService.isMusic(category)) {
@@ -124,6 +125,10 @@ List<Map<String, dynamic>> _discoverPersonalize(
           : entry.rating != null
           ? (entry.rating! - 5).toDouble()
           : 1.0;
+      if (category == DiscoverCategory.albums && entry.artistName.isNotEmpty) {
+        final artist = _discoverNormalize(entry.artistName);
+        artistWeights[artist] = (artistWeights[artist] ?? 0) + weight;
+      }
       for (final genre in DiscoverCatalogService.musicGenres) {
         if (entry.genres.any(
           (g) => _discoverNormalize(g) == _discoverNormalize(genre.name),
@@ -167,8 +172,17 @@ List<Map<String, dynamic>> _discoverPersonalize(
             : !seenIds.contains((row['id'] as num?)?.toInt()),
       )
       .toList();
-  double score(Map<String, dynamic> row) => (row['genre_ids'] as List? ?? [])
-      .fold<double>(0, (sum, g) => sum + (weights[g] ?? 0));
+  double score(Map<String, dynamic> row) {
+    final genreAffinity = (row['genre_ids'] as List? ?? [])
+        .fold<double>(0, (sum, g) => sum + (weights[g] ?? 0));
+    if (category != DiscoverCategory.albums) return genreAffinity;
+    final artistAffinity = artistWeights[_discoverNormalize(
+        row['artist_name']?.toString() ?? '')] ?? 0;
+    final rank = (row['chart_rank'] as num?)?.toInt() ?? 100;
+    // Popularity is a small tie-breaker, not a substitute for preferences.
+    final popularity = (101 - rank.clamp(1, 100)) / 100.0;
+    return genreAffinity * 0.25 + artistAffinity * 0.20 + popularity * 0.10;
+  }
   final original = <Map<String, dynamic>, int>{
     for (var i = 0; i < filtered.length; i++) filtered[i]: i,
   };
@@ -285,6 +299,15 @@ class _DiscoverBrowsePageState extends State<_DiscoverBrowsePage> {
             ],
           ),
         ),
+        if (widget.mode == DiscoverMode.top100)
+          Expanded(child: _ChipluxCategorizedLists(category: category)),
+        if (widget.mode != DiscoverMode.top100 &&
+            widget.mode == DiscoverMode.forYou &&
+            category == DiscoverCategory.albums)
+          const Expanded(child: _ChipluxAlbumRecommendation()),
+        if (widget.mode != DiscoverMode.top100 &&
+            !(widget.mode == DiscoverMode.forYou &&
+            category == DiscoverCategory.albums))
         Expanded(
           child: FutureBuilder<List<DiscoverGenre>>(
             future: genres,
@@ -876,7 +899,6 @@ class _DiscoverMusicTileState extends State<_DiscoverMusicTile> {
         meta: song ? (mapping?['album_title']?.toString()) : entry?.releaseYear,
         isFavorite: entry?.isFavorite ?? false,
         isCompleted: entry?.isListened ?? false,
-        showRating: false,
         onTap: opening ? null : open,
         opening: opening,
         width: widget.compact ? null : 305,
@@ -937,5 +959,281 @@ class _DiscoverDailyMediaTile extends StatelessWidget {
         ),
       );
     },
+  );
+}
+
+
+// The For You album is a single, actionable recommendation rather than a
+// collection of genre tiles. Feedback is saved per signed-in user on-device.
+class _ChipluxAlbumRecommendation extends StatefulWidget {
+  const _ChipluxAlbumRecommendation();
+  @override
+  State<_ChipluxAlbumRecommendation> createState() => _ChipluxAlbumRecommendationState();
+}
+
+class _ChipluxAlbumRecommendationState extends State<_ChipluxAlbumRecommendation> {
+  DiscoverGenre? genre;
+  late Future<List<Map<String, dynamic>>> future;
+  final excluded = <String>{};
+  int rotation = 0;
+  String? feedback;
+  SharedPreferences? prefs;
+  String get prefix => 'chiplux_album_discovery_${Supabase.instance.client.auth.currentUser?.id ?? 'guest'}_';
+
+  @override
+  void initState() {
+    super.initState();
+    future = _load();
+    SharedPreferences.getInstance().then((value) {
+      if (!mounted) return;
+      setState(() => prefs = value);
+    });
+  }
+
+  Future<List<Map<String, dynamic>>> _load() => DiscoverCatalogService.instance
+      .load(DiscoverCategory.albums, DiscoverMode.forYou, genreId: genre?.id);
+
+  String _key(Map<String, dynamic> row) => row['id']?.toString() ?? '';
+  String? _selectionKey;
+
+  void _reroll([bool reload = false]) {
+    setState(() {
+      if (_selectionKey != null) excluded.add(_selectionKey!);
+      rotation++;
+      feedback = null;
+      if (reload) future = _load();
+    });
+  }
+
+  Future<void> _record(Map<String, dynamic> row, bool interested) async {
+    final id = _key(row);
+    if (id.isEmpty) return;
+    await prefs?.setString('$prefix$id', interested ? 'interested' : 'not_for_me');
+    if (!mounted) return;
+    setState(() => feedback = interested ? 'interested' : 'not_for_me');
+  }
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<List<DiscoverGenre>>(
+    future: DiscoverCatalogService.instance.genres(DiscoverCategory.albums),
+    builder: (context, genreSnapshot) => ListView(
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
+      children: [
+        Text(_discoverText(context, 'An album for you', 'Album za tebe'),
+          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 6),
+        Text(_discoverText(context,
+          'Picked from your favorite genres and highly rated albums, with room for discovery.',
+          'Odabrano prema omiljenim žanrovima i ocjenama, uz poneko iznenađenje.'),
+          style: const TextStyle(color: Colors.white60)),
+        const SizedBox(height: 18),
+        DropdownButtonFormField<int>(
+          initialValue: genre?.id ?? 0,
+          dropdownColor: chipluxSurface,
+          decoration: InputDecoration(
+            labelText: _discoverText(context, 'Choose genre', 'Odaberi žanr'),
+            filled: true, fillColor: chipluxSurface,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14))),
+          items: [
+            DropdownMenuItem(value: 0, child: Text(_discoverText(context, 'Surprise me · All genres', 'Iznenadi me · Svi žanrovi'))),
+            for (final g in genreSnapshot.data ?? <DiscoverGenre>[])
+              DropdownMenuItem(value: g.id, child: Text(_discoverGenreLabel(context, g))),
+          ],
+          onChanged: (id) {
+            setState(() {
+              genre = id == 0 ? null : (genreSnapshot.data ?? []).firstWhere((g) => g.id == id);
+              excluded.clear(); rotation = 0; feedback = null;
+              future = _load();
+            });
+          },
+        ),
+        const SizedBox(height: 20),
+        FutureBuilder<List<Map<String, dynamic>>>(
+          future: future,
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return TextButton(
+              onPressed: () => setState(() => future = _load()),
+              child: Text(_discoverText(context, 'Could not load albums. Retry', 'Nije moguće učitati albume. Pokušaj ponovno')));
+            }
+            if (!snapshot.hasData) {
+              return const Center(child: Padding(
+              padding: EdgeInsets.all(38), child: CircularProgressIndicator()));
+            }
+            return AnimatedBuilder(
+              animation: MusicUserDataService.instance,
+              builder: (context, _) {
+                final ranked = _discoverPersonalize(DiscoverCategory.albums, snapshot.data!);
+                final available = ranked.where((r) =>
+                  !excluded.contains(_key(r)) && prefs?.getString('$prefix${_key(r)}') != 'not_for_me').toList();
+                if (available.isEmpty) {
+                  return Column(children: [
+                  Text(_discoverText(context, 'No more albums in this selection.', 'Nema više albuma u ovom izboru.')),
+                  TextButton(onPressed: () => setState(() { excluded.clear(); rotation++; }),
+                    child: Text(_discoverText(context, 'Start over', 'Kreni ponovno'))),
+                ]);
+                }
+                // Prefer the personalized leading pool; rotation exposes fresh options.
+                final row = available.first;
+                _selectionKey = _key(row);
+                final saved = prefs?.getString('$prefix${_key(row)}');
+                return Container(
+                  padding: const EdgeInsets.all(15),
+                  decoration: BoxDecoration(
+                    color: chipluxSurface, borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: chipluxViolet.withValues(alpha: .45))),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    _DiscoverMusicTile(item: row, category: DiscoverCategory.albums, compact: true),
+                    const SizedBox(height: 12),
+                    Row(children: [
+                      Expanded(child: OutlinedButton.icon(
+                        onPressed: () => _record(row, true),
+                        icon: Icon(saved == 'interested' || feedback == 'interested' ? Icons.favorite : Icons.favorite_border),
+                        label: Text(_discoverText(context, 'Interested', 'Zanima me')))),
+                      const SizedBox(width: 10),
+                      Expanded(child: OutlinedButton.icon(
+                        onPressed: () => _record(row, false),
+                        icon: const Icon(Icons.thumb_down_outlined),
+                        label: Text(_discoverText(context, 'Not for me', 'Nije za mene')))),
+                    ]),
+                    const SizedBox(height: 8),
+                    TextButton.icon(onPressed: _reroll,
+                      icon: const Icon(Icons.shuffle_rounded),
+                      label: Text(_discoverText(context, 'Another album', 'Drugi album'))),
+                  ]),
+                );
+              },
+            );
+          },
+        ),
+      ],
+    ),
+  );
+}
+
+class _ChipluxCategorizedLists extends StatefulWidget {
+  final DiscoverCategory category;
+  const _ChipluxCategorizedLists({required this.category});
+  @override
+  State<_ChipluxCategorizedLists> createState() => _ChipluxCategorizedListsState();
+}
+class _ChipluxCategorizedListsState extends State<_ChipluxCategorizedLists> {
+  int tab = 0;
+  @override
+  void didUpdateWidget(covariant _ChipluxCategorizedLists oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.category != widget.category) tab = 0;
+  }
+  @override
+  Widget build(BuildContext context) => Column(children: [
+    Padding(padding: const EdgeInsets.fromLTRB(16, 12, 16, 8), child: Row(children: [
+      for (final (index, name) in ['All Time', 'Decade', 'Genre', 'Misc'].indexed)
+        Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 2),
+          child: InkWell(onTap: () => setState(() => tab = index),
+            borderRadius: BorderRadius.circular(12),
+            child: Container(padding: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: tab == index ? chipluxViolet.withValues(alpha: .24) : chipluxSurface,
+                borderRadius: BorderRadius.circular(12)),
+              child: Text(name, textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold,
+                  color: tab == index ? Colors.white : Colors.white60)))))),
+    ])),
+    Expanded(child: FutureBuilder<List<DiscoverGenre>>(
+      future: DiscoverCatalogService.instance.genres(widget.category),
+      builder: (context, snapshot) {
+        if (tab == 2 && !snapshot.hasData) return const Center(child: CircularProgressIndicator());
+        if (tab == 2 && snapshot.hasError) return Center(child: TextButton(
+          onPressed: () => setState(() {}), child: const Text('Retry genres')));
+        }
+        final options = <({String title, DiscoverGenre? genre, int? startYear, String? misc})>[];
+        if (tab == 0) {
+          options.add((title: 'Top 100 ${_discoverCategoryLabel(context, widget.category)} of All Time', genre: null, startYear: null, misc: null));
+        } else if (tab == 1) {
+          for (final year in [2020, 2010, 2000, 1990, 1980, 1970, 1960]) {
+            options.add((title: '${year}s', genre: null, startYear: year, misc: null));
+          }
+        } else if (tab == 2) {
+          for (final genre in snapshot.data ?? <DiscoverGenre>[]) {
+            options.add((title: _discoverGenreLabel(context, genre), genre: genre, startYear: null, misc: null));
+          }
+        } else if (widget.category == DiscoverCategory.movies) {
+          for (final item in ['Hidden Gems', 'Under 90 Minutes', 'Superhero Movies', 'Animated Movies']) {
+            options.add((title: item, genre: null, startYear: null, misc: item));
+          }
+        } else if (widget.category == DiscoverCategory.tvShows) {
+          for (final item in ['Sitcoms & Comedy', 'Anime & Animation', 'Documentaries', 'Crime Series']) {
+            options.add((title: item, genre: null, startYear: null, misc: item));
+          }
+        } else {
+          for (final item in ['Hidden Gems', 'Modern Classics', '90s Albums', 'Instrumental', 'Soundtracks']) {
+            options.add((title: item, genre: null, startYear: null, misc: item));
+          }
+        }
+        return ListView.builder(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 26), itemCount: options.length,
+          itemBuilder: (context, index) {
+            final option = options[index];
+            return Padding(padding: const EdgeInsets.only(bottom: 12),
+              child: _DiscoverRankedCard(category: widget.category, genre: option.genre,
+                colorIndex: index, heading: option.title,
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) =>
+                  _ChipluxCuratedListPage(category: widget.category, title: option.title,
+                    genre: option.genre, startYear: option.startYear, misc: option.misc)))));
+          });
+      },
+    )),
+  ]);
+}
+
+class _ChipluxCuratedListPage extends StatefulWidget {
+  final DiscoverCategory category;
+  final String title;
+  final DiscoverGenre? genre;
+  final int? startYear;
+  final String? misc;
+  const _ChipluxCuratedListPage({required this.category, required this.title,
+    this.genre, this.startYear, this.misc});
+  @override
+  State<_ChipluxCuratedListPage> createState() => _ChipluxCuratedListPageState();
+}
+class _ChipluxCuratedListPageState extends State<_ChipluxCuratedListPage> {
+  late Future<List<Map<String, dynamic>>> future;
+  @override
+  void initState() { super.initState(); future = _load(); }
+  Future<List<Map<String, dynamic>>> _load({bool force = false}) =>
+    DiscoverCatalogService.instance.curatedList(widget.category,
+      genreId: widget.genre?.id, startYear: widget.startYear,
+      misc: widget.misc, force: force);
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: chipluxBackground, appBar: AppBar(title: Text(widget.title)),
+    body: ChipluxBackground(style: ChipluxBackgroundStyle.discover,
+      child: FutureBuilder<List<Map<String, dynamic>>>(future: future,
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(child: TextButton(
+            onPressed: () => setState(() => future = _load(force: true)),
+            child: Text(_discoverText(context, 'Could not load. Retry', 'Učitavanje nije uspjelo. Pokušaj ponovno'))));
+          }
+          if (!snapshot.hasData) { return const Center(child: CircularProgressIndicator()); }
+          final rows = snapshot.data!;
+          if (rows.isEmpty) {
+            return Center(child: Text(_discoverText(context,
+            'No titles available in this selection.', 'Nema naslova u ovom izboru.')));
+          }
+          return RefreshIndicator(onRefresh: () async {
+            final f = _load(force: true); setState(() => future = f); await f;
+          }, child: ListView.separated(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16), itemCount: rows.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 10),
+            itemBuilder: (context, index) => DiscoverCatalogService.isMusic(widget.category)
+              ? _DiscoverMusicTile(item: rows[index], category: widget.category,
+                  compact: true, rank: index + 1)
+              : _Top100Row(rank: index + 1, item: rows[index],
+                  mediaType: DiscoverCatalogService.mediaType(widget.category)),
+          ));
+        })),
   );
 }
