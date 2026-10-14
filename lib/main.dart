@@ -13410,7 +13410,7 @@ String _statusLabel(String status) {
 
 enum _SearchCategory { titles, music, people }
 
-enum _MusicSearchScope { albums, songs, groups }
+enum _MusicSearchScope { albums, groups }
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
@@ -13606,10 +13606,6 @@ class _SearchPageState extends State<SearchPage> {
       case _MusicSearchScope.albums:
         final albums = await musicService.searchStudioAlbums(query);
         return albums.take(20).map((result) => result.toSearchMap()).toList();
-
-      case _MusicSearchScope.songs:
-        final songs = await musicService.searchSongs(query);
-        return songs.take(20).map((result) => result.toSearchMap()).toList();
 
       case _MusicSearchScope.groups:
         final groups = await musicService.searchGroups(query);
@@ -13809,8 +13805,6 @@ class _SearchPageState extends State<SearchPage> {
         switch (musicScope) {
           case _MusicSearchScope.albums:
             return 'Search albums';
-          case _MusicSearchScope.songs:
-            return 'Search songs';
           case _MusicSearchScope.groups:
             return 'Search bands, groups, choirs and orchestras';
         }
@@ -13900,17 +13894,6 @@ class _SearchPageState extends State<SearchPage> {
                           selected: musicScope == _MusicSearchScope.albums,
                           onTap: () {
                             _changeMusicScope(_MusicSearchScope.albums);
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 7),
-                      Expanded(
-                        child: _MusicSearchScopePill(
-                          icon: Icons.music_note_rounded,
-                          label: 'Songs',
-                          selected: musicScope == _MusicSearchScope.songs,
-                          onTap: () {
-                            _changeMusicScope(_MusicSearchScope.songs);
                           },
                         ),
                       ),
@@ -15967,21 +15950,7 @@ class _MusicLibraryListCard extends StatelessWidget {
   final MusicLibraryEntry entry;
   final VoidCallback onTap;
   const _MusicLibraryListCard({required this.entry,required this.onTap});
-  @override Widget build(BuildContext context) {
-    final progress=entry.isAlbum?_musicAlbumRatingProgress(entry.entityId):null;
-    return _CollectionCard(
-      title:entry.title,
-      subtitle:entry.isTrack&&(entry.albumTitle?.isNotEmpty??false)
-        ? '${entry.artistName} · ${entry.albumTitle}':entry.artistName,
-      coverUrl:entry.coverUrl,meta:entry.releaseYear,onTap:onTap,
-      isFavorite:entry.isFavorite,
-      isCompleted:entry.isAlbum&&entry.isListened,
-      isRated:entry.rating!=null&&(progress?.complete??true),
-      ratingStars:entry.ratingStars,
-      ratingLabel:progress?.label,
-      status:entry.isPlanned?'Plan':entry.isDropped?'Dropped':null,
-    );
-  }
+  @override Widget build(BuildContext context)=>_MusicLibraryFramedCard(entry:entry,onTap:onTap);
 }
 
 class _WatchingTvCard extends StatefulWidget {

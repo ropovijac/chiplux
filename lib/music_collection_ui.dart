@@ -673,3 +673,395 @@ class _MusicMemberWorksPageState extends State<MusicMemberWorksPage> {
     ),
   );
 }
+
+class _TrendingAlbumCoverCard extends StatelessWidget {
+  final Map<String, dynamic> item;
+  final VoidCallback? onTap;
+  final bool isFavorite;
+  final int? ratingStars;
+  const _TrendingAlbumCoverCard({
+    required this.item,
+    this.onTap,
+    required this.isFavorite,
+    this.ratingStars,
+  });
+  @override
+  Widget build(BuildContext context) {
+    final album = item['_validated_album'] as MusicAlbum;
+    final source = item['cover_url']?.toString();
+    final cover = source == null || source.isEmpty
+        ? album.coverUrl
+        : source.replaceAll(RegExp(r'\d+x\d+bb'), '300x300bb');
+    return SizedBox(
+      width: 156,
+      child: Material(
+        color: chipluxSurface,
+        borderRadius: BorderRadius.circular(15),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Image.network(
+                        cover,
+                        width: 140,
+                        height: 140,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => Container(
+                          width: 140,
+                          height: 140,
+                          color: chipluxSurfaceLight,
+                          child: const Icon(
+                            Icons.album_rounded,
+                            size: 40,
+                            color: Colors.white30,
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (isFavorite)
+                      const Positioned(
+                        top: 6,
+                        right: 6,
+                        child: Icon(
+                          Icons.favorite_rounded,
+                          size: 20,
+                          color: Color(0xFFFF5C72),
+                          shadows: [Shadow(blurRadius: 5, color: Colors.black)],
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 7),
+                Text(
+                  album.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        album.artistName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: Colors.white54,
+                        ),
+                      ),
+                    ),
+                    if (ratingStars != null) ...[
+                      const Icon(
+                        Icons.star_rounded,
+                        size: 12,
+                        color: Color(0xFFFFC857),
+                      ),
+                      Text(
+                        '$ratingStars',
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: Color(0xFFFFC857),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MusicLibraryFramedCard extends StatefulWidget {
+  final MusicLibraryEntry entry;
+  final VoidCallback onTap;
+  const _MusicLibraryFramedCard({required this.entry, required this.onTap});
+  @override
+  State<_MusicLibraryFramedCard> createState() =>
+      _MusicLibraryFramedCardState();
+}
+
+class _MusicLibraryFramedCardState extends State<_MusicLibraryFramedCard> {
+  Future<MusicAlbumDetails>? details;
+  @override
+  void initState() {
+    super.initState();
+    _loadDetails();
+  }
+
+  @override
+  void didUpdateWidget(covariant _MusicLibraryFramedCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.entry.entityId != widget.entry.entityId ||
+        oldWidget.entry.entityType != widget.entry.entityType) {
+      _loadDetails();
+    }
+  }
+
+  void _loadDetails() {
+    // Only visible album cards load track metadata, independently of the list.
+    details = widget.entry.isAlbum
+        ? MusicService.instance.getAlbumDetails(widget.entry.toAlbum())
+        : null;
+  }
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<MusicAlbumDetails>(
+    future: details,
+    builder: (context, snapshot) => AnimatedBuilder(
+      animation: MusicUserDataService.instance,
+      builder: (context, _) => _card(snapshot.data),
+    ),
+  );
+  Widget _card(MusicAlbumDetails? details) {
+    final entry = widget.entry;
+    final service = MusicUserDataService.instance;
+    final state = entry.isAlbum
+        ? service.albumState(entry.entityId)
+        : service.trackState(entry.entityId);
+    final total = details?.tracks.length;
+    final rated = details == null
+        ? service.trackEntries
+              .where((e) => e.albumId == entry.entityId && e.rating != null)
+              .length
+        : details.tracks
+              .where((t) => service.trackState(t.id).rating != null)
+              .length;
+    final fullyRated =
+        state.rating != null &&
+        (!entry.isAlbum || (total != null && total > 0 && rated >= total));
+    final favorite = state.isFavorite;
+    const gold = Color(0xFFFFC857),
+        red = Color(0xFFFF5C72),
+        green = Color(0xFF7BE8A8);
+    final ratingColor = fullyRated ? gold : Colors.white38;
+    final colors = fullyRated && favorite
+        ? [gold, red]
+        : fullyRated
+        ? [gold, gold]
+        : favorite
+        ? [red, red]
+        : [
+            Colors.white.withValues(alpha: .05),
+            Colors.white.withValues(alpha: .05),
+          ];
+    final compact = entry.isTrack;
+    final size = compact ? 42.0 : 70.0;
+    final cover = entry.coverUrl;
+    Widget pill(String text, Color color) => Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: .14),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: .55), width: .8),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 9,
+          color: color,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+    return Padding(
+      padding: const EdgeInsets.only(top: 11),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            padding: EdgeInsets.all(fullyRated || favorite ? 1.4 : 1),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              gradient: LinearGradient(colors: colors),
+              boxShadow: [
+                if (fullyRated)
+                  BoxShadow(color: gold.withValues(alpha: .08), blurRadius: 12),
+                if (favorite)
+                  BoxShadow(color: red.withValues(alpha: .07), blurRadius: 12),
+              ],
+            ),
+            child: Material(
+              color: chipluxSurface,
+              borderRadius: BorderRadius.circular(15),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: widget.onTap,
+                child: Container(
+                  constraints: BoxConstraints(minHeight: compact ? 64 : 96),
+                  padding: EdgeInsets.fromLTRB(8, compact ? 9 : 12, 8, 8),
+                  child: Row(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: cover != null && cover.isNotEmpty
+                            ? Image.network(
+                                cover,
+                                width: size,
+                                height: size,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, _, _) => SizedBox(
+                                  width: size,
+                                  height: size,
+                                  child: const Icon(
+                                    Icons.album_outlined,
+                                    color: Colors.white30,
+                                  ),
+                                ),
+                              )
+                            : SizedBox(
+                                width: size,
+                                height: size,
+                                child: const Icon(
+                                  Icons.music_note_rounded,
+                                  color: Colors.white30,
+                                ),
+                              ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              entry.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: compact ? 13 : 15,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              compact && entry.albumTitle?.isNotEmpty == true
+                                  ? '${entry.artistName} · ${entry.albumTitle}'
+                                  : [
+                                      entry.artistName,
+                                      if (entry.releaseYear.isNotEmpty)
+                                        entry.releaseYear,
+                                    ].join(' · '),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: compact ? 10 : 11,
+                                color: Colors.white54,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 4,
+                              children: [
+                                if (state.isListened)
+                                  pill('Completed', green)
+                                else if (entry.isPlanned)
+                                  pill('Plan', chipluxPurple)
+                                else if (entry.isDropped)
+                                  pill('Dropped', red),
+                                if (entry.isAlbum)
+                                  pill(
+                                    'Rated Songs $rated/${total ?? '?'}',
+                                    ratingColor,
+                                  )
+                                else
+                                  pill(
+                                    state.rating != null
+                                        ? 'Rated'
+                                        : 'Not Rated',
+                                    ratingColor,
+                                  ),
+                                if (favorite) pill('Favorited', red),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            top: -11,
+            left: 18,
+            child: Container(
+              height: 27,
+              padding: EdgeInsets.symmetric(
+                horizontal: state.ratingStars != null ? 8 : 4,
+              ),
+              decoration: BoxDecoration(
+                color: chipluxSurface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: fullyRated ? gold : Colors.white24,
+                  width: 1.4,
+                ),
+                boxShadow: [
+                  if (fullyRated)
+                    BoxShadow(
+                      color: gold.withValues(alpha: .20),
+                      blurRadius: 8,
+                    ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.star_rounded, size: 17, color: ratingColor),
+                  if (state.ratingStars != null) ...[
+                    const SizedBox(width: 3),
+                    Text(
+                      '${state.ratingStars}',
+                      style: TextStyle(
+                        color: ratingColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          if (favorite)
+            Positioned(
+              top: -11,
+              right: 18,
+              child: Container(
+                width: 27,
+                height: 27,
+                decoration: BoxDecoration(
+                  color: chipluxSurface,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: red, width: 1.4),
+                  boxShadow: [
+                    BoxShadow(color: red.withValues(alpha: .22), blurRadius: 8),
+                  ],
+                ),
+                child: const Icon(Icons.favorite_rounded, size: 16, color: red),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}

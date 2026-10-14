@@ -175,7 +175,9 @@ List<Map<String, dynamic>> _discoverDailyPick(
     seed = ((seed ^ code) * 16777619) & 0x7fffffff;
   }
   // Choose from the popular pool after the library's exclusions/preferences.
-  final pool = rows.take(20).toList();
+  final pool = category == DiscoverCategory.albums
+      ? rows
+      : rows.take(20).toList();
   return [pool[math.Random(seed).nextInt(pool.length)]];
 }
 
@@ -221,7 +223,11 @@ class _DiscoverBrowsePageState extends State<_DiscoverBrowsePage> {
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
           child: Row(
             children: [
-              for (final value in DiscoverCategory.values)
+              for (final value in const [
+                DiscoverCategory.movies,
+                DiscoverCategory.tvShows,
+                DiscoverCategory.albums,
+              ])
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 3),
@@ -497,29 +503,6 @@ class _DiscoverGenreSectionState extends State<_DiscoverGenreSection> {
       genreId: widget.genre?.id,
       force: force,
     );
-    if (widget.category == DiscoverCategory.songs) {
-      if (widget.mode == DiscoverMode.forYou) {
-        final candidates = _discoverPersonalize(
-          widget.category,
-          rows,
-        ).take(20).toList();
-        final preferred = _discoverDailyPick(
-          widget.category,
-          widget.genre,
-          candidates,
-        );
-        if (preferred.isEmpty) {
-          return [];
-        }
-        final first = candidates.indexOf(preferred.first);
-        return _discoverResolveDailySong(
-          candidates,
-          first,
-          MusicService.instance.resolveChartSong,
-        );
-      }
-      return MusicService.instance.prepareChartSongs(rows.take(12).toList());
-    }
     return rows;
   }
 
@@ -547,7 +530,9 @@ class _DiscoverGenreSectionState extends State<_DiscoverGenreSection> {
                     child: Text(
                       _discoverText(
                         context,
-                        'Could not load this section. Retry',
+                        widget.category == DiscoverCategory.albums
+                            ? 'Album cache is not ready or could not be reached. Retry'
+                            : 'Could not load this section. Retry',
                         'Ovaj odjeljak nije učitan. Pokušaj ponovno',
                       ),
                     ),
@@ -584,8 +569,8 @@ class _DiscoverGenreSectionState extends State<_DiscoverGenreSection> {
                     child: Text(
                       _discoverText(
                         context,
-                        'No titles available in this section yet.',
-                        'Trenutno nema dostupnih naslova u ovom odjeljku.',
+                        'No unseen recommendations remain in this saved selection.',
+                        'Nema novih preporuka u ovom spremljenom izboru.',
                       ),
                       style: const TextStyle(color: Colors.white54),
                     ),
@@ -613,9 +598,8 @@ class _DiscoverGenreSectionState extends State<_DiscoverGenreSection> {
                 }
                 return SizedBox(
                   height:
-                      (154 * MediaQuery.textScalerOf(context).scale(14) / 14)
-                          .clamp(154, 308)
-                          .toDouble(),
+                      200 +
+                      (MediaQuery.textScalerOf(context).scale(12) - 12) * 4,
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
                     itemCount: rows.take(20).length,
@@ -651,64 +635,13 @@ class _DiscoverRankedPageState extends State<_DiscoverRankedPage> {
     future = load();
   }
 
-  List<Map<String, dynamic>> songPool = [];
-  List<Map<String, dynamic>> wiredSongs = [];
-  int songOffset = 0;
-  bool moreLoading = false;
-  String? moreError;
-  Future<List<Map<String, dynamic>>> load({bool force = false}) async {
-    final rows = await DiscoverCatalogService.instance.load(
-      widget.category,
-      DiscoverMode.top100,
-      genreId: widget.genre?.id,
-      force: force,
-    );
-    if (widget.category != DiscoverCategory.songs) {
-      return rows;
-    }
-    songPool = rows;
-    songOffset = 0;
-    wiredSongs = [];
-    return nextSongs();
-  }
-
-  Future<List<Map<String, dynamic>>> nextSongs() async {
-    final batch = songPool.skip(songOffset).take(12).toList();
-    final resolved = await MusicService.instance.prepareChartSongs(batch);
-    songOffset += batch.length;
-    wiredSongs.addAll(resolved);
-    return List.of(wiredSongs);
-  }
-
-  Future<void> loadMore() async {
-    if (moreLoading) {
-      return;
-    }
-    setState(() {
-      moreLoading = true;
-      moreError = null;
-    });
-    try {
-      final rows = await nextSongs();
-      if (mounted) {
-        setState(() => future = Future.value(rows));
-      }
-    } catch (_) {
-      if (mounted) {
-        setState(
-          () => moreError = _discoverText(
-            context,
-            'Could not load songs. Retry.',
-            'Pjesme nisu učitane. Pokušaj ponovno.',
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => moreLoading = false);
-      }
-    }
-  }
+  Future<List<Map<String, dynamic>>> load({bool force = false}) =>
+      DiscoverCatalogService.instance.load(
+        widget.category,
+        DiscoverMode.top100,
+        genreId: widget.genre?.id,
+        force: force,
+      );
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -735,7 +668,9 @@ class _DiscoverRankedPageState extends State<_DiscoverRankedPage> {
                 child: Text(
                   _discoverText(
                     context,
-                    'Could not load this list. Retry',
+                    widget.category == DiscoverCategory.albums
+                        ? 'Album cache is not ready or could not be reached. Retry'
+                        : 'Could not load this list. Retry',
                     'Lista nije učitana. Pokušaj ponovno',
                   ),
                 ),
@@ -746,6 +681,10 @@ class _DiscoverRankedPageState extends State<_DiscoverRankedPage> {
             return const Center(child: CircularProgressIndicator());
           }
           final rows = snapshot.data!;
+          final partialAlbums =
+              widget.category == DiscoverCategory.albums &&
+              rows.isNotEmpty &&
+              rows.length < 100;
           return RefreshIndicator(
             onRefresh: () async {
               final next = load(force: true);
@@ -759,31 +698,22 @@ class _DiscoverRankedPageState extends State<_DiscoverRankedPage> {
             child: ListView.separated(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(16),
-              itemCount:
-                  (rows.isEmpty ? 1 : rows.length) +
-                  (widget.category == DiscoverCategory.songs &&
-                          songOffset < songPool.length
-                      ? 1
-                      : 0),
+              itemCount: rows.isEmpty
+                  ? 1
+                  : rows.length + (partialAlbums ? 1 : 0),
               separatorBuilder: (_, _) => const SizedBox(height: 10),
               itemBuilder: (context, index) {
-                if (index == (rows.isEmpty ? 1 : rows.length)) {
-                  return Center(
-                    child: TextButton(
-                      onPressed: moreLoading ? null : loadMore,
-                      child: moreLoading
-                          ? const CircularProgressIndicator()
-                          : Text(
-                              moreError ??
-                                  _discoverText(
-                                    context,
-                                    'Load more songs',
-                                    'Učitaj još pjesama',
-                                  ),
-                            ),
+                if (partialAlbums && index == 0) {
+                  return Text(
+                    _discoverText(
+                      context,
+                      '${rows.length} studio albums available in this genre. Pull down to refresh.',
+                      '${rows.length} studijskih albuma u ovom žanru. Povuci za osvježavanje.',
                     ),
+                    style: const TextStyle(color: Colors.white60),
                   );
                 }
+                final rowIndex = index - (partialAlbums ? 1 : 0);
                 if (rows.isEmpty) {
                   return Text(
                     _discoverText(
@@ -795,19 +725,18 @@ class _DiscoverRankedPageState extends State<_DiscoverRankedPage> {
                 }
                 if (!DiscoverCatalogService.isMusic(widget.category)) {
                   return _Top100Row(
-                    rank: index + 1,
-                    item: rows[index],
+                    rank: rowIndex + 1,
+                    item: rows[rowIndex],
                     mediaType: DiscoverCatalogService.mediaType(
                       widget.category,
                     ),
                   );
                 }
                 return _DiscoverMusicTile(
-                  item: rows[index],
+                  item: rows[rowIndex],
                   category: widget.category,
                   compact: true,
-                  rank:
-                      (rows[index]['chart_rank'] as num?)?.toInt() ?? index + 1,
+                  rank: rowIndex + 1,
                 );
               },
             ),
@@ -851,41 +780,16 @@ class _DiscoverMusicTileState extends State<_DiscoverMusicTile> {
         album = MusicService.instance.albumFromMapping(mapping);
         trackId = mapping['track_id']?.toString();
       } else {
-        final title = widget.item['name']?.toString() ?? '';
-        final artist = widget.item['artist_name']?.toString() ?? '';
-        final cleanTitle = title.replaceAll(RegExp(r'["\\]'), ' ');
-        final cleanArtist = artist.replaceAll(RegExp(r'["\\]'), ' ');
-        final results = await MusicService.instance.searchStudioAlbums(
-          'releasegroup:"$cleanTitle" AND artist:"$cleanArtist"',
+        // Canonical metadata was resolved by the daily server job.
+        // Opening an album must not perform another title search.
+        album = MusicAlbum(
+          id: widget.item['id'] as String,
+          title: widget.item['name'] as String,
+          artistId: widget.item['artist_id'] as String,
+          artistName: widget.item['artist_name'] as String,
+          firstReleaseDate: widget.item['first_release_date']?.toString() ?? '',
+          genres: (widget.item['genres'] as List? ?? []).cast<String>(),
         );
-        final exact =
-            results
-                .where(
-                  (result) =>
-                      _discoverNormalize(result.album.title) ==
-                          _discoverNormalize(title) &&
-                      _discoverNormalize(result.album.artistName) ==
-                          _discoverNormalize(artist),
-                )
-                .toList()
-              ..sort((a, b) => b.score.compareTo(a.score));
-        if (exact.isEmpty) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  _discoverText(
-                    context,
-                    'Album not found.',
-                    'Album nije pronađen.',
-                  ),
-                ),
-              ),
-            );
-          }
-          return;
-        }
-        album = exact.first.album;
       }
       if (!mounted) {
         return;
@@ -943,6 +847,14 @@ class _DiscoverMusicTileState extends State<_DiscoverMusicTile> {
       final progress = !song && entry != null
           ? _musicAlbumRatingProgress(entry.entityId)
           : null;
+      if (!widget.compact) {
+        return _TrendingAlbumCoverCard(
+          item: widget.item,
+          onTap: opening ? null : open,
+          isFavorite: entry?.isFavorite ?? false,
+          ratingStars: entry?.ratingStars,
+        );
+      }
       return _CollectionCard(
         title: title,
         subtitle: artist,
@@ -1014,22 +926,4 @@ class _DiscoverDailyMediaTile extends StatelessWidget {
       );
     },
   );
-}
-
-Future<List<Map<String, dynamic>>> _discoverResolveDailySong(
-  List<Map<String, dynamic>> candidates,
-  int start,
-  Future<Map<String, dynamic>?> Function(Map<String, dynamic>) resolve,
-) async {
-  if (candidates.isEmpty) {
-    return [];
-  }
-  // Resolve just one daily selection, with at most two album-match fallbacks.
-  for (var i = 0; i < math.min(3, candidates.length); i++) {
-    final result = await resolve(candidates[(start + i) % candidates.length]);
-    if (result != null) {
-      return [result];
-    }
-  }
-  return [];
 }

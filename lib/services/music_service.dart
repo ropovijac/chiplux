@@ -547,6 +547,153 @@ class MusicService {
     return rows;
   }
 
+  final _studioChartRequests = <String, Future<MusicAlbum?>>{};
+  final _studioChartPool = _MusicPhotoPool();
+  String _studioName(String value) => value
+      .toLowerCase()
+      .replaceAll(RegExp(r'[^a-z0-9\u00c0-\u024f]+'), ' ')
+      .trim();
+
+  Future<Map<String, dynamic>?> resolveStudioChartAlbum(
+    Map<String, dynamic> item,
+  ) async {
+    final title = item['name']?.toString() ?? '';
+    final artist = item['artist_name']?.toString() ?? '';
+    final key = '${_studioName(title)}:${_studioName(artist)}';
+    final album = await _studioChartRequests.putIfAbsent(
+      key,
+      () => _studioChartPool
+          .run(() async {
+            final cleanTitle = title.replaceAll(RegExp(r'["\\]'), ' ');
+            final cleanArtist = artist.replaceAll(RegExp(r'["\\]'), ' ');
+            // Search results are accepted only after the canonical release type is checked.
+            // No EP/single/compilation is exposed while its type is still unknown.
+            final results = await searchStudioAlbums(
+              'releasegroup:"$cleanTitle" AND artist:"$cleanArtist"',
+            );
+            final exact =
+                results
+                    .where(
+                      (result) =>
+                          result.album.primaryType == 'Album' &&
+                          result.album.secondaryTypes.isEmpty &&
+                          _studioName(result.album.title) ==
+                              _studioName(title) &&
+                          _studioName(result.album.artistName) ==
+                              _studioName(artist),
+                    )
+                    .toList()
+                  ..sort((a, b) => b.score.compareTo(a.score));
+            return exact.isEmpty ? null : exact.first.album;
+          })
+          .catchError((Object error, StackTrace stack) {
+            _studioChartRequests.remove(key);
+            Error.throwWithStackTrace(error, stack);
+          }),
+    );
+    return album == null ? null : {...item, '_validated_album': album};
+  }
+
+  Future<List<Map<String, dynamic>>> prepareStudioChartAlbums(
+    List<Map<String, dynamic>> rows,
+  ) async {
+    var pending = <Map<String, dynamic>>[];
+    var clauses = <String>[];
+    void startBatch() {
+      if (pending.isEmpty) {
+        return;
+      }
+      final batch = List<Map<String, dynamic>>.of(pending);
+      final request = _studioChartPool.run(
+        () => _loadStudioChartBatch(clauses.join(' OR ')),
+      );
+      for (final row in batch) {
+        final title = row['name']?.toString() ?? '';
+        final artist = row['artist_name']?.toString() ?? '';
+        final key = '${_studioName(title)}:${_studioName(artist)}';
+        _studioChartRequests.putIfAbsent(
+          key,
+          () => request
+              .then<MusicAlbum?>((albums) {
+                for (final album in albums) {
+                  if (_studioName(album.title) == _studioName(title) &&
+                      _studioName(album.artistName) == _studioName(artist)) {
+                    return album;
+                  }
+                }
+                return null;
+              })
+              .catchError((Object error, StackTrace stack) {
+                _studioChartRequests.remove(key);
+                Error.throwWithStackTrace(error, stack);
+              }),
+        );
+      }
+      pending = [];
+      clauses = [];
+    }
+
+    for (final row in rows) {
+      final title = row['name']?.toString() ?? '';
+      final artist = row['artist_name']?.toString() ?? '';
+      final key = '${_studioName(title)}:${_studioName(artist)}';
+      if (_studioChartRequests.containsKey(key)) {
+        continue;
+      }
+      final cleanTitle = title.replaceAll(RegExp(r'["\\]'), ' ');
+      final cleanArtist = artist.replaceAll(RegExp(r'["\\]'), ' ');
+      final clause = '(releasegroup:"$cleanTitle" AND artist:"$cleanArtist")';
+      if (clause.length > 550) {
+        _studioChartRequests[key] = Future.value(null);
+        continue;
+      }
+      if (clauses.isNotEmpty &&
+          [...clauses, clause].join(' OR ').length > 550) {
+        startBatch();
+      }
+      pending.add(row);
+      clauses.add(clause);
+    }
+    startBatch();
+    final results = await Future.wait(rows.map(resolveStudioChartAlbum));
+    return results.whereType<Map<String, dynamic>>().toList();
+  }
+
+  Future<List<MusicAlbum>> _loadStudioChartBatch(String query) async {
+    final data = await _getJson(
+      _uri('/release-group', {'query': query, 'limit': '100', 'offset': '0'}),
+    );
+    final raw =
+        (data['release-groups'] as List? ?? []).whereType<Map>().toList()..sort(
+          (a, b) =>
+              (_asInt(b['score']) ?? 0).compareTo(_asInt(a['score']) ?? 0),
+        );
+    final albums = <MusicAlbum>[];
+    for (final group in raw) {
+      if (group['primary-type'] != 'Album' ||
+          _stringList(group['secondary-types']).isNotEmpty) {
+        continue;
+      }
+      final id = group['id']?.toString() ?? '';
+      final title = group['title']?.toString() ?? '';
+      if (id.isEmpty || title.isEmpty) {
+        continue;
+      }
+      albums.add(
+        MusicAlbum(
+          id: id,
+          title: title,
+          artistId: _firstArtistId(group['artist-credit']),
+          artistName: _artistCreditName(group['artist-credit']),
+          firstReleaseDate: group['first-release-date']?.toString() ?? '',
+          primaryType: 'Album',
+          secondaryTypes: const [],
+        ),
+      );
+    }
+    return albums;
+  }
+
   MusicAlbum albumFromMapping(Map mapping) => MusicAlbum(
     id: mapping['album_id'].toString(),
     title: mapping['album_title'].toString(),
