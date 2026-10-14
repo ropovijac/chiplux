@@ -99,15 +99,6 @@ class _CollectionCard extends StatelessWidget {
             fontWeight: FontWeight.w600,
           ),
         ),
-      if (status != null)
-        Text(
-          trUi(context, status!),
-          style: TextStyle(
-            color: status == 'Dropped' ? red : chipluxPurple,
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
     ];
     return Container(
       width: width,
