@@ -1142,10 +1142,22 @@ class _ChipluxCategorizedListsState extends State<_ChipluxCategorizedLists> {
     Expanded(child: FutureBuilder<List<DiscoverGenre>>(
       future: DiscoverCatalogService.instance.genres(widget.category),
       builder: (context, snapshot) {
-        if (tab == 2 && !snapshot.hasData) return const Center(child: CircularProgressIndicator());
-        if (tab == 2 && snapshot.hasError) return Center(child: TextButton(
-          onPressed: () => setState(() {}), child: const Text('Retry genres')));
-        }
+  if (tab == 2 && !snapshot.hasData && !snapshot.hasError) {
+    return const Center(
+      child: CircularProgressIndicator(),
+    );
+  }
+
+  if (tab == 2 && snapshot.hasError) {
+    return Center(
+      child: TextButton(
+        onPressed: () => setState(() {}),
+        child: const Text('Retry genres'),
+      ),
+    );
+  }
+
+  // Keep the existing options declaration and list-building code here.
         final options = <({String title, DiscoverGenre? genre, int? startYear, String? misc})>[];
         if (tab == 0) {
           options.add((title: 'Top 100 ${_discoverCategoryLabel(context, widget.category)} of All Time', genre: null, startYear: null, misc: null));
