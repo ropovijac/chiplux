@@ -230,7 +230,7 @@ class DiscoverCatalogService {
     DiscoverGenre(6, 'Country'),
     DiscoverGenre(17, 'Dance'),
     DiscoverGenre(7, 'Electronic'),
-    DiscoverGenre(50, 'Fitness & Workout'),
+    DiscoverGenre(1153, 'Metal'),
     DiscoverGenre(10, 'Singer/Songwriter'),
     DiscoverGenre(18, 'Hip-Hop/Rap'),
     DiscoverGenre(8, 'Holiday'),
@@ -253,6 +253,52 @@ class DiscoverCatalogService {
       category == DiscoverCategory.albums || category == DiscoverCategory.songs;
   static String mediaType(DiscoverCategory category) =>
       category == DiscoverCategory.movies ? 'movie' : 'tv';
+
+  Future<List<Map<String, dynamic>>> searchCachedAlbums(String query) async {
+    final clean = query.trim().toLowerCase().replaceAll(
+      RegExp(r'[^a-z0-9\u00c0-\u024f]+'),
+      ' ',
+    );
+    if (clean.length < 2) return const [];
+    final words = clean.split(' ').where((word) => word.isNotEmpty).toList();
+    final data = await _sharedCategory(DiscoverCategory.albums);
+    final matches = <String, Map<String, dynamic>>{};
+    for (final entry in data.entries.where(
+      (entry) => entry.key.startsWith('studio:'),
+    )) {
+      for (final row in entry.value) {
+        final title = row['name']?.toString().toLowerCase() ?? '';
+        final artist = row['artist_name']?.toString().toLowerCase() ?? '';
+        final haystack = '$title $artist'.replaceAll(
+          RegExp(r'[^a-z0-9\u00c0-\u024f]+'),
+          ' ',
+        );
+        if (words.every(haystack.contains)) {
+          final id = row['id']?.toString() ?? '';
+          if (id.isNotEmpty) matches.putIfAbsent(id, () => row);
+        }
+      }
+    }
+    int rank(Map<String, dynamic> row) {
+      final title = row['name']?.toString().toLowerCase() ?? '';
+      final artist = row['artist_name']?.toString().toLowerCase() ?? '';
+      if (title == clean) return 0;
+      if (title.startsWith(clean)) return 1;
+      if (artist == clean) return 2;
+      if (artist.startsWith(clean)) return 3;
+      return 4;
+    }
+
+    final rows = matches.values.toList()
+      ..sort((a, b) {
+        final byRank = rank(a).compareTo(rank(b));
+        if (byRank != 0) return byRank;
+        return ((a['chart_rank'] as num?)?.toInt() ?? 9999).compareTo(
+          (b['chart_rank'] as num?)?.toInt() ?? 9999,
+        );
+      });
+    return rows.take(20).toList(growable: false);
+  }
 
   void invalidate(DiscoverCategory category) {
     _cache.removeWhere((key, value) => key.startsWith('${category.name}:'));

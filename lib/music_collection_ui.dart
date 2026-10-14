@@ -26,7 +26,12 @@ class _CollectionCard extends StatelessWidget {
   final String title, subtitle;
   final String? coverUrl, meta, ratingLabel, status;
   final VoidCallback? onTap;
-  final bool isFavorite, isCompleted, isRated, opening, showTracking;
+  final bool isFavorite,
+      isCompleted,
+      isRated,
+      opening,
+      showTracking,
+      showRating;
   final int? ratingStars;
   final int? rank;
   final double? width;
@@ -46,13 +51,14 @@ class _CollectionCard extends StatelessWidget {
     this.width,
     this.rank,
     this.showTracking = true,
+    this.showRating = true,
   });
   @override
   Widget build(BuildContext context) {
     const gold = Color(0xFFFFC857),
         red = Color(0xFFFF5C72),
         green = Color(0xFF7BE8A8);
-    final base = isRated
+    final base = showRating && isRated
         ? gold
         : isCompleted
         ? green
@@ -64,7 +70,7 @@ class _CollectionCard extends StatelessWidget {
       if (isCompleted)
         const Icon(Icons.check_circle_rounded, size: 15, color: green),
       if (isFavorite) const Icon(Icons.favorite_rounded, size: 15, color: red),
-      if (ratingStars != null)
+      if (showRating && ratingStars != null)
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -80,12 +86,12 @@ class _CollectionCard extends StatelessWidget {
             ),
           ],
         )
-      else
+      else if (showRating)
         const Text(
           'Not rated',
           style: TextStyle(color: Colors.white38, fontSize: 10),
         ),
-      if (ratingLabel != null)
+      if (showRating && ratingLabel != null)
         Text(
           ratingLabel!,
           style: TextStyle(
@@ -143,6 +149,10 @@ class _CollectionCard extends StatelessWidget {
                           width: 68,
                           height: 68,
                           fit: BoxFit.cover,
+                          cacheWidth: 180,
+                          filterQuality: FilterQuality.medium,
+                          loadingBuilder: (_, child, progress) =>
+                              progress == null ? child : _artFallback(),
                           errorBuilder: (_, _, _) => _artFallback(),
                         )
                       : _artFallback(),
@@ -678,19 +688,17 @@ class _TrendingAlbumCoverCard extends StatelessWidget {
   final Map<String, dynamic> item;
   final VoidCallback? onTap;
   final bool isFavorite;
-  final int? ratingStars;
   const _TrendingAlbumCoverCard({
     required this.item,
     this.onTap,
     required this.isFavorite,
-    this.ratingStars,
   });
   @override
   Widget build(BuildContext context) {
-    final album = item['_validated_album'] as MusicAlbum;
+    final album = _discoverAlbumFromItem(item);
     final source = item['cover_url']?.toString();
     final cover = source == null || source.isEmpty
-        ? album.coverUrl
+        ? album?.coverUrl ?? ''
         : source.replaceAll(RegExp(r'\d+x\d+bb'), '300x300bb');
     return SizedBox(
       width: 156,
@@ -709,22 +717,48 @@ class _TrendingAlbumCoverCard extends StatelessWidget {
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(10),
-                      child: Image.network(
-                        cover,
-                        width: 140,
-                        height: 140,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => Container(
-                          width: 140,
-                          height: 140,
-                          color: chipluxSurfaceLight,
-                          child: const Icon(
-                            Icons.album_rounded,
-                            size: 40,
-                            color: Colors.white30,
-                          ),
-                        ),
-                      ),
+                      child: cover.isEmpty
+                          ? Container(
+                              width: 140,
+                              height: 140,
+                              color: chipluxSurfaceLight,
+                              child: const Icon(
+                                Icons.album_rounded,
+                                size: 40,
+                                color: Colors.white30,
+                              ),
+                            )
+                          : Image.network(
+                              cover,
+                              width: 140,
+                              height: 140,
+                              fit: BoxFit.cover,
+                              cacheWidth: 300,
+                              filterQuality: FilterQuality.medium,
+                              loadingBuilder: (_, child, progress) =>
+                                  progress == null
+                                  ? child
+                                  : Container(
+                                      width: 140,
+                                      height: 140,
+                                      color: chipluxSurfaceLight,
+                                      child: const Icon(
+                                        Icons.album_rounded,
+                                        size: 40,
+                                        color: Colors.white30,
+                                      ),
+                                    ),
+                              errorBuilder: (_, _, _) => Container(
+                                width: 140,
+                                height: 140,
+                                color: chipluxSurfaceLight,
+                                child: const Icon(
+                                  Icons.album_rounded,
+                                  size: 40,
+                                  color: Colors.white30,
+                                ),
+                              ),
+                            ),
                     ),
                     if (isFavorite)
                       const Positioned(
@@ -741,7 +775,7 @@ class _TrendingAlbumCoverCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 7),
                 Text(
-                  album.title,
+                  album?.title ?? item['name']?.toString() ?? '',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -754,7 +788,9 @@ class _TrendingAlbumCoverCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        album.artistName,
+                        album?.artistName ??
+                            item['artist_name']?.toString() ??
+                            '',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -763,20 +799,6 @@ class _TrendingAlbumCoverCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                    if (ratingStars != null) ...[
-                      const Icon(
-                        Icons.star_rounded,
-                        size: 12,
-                        color: Color(0xFFFFC857),
-                      ),
-                      Text(
-                        '$ratingStars',
-                        style: const TextStyle(
-                          fontSize: 10,
-                          color: Color(0xFFFFC857),
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ],

@@ -23,7 +23,7 @@ String _discoverGenreLabel(BuildContext context, DiscoverGenre genre) {
     'Country': 'Country',
     'Dance': 'Plesna',
     'Electronic': 'Elektronička',
-    'Fitness & Workout': 'Fitness i trening',
+    'Metal': 'Metal',
     'Singer/Songwriter': 'Kantautorska',
     'Hip-Hop/Rap': 'Hip-hop/Rap',
     'Holiday': 'Blagdanska',
@@ -77,6 +77,27 @@ String _discoverNormalize(String value) => value
     .toLowerCase()
     .replaceAll(RegExp(r'[^a-z0-9\u00c0-\u024f]+'), ' ')
     .trim();
+
+MusicAlbum? _discoverAlbumFromItem(Map<String, dynamic> item) {
+  final id = item['id']?.toString() ?? '';
+  final title = item['name']?.toString() ?? '';
+  final artistId = item['artist_id']?.toString() ?? '';
+  final artistName = item['artist_name']?.toString() ?? '';
+  if (id.isEmpty || title.isEmpty || artistId.isEmpty || artistName.isEmpty) {
+    return null;
+  }
+  return MusicAlbum(
+    id: id,
+    title: title,
+    artistId: artistId,
+    artistName: artistName,
+    firstReleaseDate: item['first_release_date']?.toString() ?? '',
+    genres: (item['genres'] as List? ?? const [])
+        .map((genre) => genre.toString())
+        .toList(growable: false),
+    artworkUrl: item['cover_url']?.toString(),
+  );
+}
 
 List<Map<String, dynamic>> _discoverPersonalize(
   DiscoverCategory category,
@@ -782,14 +803,11 @@ class _DiscoverMusicTileState extends State<_DiscoverMusicTile> {
       } else {
         // Canonical metadata was resolved by the daily server job.
         // Opening an album must not perform another title search.
-        album = MusicAlbum(
-          id: widget.item['id'] as String,
-          title: widget.item['name'] as String,
-          artistId: widget.item['artist_id'] as String,
-          artistName: widget.item['artist_name'] as String,
-          firstReleaseDate: widget.item['first_release_date']?.toString() ?? '',
-          genres: (widget.item['genres'] as List? ?? []).cast<String>(),
-        );
+        final cachedAlbum = _discoverAlbumFromItem(widget.item);
+        if (cachedAlbum == null) {
+          throw const FormatException('Invalid cached album');
+        }
+        album = cachedAlbum;
       }
       if (!mounted) {
         return;
@@ -844,15 +862,11 @@ class _DiscoverMusicTileState extends State<_DiscoverMusicTile> {
           break;
         }
       }
-      final progress = !song && entry != null
-          ? _musicAlbumRatingProgress(entry.entityId)
-          : null;
       if (!widget.compact) {
         return _TrendingAlbumCoverCard(
           item: widget.item,
           onTap: opening ? null : open,
           isFavorite: entry?.isFavorite ?? false,
-          ratingStars: entry?.ratingStars,
         );
       }
       return _CollectionCard(
@@ -862,9 +876,7 @@ class _DiscoverMusicTileState extends State<_DiscoverMusicTile> {
         meta: song ? (mapping?['album_title']?.toString()) : entry?.releaseYear,
         isFavorite: entry?.isFavorite ?? false,
         isCompleted: entry?.isListened ?? false,
-        isRated: entry?.rating != null && (progress?.complete ?? true),
-        ratingStars: entry?.ratingStars,
-        ratingLabel: progress?.label,
+        showRating: false,
         onTap: opening ? null : open,
         opening: opening,
         width: widget.compact ? null : 305,

@@ -705,7 +705,6 @@ int _runtimeLevelForMinutes(int totalMinutes) {
   return level;
 }
 
-
 int _combinedRuntimeMinutes(LibraryService library) {
   return library.totalWatchedMinutes +
       MusicUserDataService.instance.listenedTrackRuntimeMinutes;
@@ -762,7 +761,8 @@ _AchievementGroup _albumsListenedAchievementGroupFor(int albumsListened) {
   return _AchievementGroup(
     id: 'albums_listened',
     title: 'Albums Listened',
-    description: 'Listen to full albums to upgrade your Albums Listened stat border.',
+    description:
+        'Listen to full albums to upgrade your Albums Listened stat border.',
     icon: Icons.album_rounded,
     current: albumsListened,
     tiers: [
@@ -886,7 +886,8 @@ _AchievementGroup _albumsRatedAchievementGroupFor(int albumsRated) {
   return _AchievementGroup(
     id: 'albums_rated',
     title: 'Albums Rated',
-    description: 'Rate listened albums to upgrade your Albums Rated stat border.',
+    description:
+        'Rate listened albums to upgrade your Albums Rated stat border.',
     icon: Icons.star_rate_rounded,
     current: albumsRated,
     tiers: [
@@ -4249,7 +4250,9 @@ class _LoginPageState extends State<LoginPage> {
                       textInputAction: TextInputAction.next,
 
                       decoration: InputDecoration(
-                        label: UiText(signupMode ? 'Email' : 'Email or username'),
+                        label: UiText(
+                          signupMode ? 'Email' : 'Email or username',
+                        ),
 
                         prefixIcon: Icon(
                           signupMode
@@ -4278,7 +4281,9 @@ class _LoginPageState extends State<LoginPage> {
                       },
 
                       decoration: InputDecoration(
-                        label: UiText(signupMode ? 'Create Password' : 'Password'),
+                        label: UiText(
+                          signupMode ? 'Create Password' : 'Password',
+                        ),
 
                         prefixIcon: const Icon(Icons.lock_outline),
 
@@ -4403,7 +4408,9 @@ class _LoginPageState extends State<LoginPage> {
                                     strokeWidth: 2,
                                   ),
                                 )
-                              : UiText(signupMode ? 'Create Account' : 'Sign In'),
+                              : UiText(
+                                  signupMode ? 'Create Account' : 'Sign In',
+                                ),
                         ),
                       ),
                     ),
@@ -5051,9 +5058,7 @@ class _CommunityPageState extends State<CommunityPage>
     }
   }
 
-  Future<void> _openCommunityMusic(
-    Map<String, dynamic> activity,
-  ) async {
+  Future<void> _openCommunityMusic(Map<String, dynamic> activity) async {
     final mediaType = activity['media_type']?.toString();
 
     if (mediaType != 'music_album' && mediaType != 'music_track') {
@@ -5090,9 +5095,7 @@ class _CommunityPageState extends State<CommunityPage>
     final externalId = value('external_id');
     final parentExternalId = value('parent_external_id');
 
-    final albumId = mediaType == 'music_album'
-        ? externalId
-        : parentExternalId;
+    final albumId = mediaType == 'music_album' ? externalId : parentExternalId;
 
     final albumTitle = mediaType == 'music_album'
         ? activity['media_title']?.toString()
@@ -7167,7 +7170,9 @@ class PublicStatsSyncService {
       critic.episodeRatingCount,
     );
 
-    final runtimeLevel = _runtimeLevelForMinutes(_combinedRuntimeMinutes(library));
+    final runtimeLevel = _runtimeLevelForMinutes(
+      _combinedRuntimeMinutes(library),
+    );
 
     final runtimeLevelAchievementGroup = _runtimeLevelAchievementGroupFor(
       runtimeLevel,
@@ -7766,7 +7771,10 @@ class _PublicCompletedTvShowsPageState
 
             const SizedBox(height: 12),
 
-            UiText(errorMessage!, style: const TextStyle(color: Colors.white54)),
+            UiText(
+              errorMessage!,
+              style: const TextStyle(color: Colors.white54),
+            ),
 
             const SizedBox(height: 16),
 
@@ -8219,7 +8227,10 @@ class _PublicWatchedMoviesPageState extends State<_PublicWatchedMoviesPage> {
 
             const SizedBox(height: 12),
 
-            UiText(errorMessage!, style: const TextStyle(color: Colors.white54)),
+            UiText(
+              errorMessage!,
+              style: const TextStyle(color: Colors.white54),
+            ),
 
             const SizedBox(height: 16),
 
@@ -8969,8 +8980,9 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
         return;
       }
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: UiText('Could not block user.')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: UiText('Could not block user.')));
     }
   }
 
@@ -9054,9 +9066,9 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
         return;
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: UiText('Could not submit report.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: UiText('Could not submit report.')),
+      );
     }
   }
 
@@ -9195,9 +9207,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
       albumsListened,
     );
 
-    final songsListenedGroup = _songsListenedAchievementGroupFor(
-      songsListened,
-    );
+    final songsListenedGroup = _songsListenedAchievementGroupFor(songsListened);
 
     // =========================
     // DAILY LOGIN
@@ -10309,7 +10319,9 @@ List<_AchievementGroup> _currentUserProfileTitleGroups() {
 
   final critic = CriticService.instance;
 
-  final runtimeLevel = _runtimeLevelForMinutes(_combinedRuntimeMinutes(library));
+  final runtimeLevel = _runtimeLevelForMinutes(
+    _combinedRuntimeMinutes(library),
+  );
 
   final normalGroups = <_AchievementGroup>[
     // MOVIES
@@ -10657,7 +10669,10 @@ class _RatingDistributionFilterBar extends StatelessWidget {
               onTap: () => onSelected(filter.$1),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(999),
                   gradient: active
@@ -10712,7 +10727,8 @@ class _PublicRatingDistributionCardState
     const criticGold = Color(0xFFFFC857);
     const criticOrange = Color(0xFFFF8A4C);
 
-    final distribution = widget.distributions[selected] ??
+    final distribution =
+        widget.distributions[selected] ??
         widget.distributions['all'] ??
         <int, int>{1: 0, 2: 0, 3: 0, 4: 0, 5: 0};
 
@@ -10855,8 +10871,7 @@ class _ChipluxBottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final showProfileFrame =
-        currentIndex == 4 && profilePageFrameId != null;
+    final showProfileFrame = currentIndex == 4 && profilePageFrameId != null;
 
     final items = [
       (
@@ -10951,9 +10966,7 @@ class _ChipluxBottomNav extends StatelessWidget {
 
                 if (showProfileFrame)
                   Positioned.fill(
-                    child: _profileNavigationFrameWidget(
-                      profilePageFrameId,
-                    )!,
+                    child: _profileNavigationFrameWidget(profilePageFrameId)!,
                   ),
               ],
             );
@@ -11320,15 +11333,25 @@ class _HomePageState extends State<HomePage> {
   // ====================================================
 
   void _selectDiscoverTab(int index) {
-    if (discoverTab == index) { return; }
-    setState(() { discoverTab = index; });
-    if (index == 2 || index == 3) { unawaited(_loadToday()); }
+    if (discoverTab == index) {
+      return;
+    }
+    setState(() {
+      discoverTab = index;
+    });
+    if (index == 2 || index == 3) {
+      unawaited(_loadToday());
+    }
   }
 
   Widget _buildDiscoverTabs() {
     const labels = ['Trending', '100 Lists', 'Today', 'For You'];
-    const icons = [Icons.trending_up_rounded, Icons.format_list_numbered_rounded,
-      Icons.today_rounded, Icons.auto_awesome_rounded];
+    const icons = [
+      Icons.trending_up_rounded,
+      Icons.format_list_numbered_rounded,
+      Icons.today_rounded,
+      Icons.auto_awesome_rounded,
+    ];
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
       child: Container(
@@ -11338,37 +11361,77 @@ class _HomePageState extends State<HomePage> {
           color: chipluxSurface.withValues(alpha: .75),
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: chipluxCyan.withValues(alpha: .16)),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .18),
-            blurRadius: 12, offset: const Offset(0, 4))],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: .18),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-        child: Row(children: [
-          for (var i = 0; i < labels.length; i++)
-            Expanded(child: InkWell(
-              borderRadius: BorderRadius.circular(14),
-              onTap: () => _selectDiscoverTab(i),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 250),
-                decoration: BoxDecoration(
+        child: Row(
+          children: [
+            for (var i = 0; i < labels.length; i++)
+              Expanded(
+                child: InkWell(
                   borderRadius: BorderRadius.circular(14),
-                  gradient: discoverTab == i ? LinearGradient(
-                    begin: Alignment.topLeft, end: Alignment.bottomRight,
-                    colors: [chipluxCyan.withValues(alpha: .20),
-                      chipluxViolet.withValues(alpha: .18),
-                      chipluxPurple.withValues(alpha: .12)]) : null,
-                  border: Border.all(color: discoverTab == i
-                    ? chipluxCyan.withValues(alpha: .35) : Colors.transparent),
+                  onTap: () => _selectDiscoverTab(i),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      gradient: discoverTab == i
+                          ? LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                chipluxCyan.withValues(alpha: .20),
+                                chipluxViolet.withValues(alpha: .18),
+                                chipluxPurple.withValues(alpha: .12),
+                              ],
+                            )
+                          : null,
+                      border: Border.all(
+                        color: discoverTab == i
+                            ? chipluxCyan.withValues(alpha: .35)
+                            : Colors.transparent,
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          icons[i],
+                          size: 20,
+                          color: discoverTab == i
+                              ? chipluxCyan
+                              : Colors.white54,
+                        ),
+                        const SizedBox(height: 7),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 3),
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: UiText(
+                              labels[i],
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: .7,
+                                color: discoverTab == i
+                                    ? chipluxCyan
+                                    : Colors.white54,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-                child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Icon(icons[i], size: 20, color: discoverTab == i ? chipluxCyan : Colors.white54),
-                  const SizedBox(height: 7),
-                  Padding(padding: const EdgeInsets.symmetric(horizontal: 3),
-                    child: FittedBox(fit: BoxFit.scaleDown, child: UiText(labels[i],
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900,
-                        letterSpacing: .7, color: discoverTab == i ? chipluxCyan : Colors.white54)))),
-                ]),
               ),
-            )),
-        ]),
+          ],
+        ),
       ),
     );
   }
@@ -11759,12 +11822,16 @@ class _HomePageState extends State<HomePage> {
   // ====================================================
 
   Widget _buildTrendingPage() => _DiscoverBrowsePage(
-    key: ValueKey('discover-trending-${LocaleService.instance.effectiveLanguageCode}'),
+    key: ValueKey(
+      'discover-trending-${LocaleService.instance.effectiveLanguageCode}',
+    ),
     mode: DiscoverMode.trending,
   );
 
   Widget _buildListsPage() => _DiscoverBrowsePage(
-    key: ValueKey('discover-top100-${LocaleService.instance.effectiveLanguageCode}'),
+    key: ValueKey(
+      'discover-top100-${LocaleService.instance.effectiveLanguageCode}',
+    ),
     mode: DiscoverMode.top100,
   );
 
@@ -11925,7 +11992,9 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildForYouPage() => _DiscoverBrowsePage(
-    key: ValueKey('discover-for-you-${LocaleService.instance.effectiveLanguageCode}'),
+    key: ValueKey(
+      'discover-for-you-${LocaleService.instance.effectiveLanguageCode}',
+    ),
     mode: DiscoverMode.forYou,
   );
 
@@ -12539,8 +12608,6 @@ class _BirthdayActorFallback extends StatelessWidget {
   }
 }
 
-
-
 class _TodayCompactMediaCard extends StatelessWidget {
   final Map<String, dynamic>? item;
 
@@ -12696,15 +12763,22 @@ class _DiscoverTop100PageState extends State<DiscoverTop100Page> {
   }
 
   Future<List<dynamic>> _fetchList() async {
-    final category=widget.definition.type==ChipluxTopListType.tvShows?DiscoverCategory.tvShows:DiscoverCategory.movies;
-    final id=switch(widget.definition.type){
-      ChipluxTopListType.shortMovies=>-1,
-      ChipluxTopListType.superheroMovies=>-2,
-      ChipluxTopListType.hiddenGems=>-3,
-      _=>0,
+    final category = widget.definition.type == ChipluxTopListType.tvShows
+        ? DiscoverCategory.tvShows
+        : DiscoverCategory.movies;
+    final id = switch (widget.definition.type) {
+      ChipluxTopListType.shortMovies => -1,
+      ChipluxTopListType.superheroMovies => -2,
+      ChipluxTopListType.hiddenGems => -3,
+      _ => 0,
     };
-    final shared=await DiscoverCatalogService.instance.specialList(category,id);
-    if(shared!=null){return shared;}
+    final shared = await DiscoverCatalogService.instance.specialList(
+      category,
+      id,
+    );
+    if (shared != null) {
+      return shared;
+    }
     switch (widget.definition.type) {
       case ChipluxTopListType.movies:
         return tmdb.getTop100Movies();
@@ -13393,8 +13467,6 @@ class _TrendingCard extends StatelessWidget {
   }
 }
 
-
-
 String _statusLabel(String status) {
   switch (status) {
     case 'watching':
@@ -13428,7 +13500,7 @@ class _SearchPageState extends State<SearchPage> {
 
   Timer? _searchDebounce;
   Timer? _searchDeadline;
-  int _searchGeneration=0;
+  int _searchGeneration = 0;
 
   List<dynamic> results = [];
 
@@ -13440,53 +13512,96 @@ class _SearchPageState extends State<SearchPage> {
   _MusicSearchScope musicScope = _MusicSearchScope.albums;
 
   String _searchError(Object error) {
-    if(error is TimeoutException){return 'Search timed out after 12 seconds. Tap Retry.';}
-    final match=RegExp(r'\b(400|401|403|404|429|500|502|503|504)\b').firstMatch(error.toString());
-    final status=match?.group(1);
-    return switch(status){
-      '401'=>'Music catalog rejected the request (401). Check Verify JWT for music-catalog.',
-      '404'=>'Music catalog function was not found (404). Check its deployed name.',
-      '429'=>'Music provider is busy (429). Wait briefly, then retry.',
-      '503'=>'Music catalog is unavailable (503). Check its latest invocation/log.',
-      _=>'Search failed${status==null?'':' ($status)'}. Tap Retry.',
+    if (error is TimeoutException) {
+      return 'Search timed out after 12 seconds. Tap Retry.';
+    }
+    final match = RegExp(r'\b(400|401|403|404|429|500|502|503|504)\b')
+        .firstMatch(error.toString());
+    final status = match?.group(1);
+    return switch (status) {
+      '401' => 'Music catalog rejected the request (401). Check Verify JWT for music-catalog.',
+      '404' =>
+        'Music catalog function was not found (404). Check its deployed name.',
+      '429' => 'Music provider is busy (429). Wait briefly, then retry.',
+      '503' =>
+        'Music catalog is unavailable (503). Check its latest invocation/log.',
+      _ => 'Search failed${status == null ? '' : ' ($status)'}. Tap Retry.',
     };
   }
+
   Future<void> performSearch([String? value]) async {
-    final query=(value??controller.text).trim();
-    final generation=++_searchGeneration;
+    final query = (value ?? controller.text).trim();
+    final generation = ++_searchGeneration;
     _searchDeadline?.cancel();
-    if(query.length<2){
-      setState((){results=[];errorMessage=null;isLoading=false;});return;
+    if (query.length < 2) {
+      setState(() {
+        results = [];
+        errorMessage = null;
+        isLoading = false;
+      });
+      return;
     }
-    final requestedCategory=category;
-    final requestedScope=musicScope;
-    if(kDebugMode){debugPrint('[ChipluxMusic] search-start generation=$generation category=${requestedCategory.name} scope=${requestedScope.name}');}
-    setState((){isLoading=true;errorMessage=null;});
+    final requestedCategory = category;
+    final requestedScope = musicScope;
+    if (kDebugMode) {
+      debugPrint(
+        '[ChipluxMusic] search-start generation=$generation category=${requestedCategory.name} scope=${requestedScope.name}',
+      );
+    }
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
     // This independent watchdog covers cache initialization, request queuing,
     // provider calls and parsing; it does not rely on an HTTP future finishing.
-    _searchDeadline=Timer(const Duration(seconds:12),(){
-      if(!mounted||generation!=_searchGeneration){return;}
+    _searchDeadline = Timer(const Duration(seconds: 12), () {
+      if (!mounted || generation != _searchGeneration) {
+        return;
+      }
       ++_searchGeneration;
-      if(kDebugMode){debugPrint('[ChipluxMusic] search-watchdog generation=$generation');}
-      setState((){isLoading=false;errorMessage='Search timed out after 12 seconds. Tap Retry.';});
+      if (kDebugMode) {
+        debugPrint('[ChipluxMusic] search-watchdog generation=$generation');
+      }
+      setState(() {
+        isLoading = false;
+        errorMessage = 'Search timed out after 12 seconds. Tap Retry.';
+      });
     });
-    try{
-      final Future<List<dynamic>> request=switch(requestedCategory){
-        _SearchCategory.titles=>tmdbService.search(query),
-        _SearchCategory.music=>_searchMusic(query,requestedScope),
-        _SearchCategory.people=>_searchPeopleAndMusicians(query),
+    try {
+      final Future<List<dynamic>> request = switch (requestedCategory) {
+        _SearchCategory.titles => tmdbService.search(query),
+        _SearchCategory.music => _searchMusic(query, requestedScope),
+        _SearchCategory.people => _searchPeopleAndMusicians(query),
       };
-      final rows=await request.timeout(const Duration(seconds:12));
-      if(!mounted||generation!=_searchGeneration){return;}
-      if(kDebugMode){debugPrint('[ChipluxMusic] search-results generation=$generation count=${rows.length}');}
-      setState((){results=rows;errorMessage=null;});
-    }catch(error){
-      if(!mounted||generation!=_searchGeneration){return;}
-      if(kDebugMode){debugPrint('[ChipluxMusic] search-error generation=$generation type=${error.runtimeType}');}
-      setState((){errorMessage=_searchError(error);});
-    }finally{
-      if(mounted&&generation==_searchGeneration){
-        _searchDeadline?.cancel();setState(()=>isLoading=false);
+      final rows = await request.timeout(const Duration(seconds: 12));
+      if (!mounted || generation != _searchGeneration) {
+        return;
+      }
+      if (kDebugMode) {
+        debugPrint(
+          '[ChipluxMusic] search-results generation=$generation count=${rows.length}',
+        );
+      }
+      setState(() {
+        results = rows;
+        errorMessage = null;
+      });
+    } catch (error) {
+      if (!mounted || generation != _searchGeneration) {
+        return;
+      }
+      if (kDebugMode) {
+        debugPrint(
+          '[ChipluxMusic] search-error generation=$generation type=${error.runtimeType}',
+        );
+      }
+      setState(() {
+        errorMessage = _searchError(error);
+      });
+    } finally {
+      if (mounted && generation == _searchGeneration) {
+        _searchDeadline?.cancel();
+        setState(() => isLoading = false);
       }
     }
   }
@@ -13604,6 +13719,34 @@ class _SearchPageState extends State<SearchPage> {
   ) async {
     switch (scope) {
       case _MusicSearchScope.albums:
+        try {
+          final cached = await DiscoverCatalogService.instance
+              .searchCachedAlbums(query);
+          if (cached.isNotEmpty) {
+            return cached
+                .map((item) {
+                  final album = MusicAlbum(
+                    id: item['id']?.toString() ?? '',
+                    title: item['name']?.toString() ?? '',
+                    artistId: item['artist_id']?.toString() ?? '',
+                    artistName: item['artist_name']?.toString() ?? '',
+                    firstReleaseDate:
+                        item['first_release_date']?.toString() ?? '',
+                    genres: (item['genres'] as List? ?? const [])
+                        .map((genre) => genre.toString())
+                        .toList(growable: false),
+                    artworkUrl: item['cover_url']?.toString(),
+                  );
+                  return MusicAlbumSearchResult(
+                    album: album,
+                    score: 100,
+                  ).toSearchMap();
+                })
+                .toList(growable: false);
+          }
+        } catch (_) {
+          // The complete music search below remains available if preload failed.
+        }
         final albums = await musicService.searchStudioAlbums(query);
         return albums.take(20).map((result) => result.toSearchMap()).toList();
 
@@ -13611,10 +13754,12 @@ class _SearchPageState extends State<SearchPage> {
         final groups = await musicService.searchGroups(query);
         return groups
             .take(20)
-            .map((artist) => {
-                  ...artist.toSearchMap(),
-                  '_music_result_type': 'artist',
-                })
+            .map(
+              (artist) => {
+                ...artist.toSearchMap(),
+                '_music_result_type': 'artist',
+              },
+            )
             .toList();
     }
   }
@@ -13623,7 +13768,9 @@ class _SearchPageState extends State<SearchPage> {
     _searchDebounce?.cancel();
     _searchDeadline?.cancel();
     ++_searchGeneration;
-    if(mounted){setState(()=>isLoading=false);}
+    if (mounted) {
+      setState(() => isLoading = false);
+    }
 
     final query = value.trim();
 
@@ -13640,7 +13787,9 @@ class _SearchPageState extends State<SearchPage> {
     final delay = category == _SearchCategory.titles
         ? const Duration(milliseconds: 300)
         : category == _SearchCategory.music
-        ? const Duration(milliseconds: 550)
+        ? (musicScope == _MusicSearchScope.albums
+              ? const Duration(milliseconds: 250)
+              : const Duration(milliseconds: 400))
         : const Duration(milliseconds: 700);
 
     _searchDebounce = Timer(delay, () {
@@ -13656,7 +13805,9 @@ class _SearchPageState extends State<SearchPage> {
     _searchDebounce?.cancel();
     _searchDeadline?.cancel();
     ++_searchGeneration;
-    if(mounted){setState(()=>isLoading=false);}
+    if (mounted) {
+      setState(() => isLoading = false);
+    }
 
     setState(() {
       category = value;
@@ -13677,7 +13828,9 @@ class _SearchPageState extends State<SearchPage> {
     _searchDebounce?.cancel();
     _searchDeadline?.cancel();
     ++_searchGeneration;
-    if(mounted){setState(()=>isLoading=false);}
+    if (mounted) {
+      setState(() => isLoading = false);
+    }
 
     setState(() {
       musicScope = value;
@@ -13752,15 +13905,20 @@ class _SearchPageState extends State<SearchPage> {
           artistId: artistId,
           initialName: item['name']?.toString() ?? 'Unknown',
           initialType: item['artist_type']?.toString() ?? 'Other',
-          initialArtist:MusicArtist(id:artistId,name:item['name']?.toString()??'Unknown',
-            type:item['artist_type']?.toString()??'Other',country:item['country']?.toString(),
-            beginDate:item['begin_date']?.toString(),endDate:item['end_date']?.toString(),
-            ended:item['ended']==true,disambiguation:item['disambiguation']?.toString()??''),
+          initialArtist: MusicArtist(
+            id: artistId,
+            name: item['name']?.toString() ?? 'Unknown',
+            type: item['artist_type']?.toString() ?? 'Other',
+            country: item['country']?.toString(),
+            beginDate: item['begin_date']?.toString(),
+            endDate: item['end_date']?.toString(),
+            ended: item['ended'] == true,
+            disambiguation: item['disambiguation']?.toString() ?? '',
+          ),
         ),
       ),
     );
   }
-
 
   void _openMusicAlbum(Map<String, dynamic> item) {
     final album = item['_music_album'];
@@ -13771,9 +13929,7 @@ class _SearchPageState extends State<SearchPage> {
 
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => MusicAlbumPage(album: album),
-      ),
+      MaterialPageRoute(builder: (_) => MusicAlbumPage(album: album)),
     );
   }
 
@@ -13788,10 +13944,7 @@ class _SearchPageState extends State<SearchPage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => MusicAlbumPage(
-          album: album,
-          initialTrackId: trackId,
-        ),
+        builder: (_) => MusicAlbumPage(album: album, initialTrackId: trackId),
       ),
     );
   }
@@ -13959,7 +14112,12 @@ class _SearchPageState extends State<SearchPage> {
               errorMessage!,
               style: const TextStyle(color: Colors.redAccent),
             ),
-          if(errorMessage!=null) TextButton.icon(onPressed:()=>performSearch(),icon:const Icon(Icons.refresh),label:const UiText('Retry')),
+          if (errorMessage != null)
+            TextButton.icon(
+              onPressed: () => performSearch(),
+              icon: const Icon(Icons.refresh),
+              label: const UiText('Retry'),
+            ),
 
           if (!isLoading)
             Expanded(
@@ -14264,47 +14422,110 @@ class _MusicArtistPhotoView extends StatefulWidget {
   final bool isGroup;
   final double borderRadius;
   final bool banner;
-  const _MusicArtistPhotoView({required this.artistId,required this.isGroup,this.borderRadius=12,this.banner=false});
-  @override State<_MusicArtistPhotoView> createState()=>_MusicArtistPhotoViewState();
+  const _MusicArtistPhotoView({
+    required this.artistId,
+    required this.isGroup,
+    this.borderRadius = 12,
+    this.banner = false,
+  });
+  @override
+  State<_MusicArtistPhotoView> createState() => _MusicArtistPhotoViewState();
 }
+
 class _MusicArtistPhotoViewState extends State<_MusicArtistPhotoView> {
   late Future<MusicArtistPhoto?> photo;
-  @override void initState(){
+  @override
+  void initState() {
     super.initState();
-    photo=MusicService.instance.getArtistPhoto(widget.artistId);
+    photo = MusicService.instance.getArtistPhoto(widget.artistId);
   }
-  @override void didUpdateWidget(covariant _MusicArtistPhotoView oldWidget){
+
+  @override
+  void didUpdateWidget(covariant _MusicArtistPhotoView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if(oldWidget.artistId!=widget.artistId){ photo=MusicService.instance.getArtistPhoto(widget.artistId); }
+    if (oldWidget.artistId != widget.artistId) {
+      photo = MusicService.instance.getArtistPhoto(widget.artistId);
+    }
   }
-  Widget placeholder()=>Icon(widget.isGroup?Icons.groups_rounded:Icons.music_note_rounded,
-    color:chipluxPurple,size:34);
-  @override Widget build(BuildContext context)=>ClipRRect(
-    borderRadius:BorderRadius.circular(widget.borderRadius),
-    child:FutureBuilder<MusicArtistPhoto?>(future:photo,builder:(context,snapshot){
-      final image=snapshot.data;
-      if(image==null){ return placeholder(); }
-      return Stack(fit:StackFit.expand,children:[
-        Image.network(widget.banner?(image.bannerUrl??image.url):image.url,fit:BoxFit.cover,
-          errorBuilder:(_,_,_)=>placeholder(),
-          loadingBuilder:(context,child,progress)=>progress==null?child:placeholder()),
-        Positioned(right:2,bottom:2,child:Material(color:Colors.black54,borderRadius:BorderRadius.circular(20),
-          child:InkWell(borderRadius:BorderRadius.circular(20),
-            onTap:()=>showDialog<void>(context:context,builder:(context)=>AlertDialog(
-              title:Text(_discoverText(context,'Photo credit','Autor fotografije')),
-              content:SingleChildScrollView(child:SelectableText([
-                if(image.credit.isNotEmpty) image.credit,
-                if(image.license.isNotEmpty) image.license,
-                image.sourceUrl,
-                if(image.licenseUrl.isNotEmpty) image.licenseUrl,
-              ].join('\n\n'))),
-              actions:[TextButton(onPressed:()=>Navigator.pop(context),
-                child:Text(_discoverText(context,'Close','Zatvori')))],
-            )),
-            child:const Padding(padding:EdgeInsets.all(5),child:Icon(Icons.info_outline_rounded,size:14,color:Colors.white)),
-          ))),
-      ]);
-    }),
+
+  Widget placeholder() => Icon(
+    widget.isGroup ? Icons.groups_rounded : Icons.music_note_rounded,
+    color: chipluxPurple,
+    size: 34,
+  );
+  @override
+  Widget build(BuildContext context) => ClipRRect(
+    borderRadius: BorderRadius.circular(widget.borderRadius),
+    child: FutureBuilder<MusicArtistPhoto?>(
+      future: photo,
+      builder: (context, snapshot) {
+        final image = snapshot.data;
+        if (image == null) {
+          return placeholder();
+        }
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.network(
+              widget.banner ? (image.bannerUrl ?? image.url) : image.url,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => placeholder(),
+              loadingBuilder: (context, child, progress) =>
+                  progress == null ? child : placeholder(),
+            ),
+            Positioned(
+              right: 2,
+              bottom: 2,
+              child: Material(
+                color: Colors.black54,
+                borderRadius: BorderRadius.circular(20),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(20),
+                  onTap: () => showDialog<void>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: Text(
+                        _discoverText(
+                          context,
+                          'Photo credit',
+                          'Autor fotografije',
+                        ),
+                      ),
+                      content: SingleChildScrollView(
+                        child: SelectableText(
+                          [
+                            if (image.credit.isNotEmpty) image.credit,
+                            if (image.license.isNotEmpty) image.license,
+                            image.sourceUrl,
+                            if (image.licenseUrl.isNotEmpty) image.licenseUrl,
+                          ].join('\n\n'),
+                        ),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: Text(
+                            _discoverText(context, 'Close', 'Zatvori'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  child: const Padding(
+                    padding: EdgeInsets.all(5),
+                    child: Icon(
+                      Icons.info_outline_rounded,
+                      size: 14,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    ),
   );
 }
 
@@ -14312,10 +14533,7 @@ class _MusicArtistSearchCard extends StatelessWidget {
   final Map<String, dynamic> artist;
   final VoidCallback onTap;
 
-  const _MusicArtistSearchCard({
-    required this.artist,
-    required this.onTap,
-  });
+  const _MusicArtistSearchCard({required this.artist, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -14324,9 +14542,8 @@ class _MusicArtistSearchCard extends StatelessWidget {
     final rawType = artist['artist_type']?.toString() ?? '';
     final disambiguation = artist['disambiguation']?.toString().trim() ?? '';
     final country = artist['country']?.toString().trim() ?? '';
-    final isGroup = rawType == 'Group' ||
-        rawType == 'Orchestra' ||
-        rawType == 'Choir';
+    final isGroup =
+        rawType == 'Group' || rawType == 'Orchestra' || rawType == 'Choir';
 
     return InkWell(
       borderRadius: BorderRadius.circular(17),
@@ -14420,10 +14637,7 @@ class _MusicArtistSearchCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: Colors.white38,
-              ),
+              const Icon(Icons.chevron_right_rounded, color: Colors.white38),
             ],
           ),
         ),
@@ -14432,17 +14646,24 @@ class _MusicArtistSearchCard extends StatelessWidget {
   }
 }
 
-
 class _MusicAlbumSearchCard extends StatelessWidget {
-  final Map<String,dynamic> item;
+  final Map<String, dynamic> item;
   final VoidCallback onTap;
-  const _MusicAlbumSearchCard({required this.item,required this.onTap});
-  @override Widget build(BuildContext context) {
-    final album=item['_music_album'];
-    if(album is MusicAlbum){return _MusicAlbumCard(album:album,onTap:onTap);}
-    return _CollectionCard(title:item['name']?.toString()??'',
-      subtitle:item['artist_name']?.toString()??'',meta:item['year']?.toString(),
-      coverUrl:item['cover_url']?.toString(),onTap:onTap,showTracking:false);
+  const _MusicAlbumSearchCard({required this.item, required this.onTap});
+  @override
+  Widget build(BuildContext context) {
+    final album = item['_music_album'];
+    if (album is MusicAlbum) {
+      return _MusicAlbumCard(album: album, onTap: onTap);
+    }
+    return _CollectionCard(
+      title: item['name']?.toString() ?? '',
+      subtitle: item['artist_name']?.toString() ?? '',
+      meta: item['year']?.toString(),
+      coverUrl: item['cover_url']?.toString(),
+      onTap: onTap,
+      showTracking: false,
+    );
   }
 }
 
@@ -14450,10 +14671,7 @@ class _MusicSongSearchCard extends StatelessWidget {
   final Map<String, dynamic> item;
   final VoidCallback onTap;
 
-  const _MusicSongSearchCard({
-    required this.item,
-    required this.onTap,
-  });
+  const _MusicSongSearchCard({required this.item, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -14496,9 +14714,8 @@ class _MusicSongSearchCard extends StatelessWidget {
                         width: 58,
                         height: 58,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => _musicSearchCoverFallback(
-                          Icons.music_note_rounded,
-                        ),
+                        errorBuilder: (_, _, _) =>
+                            _musicSearchCoverFallback(Icons.music_note_rounded),
                       )
                     : _musicSearchCoverFallback(Icons.music_note_rounded),
               ),
@@ -14521,7 +14738,8 @@ class _MusicSongSearchCard extends StatelessWidget {
                       children: [
                         const UiText(
                           'Song',
-                          style: TextStyle(fontSize: 10,
+                          style: TextStyle(
+                            fontSize: 10,
                             color: chipluxCyan,
                             fontWeight: FontWeight.w700,
                           ),
@@ -14568,10 +14786,7 @@ class _MusicSongSearchCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: Colors.white38,
-              ),
+              const Icon(Icons.chevron_right_rounded, color: Colors.white38),
             ],
           ),
         ),
@@ -14586,11 +14801,7 @@ Widget _musicSearchCoverFallback(IconData icon) {
     height: 58,
     color: chipluxSurfaceLight,
     alignment: Alignment.center,
-    child: Icon(
-      icon,
-      color: Colors.white30,
-      size: 34,
-    ),
+    child: Icon(icon, color: Colors.white30, size: 34),
   );
 }
 
@@ -15116,8 +15327,10 @@ class _LibraryPageState extends State<LibraryPage> {
 
     mediaUserDataService.loadFavorites();
 
-    WidgetsBinding.instance.addPostFrameCallback((_){
-      if(!mounted){return;}
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
       unawaited(musicUserDataService.loadAll());
       unawaited(CriticService.instance.refresh());
     });
@@ -15264,7 +15477,8 @@ class _LibraryPageState extends State<LibraryPage> {
                     color: chipluxSurfaceLight,
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
-                      color: accentFor(selectedMediaType).withValues(alpha: 0.35),
+                      color: accentFor(selectedMediaType)
+                          .withValues(alpha: 0.35),
                     ),
                   ),
                 ),
@@ -15369,8 +15583,7 @@ class _LibraryPageState extends State<LibraryPage> {
             } else {
               // Plan and Dropped are album-only Library buckets.
               musicItems = musicItems
-                  .where((item) =>
-                      item.isAlbum && item.libraryStatus == filter)
+                  .where((item) => item.isAlbum && item.libraryStatus == filter)
                   .toList(growable: false);
             }
 
@@ -15570,7 +15783,10 @@ class _LibraryPageState extends State<LibraryPage> {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => MusicAlbumPage(album: album,initialTrackId:entry.isTrack?entry.entityId:null),
+                builder: (_) => MusicAlbumPage(
+                  album: album,
+                  initialTrackId: entry.isTrack ? entry.entityId : null,
+                ),
               ),
             );
           },
@@ -15945,12 +16161,13 @@ class _LibraryPageState extends State<LibraryPage> {
   }
 }
 
-
 class _MusicLibraryListCard extends StatelessWidget {
   final MusicLibraryEntry entry;
   final VoidCallback onTap;
-  const _MusicLibraryListCard({required this.entry,required this.onTap});
-  @override Widget build(BuildContext context)=>_MusicLibraryFramedCard(entry:entry,onTap:onTap);
+  const _MusicLibraryListCard({required this.entry, required this.onTap});
+  @override
+  Widget build(BuildContext context) =>
+      _MusicLibraryFramedCard(entry: entry, onTap: onTap);
 }
 
 class _WatchingTvCard extends StatefulWidget {
@@ -17229,11 +17446,13 @@ class _LibraryListCard extends StatelessWidget {
                                         context,
                                         '$watched / ${item.totalEpisodes} episodes',
                                       ),
-                                      if (genre.isNotEmpty) trUi(context, genre),
+                                      if (genre.isNotEmpty)
+                                        trUi(context, genre),
                                     ].join(' • ')
                                   : [
                                       if (item.year.isNotEmpty) item.year,
-                                      if (genre.isNotEmpty) trUi(context, genre),
+                                      if (genre.isNotEmpty)
+                                        trUi(context, genre),
                                     ].join(' • '),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -18544,7 +18763,8 @@ class _AchievementsPageState extends State<AchievementsPage> {
 
     final bool isTitleRatedGroup = isTvShowsRatedGroup || isMoviesRatedGroup;
 
-    final bool isMusicStatGroup = isAlbumsListenedGroup ||
+    final bool isMusicStatGroup =
+        isAlbumsListenedGroup ||
         isSongsListenedGroup ||
         isAlbumsRatedGroup ||
         isSongsRatedGroup;
@@ -21114,7 +21334,9 @@ int _totalUnlockedAchievementMilestones() {
 
   final critic = CriticService.instance;
 
-  final runtimeLevel = _runtimeLevelForMinutes(_combinedRuntimeMinutes(library));
+  final runtimeLevel = _runtimeLevelForMinutes(
+    _combinedRuntimeMinutes(library),
+  );
 
   final groups = <_AchievementGroup>[
     _movieAchievementGroupFor(library.moviesWatchedCount),
@@ -22048,10 +22270,7 @@ class _Tier3ProfilePageFramePainter extends CustomPainter {
   }
 }
 
-Widget? _profilePageFrameWidget(
-  String? frameId, {
-  bool edgeToEdge = false,
-}) {
+Widget? _profilePageFrameWidget(String? frameId, {bool edgeToEdge = false}) {
   switch (frameId) {
     case developerProfilePageFrameId:
       return _DeveloperProfilePageFrame(edgeToEdge: edgeToEdge);
@@ -22209,7 +22428,6 @@ class _DeveloperProfileFramePainter extends CustomPainter {
   }
 }
 
-
 Widget? _profileNavigationFrameWidget(String? frameId) {
   switch (frameId) {
     case developerProfilePageFrameId:
@@ -22246,12 +22464,7 @@ class _Tier3NavigationFramePainter extends CustomPainter {
       return;
     }
 
-    final rect = Rect.fromLTWH(
-      1.05,
-      0,
-      size.width - 2.1,
-      size.height - 1.05,
-    );
+    final rect = Rect.fromLTWH(1.05, 0, size.width - 2.1, size.height - 1.05);
 
     final shader = const LinearGradient(
       begin: Alignment.topLeft,
@@ -22351,7 +22564,7 @@ class _DeveloperNavigationFramePainter extends CustomPainter {
   final Animation<double> animation;
 
   _DeveloperNavigationFramePainter({required this.animation})
-      : super(repaint: animation);
+    : super(repaint: animation);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -22359,12 +22572,7 @@ class _DeveloperNavigationFramePainter extends CustomPainter {
       return;
     }
 
-    final rect = Rect.fromLTWH(
-      1.1,
-      0,
-      size.width - 2.2,
-      size.height - 1.1,
-    );
+    final rect = Rect.fromLTWH(1.1, 0, size.width - 2.2, size.height - 1.1);
 
     final rotation = _developerProfileFramePhase() * 6.28318530718;
 
@@ -22417,9 +22625,7 @@ class _DeveloperNavigationFramePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(
-    covariant _DeveloperNavigationFramePainter oldDelegate,
-  ) {
+  bool shouldRepaint(covariant _DeveloperNavigationFramePainter oldDelegate) {
     return false;
   }
 }
@@ -22918,8 +23124,6 @@ class _ProfilePageState extends State<ProfilePage> {
   void initState() {
     super.initState();
 
-
-
     final followerService = FollowerCountService.instance;
 
     _lastFollowerCount = followerService.loaded
@@ -22928,8 +23132,10 @@ class _ProfilePageState extends State<ProfilePage> {
 
     followerService.addListener(_handleFollowerCountChange);
 
-    WidgetsBinding.instance.addPostFrameCallback((_){
-      if(!mounted){return;}
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
       _refreshProfileInBackground();
       unawaited(followerService.load());
       unawaited(critic.refresh());
@@ -23222,10 +23428,26 @@ class _ProfilePageState extends State<ProfilePage> {
       return [];
     }
 
-    final total = runtimes.values.fold<int>(0, (sum, minutes) => sum + minutes);
+    bool isRemovedFitnessGenre(String genre) {
+      final normalized = genre.toLowerCase().replaceAll(
+        RegExp(r'[^a-z0-9]+'),
+        '',
+      );
+      return normalized == 'fitness' ||
+          normalized == 'workout' ||
+          normalized == 'fitnessworkout';
+    }
+
+    final visibleEntries = runtimes.entries
+        .where((entry) => !isRemovedFitnessGenre(entry.key))
+        .toList(growable: false);
+    final total = visibleEntries.fold<int>(
+      0,
+      (sum, entry) => sum + entry.value,
+    );
     final result = <_GenreRuntimeStat>[];
 
-    for (final entry in runtimes.entries) {
+    for (final entry in visibleEntries) {
       final minutes = entry.value;
       final percentage = total > 0 ? (minutes / total) * 100 : 0.0;
 
@@ -23459,7 +23681,9 @@ class _ProfilePageState extends State<ProfilePage> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     UiText(
-                      expanded ? 'Show less' : 'Show all ${stats.length} genres',
+                      expanded
+                          ? 'Show less'
+                          : 'Show all ${stats.length} genres',
                       style: const TextStyle(
                         color: chipluxCyan,
                         fontSize: 14,
@@ -24047,7 +24271,10 @@ class _ProfilePageState extends State<ProfilePage> {
                                               ),
 
                                               IconButton(
-                                                tooltip: trUi(context, 'Profile Menu'),
+                                                tooltip: trUi(
+                                                  context,
+                                                  'Profile Menu',
+                                                ),
                                                 visualDensity:
                                                     VisualDensity.compact,
                                                 onPressed: () async {
@@ -27919,7 +28146,6 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
 
     if (!mounted) return;
     setState(() => saving = false);
-
   }
 
   Widget _languageOption({
@@ -28135,7 +28361,9 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: UiText('Could not update notification setting.')),
+        const SnackBar(
+          content: UiText('Could not update notification setting.'),
+        ),
       );
     }
   }
@@ -29130,9 +29358,9 @@ class _BlockedUsersPageState extends State<BlockedUsersPage> {
         return;
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: UiText('Could not unblock user.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: UiText('Could not unblock user.')),
+      );
     }
   }
 
@@ -31411,7 +31639,9 @@ class _ReportBugPageState extends State<_ReportBugPage> {
     if (text.length < 10) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: UiText('Please describe the problem in a little more detail.'),
+          content: UiText(
+            'Please describe the problem in a little more detail.',
+          ),
         ),
       );
 
@@ -32455,7 +32685,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   Map<String, _AchievementGroup> _achievementCosmeticGroups() {
-    final runtimeLevel = _runtimeLevelForMinutes(_combinedRuntimeMinutes(library));
+    final runtimeLevel = _runtimeLevelForMinutes(
+      _combinedRuntimeMinutes(library),
+    );
 
     final unlockedMilestones = _totalUnlockedAchievementMilestones();
 
@@ -33354,7 +33586,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
         if (errorMessage != null) ...[
           const SizedBox(height: 14),
-          UiText(errorMessage!, style: const TextStyle(color: Colors.redAccent)),
+          UiText(
+            errorMessage!,
+            style: const TextStyle(color: Colors.redAccent),
+          ),
         ],
 
         const SizedBox(height: 24),
@@ -33826,8 +34061,9 @@ class _EpisodeRatingCardState extends State<_EpisodeRatingCard> {
         rating = oldRating;
       });
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: UiText('Could not remove rating: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: UiText('Could not remove rating: $e')));
     }
   }
 
@@ -34578,9 +34814,9 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
         );
       });
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: UiText('Could not update favorite: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: UiText('Could not update favorite: $e')),
+      );
     }
   }
 
@@ -34642,8 +34878,9 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
         );
       });
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: UiText('Could not remove rating: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: UiText('Could not remove rating: $e')));
     }
   }
 
@@ -36016,7 +36253,8 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
                       final int seasonNumber = (season['season_number'] as num)
                           .toInt();
 
-                      final String seasonName = season['name'] ??
+                      final String seasonName =
+                          season['name'] ??
                           trUi(context, 'Season $seasonNumber');
 
                       final String? seasonPosterPath = season['poster_path']
@@ -36180,8 +36418,8 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
                                   final int previousTvCount =
                                       library.completedTvShowsCount;
 
-                                  final bool autoCompletedShow =
-                                      await library.markSeason(
+                                  final bool autoCompletedShow = await library
+                                      .markSeason(
                                         widget.id,
                                         seasonNumber,
                                         episodes,
@@ -36852,43 +37090,84 @@ class _MusicArtistPageState extends State<MusicArtistPage> {
   String? artistError;
   String? albumsError;
 
-  int loadGeneration=0;
-  @override void initState(){
+  int loadGeneration = 0;
+  @override
+  void initState() {
     super.initState();
-    artist=music.cachedArtist(widget.artistId)??widget.initialArtist;
+    artist = music.cachedArtist(widget.artistId) ?? widget.initialArtist;
     unawaited(_load());
   }
+
   Future<void> _load() async {
-    final generation=++loadGeneration;
+    final generation = ++loadGeneration;
     // Details and albums are independent; a failed detail request cannot
     // hold the entire page or discography behind it.
-    await Future.wait([_loadArtist(generation),_loadAlbums(generation)]);
+    await Future.wait([_loadArtist(generation), _loadAlbums(generation)]);
   }
+
   Future<void> _loadArtist(int generation) async {
-    try{
-      final result=await music.getArtistDetails(widget.artistId).timeout(const Duration(seconds:12));
-      if(!mounted||generation!=loadGeneration){return;}
-      setState((){artist=result;loadingArtist=false;artistError=null;});
-    }catch(_){
-      if(!mounted||generation!=loadGeneration){return;}
-      setState((){loadingArtist=false;artistError='Additional band information could not load. Tap Retry.';});
+    try {
+      final result = await music
+          .getArtistDetails(widget.artistId)
+          .timeout(const Duration(seconds: 12));
+      if (!mounted || generation != loadGeneration) {
+        return;
+      }
+      setState(() {
+        artist = result;
+        loadingArtist = false;
+        artistError = null;
+      });
+    } catch (_) {
+      if (!mounted || generation != loadGeneration) {
+        return;
+      }
+      setState(() {
+        loadingArtist = false;
+        artistError = 'Additional band information could not load. Tap Retry.';
+      });
     }
   }
+
   Future<void> _loadAlbums(int generation) async {
-    var accepting=true;
-    try{
-      final result=await music.getStudioAlbums(widget.artistId,
-        fallbackArtistName:artist?.name??widget.initialName,fallbackGenres:artist?.genres??const [],
-        onPage:(page){if(mounted&&accepting&&generation==loadGeneration){
-          setState((){albums=page;if(page.isNotEmpty){loadingAlbums=false;}});
-        }},
-      ).timeout(const Duration(seconds:20));
-      if(!mounted||generation!=loadGeneration){return;}
-      setState((){albums=result;loadingAlbums=false;albumsError=null;});
-    }catch(_){
-      if(!mounted||generation!=loadGeneration){return;}
-      setState((){loadingAlbums=false;albumsError='Album loading stopped. Tap Retry.';});
-    }finally{accepting=false;}
+    var accepting = true;
+    try {
+      final result = await music
+          .getStudioAlbums(
+            widget.artistId,
+            fallbackArtistName: artist?.name ?? widget.initialName,
+            fallbackGenres: artist?.genres ?? const [],
+            onPage: (page) {
+              if (mounted && accepting && generation == loadGeneration) {
+                setState(() {
+                  albums = page;
+                  if (page.isNotEmpty) {
+                    loadingAlbums = false;
+                  }
+                });
+              }
+            },
+          )
+          .timeout(const Duration(seconds: 20));
+      if (!mounted || generation != loadGeneration) {
+        return;
+      }
+      setState(() {
+        albums = result;
+        loadingAlbums = false;
+        albumsError = null;
+      });
+    } catch (_) {
+      if (!mounted || generation != loadGeneration) {
+        return;
+      }
+      setState(() {
+        loadingAlbums = false;
+        albumsError = 'Album loading stopped. Tap Retry.';
+      });
+    } finally {
+      accepting = false;
+    }
   }
 
   @override
@@ -36897,10 +37176,12 @@ class _MusicArtistPageState extends State<MusicArtistPage> {
     final name = loaded?.name ?? widget.initialName;
     final rawType = loaded?.type ?? widget.initialType;
     final typeLabel = loaded?.displayType ?? _musicArtistTypeLabel(rawType);
-    final isGroupLike = loaded?.isGroupLike ??
+    final isGroupLike =
+        loaded?.isGroupLike ??
         rawType == 'Group' || rawType == 'Orchestra' || rawType == 'Choir';
 
-    final currentMembers = loaded?.members
+    final currentMembers =
+        loaded?.members
             .where((member) => member.isCurrent)
             .toList(growable: false) ??
         const <MusicMember>[];
@@ -36908,7 +37189,8 @@ class _MusicArtistPageState extends State<MusicArtistPage> {
         ? loaded.genres.take(4).join(', ')
         : 'Unknown';
 
-    final yearsText = loaded?.yearsActive(
+    final yearsText =
+        loaded?.yearsActive(
           present: trUi(context, 'Present'),
           unknown: trUi(context, 'Unknown'),
         ) ??
@@ -36916,10 +37198,7 @@ class _MusicArtistPageState extends State<MusicArtistPage> {
 
     return Scaffold(
       backgroundColor: chipluxBackground,
-      appBar: AppBar(
-        backgroundColor: chipluxBackground,
-        title: Text(name),
-      ),
+      appBar: AppBar(backgroundColor: chipluxBackground, title: Text(name)),
       body: ChipluxBackground(
         style: ChipluxBackgroundStyle.discover,
         child: RefreshIndicator(
@@ -36937,11 +37216,22 @@ class _MusicArtistPageState extends State<MusicArtistPage> {
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(20, 10, 20, 34),
             children: [
-              SizedBox(height:210,child:OverflowBox(
-                minWidth:MediaQuery.sizeOf(context).width,maxWidth:MediaQuery.sizeOf(context).width,
-                minHeight:210,maxHeight:210,child:_MusicArtistPhotoView(
-                  artistId:widget.artistId,isGroup:isGroupLike,borderRadius:0,banner:true))),
-              const SizedBox(height:14),
+              SizedBox(
+                height: 210,
+                child: OverflowBox(
+                  minWidth: MediaQuery.sizeOf(context).width,
+                  maxWidth: MediaQuery.sizeOf(context).width,
+                  minHeight: 210,
+                  maxHeight: 210,
+                  child: _MusicArtistPhotoView(
+                    artistId: widget.artistId,
+                    isGroup: isGroupLike,
+                    borderRadius: 0,
+                    banner: true,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -37017,12 +37307,24 @@ class _MusicArtistPageState extends State<MusicArtistPage> {
                   ],
                 ),
               ),
-              const SizedBox(height:16),
-              if(artistError!=null||albumsError!=null) Align(alignment:Alignment.centerLeft,
-                child:TextButton.icon(icon:const Icon(Icons.refresh),label:const UiText('Retry'),onPressed:(){
-                  setState((){loadingArtist=true;loadingAlbums=albums.isEmpty;artistError=null;albumsError=null;});
-                  unawaited(_load());
-                })),
+              const SizedBox(height: 16),
+              if (artistError != null || albumsError != null)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    icon: const Icon(Icons.refresh),
+                    label: const UiText('Retry'),
+                    onPressed: () {
+                      setState(() {
+                        loadingArtist = true;
+                        loadingAlbums = albums.isEmpty;
+                        artistError = null;
+                        albumsError = null;
+                      });
+                      unawaited(_load());
+                    },
+                  ),
+                ),
               if (artistError != null)
                 _MusicInfoNotice(
                   icon: Icons.info_outline_rounded,
@@ -37054,10 +37356,7 @@ class _MusicArtistPageState extends State<MusicArtistPage> {
                 const SizedBox(height: 24),
                 const UiText(
                   'Members',
-                  style: TextStyle(
-                    fontSize: 19,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 10),
                 _MusicMemberWrap(members: currentMembers),
@@ -37103,9 +37402,9 @@ class _MusicArtistPageState extends State<MusicArtistPage> {
                 )
               else
                 ListView.separated(
-                  shrinkWrap:true,
-                  physics:const NeverScrollableScrollPhysics(),
-                  separatorBuilder:(_,_)=>const SizedBox(height:12),
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  separatorBuilder: (_, _) => const SizedBox(height: 12),
                   itemCount: albums.length,
                   itemBuilder: (context, index) {
                     final album = albums[index];
@@ -37208,51 +37507,61 @@ class _MusicMemberWrap extends StatelessWidget {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: members.map((member) {
-        return InkWell(
-          borderRadius:BorderRadius.circular(12),
-          onTap:()=>Navigator.push(context,MaterialPageRoute(
-            builder:(_)=>MusicMemberWorksPage(member:member))),
-          child:Container(
-          constraints: const BoxConstraints(maxWidth: 210),
-          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
-          decoration: BoxDecoration(
-            color: chipluxSurface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: chipluxPurple.withValues(alpha: 0.16),
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                member.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
+      children: members
+          .map((member) {
+            return InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => MusicMemberWorksPage(member: member),
                 ),
               ),
-              if (member.roleLabel.isNotEmpty) ...[
-                const SizedBox(height: 2),
-                Text(
-                  member.roleLabel,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white38,
-                    fontSize: 10,
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 210),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 11,
+                  vertical: 9,
+                ),
+                decoration: BoxDecoration(
+                  color: chipluxSurface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: chipluxPurple.withValues(alpha: 0.16),
                   ),
                 ),
-              ],
-            ],
-          ),
-        ));
-      }).toList(growable: false),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      member.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    if (member.roleLabel.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        member.roleLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white38,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            );
+          })
+          .toList(growable: false),
     );
   }
 }
@@ -37260,17 +37569,25 @@ class _MusicMemberWrap extends StatelessWidget {
 class _MusicAlbumCard extends StatelessWidget {
   final MusicAlbum album;
   final VoidCallback onTap;
-  const _MusicAlbumCard({required this.album,required this.onTap});
-  @override Widget build(BuildContext context)=>AnimatedBuilder(
-    animation:MusicUserDataService.instance,
-    builder:(context,_) {
-      final state=MusicUserDataService.instance.albumState(album.id);
-      final progress=_musicAlbumRatingProgress(album.id);
-      return _CollectionCard(title:album.title,subtitle:album.artistName,
-        coverUrl:album.coverUrl,meta:album.year,onTap:onTap,
-        isFavorite:state.isFavorite,isCompleted:state.isListened,
-        isRated:state.rating!=null&&progress.complete,ratingStars:state.ratingStars,
-        ratingLabel:progress.label);
+  const _MusicAlbumCard({required this.album, required this.onTap});
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: MusicUserDataService.instance,
+    builder: (context, _) {
+      final state = MusicUserDataService.instance.albumState(album.id);
+      final progress = _musicAlbumRatingProgress(album.id);
+      return _CollectionCard(
+        title: album.title,
+        subtitle: album.artistName,
+        coverUrl: album.coverUrl,
+        meta: album.year,
+        onTap: onTap,
+        isFavorite: state.isFavorite,
+        isCompleted: state.isListened,
+        isRated: state.rating != null && progress.complete,
+        ratingStars: state.ratingStars,
+        ratingLabel: progress.label,
+      );
     },
   );
 }
@@ -37296,10 +37613,7 @@ class _MusicInfoNotice extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(
-            icon,
-            color: isError ? Colors.redAccent : Colors.white38,
-          ),
+          Icon(icon, color: isError ? Colors.redAccent : Colors.white38),
           const SizedBox(width: 10),
           Expanded(
             child: UiText(
@@ -37319,11 +37633,7 @@ class MusicAlbumPage extends StatefulWidget {
   final MusicAlbum album;
   final String? initialTrackId;
 
-  const MusicAlbumPage({
-    super.key,
-    required this.album,
-    this.initialTrackId,
-  });
+  const MusicAlbumPage({super.key, required this.album, this.initialTrackId});
 
   @override
   State<MusicAlbumPage> createState() => _MusicAlbumPageState();
@@ -37412,10 +37722,7 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
     _didScrollToInitialTrack = true;
 
     final target = (615.0 + (index * 100.0))
-        .clamp(
-          0.0,
-          _trackScrollController.position.maxScrollExtent,
-        )
+        .clamp(0.0, _trackScrollController.position.maxScrollExtent)
         .toDouble();
 
     _trackScrollController.animateTo(
@@ -37471,7 +37778,8 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
                 Row(
                   children: List.generate(5, (index) {
                     final stars = index + 1;
-                    final selected = currentStars != null && stars <= currentStars;
+                    final selected =
+                        currentStars != null && stars <= currentStars;
 
                     return Expanded(
                       child: IconButton(
@@ -37480,7 +37788,9 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
                           Navigator.pop(sheetContext, stars);
                         },
                         icon: Icon(
-                          selected ? Icons.star_rounded : Icons.star_border_rounded,
+                          selected
+                              ? Icons.star_rounded
+                              : Icons.star_border_rounded,
                           color: Colors.amber,
                           size: 36,
                         ),
@@ -37685,9 +37995,9 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: UiText('Could not save rating.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: UiText('Could not save rating.')));
     }
   }
 
@@ -37797,9 +38107,7 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: UiText('Mark album as not listened first.'),
-        ),
+        const SnackBar(content: UiText('Mark album as not listened first.')),
       );
       return;
     }
@@ -38040,10 +38348,7 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
     final nextFavorite = !before.isFavorite;
 
     final success = await _runTrackingAction(() {
-      return userData.toggleAlbumFavorite(
-        album: widget.album,
-        tracks: tracks,
-      );
+      return userData.toggleAlbumFavorite(album: widget.album, tracks: tracks);
     });
 
     if (!success) {
@@ -38071,10 +38376,7 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
     final nextFavorite = !before.isFavorite;
 
     final success = await _runTrackingAction(() {
-      return userData.toggleTrackFavorite(
-        album: widget.album,
-        track: track,
-      );
+      return userData.toggleTrackFavorite(album: widget.album, track: track);
     });
 
     if (!success) {
@@ -38129,11 +38431,7 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  icon,
-                  color: active ? accent : Colors.white54,
-                  size: 22,
-                ),
+                Icon(icon, color: active ? accent : Colors.white54, size: 22),
                 const SizedBox(height: 5),
                 FittedBox(
                   fit: BoxFit.scaleDown,
@@ -38254,7 +38552,10 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
                       fit: StackFit.expand,
                       children: [
                         Image.network(
-                          widget.album.coverUrl.replaceAll('front-250','front-1200'),
+                          widget.album.coverUrl.replaceAll(
+                            'front-250',
+                            'front-1200',
+                          ),
                           fit: BoxFit.cover,
                           errorBuilder: (_, _, _) => Container(
                             color: chipluxSurface,
@@ -38294,28 +38595,81 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(crossAxisAlignment:CrossAxisAlignment.center,children:[
-                            ClipRRect(borderRadius:BorderRadius.circular(14),child:Image.network(
-                              widget.album.coverUrl,width:88,height:88,fit:BoxFit.cover,
-                              errorBuilder:(_,_,_)=>const SizedBox(width:88,height:88,child:Icon(Icons.album,size:42)))),
-                            const SizedBox(width:14),
-                            Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-                              Text(widget.album.title,style:const TextStyle(fontSize:20,fontWeight:FontWeight.w900)),
-                              const SizedBox(height:6),
-                              InkWell(
-                                borderRadius:BorderRadius.circular(8),
-                                onTap:widget.album.artistId.isEmpty?null:()=>Navigator.push(context,
-                                  MaterialPageRoute(builder:(_)=>MusicArtistPage(
-                                    artistId:widget.album.artistId,
-                                    initialName:widget.album.artistName,
-                                    initialType:music.cachedArtist(widget.album.artistId)?.type ?? '',
-                                  ))),
-                                child:Padding(padding:const EdgeInsets.symmetric(vertical:4),
-                                  child:Text(widget.album.artistName,maxLines:2,overflow:TextOverflow.ellipsis,
-                                    style:const TextStyle(color:chipluxPurple,fontSize:14,fontWeight:FontWeight.w700))),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(14),
+                                child: Image.network(
+                                  widget.album.coverUrl,
+                                  width: 88,
+                                  height: 88,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, _, _) => const SizedBox(
+                                    width: 88,
+                                    height: 88,
+                                    child: Icon(Icons.album, size: 42),
+                                  ),
+                                ),
                               ),
-                            ])),
-                          ]),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      widget.album.title,
+                                      style: const TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    InkWell(
+                                      borderRadius: BorderRadius.circular(8),
+                                      onTap: widget.album.artistId.isEmpty
+                                          ? null
+                                          : () => Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) => MusicArtistPage(
+                                                  artistId:
+                                                      widget.album.artistId,
+                                                  initialName:
+                                                      widget.album.artistName,
+                                                  initialType:
+                                                      music
+                                                          .cachedArtist(
+                                                            widget
+                                                                .album
+                                                                .artistId,
+                                                          )
+                                                          ?.type ??
+                                                      '',
+                                                ),
+                                              ),
+                                            ),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 4,
+                                        ),
+                                        child: Text(
+                                          widget.album.artistName,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            color: chipluxPurple,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                           const SizedBox(height: 10),
                           Wrap(
                             spacing: 7,
@@ -38441,8 +38795,9 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
                                       icon: TweenAnimationBuilder<double>(
                                         key: ValueKey(albumState.isFavorite),
                                         tween: Tween(begin: 0.65, end: 1.0),
-                                        duration:
-                                            const Duration(milliseconds: 350),
+                                        duration: const Duration(
+                                          milliseconds: 350,
+                                        ),
                                         curve: Curves.elasticOut,
                                         builder: (context, scale, child) {
                                           return Transform.scale(
@@ -38506,9 +38861,7 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
                                 const SizedBox(height: 18),
                                 const UiText(
                                   'Your Rating',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                                  style: TextStyle(fontWeight: FontWeight.w700),
                                 ),
                                 if (!albumState.isListened) ...[
                                   const SizedBox(height: 5),
@@ -38530,7 +38883,8 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
                                               _albumDraftRatingStars ??
                                               albumState.ratingStars ??
                                               0;
-                                          final canRate = trackingEnabled &&
+                                          final canRate =
+                                              trackingEnabled &&
                                               albumState.isListened;
 
                                           return GestureDetector(
@@ -38576,24 +38930,24 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
                                             child: SizedBox(
                                               height: 52,
                                               child: Row(
-                                                children: List.generate(
-                                                  5,
-                                                  (index) {
-                                                    final starNumber = index + 1;
-                                                    return Expanded(
-                                                      child: Center(
-                                                        child: _RatingEffectStar(
-                                                          filled: currentStars >=
-                                                              starNumber,
-                                                          pulseToken:
-                                                              _albumRatingPulse,
-                                                          size: 38,
-                                                          enabled: canRate,
-                                                        ),
+                                                children: List.generate(5, (
+                                                  index,
+                                                ) {
+                                                  final starNumber = index + 1;
+                                                  return Expanded(
+                                                    child: Center(
+                                                      child: _RatingEffectStar(
+                                                        filled:
+                                                            currentStars >=
+                                                            starNumber,
+                                                        pulseToken:
+                                                            _albumRatingPulse,
+                                                        size: 38,
+                                                        enabled: canRate,
                                                       ),
-                                                    );
-                                                  },
-                                                ),
+                                                    ),
+                                                  );
+                                                }),
                                               ),
                                             ),
                                           );
@@ -38603,13 +38957,10 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
                                     if (albumState.ratingStars != null) ...[
                                       const SizedBox(width: 4),
                                       IconButton(
-                                        tooltip:
-                                            trUi(context, 'Remove rating'),
+                                        tooltip: trUi(context, 'Remove rating'),
                                         onPressed: albumState.isListened
                                             ? () {
-                                                unawaited(
-                                                  _removeAlbumRating(),
-                                                );
+                                                unawaited(_removeAlbumRating());
                                               }
                                             : null,
                                         icon: const Icon(
@@ -38671,9 +39022,8 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
                                       await Navigator.push(
                                         context,
                                         MaterialPageRoute(
-                                          builder: (_) => PublicProfilePage(
-                                            userId: userId,
-                                          ),
+                                          builder: (_) =>
+                                              PublicProfilePage(userId: userId),
                                         ),
                                       );
                                     },
@@ -38698,10 +39048,10 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
                               side: BorderSide(
                                 color: chipluxCyan.withValues(alpha: 0.55),
                               ),
-                              backgroundColor:
-                                  chipluxCyan.withValues(alpha: 0.045),
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 13),
+                              backgroundColor: chipluxCyan.withValues(
+                                alpha: 0.045,
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 13),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(14),
                               ),
@@ -38759,11 +39109,21 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
                         final selectedFromSearch =
                             widget.initialTrackId == track.id;
                         return _AlbumTrackCard(
-                          number:index+1,track:track,state:state,
-                          selected:selectedFromSearch,
-                          onListened:trackingEnabled?()=>unawaited(_toggleTrackListened(track,tracks)):null,
-                          onFavorite:trackingEnabled?()=>unawaited(_toggleTrackFavorite(track)):null,
-                          onRate:trackingEnabled?()=>_rateTrack(track):null,
+                          number: index + 1,
+                          track: track,
+                          state: state,
+                          selected: selectedFromSearch,
+                          onListened: trackingEnabled
+                              ? () => unawaited(
+                                  _toggleTrackListened(track, tracks),
+                                )
+                              : null,
+                          onFavorite: trackingEnabled
+                              ? () => unawaited(_toggleTrackFavorite(track))
+                              : null,
+                          onRate: trackingEnabled
+                              ? () => _rateTrack(track)
+                              : null,
                         );
                       },
                     ),
@@ -38781,10 +39141,7 @@ class _MusicTinyPill extends StatelessWidget {
   final String text;
   final IconData? icon;
 
-  const _MusicTinyPill({
-    required this.text,
-    this.icon,
-  });
+  const _MusicTinyPill({required this.text, this.icon});
 
   @override
   Widget build(BuildContext context) {
@@ -39481,8 +39838,8 @@ class _EpisodeTile extends StatelessWidget {
                         final int previousTvCount =
                             library.completedTvShowsCount;
 
-                        final bool autoCompletedShow =
-                            await library.toggleEpisode(
+                        final bool autoCompletedShow = await library
+                            .toggleEpisode(
                               showId,
                               seasonNumber,
                               episodeNumber,
@@ -40385,16 +40742,14 @@ class EpisodeInfoPage extends StatelessWidget {
                     final bool wasWatched = watched;
                     final int previousEpisodeCount =
                         library.watchedEpisodeCount;
-                    final int previousTvCount =
-                        library.completedTvShowsCount;
+                    final int previousTvCount = library.completedTvShowsCount;
 
-                    final bool autoCompletedShow =
-                        await library.toggleEpisode(
-                          showId,
-                          seasonNumber,
-                          episodeNumber,
-                          runtimeMinutes: runtime ?? 0,
-                        );
+                    final bool autoCompletedShow = await library.toggleEpisode(
+                      showId,
+                      seasonNumber,
+                      episodeNumber,
+                      runtimeMinutes: runtime ?? 0,
+                    );
 
                     if (!wasWatched && context.mounted) {
                       showCompletionBurst(context);
@@ -40629,7 +40984,10 @@ class _EpisodeInfoMeta extends StatelessWidget {
 
         const SizedBox(width: 5),
 
-        UiText(text, style: const TextStyle(color: Colors.white60, fontSize: 14)),
+        UiText(
+          text,
+          style: const TextStyle(color: Colors.white60, fontSize: 14),
+        ),
       ],
     );
   }
@@ -40791,7 +41149,6 @@ class _FavoriteBurstPainter extends CustomPainter {
   }
 }
 
-
 Future<void> _showTvShowAutoCompletedPopup(
   BuildContext context, {
   required String showTitle,
@@ -40833,11 +41190,7 @@ Future<void> _showTvShowAutoCompletedPopup(
               gradient: const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [
-                  chipluxCyan,
-                  chipluxViolet,
-                  chipluxPurple,
-                ],
+                colors: [chipluxCyan, chipluxViolet, chipluxPurple],
               ),
             ),
             child: Container(

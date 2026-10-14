@@ -172,6 +172,7 @@ class MusicAlbum {
   final String primaryType;
   final List<String> secondaryTypes;
   final List<String> genres;
+  final String? artworkUrl;
 
   const MusicAlbum({
     required this.id,
@@ -182,6 +183,7 @@ class MusicAlbum {
     this.primaryType = 'Album',
     this.secondaryTypes = const [],
     this.genres = const [],
+    this.artworkUrl,
   });
 
   String get year {
@@ -192,8 +194,9 @@ class MusicAlbum {
     return firstReleaseDate.substring(0, 4);
   }
 
-  String get coverUrl =>
-      'https://coverartarchive.org/release-group/$id/front-250';
+  String get coverUrl => artworkUrl?.isNotEmpty == true
+      ? artworkUrl!
+      : 'https://coverartarchive.org/release-group/$id/front-250';
 }
 
 class MusicTrack {
@@ -795,8 +798,16 @@ class MusicService {
       return List<MusicAlbumSearchResult>.unmodifiable(cached);
     }
 
+    final escaped = clean.replaceAll(r'\', r'\\').replaceAll('"', r'\"');
+    final studioQuery =
+        '(releasegroup:"$escaped" OR artist:"$escaped") '
+        'AND primarytype:album AND NOT secondarytype:*';
     final data = await _getJson(
-      _uri('/release-group', {'query': clean, 'limit': '10', 'offset': '0'}),
+      _uri('/release-group', {
+        'query': studioQuery,
+        'limit': '20',
+        'offset': '0',
+      }),
     );
 
     final rawGroups = List<dynamic>.from(data['release-groups'] ?? const []);
