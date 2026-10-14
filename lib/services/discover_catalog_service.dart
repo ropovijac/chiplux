@@ -263,20 +263,72 @@ class DiscoverCatalogService {
     String? misc,
     bool force = false,
   }) async {
+    // Use the precomputed Supabase cache first for decade and Misc lists.
+    // All Time and Genre keep using the existing, already-cached catalog.
+    if (startYear != null || misc != null) {
+      final language = category == DiscoverCategory.albums
+          ? '*'
+          : (LocaleService.instance.effectiveLanguageCode == 'hr'
+                ? 'hr-HR'
+                : 'en-US');
+      final section = startYear != null ? 'decade' : 'misc';
+      final listKey = startYear?.toString() ?? misc!;
+      final cacheKey =
+          'curated-v2:${category.name}:$language:$section:$listKey';
+      await _initialize();
+      final saved = _cache[cacheKey];
+      if (!force && saved != null && saved.rows.isNotEmpty) {
+        // Display instantly; refresh asynchronously after a day.
+        if (DateTime.now().difference(saved.time) > const Duration(days: 1)) {
+          unawaited(
+            _refreshCurated(
+              category,
+              language,
+              section,
+              listKey,
+              cacheKey,
+            ).then<void>((_) {}, onError: (Object _) {}),
+          );
+        }
+        return saved.rows;
+      }
+      try {
+        final remote = await _refreshCurated(
+          category,
+          language,
+          section,
+          listKey,
+          cacheKey,
+        );
+        if (remote.isNotEmpty) return remote;
+      } catch (_) {
+        // Older Flutter versions and disconnected clients retain fallbacks.
+      }
+      if (saved != null && saved.rows.isNotEmpty) return saved.rows;
+    }
     if (category == DiscoverCategory.albums) {
       final effectiveGenre = switch (misc) {
         'Instrumental' => 53,
         'Soundtracks' => 16,
         _ => genreId,
       };
-      var rows = await load(category, DiscoverMode.top100,
-        genreId: effectiveGenre, force: force);
+      var rows = await load(
+        category,
+        DiscoverMode.top100,
+        genreId: effectiveGenre,
+        force: force,
+      );
       // Pool additional genres for albums so the decade selection has
       // more than a single chart's candidates.
-      if (startYear != null || misc == 'Hidden Gems' || misc == 'Modern Classics' || misc == '90s Albums') {
+      if (startYear != null ||
+          misc == 'Hidden Gems' ||
+          misc == 'Modern Classics' ||
+          misc == '90s Albums') {
         final shared = await _sharedCategory(category, force: force);
         final uniques = <String, Map<String, dynamic>>{};
-        for (final batch in shared.entries.where((entry) => entry.key.startsWith('studio:'))) {
+        for (final batch in shared.entries.where(
+          (entry) => entry.key.startsWith('studio:'),
+        )) {
           for (final album in batch.value) {
             final id = album['id']?.toString() ?? '';
             if (id.isNotEmpty) uniques.putIfAbsent(id, () => album);
@@ -288,22 +340,43 @@ class DiscoverCatalogService {
         final date = album['first_release_date']?.toString() ?? '';
         return date.length >= 4 ? int.tryParse(date.substring(0, 4)) : null;
       }
+
       if (startYear != null) {
-        rows = rows.where((album) =>
-          (yearOf(album) ?? 0) >= startYear && (yearOf(album) ?? 9999) < startYear + 10).toList();
+        rows = rows
+            .where(
+              (album) =>
+                  (yearOf(album) ?? 0) >= startYear &&
+                  (yearOf(album) ?? 9999) < startYear + 10,
+            )
+            .toList();
       }
       if (misc == '90s Albums') {
-        rows = rows.where((a) => (yearOf(a) ?? 0) >= 1990 && (yearOf(a) ?? 9999) < 2000).toList();
+        rows = rows
+            .where(
+              (a) => (yearOf(a) ?? 0) >= 1990 && (yearOf(a) ?? 9999) < 2000,
+            )
+            .toList();
       } else if (misc == 'Modern Classics') {
-        rows = rows.where((a) => (yearOf(a) ?? 0) >= 2000 && (yearOf(a) ?? 9999) < 2020).toList();
+        rows = rows
+            .where(
+              (a) => (yearOf(a) ?? 0) >= 2000 && (yearOf(a) ?? 9999) < 2020,
+            )
+            .toList();
       } else if (misc == 'Hidden Gems') {
         // Lower-charted catalog albums; an obscurity proxy, not a critic score.
-        rows = rows.where((a) => ((a['chart_rank'] as num?)?.toInt() ?? 0) >= 30).toList();
+        rows = rows
+            .where((a) => ((a['chart_rank'] as num?)?.toInt() ?? 0) >= 30)
+            .toList();
       }
       return rows.take(100).toList();
     }
     if (startYear == null && misc == null) {
-      return load(category, DiscoverMode.top100, genreId: genreId, force: force);
+      return load(
+        category,
+        DiscoverMode.top100,
+        genreId: genreId,
+        force: force,
+      );
     }
     final type = mediaType(category);
     final isMovie = type == 'movie';
@@ -318,7 +391,9 @@ class DiscoverCatalogService {
         _ => null,
       };
     }
-    if (misc == 'Under 90 Minutes' || misc == 'Superhero Movies' || misc == 'Hidden Gems') {
+    if (misc == 'Under 90 Minutes' ||
+        misc == 'Superhero Movies' ||
+        misc == 'Hidden Gems') {
       final id = switch (misc) {
         'Under 90 Minutes' => -1,
         'Superhero Movies' => -2,
@@ -333,10 +408,17 @@ class DiscoverCatalogService {
         -2 => await tmdb.getTop100SuperheroMovies(),
         _ => await tmdb.getTop100HiddenGems(),
       };
-      return result.whereType<Map>().map((a) => Map<String, dynamic>.from(a)).take(100).toList();
+      return result
+          .whereType<Map>()
+          .map((a) => Map<String, dynamic>.from(a))
+          .take(100)
+          .toList();
     }
-    final language = LocaleService.instance.effectiveLanguageCode == 'hr' ? 'hr-HR' : 'en-US';
-    final key = 'curated:${category.name}:$startYear:$misc:$effectiveGenre:$language';
+    final language = LocaleService.instance.effectiveLanguageCode == 'hr'
+        ? 'hr-HR'
+        : 'en-US';
+    final key =
+        'curated:${category.name}:$startYear:$misc:$effectiveGenre:$language';
     if (!force && _cache.containsKey(key)) return _cache[key]!.rows;
     final minVotes = isMovie ? '250' : '100';
     final query = <String, String>{
@@ -346,18 +428,28 @@ class DiscoverCatalogService {
       'sort_by': 'vote_average.desc',
       'vote_count.gte': minVotes,
       if (effectiveGenre != null) 'with_genres': '$effectiveGenre',
-      if (startYear != null) '${isMovie ? 'primary_release_date' : 'first_air_date'}.gte': '$startYear-01-01',
-      if (startYear != null) '${isMovie ? 'primary_release_date' : 'first_air_date'}.lte': '${startYear + 9}-12-31',
+      if (startYear != null)
+        '${isMovie ? 'primary_release_date' : 'first_air_date'}.gte':
+            '$startYear-01-01',
+      if (startYear != null)
+        '${isMovie ? 'primary_release_date' : 'first_air_date'}.lte':
+            '${startYear + 9}-12-31',
     };
-    final first = await _get(Uri.parse('${TmdbService.baseUrl}/discover/$type')
-      .replace(queryParameters: {...query, 'page': '1'}));
+    final first = await _get(
+      Uri.parse('${TmdbService.baseUrl}/discover/$type')
+          .replace(queryParameters: {...query, 'page': '1'}),
+    );
     final totalPages = (first['total_pages'] as num?)?.toInt() ?? 1;
     final pages = <Map<String, dynamic>>[first];
-    pages.addAll(await Future.wait([
-      for (var page = 2; page <= 5 && page <= totalPages; page++)
-        _get(Uri.parse('${TmdbService.baseUrl}/discover/$type')
-          .replace(queryParameters: {...query, 'page': '$page'})),
-    ]));
+    pages.addAll(
+      await Future.wait([
+        for (var page = 2; page <= 5 && page <= totalPages; page++)
+          _get(
+            Uri.parse('${TmdbService.baseUrl}/discover/$type')
+                .replace(queryParameters: {...query, 'page': '$page'}),
+          ),
+      ]),
+    );
     final seen = <int>{};
     final rows = <Map<String, dynamic>>[];
     for (final page in pages) {
@@ -371,6 +463,36 @@ class DiscoverCatalogService {
     _cache[key] = (time: DateTime.now(), rows: result);
     unawaited(_persist(key, result));
     return result;
+  }
+
+  Future<List<Map<String, dynamic>>> _refreshCurated(
+    DiscoverCategory category,
+    String language,
+    String section,
+    String listKey,
+    String cacheKey,
+  ) async {
+    final response = await Supabase.instance.client
+        .rpc(
+          'chiplux_get_curated_discovery',
+          params: {
+            'p_category': category.name,
+            'p_language': language,
+            'p_section': section,
+            'p_list_key': listKey,
+          },
+        )
+        .timeout(const Duration(seconds: 9));
+    if (response is! List) return const [];
+    final rows = response
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
+    if (rows.isNotEmpty) {
+      _cache[cacheKey] = (time: DateTime.now(), rows: rows);
+      unawaited(_persist(cacheKey, rows));
+    }
+    return rows;
   }
 
   Future<List<Map<String, dynamic>>> searchCachedAlbums(String query) async {

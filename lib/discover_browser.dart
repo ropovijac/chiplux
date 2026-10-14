@@ -173,16 +173,22 @@ List<Map<String, dynamic>> _discoverPersonalize(
       )
       .toList();
   double score(Map<String, dynamic> row) {
-    final genreAffinity = (row['genre_ids'] as List? ?? [])
-        .fold<double>(0, (sum, g) => sum + (weights[g] ?? 0));
+    final genreAffinity = (row['genre_ids'] as List? ?? []).fold<double>(
+      0,
+      (sum, g) => sum + (weights[g] ?? 0),
+    );
     if (category != DiscoverCategory.albums) return genreAffinity;
-    final artistAffinity = artistWeights[_discoverNormalize(
-        row['artist_name']?.toString() ?? '')] ?? 0;
+    final artistAffinity =
+        artistWeights[_discoverNormalize(
+          row['artist_name']?.toString() ?? '',
+        )] ??
+        0;
     final rank = (row['chart_rank'] as num?)?.toInt() ?? 100;
     // Popularity is a small tie-breaker, not a substitute for preferences.
     final popularity = (101 - rank.clamp(1, 100)) / 100.0;
     return genreAffinity * 0.25 + artistAffinity * 0.20 + popularity * 0.10;
   }
+
   final original = <Map<String, dynamic>, int>{
     for (var i = 0; i < filtered.length; i++) filtered[i]: i,
   };
@@ -307,111 +313,111 @@ class _DiscoverBrowsePageState extends State<_DiscoverBrowsePage> {
           const Expanded(child: _ChipluxAlbumRecommendation()),
         if (widget.mode != DiscoverMode.top100 &&
             !(widget.mode == DiscoverMode.forYou &&
-            category == DiscoverCategory.albums))
-        Expanded(
-          child: FutureBuilder<List<DiscoverGenre>>(
-            future: genres,
-            builder: (context, snapshot) {
-              if (snapshot.hasError) {
-                return Center(
-                  child: TextButton(
-                    onPressed: () => setState(
-                      () => genres = DiscoverCatalogService.instance.genres(
-                        category,
-                      ),
-                    ),
-                    child: Text(
-                      _discoverText(
-                        context,
-                        'Could not load genres. Retry',
-                        'Žanrovi nisu učitani. Pokušaj ponovno',
-                      ),
-                    ),
-                  ),
-                );
-              }
-              if (!snapshot.hasData) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              final definitions = <DiscoverGenre?>[null, ...snapshot.data!];
-              final extras =
-                  widget.mode == DiscoverMode.top100 &&
-                      category == DiscoverCategory.movies
-                  ? chipluxTopLists.skip(2).toList()
-                  : <ChipluxListDefinition>[];
-              return RefreshIndicator(
-                color: chipluxCyan,
-                onRefresh: () async {
-                  // Refresh the visible category. Sections reload on demand, avoiding
-                  // a burst of requests for every genre and inactive tab.
-                  DiscoverCatalogService.instance.invalidate(category);
-                  setState(() => generation++);
-                },
-                child: ListView.builder(
-                  key: PageStorageKey(
-                    'discover-${widget.mode.name}-${category.name}',
-                  ),
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 30),
-                  itemCount: definitions.length + extras.length,
-                  itemBuilder: (context, index) {
-                    if (index >= definitions.length) {
-                      final definition = extras[index - definitions.length];
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _DiscoverRankedCard(
-                          category: category,
-                          genre: DiscoverGenre(switch (definition.type) {
-                            ChipluxTopListType.shortMovies => -1,
-                            ChipluxTopListType.superheroMovies => -2,
-                            _ => -3,
-                          }, definition.title),
-                          colorIndex: index,
-                          heading: trUi(context, definition.title),
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  DiscoverTop100Page(definition: definition),
-                            ),
-                          ),
+                category == DiscoverCategory.albums))
+          Expanded(
+            child: FutureBuilder<List<DiscoverGenre>>(
+              future: genres,
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Center(
+                    child: TextButton(
+                      onPressed: () => setState(
+                        () => genres = DiscoverCatalogService.instance.genres(
+                          category,
                         ),
-                      );
-                    }
-                    final genre = definitions[index];
-                    if (widget.mode == DiscoverMode.top100) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 14),
-                        child: _DiscoverRankedCard(
-                          category: category,
-                          genre: genre,
-                          colorIndex: index,
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => _DiscoverRankedPage(
-                                category: category,
-                                genre: genre,
+                      ),
+                      child: Text(
+                        _discoverText(
+                          context,
+                          'Could not load genres. Retry',
+                          'Žanrovi nisu učitani. Pokušaj ponovno',
+                        ),
+                      ),
+                    ),
+                  );
+                }
+                if (!snapshot.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final definitions = <DiscoverGenre?>[null, ...snapshot.data!];
+                final extras =
+                    widget.mode == DiscoverMode.top100 &&
+                        category == DiscoverCategory.movies
+                    ? chipluxTopLists.skip(2).toList()
+                    : <ChipluxListDefinition>[];
+                return RefreshIndicator(
+                  color: chipluxCyan,
+                  onRefresh: () async {
+                    // Refresh the visible category. Sections reload on demand, avoiding
+                    // a burst of requests for every genre and inactive tab.
+                    DiscoverCatalogService.instance.invalidate(category);
+                    setState(() => generation++);
+                  },
+                  child: ListView.builder(
+                    key: PageStorageKey(
+                      'discover-${widget.mode.name}-${category.name}',
+                    ),
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 30),
+                    itemCount: definitions.length + extras.length,
+                    itemBuilder: (context, index) {
+                      if (index >= definitions.length) {
+                        final definition = extras[index - definitions.length];
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _DiscoverRankedCard(
+                            category: category,
+                            genre: DiscoverGenre(switch (definition.type) {
+                              ChipluxTopListType.shortMovies => -1,
+                              ChipluxTopListType.superheroMovies => -2,
+                              _ => -3,
+                            }, definition.title),
+                            colorIndex: index,
+                            heading: trUi(context, definition.title),
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    DiscoverTop100Page(definition: definition),
                               ),
                             ),
                           ),
+                        );
+                      }
+                      final genre = definitions[index];
+                      if (widget.mode == DiscoverMode.top100) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 14),
+                          child: _DiscoverRankedCard(
+                            category: category,
+                            genre: genre,
+                            colorIndex: index,
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => _DiscoverRankedPage(
+                                  category: category,
+                                  genre: genre,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+                      return _DiscoverGenreSection(
+                        key: ValueKey(
+                          '${category.name}:${widget.mode.name}:${genre?.id}:$generation',
                         ),
+                        category: category,
+                        mode: widget.mode,
+                        genre: genre,
                       );
-                    }
-                    return _DiscoverGenreSection(
-                      key: ValueKey(
-                        '${category.name}:${widget.mode.name}:${genre?.id}:$generation',
-                      ),
-                      category: category,
-                      mode: widget.mode,
-                      genre: genre,
-                    );
-                  },
-                ),
-              );
-            },
+                    },
+                  ),
+                );
+              },
+            ),
           ),
-        ),
       ],
     );
   }
@@ -962,152 +968,437 @@ class _DiscoverDailyMediaTile extends StatelessWidget {
   );
 }
 
-
-// The For You album is a single, actionable recommendation rather than a
-// collection of genre tiles. Feedback is saved per signed-in user on-device.
+// A For You recommendation stays on the same album and genre until the user
+// changes either one. Session state is kept locally per account; preferences
+// are also synced to Supabase by the existing feedback table.
 class _ChipluxAlbumRecommendation extends StatefulWidget {
   const _ChipluxAlbumRecommendation();
+
   @override
-  State<_ChipluxAlbumRecommendation> createState() => _ChipluxAlbumRecommendationState();
+  State<_ChipluxAlbumRecommendation> createState() =>
+      _ChipluxAlbumRecommendationState();
 }
 
-class _ChipluxAlbumRecommendationState extends State<_ChipluxAlbumRecommendation> {
-  DiscoverGenre? genre;
+class _ChipluxAlbumRecommendationState
+    extends State<_ChipluxAlbumRecommendation> {
+  int? selectedGenreId;
+  late final String accountId;
+  late final Future<List<DiscoverGenre>> genresFuture;
   late Future<List<Map<String, dynamic>>> future;
   final excluded = <String>{};
-  int rotation = 0;
-  String? feedback;
+  final localFeedbackEdits = <String, String>{};
+  Map<String, String> cloudFeedback = {};
+  List<Map<String, dynamic>> latestRanked = const [];
   SharedPreferences? prefs;
-  String get prefix => 'chiplux_album_discovery_${Supabase.instance.client.auth.currentUser?.id ?? 'guest'}_';
+  String? selectionKey;
+  Map<String, dynamic>? selectedAlbum;
+  Future<void> pendingSessionSave = Future<void>.value();
+
+  String get prefix => 'chiplux_album_discovery_${accountId}_';
+  String get sessionKey => '${prefix}recommendation_session_v1';
+
+  String _key(Map<String, dynamic> row) => row['id']?.toString() ?? '';
+
+  String? _preference(String id) =>
+      localFeedbackEdits[id] ??
+      cloudFeedback[id] ??
+      prefs?.getString('$prefix$id');
 
   @override
   void initState() {
     super.initState();
-    future = _load();
-    SharedPreferences.getInstance().then((value) {
-      if (!mounted) return;
-      setState(() => prefs = value);
-    });
+    accountId = Supabase.instance.client.auth.currentUser?.id ?? 'guest';
+    genresFuture = DiscoverCatalogService.instance.genres(DiscoverCategory.albums);
+    future = _restoreAndLoad();
+    unawaited(_loadFeedback());
   }
 
-  Future<List<Map<String, dynamic>>> _load() => DiscoverCatalogService.instance
-      .load(DiscoverCategory.albums, DiscoverMode.forYou, genreId: genre?.id);
+  Future<List<Map<String, dynamic>>> _restoreAndLoad() async {
+    final store = await SharedPreferences.getInstance();
+    if (!mounted) {
+      return [];
+    }
+    prefs = store;
 
-  String _key(Map<String, dynamic> row) => row['id']?.toString() ?? '';
-  String? _selectionKey;
+    final saved = store.getString(sessionKey);
+    if (saved != null) {
+      try {
+        final state = jsonDecode(saved);
+        if (state is Map) {
+          final genreValue = state['genre_id'];
+          if (genreValue is int && genreValue > 0) {
+            selectedGenreId = genreValue;
+          }
+          final savedExcluded = state['excluded_ids'];
+          if (savedExcluded is List) {
+            excluded.addAll(savedExcluded.whereType<String>());
+          }
+          final savedAlbum = state['album'];
+          if (savedAlbum is Map) {
+            final album = Map<String, dynamic>.from(savedAlbum);
+            if (_discoverAlbumFromItem(album) != null) {
+              selectedAlbum = album;
+              selectionKey = _key(album);
+            }
+          }
+          // An older state may have stored only the album ID.
+          selectionKey ??= state['album_id']?.toString();
+        }
+      } catch (_) {
+        // Invalid local state should not prevent recommendations from loading.
+      }
+    }
+    // Update the dropdown after restoring the user's saved genre.
+    if (mounted) {
+      setState(() {});
+    }
+    return _load();
+  }
 
-  void _reroll([bool reload = false]) {
-    setState(() {
-      if (_selectionKey != null) excluded.add(_selectionKey!);
-      rotation++;
-      feedback = null;
-      if (reload) future = _load();
+  Future<void> _loadFeedback() async {
+    if (accountId == 'guest') {
+      return;
+    }
+    try {
+      final result = await Supabase.instance.client
+          .from('chiplux_album_discovery_feedback')
+          .select('album_id,preference')
+          .eq('user_id', accountId);
+      final values = <String, String>{};
+      for (final record in result) {
+        final id = record['album_id']?.toString() ?? '';
+        final preference = record['preference']?.toString() ?? '';
+        if (id.isNotEmpty &&
+            (preference == 'interested' || preference == 'not_for_me')) {
+          values[id] = preference;
+        }
+      }
+      if (mounted) {
+        setState(() => cloudFeedback = values);
+      }
+    } catch (_) {
+      // Local choices remain available when the network is unavailable.
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _load() =>
+      DiscoverCatalogService.instance.load(
+        DiscoverCategory.albums,
+        DiscoverMode.forYou,
+        genreId: selectedGenreId,
+      );
+
+  void _selectAlbum(Map<String, dynamic>? row) {
+    selectedAlbum = row == null ? null : Map<String, dynamic>.from(row);
+    selectionKey = row == null ? null : _key(row);
+  }
+
+  Map<String, dynamic>? _nextAlbum(List<Map<String, dynamic>> ranked) {
+    for (final row in ranked) {
+      final id = _key(row);
+      if (id.isNotEmpty &&
+          !excluded.contains(id) &&
+          _preference(id) != 'not_for_me') {
+        return row;
+      }
+    }
+    return null;
+  }
+
+  // Serialize saves so rapid genre changes/rerolls cannot overwrite a newer
+  // selection with an older asynchronous SharedPreferences write.
+  Future<void> _persistSession() {
+    final store = prefs;
+    if (store == null) {
+      return Future<void>.value();
+    }
+    final encoded = jsonEncode({
+      'genre_id': selectedGenreId ?? 0,
+      'album_id': selectionKey,
+      'album': selectedAlbum,
+      'excluded_ids': excluded.take(250).toList(),
     });
+    pendingSessionSave = pendingSessionSave.then((_) async {
+      try {
+        await store.setString(sessionKey, encoded);
+      } catch (_) {
+        // A failed local write should not interrupt album discovery.
+      }
+    });
+    return pendingSessionSave;
+  }
+
+  void _reroll() {
+    setState(() {
+      if (selectionKey != null) {
+        excluded.add(selectionKey!);
+      }
+      _selectAlbum(_nextAlbum(latestRanked));
+    });
+    unawaited(_persistSession());
+  }
+
+  void _changeGenre(int? id) {
+    final nextId = id == null || id == 0 ? null : id;
+    if (selectedGenreId == nextId) {
+      return;
+    }
+    setState(() {
+      selectedGenreId = nextId;
+      excluded.clear();
+      _selectAlbum(null);
+      latestRanked = const [];
+      future = _load();
+    });
+    unawaited(_persistSession());
   }
 
   Future<void> _record(Map<String, dynamic> row, bool interested) async {
     final id = _key(row);
-    if (id.isEmpty) return;
-    await prefs?.setString('$prefix$id', interested ? 'interested' : 'not_for_me');
-    if (!mounted) return;
-    setState(() => feedback = interested ? 'interested' : 'not_for_me');
+    if (id.isEmpty) {
+      return;
+    }
+    final value = interested ? 'interested' : 'not_for_me';
+
+    setState(() {
+      localFeedbackEdits[id] = value;
+      cloudFeedback[id] = value;
+      if (interested) {
+        // Interested keeps the same album displayed.
+        _selectAlbum(row);
+      } else {
+        // Not for me dismisses the album and immediately chooses the next.
+        excluded.add(id);
+        _selectAlbum(_nextAlbum(latestRanked));
+      }
+    });
+    await _persistSession();
+    try {
+      await prefs?.setString('$prefix$id', value);
+    } catch (_) {
+      // Server synchronization below remains available.
+    }
+    if (accountId != 'guest') {
+      try {
+        await Supabase.instance.client
+            .from('chiplux_album_discovery_feedback')
+            .upsert({
+              'user_id': accountId,
+              'album_id': id,
+              'preference': value,
+              'updated_at': DateTime.now().toUtc().toIso8601String(),
+            }, onConflict: 'user_id,album_id');
+      } catch (_) {
+        // The preference stays on this device if synchronization fails.
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) => FutureBuilder<List<DiscoverGenre>>(
-    future: DiscoverCatalogService.instance.genres(DiscoverCategory.albums),
-    builder: (context, genreSnapshot) => ListView(
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
-      children: [
-        Text(_discoverText(context, 'An album for you', 'Album za tebe'),
-          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
-        const SizedBox(height: 6),
-        Text(_discoverText(context,
-          'Picked from your favorite genres and highly rated albums, with room for discovery.',
-          'Odabrano prema omiljenim žanrovima i ocjenama, uz poneko iznenađenje.'),
-          style: const TextStyle(color: Colors.white60)),
-        const SizedBox(height: 18),
-        DropdownButtonFormField<int>(
-          initialValue: genre?.id ?? 0,
-          dropdownColor: chipluxSurface,
-          decoration: InputDecoration(
-            labelText: _discoverText(context, 'Choose genre', 'Odaberi žanr'),
-            filled: true, fillColor: chipluxSurface,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14))),
-          items: [
-            DropdownMenuItem(value: 0, child: Text(_discoverText(context, 'Surprise me · All genres', 'Iznenadi me · Svi žanrovi'))),
-            for (final g in genreSnapshot.data ?? <DiscoverGenre>[])
-              DropdownMenuItem(value: g.id, child: Text(_discoverGenreLabel(context, g))),
-          ],
-          onChanged: (id) {
-            setState(() {
-              genre = id == 0 ? null : (genreSnapshot.data ?? []).firstWhere((g) => g.id == id);
-              excluded.clear(); rotation = 0; feedback = null;
-              future = _load();
-            });
-          },
-        ),
-        const SizedBox(height: 20),
-        FutureBuilder<List<Map<String, dynamic>>>(
-          future: future,
-          builder: (context, snapshot) {
-            if (snapshot.hasError) {
-              return TextButton(
-              onPressed: () => setState(() => future = _load()),
-              child: Text(_discoverText(context, 'Could not load albums. Retry', 'Nije moguće učitati albume. Pokušaj ponovno')));
-            }
-            if (!snapshot.hasData) {
-              return const Center(child: Padding(
-              padding: EdgeInsets.all(38), child: CircularProgressIndicator()));
-            }
-            return AnimatedBuilder(
-              animation: MusicUserDataService.instance,
-              builder: (context, _) {
-                final ranked = _discoverPersonalize(DiscoverCategory.albums, snapshot.data!);
-                final available = ranked.where((r) =>
-                  !excluded.contains(_key(r)) && prefs?.getString('$prefix${_key(r)}') != 'not_for_me').toList();
-                if (available.isEmpty) {
-                  return Column(children: [
-                  Text(_discoverText(context, 'No more albums in this selection.', 'Nema više albuma u ovom izboru.')),
-                  TextButton(onPressed: () => setState(() { excluded.clear(); rotation++; }),
-                    child: Text(_discoverText(context, 'Start over', 'Kreni ponovno'))),
-                ]);
-                }
-                // Prefer the personalized leading pool; rotation exposes fresh options.
-                final row = available.first;
-                _selectionKey = _key(row);
-                final saved = prefs?.getString('$prefix${_key(row)}');
-                return Container(
-                  padding: const EdgeInsets.all(15),
-                  decoration: BoxDecoration(
-                    color: chipluxSurface, borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: chipluxViolet.withValues(alpha: .45))),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                    _DiscoverMusicTile(item: row, category: DiscoverCategory.albums, compact: true),
-                    const SizedBox(height: 12),
-                    Row(children: [
-                      Expanded(child: OutlinedButton.icon(
-                        onPressed: () => _record(row, true),
-                        icon: Icon(saved == 'interested' || feedback == 'interested' ? Icons.favorite : Icons.favorite_border),
-                        label: Text(_discoverText(context, 'Interested', 'Zanima me')))),
-                      const SizedBox(width: 10),
-                      Expanded(child: OutlinedButton.icon(
-                        onPressed: () => _record(row, false),
-                        icon: const Icon(Icons.thumb_down_outlined),
-                        label: Text(_discoverText(context, 'Not for me', 'Nije za mene')))),
-                    ]),
-                    const SizedBox(height: 8),
-                    TextButton.icon(onPressed: _reroll,
-                      icon: const Icon(Icons.shuffle_rounded),
-                      label: Text(_discoverText(context, 'Another album', 'Drugi album'))),
-                  ]),
+    future: genresFuture,
+    builder: (context, genreSnapshot) {
+      final genreOptions = genreSnapshot.data ?? <DiscoverGenre>[];
+      final displayedGenreId = genreOptions.any((g) => g.id == selectedGenreId)
+          ? selectedGenreId ?? 0
+          : 0;
+      return ListView(
+        padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
+        children: [
+          Text(
+            _discoverText(context, 'An album for you', 'Album za tebe'),
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            _discoverText(
+              context,
+              'Picked from your favorite genres and highly rated albums, with room for discovery.',
+              'Odabrano prema omiljenim žanrovima i ocjenama, uz poneko iznenađenje.',
+            ),
+            style: const TextStyle(color: Colors.white60),
+          ),
+          const SizedBox(height: 18),
+          DropdownButtonFormField<int>(
+            // A new key applies restored initialValue after an app restart.
+            key: ValueKey('chiplux-for-you-genre-$displayedGenreId'),
+            initialValue: displayedGenreId,
+            dropdownColor: chipluxSurface,
+            decoration: InputDecoration(
+              labelText: _discoverText(context, 'Choose genre', 'Odaberi žanr'),
+              filled: true,
+              fillColor: chipluxSurface,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+            items: [
+              DropdownMenuItem(
+                value: 0,
+                child: Text(
+                  _discoverText(
+                    context,
+                    'Surprise me · All genres',
+                    'Iznenadi me · Svi žanrovi',
+                  ),
+                ),
+              ),
+              for (final g in genreOptions)
+                DropdownMenuItem(
+                  value: g.id,
+                  child: Text(_discoverGenreLabel(context, g)),
+                ),
+            ],
+            onChanged: genreSnapshot.hasData ? _changeGenre : null,
+          ),
+          const SizedBox(height: 20),
+          FutureBuilder<List<Map<String, dynamic>>>(
+            future: future,
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return TextButton(
+                  onPressed: () => setState(() => future = _load()),
+                  child: Text(
+                    _discoverText(
+                      context,
+                      'Could not load albums. Retry',
+                      'Nije moguće učitati albume. Pokušaj ponovno',
+                    ),
+                  ),
                 );
-              },
-            );
-          },
-        ),
-      ],
-    ),
+              }
+              if (!snapshot.hasData) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(38),
+                    child: CircularProgressIndicator(),
+                  ),
+                );
+              }
+              return AnimatedBuilder(
+                animation: MusicUserDataService.instance,
+                builder: (context, _) {
+                  latestRanked = _discoverPersonalize(
+                    DiscoverCategory.albums,
+                    snapshot.data!,
+                  );
+                  Map<String, dynamic>? row;
+                  final previousId = selectionKey;
+                  // Keep the selected album even if personalization reorders
+                  // or a daily catalog refresh no longer includes it.
+                  if (selectedAlbum != null &&
+                      selectionKey == _key(selectedAlbum!) &&
+                      !excluded.contains(selectionKey) &&
+                      _preference(selectionKey!) != 'not_for_me') {
+                    row = selectedAlbum;
+                  } else if (selectionKey != null &&
+                      !excluded.contains(selectionKey) &&
+                      _preference(selectionKey!) != 'not_for_me') {
+                    for (final candidate in latestRanked) {
+                      if (_key(candidate) == selectionKey) {
+                        row = candidate;
+                        break;
+                      }
+                    }
+                  }
+                  row ??= _nextAlbum(latestRanked);
+                  if (row == null) {
+                    return Column(
+                      children: [
+                        Text(
+                          _discoverText(
+                            context,
+                            'No more albums in this selection.',
+                            'Nema više albuma u ovom izboru.',
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            setState(() {
+                              excluded.clear();
+                              _selectAlbum(null);
+                            });
+                            unawaited(_persistSession());
+                          },
+                          child: Text(
+                            _discoverText(context, 'Start over', 'Kreni ponovno'),
+                          ),
+                        ),
+                      ],
+                    );
+                  }
+                  final currentRow = row;
+                  final id = _key(currentRow);
+                  if (previousId != id || selectedAlbum == null) {
+                    _selectAlbum(currentRow);
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted && selectionKey == id) {
+                        unawaited(_persistSession());
+                      }
+                    });
+                  }
+                  final saved = _preference(id);
+                  return Container(
+                    padding: const EdgeInsets.all(15),
+                    decoration: BoxDecoration(
+                      color: chipluxSurface,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: chipluxViolet.withValues(alpha: .45),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _DiscoverMusicTile(
+                          item: currentRow,
+                          category: DiscoverCategory.albums,
+                          compact: true,
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () => _record(currentRow, true),
+                                icon: Icon(
+                                  saved == 'interested'
+                                      ? Icons.favorite
+                                      : Icons.favorite_border,
+                                ),
+                                label: Text(
+                                  _discoverText(context, 'Interested', 'Zanima me'),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () => _record(currentRow, false),
+                                icon: const Icon(Icons.thumb_down_outlined),
+                                label: Text(
+                                  _discoverText(context, 'Not for me', 'Nije za mene'),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        TextButton.icon(
+                          onPressed: _reroll,
+                          icon: const Icon(Icons.shuffle_rounded),
+                          label: Text(
+                            _discoverText(context, 'Another album', 'Drugi album'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ],
+      );
+    },
   );
 }
 
@@ -1115,8 +1406,10 @@ class _ChipluxCategorizedLists extends StatefulWidget {
   final DiscoverCategory category;
   const _ChipluxCategorizedLists({required this.category});
   @override
-  State<_ChipluxCategorizedLists> createState() => _ChipluxCategorizedListsState();
+  State<_ChipluxCategorizedLists> createState() =>
+      _ChipluxCategorizedListsState();
 }
+
 class _ChipluxCategorizedListsState extends State<_ChipluxCategorizedLists> {
   int tab = 0;
   @override
@@ -1124,78 +1417,177 @@ class _ChipluxCategorizedListsState extends State<_ChipluxCategorizedLists> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.category != widget.category) tab = 0;
   }
+
   @override
-  Widget build(BuildContext context) => Column(children: [
-    Padding(padding: const EdgeInsets.fromLTRB(16, 12, 16, 8), child: Row(children: [
-      for (final (index, name) in ['All Time', 'Decade', 'Genre', 'Misc'].indexed)
-        Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 2),
-          child: InkWell(onTap: () => setState(() => tab = index),
-            borderRadius: BorderRadius.circular(12),
-            child: Container(padding: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                color: tab == index ? chipluxViolet.withValues(alpha: .24) : chipluxSurface,
-                borderRadius: BorderRadius.circular(12)),
-              child: Text(name, textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold,
-                  color: tab == index ? Colors.white : Colors.white60)))))),
-    ])),
-    Expanded(child: FutureBuilder<List<DiscoverGenre>>(
-      future: DiscoverCatalogService.instance.genres(widget.category),
-      builder: (context, snapshot) {
-  if (tab == 2 && !snapshot.hasData && !snapshot.hasError) {
-    return const Center(
-      child: CircularProgressIndicator(),
-    );
-  }
-
-  if (tab == 2 && snapshot.hasError) {
-    return Center(
-      child: TextButton(
-        onPressed: () => setState(() {}),
-        child: const Text('Retry genres'),
+  Widget build(BuildContext context) => Column(
+    children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+        child: Row(
+          children: [
+            for (final (index, name) in [
+              'All Time',
+              'Decade',
+              'Genre',
+              'Misc',
+            ].indexed)
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  child: InkWell(
+                    onTap: () => setState(() => tab = index),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: tab == index
+                            ? chipluxViolet.withValues(alpha: .24)
+                            : chipluxSurface,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        name,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: tab == index ? Colors.white : Colors.white60,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
-    );
-  }
-
-  // Keep the existing options declaration and list-building code here.
-        final options = <({String title, DiscoverGenre? genre, int? startYear, String? misc})>[];
-        if (tab == 0) {
-          options.add((title: 'Top 100 ${_discoverCategoryLabel(context, widget.category)} of All Time', genre: null, startYear: null, misc: null));
-        } else if (tab == 1) {
-          for (final year in [2020, 2010, 2000, 1990, 1980, 1970, 1960]) {
-            options.add((title: '${year}s', genre: null, startYear: year, misc: null));
-          }
-        } else if (tab == 2) {
-          for (final genre in snapshot.data ?? <DiscoverGenre>[]) {
-            options.add((title: _discoverGenreLabel(context, genre), genre: genre, startYear: null, misc: null));
-          }
-        } else if (widget.category == DiscoverCategory.movies) {
-          for (final item in ['Hidden Gems', 'Under 90 Minutes', 'Superhero Movies', 'Animated Movies']) {
-            options.add((title: item, genre: null, startYear: null, misc: item));
-          }
-        } else if (widget.category == DiscoverCategory.tvShows) {
-          for (final item in ['Sitcoms & Comedy', 'Anime & Animation', 'Documentaries', 'Crime Series']) {
-            options.add((title: item, genre: null, startYear: null, misc: item));
-          }
-        } else {
-          for (final item in ['Hidden Gems', 'Modern Classics', '90s Albums', 'Instrumental', 'Soundtracks']) {
-            options.add((title: item, genre: null, startYear: null, misc: item));
-          }
-        }
-        return ListView.builder(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 26), itemCount: options.length,
-          itemBuilder: (context, index) {
-            final option = options[index];
-            return Padding(padding: const EdgeInsets.only(bottom: 12),
-              child: _DiscoverRankedCard(category: widget.category, genre: option.genre,
-                colorIndex: index, heading: option.title,
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) =>
-                  _ChipluxCuratedListPage(category: widget.category, title: option.title,
-                    genre: option.genre, startYear: option.startYear, misc: option.misc)))));
-          });
-      },
-    )),
-  ]);
+      Expanded(
+        child: FutureBuilder<List<DiscoverGenre>>(
+          future: DiscoverCatalogService.instance.genres(widget.category),
+          builder: (context, snapshot) {
+            if (tab == 2 && snapshot.hasError) {
+              return Center(
+                child: TextButton(
+                  onPressed: () => setState(() {}),
+                  child: const Text('Retry genres'),
+                ),
+              );
+            }
+            if (tab == 2 && !snapshot.hasData) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final options =
+                <
+                  ({
+                    String title,
+                    DiscoverGenre? genre,
+                    int? startYear,
+                    String? misc,
+                  })
+                >[];
+            if (tab == 0) {
+              options.add((
+                title:
+                    'Top 100 ${_discoverCategoryLabel(context, widget.category)} of All Time',
+                genre: null,
+                startYear: null,
+                misc: null,
+              ));
+            } else if (tab == 1) {
+              for (final year in [2020, 2010, 2000, 1990, 1980, 1970, 1960]) {
+                options.add((
+                  title: '${year}s',
+                  genre: null,
+                  startYear: year,
+                  misc: null,
+                ));
+              }
+            } else if (tab == 2) {
+              for (final genre in snapshot.data ?? <DiscoverGenre>[]) {
+                options.add((
+                  title: _discoverGenreLabel(context, genre),
+                  genre: genre,
+                  startYear: null,
+                  misc: null,
+                ));
+              }
+            } else if (widget.category == DiscoverCategory.movies) {
+              for (final item in [
+                'Hidden Gems',
+                'Under 90 Minutes',
+                'Superhero Movies',
+                'Animated Movies',
+              ]) {
+                options.add((
+                  title: item,
+                  genre: null,
+                  startYear: null,
+                  misc: item,
+                ));
+              }
+            } else if (widget.category == DiscoverCategory.tvShows) {
+              for (final item in [
+                'Sitcoms & Comedy',
+                'Anime & Animation',
+                'Documentaries',
+                'Crime Series',
+              ]) {
+                options.add((
+                  title: item,
+                  genre: null,
+                  startYear: null,
+                  misc: item,
+                ));
+              }
+            } else {
+              for (final item in [
+                'Hidden Gems',
+                'Modern Classics',
+                '90s Albums',
+                'Instrumental',
+                'Soundtracks',
+              ]) {
+                options.add((
+                  title: item,
+                  genre: null,
+                  startYear: null,
+                  misc: item,
+                ));
+              }
+            }
+            return ListView.builder(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 26),
+              itemCount: options.length,
+              itemBuilder: (context, index) {
+                final option = options[index];
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _DiscoverRankedCard(
+                    category: widget.category,
+                    genre: option.genre,
+                    colorIndex: index,
+                    heading: option.title,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => _ChipluxCuratedListPage(
+                          category: widget.category,
+                          title: option.title,
+                          genre: option.genre,
+                          startYear: option.startYear,
+                          misc: option.misc,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        ),
+      ),
+    ],
+  );
 }
 
 class _ChipluxCuratedListPage extends StatefulWidget {
@@ -1204,48 +1596,102 @@ class _ChipluxCuratedListPage extends StatefulWidget {
   final DiscoverGenre? genre;
   final int? startYear;
   final String? misc;
-  const _ChipluxCuratedListPage({required this.category, required this.title,
-    this.genre, this.startYear, this.misc});
+  const _ChipluxCuratedListPage({
+    required this.category,
+    required this.title,
+    this.genre,
+    this.startYear,
+    this.misc,
+  });
   @override
-  State<_ChipluxCuratedListPage> createState() => _ChipluxCuratedListPageState();
+  State<_ChipluxCuratedListPage> createState() =>
+      _ChipluxCuratedListPageState();
 }
+
 class _ChipluxCuratedListPageState extends State<_ChipluxCuratedListPage> {
   late Future<List<Map<String, dynamic>>> future;
   @override
-  void initState() { super.initState(); future = _load(); }
+  void initState() {
+    super.initState();
+    future = _load();
+  }
+
   Future<List<Map<String, dynamic>>> _load({bool force = false}) =>
-    DiscoverCatalogService.instance.curatedList(widget.category,
-      genreId: widget.genre?.id, startYear: widget.startYear,
-      misc: widget.misc, force: force);
+      DiscoverCatalogService.instance.curatedList(
+        widget.category,
+        genreId: widget.genre?.id,
+        startYear: widget.startYear,
+        misc: widget.misc,
+        force: force,
+      );
   @override
   Widget build(BuildContext context) => Scaffold(
-    backgroundColor: chipluxBackground, appBar: AppBar(title: Text(widget.title)),
-    body: ChipluxBackground(style: ChipluxBackgroundStyle.discover,
-      child: FutureBuilder<List<Map<String, dynamic>>>(future: future,
+    backgroundColor: chipluxBackground,
+    appBar: AppBar(title: Text(widget.title)),
+    body: ChipluxBackground(
+      style: ChipluxBackgroundStyle.discover,
+      child: FutureBuilder<List<Map<String, dynamic>>>(
+        future: future,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return Center(child: TextButton(
-            onPressed: () => setState(() => future = _load(force: true)),
-            child: Text(_discoverText(context, 'Could not load. Retry', 'Učitavanje nije uspjelo. Pokušaj ponovno'))));
+            return Center(
+              child: TextButton(
+                onPressed: () => setState(() => future = _load(force: true)),
+                child: Text(
+                  _discoverText(
+                    context,
+                    'Could not load. Retry',
+                    'Učitavanje nije uspjelo. Pokušaj ponovno',
+                  ),
+                ),
+              ),
+            );
           }
-          if (!snapshot.hasData) { return const Center(child: CircularProgressIndicator()); }
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
           final rows = snapshot.data!;
           if (rows.isEmpty) {
-            return Center(child: Text(_discoverText(context,
-            'No titles available in this selection.', 'Nema naslova u ovom izboru.')));
+            return Center(
+              child: Text(
+                _discoverText(
+                  context,
+                  'No titles available in this selection.',
+                  'Nema naslova u ovom izboru.',
+                ),
+              ),
+            );
           }
-          return RefreshIndicator(onRefresh: () async {
-            final f = _load(force: true); setState(() => future = f); await f;
-          }, child: ListView.separated(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(16), itemCount: rows.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 10),
-            itemBuilder: (context, index) => DiscoverCatalogService.isMusic(widget.category)
-              ? _DiscoverMusicTile(item: rows[index], category: widget.category,
-                  compact: true, rank: index + 1)
-              : _Top100Row(rank: index + 1, item: rows[index],
-                  mediaType: DiscoverCatalogService.mediaType(widget.category)),
-          ));
-        })),
+          return RefreshIndicator(
+            onRefresh: () async {
+              final f = _load(force: true);
+              setState(() => future = f);
+              await f;
+            },
+            child: ListView.separated(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16),
+              itemCount: rows.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 10),
+              itemBuilder: (context, index) =>
+                  DiscoverCatalogService.isMusic(widget.category)
+                  ? _DiscoverMusicTile(
+                      item: rows[index],
+                      category: widget.category,
+                      compact: true,
+                      rank: index + 1,
+                    )
+                  : _Top100Row(
+                      rank: index + 1,
+                      item: rows[index],
+                      mediaType: DiscoverCatalogService.mediaType(
+                        widget.category,
+                      ),
+                    ),
+            ),
+          );
+        },
+      ),
+    ),
   );
 }
