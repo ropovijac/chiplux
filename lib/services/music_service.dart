@@ -707,7 +707,19 @@ class MusicService {
     secondaryTypes: const [],
   );
 
-  Future<List<MusicArtist>> searchArtists(String query) async {
+  final _artistSearchRequests = <String, Future<List<MusicArtist>>>{};
+  Future<List<MusicArtist>> searchArtists(String query) {
+    final key = query.trim().toLowerCase();
+    if (key.length < 2) {
+      return Future.value(const []);
+    }
+    return _artistSearchRequests.putIfAbsent(key, () =>
+        _searchArtistsUncached(query).whenComplete(() {
+          _artistSearchRequests.remove(key);
+        }));
+  }
+
+  Future<List<MusicArtist>> _searchArtistsUncached(String query) async {
     final clean = query.trim();
     if (clean.length < 2) {
       return const [];
@@ -786,7 +798,20 @@ class MusicService {
         .toList(growable: false);
   }
 
-  Future<List<MusicAlbumSearchResult>> searchStudioAlbums(String query) async {
+  final _albumSearchRequests =
+      <String, Future<List<MusicAlbumSearchResult>>>{};
+  Future<List<MusicAlbumSearchResult>> searchStudioAlbums(String query) {
+    final key = query.trim().toLowerCase();
+    if (key.length < 2) {
+      return Future.value(const []);
+    }
+    return _albumSearchRequests.putIfAbsent(key, () =>
+        _searchStudioAlbumsUncached(query).whenComplete(() {
+          _albumSearchRequests.remove(key);
+        }));
+  }
+
+  Future<List<MusicAlbumSearchResult>> _searchStudioAlbumsUncached(String query) async {
     final clean = query.trim();
     if (clean.length < 2) {
       return const [];
@@ -1134,7 +1159,19 @@ class MusicService {
     return List<MusicAlbum>.unmodifiable(albums);
   }
 
-  Future<MusicAlbumDetails> getAlbumDetails(MusicAlbum album) async {
+  final _albumDetailsRequests = <String, Future<MusicAlbumDetails>>{};
+  Future<MusicAlbumDetails> getAlbumDetails(MusicAlbum album) {
+    final cached = _albumDetailsCache[album.id];
+    if (cached != null) {
+      return Future.value(cached);
+    }
+    return _albumDetailsRequests.putIfAbsent(album.id, () =>
+        _fetchAlbumDetails(album).whenComplete(() {
+          _albumDetailsRequests.remove(album.id);
+        }));
+  }
+
+  Future<MusicAlbumDetails> _fetchAlbumDetails(MusicAlbum album) async {
     final cached = _albumDetailsCache[album.id];
     if (cached != null) {
       return cached;

@@ -13719,36 +13719,37 @@ class _SearchPageState extends State<SearchPage> {
   ) async {
     switch (scope) {
       case _MusicSearchScope.albums:
-        try {
-          final cached = await DiscoverCatalogService.instance
+        // Catalog initialization and MusicBrainz search run concurrently.
+        // Previously a slow first catalog load delayed direct album results.
+        Future<List<dynamic>> catalogSearch() async {
+          final rows = await DiscoverCatalogService.instance
               .searchCachedAlbums(query);
-          if (cached.isNotEmpty) {
-            return cached
-                .map((item) {
-                  final album = MusicAlbum(
-                    id: item['id']?.toString() ?? '',
-                    title: item['name']?.toString() ?? '',
-                    artistId: item['artist_id']?.toString() ?? '',
-                    artistName: item['artist_name']?.toString() ?? '',
-                    firstReleaseDate:
-                        item['first_release_date']?.toString() ?? '',
-                    genres: (item['genres'] as List? ?? const [])
-                        .map((genre) => genre.toString())
-                        .toList(growable: false),
-                    artworkUrl: item['cover_url']?.toString(),
-                  );
-                  return MusicAlbumSearchResult(
-                    album: album,
-                    score: 100,
-                  ).toSearchMap();
-                })
-                .toList(growable: false);
-          }
-        } catch (_) {
-          // The complete music search below remains available if preload failed.
+          return rows.map((item) {
+            final album = MusicAlbum(
+              id: item['id']?.toString() ?? '',
+              title: item['name']?.toString() ?? '',
+              artistId: item['artist_id']?.toString() ?? '',
+              artistName: item['artist_name']?.toString() ?? '',
+              firstReleaseDate: item['first_release_date']?.toString() ?? '',
+              genres: (item['genres'] as List? ?? const [])
+                  .map((genre) => genre.toString()).toList(growable: false),
+              artworkUrl: item['cover_url']?.toString(),
+            );
+            return MusicAlbumSearchResult(album: album, score: 100).toSearchMap();
+          }).toList(growable: false);
         }
-        final albums = await musicService.searchStudioAlbums(query);
-        return albums.take(20).map((result) => result.toSearchMap()).toList();
+        Future<List<dynamic>> providerSearch() async {
+          final rows = await musicService.searchStudioAlbums(query);
+          return rows.take(20).map((row) => row.toSearchMap()).toList();
+        }
+        final local = catalogSearch().catchError((Object _) => <dynamic>[]);
+        final remote = providerSearch().catchError((Object _) => <dynamic>[]);
+        final first = await Future.any([local, remote]);
+        if (first.isNotEmpty) return first;
+        // If the faster provider has no matches, let the other provider answer.
+        final second = await Future.wait([local, remote]);
+        return second.firstWhere((results) => results.isNotEmpty,
+            orElse: () => <dynamic>[]);
 
       case _MusicSearchScope.groups:
         final groups = await musicService.searchGroups(query);
@@ -13788,8 +13789,8 @@ class _SearchPageState extends State<SearchPage> {
         ? const Duration(milliseconds: 300)
         : category == _SearchCategory.music
         ? (musicScope == _MusicSearchScope.albums
-              ? const Duration(milliseconds: 250)
-              : const Duration(milliseconds: 400))
+              ? const Duration(milliseconds: 180)
+              : const Duration(milliseconds: 250))
         : const Duration(milliseconds: 700);
 
     _searchDebounce = Timer(delay, () {
@@ -32284,79 +32285,161 @@ class _EditProfilePageState extends State<EditProfilePage> {
     );
   }
 
+  void _showProfileTitleGrid(List<_Achievement> unlocked) {
+    final search = TextEditingController();
+    String filter = '';
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: chipluxBackground,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, refreshSheet) {
+          final matching = unlocked.where((achievement) =>
+              achievement.title.toLowerCase().contains(filter.toLowerCase()))
+              .toList();
+          final showNone = filter.isEmpty || 'none'.contains(filter.toLowerCase());
+          final showDeveloper = profile.isDeveloper &&
+              (filter.isEmpty || 'chiplux developer'.contains(filter.toLowerCase()));
+          final count = matching.length + (showNone ? 1 : 0) + (showDeveloper ? 1 : 0);
+          return SafeArea(
+            child: SizedBox(
+              height: MediaQuery.sizeOf(sheetContext).height * .78,
+              child: Column(children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 16, 12, 10),
+                  child: Row(children: [
+                    const Icon(Icons.workspace_premium_outlined, color: chipluxCyan),
+                    const SizedBox(width: 10),
+                    const Expanded(child: Text('Choose Profile Title',
+                      style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold))),
+                    IconButton(icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(sheetContext)),
+                  ]),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  child: TextField(
+                    controller: search,
+                    onChanged: (value) => refreshSheet(() => filter = value),
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(Icons.search_rounded),
+                      hintText: 'Search unlocked titles',
+                      filled: true,
+                      fillColor: chipluxSurface,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                    ),
+                  ),
+                ),
+                Expanded(child: count == 0
+                  ? const Center(child: Text('No matching titles.'))
+                  : GridView.builder(
+                    padding: const EdgeInsets.fromLTRB(12, 4, 12, 28),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      mainAxisSpacing: 10,
+                      crossAxisSpacing: 10,
+                      mainAxisExtent: 94,
+                    ),
+                    itemCount: count,
+                    itemBuilder: (context, index) {
+                      if (showNone && index == 0) {
+                        return Center(child: _ProfileTitleOption(
+                          achievement: null, selected: selectedTitleId == null,
+                          onTap: () {
+                            unawaited(_selectProfileTitle(null));
+                            Navigator.pop(sheetContext);
+                          },
+                        ));
+                      }
+                      final afterNone = index - (showNone ? 1 : 0);
+                      if (showDeveloper && afterNone == 0) {
+                        return Center(child: _buildDeveloperTitleOption());
+                      }
+                      final option = matching[afterNone - (showDeveloper ? 1 : 0)];
+                      return Center(child: _ProfileTitleOption(
+                        achievement: option,
+                        selected: selectedTitleId == option.id,
+                        onTap: () {
+                          unawaited(_selectProfileTitle(option.id));
+                          Navigator.pop(sheetContext);
+                        },
+                      ));
+                    },
+                  )),
+              ]),
+            ),
+          );
+        },
+      ),
+    ).whenComplete(search.dispose);
+  }
+
   Widget buildProfileTitlePicker() {
     if (loadingTitle) {
-      return const SizedBox(
-        height: 100,
-        child: Center(child: CircularProgressIndicator()),
-      );
+      return const SizedBox(height: 80,
+        child: Center(child: CircularProgressIndicator()));
     }
-
-    final groups = _currentUserProfileTitleGroups();
     final unlocked = <_Achievement>[];
-
-    for (final group in groups) {
+    for (final group in _currentUserProfileTitleGroups()) {
       for (final tier in group.tiers) {
-        if (tier.unlocked) {
-          unlocked.add(tier);
+        if (tier.unlocked) unlocked.add(tier);
+      }
+    }
+    String label = 'None';
+    if (selectedTitleId == developerProfileTitleId) {
+      label = 'Chiplux Developer';
+    } else {
+      for (final option in unlocked) {
+        if (option.id == selectedTitleId) {
+          label = option.title;
+          break;
         }
       }
     }
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const UiText(
-          'Profile Title',
-          style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
-        ),
+        const UiText('Profile Title',
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
         const SizedBox(height: 5),
-        const UiText(
-          'Use any unlocked achievement milestone as the title shown above your display name.',
-          style: TextStyle(color: Colors.white54, fontSize: 12),
-        ),
+        const UiText('Choose an unlocked title to display above your name.',
+          style: TextStyle(color: Colors.white54, fontSize: 12)),
         const SizedBox(height: 12),
-        SizedBox(
-          height: 88,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: unlocked.length + 1 + (profile.isDeveloper ? 1 : 0),
-            separatorBuilder: (context, index) => const SizedBox(width: 8),
-            itemBuilder: (context, index) {
-              if (index == 0) {
-                return _ProfileTitleOption(
-                  achievement: null,
-                  selected: selectedTitleId == null,
-                  onTap: () {
-                    unawaited(_selectProfileTitle(null));
-                  },
-                );
-              }
-
-              if (profile.isDeveloper && index == 1) {
-                return _buildDeveloperTitleOption();
-              }
-
-              final achievement =
-                  unlocked[index - 1 - (profile.isDeveloper ? 1 : 0)];
-
-              return _ProfileTitleOption(
-                achievement: achievement,
-                selected: selectedTitleId == achievement.id,
-                onTap: () {
-                  unawaited(_selectProfileTitle(achievement.id));
-                },
-              );
-            },
+        Material(
+          color: chipluxSurface,
+          borderRadius: BorderRadius.circular(15),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(15),
+            onTap: () => _showProfileTitleGrid(unlocked),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
+              child: Row(children: [
+                const Icon(Icons.workspace_premium_outlined, color: chipluxCyan),
+                const SizedBox(width: 12),
+                Expanded(child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w700)),
+                    Text('Browse ${unlocked.length + 1 + (profile.isDeveloper ? 1 : 0)} titles',
+                      style: const TextStyle(fontSize: 11, color: Colors.white54)),
+                  ],
+                )),
+                const Icon(Icons.grid_view_rounded, color: chipluxViolet),
+              ]),
+            ),
           ),
         ),
-        if (unlocked.isEmpty && !profile.isDeveloper) ...[
-          const SizedBox(height: 8),
-          const UiText(
-            'Unlock an achievement milestone to earn your first title.',
-            style: TextStyle(color: Colors.white38, fontSize: 11),
+        if (unlocked.isEmpty && !profile.isDeveloper)
+          const Padding(
+            padding: EdgeInsets.only(top: 8),
+            child: UiText('Unlock achievements to earn more titles.',
+              style: TextStyle(color: Colors.white38, fontSize: 11)),
           ),
-        ],
       ],
     );
   }
@@ -37661,15 +37744,13 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
   }
 
   Future<void> _load() async {
-    MusicAlbumDetails? loaded;
-
+    MusicAlbumDetails loaded;
     try {
       loaded = await music.getAlbumDetails(widget.album);
-    } catch (e) {
+    } catch (_) {
       if (!mounted) {
         return;
       }
-
       setState(() {
         loading = false;
         loadingTracking = false;
@@ -37678,6 +37759,21 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
       return;
     }
 
+    // Show the album and its tracks as soon as metadata is ready. Tracking
+    // synchronization is independent and should never hold the whole page.
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      details = loaded;
+      loading = false;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _scrollToInitialTrack();
+      }
+    });
+
     String? loadedTrackingError;
     try {
       await userData.loadAlbum(widget.album, loaded.tracks);
@@ -37685,20 +37781,12 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
       debugPrint('Could not load music tracking: $e');
       loadedTrackingError = 'Could not load music tracking.';
     }
-
     if (!mounted) {
       return;
     }
-
     setState(() {
-      details = loaded;
-      loading = false;
       loadingTracking = false;
       trackingError = loadedTrackingError;
-    });
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _scrollToInitialTrack();
     });
   }
 
