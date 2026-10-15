@@ -12050,6 +12050,20 @@ class _HomePageState extends State<HomePage> {
                     ],
                   ),
                 ),
+                IconButton(
+                  tooltip: 'Chiplux Shop',
+                  icon: const Icon(Icons.shopping_bag_outlined, color: chipluxCyan, size: 29),
+                  onPressed: () {
+                    ScaffoldMessenger.of(context)
+                      ..hideCurrentSnackBar()
+                      ..showSnackBar(
+                        const SnackBar(
+                          content: UiText('Chiplux shop comming soon!'),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                  },
+                ),
               ],
             ),
           ),
@@ -18284,6 +18298,7 @@ _AchievementGroup _discoveryTitleGroup({
   required List<int> targets,
   required List<String> titles,
   required List<IconData> icons,
+  required String Function(int target) milestoneDescription,
 }) {
   assert(targets.length == titles.length && titles.length == icons.length);
   return _AchievementGroup(
@@ -18292,7 +18307,7 @@ _AchievementGroup _discoveryTitleGroup({
     tiers: List.generate(targets.length, (index) => _Achievement(
       id: '${id}_${targets[index]}',
       title: titles[index],
-      description: 'Earn the "${titles[index]}" profile title after ${targets[index]} unique qualifying titles or visits.',
+      description: milestoneDescription(targets[index]),
       icon: icons[index],
       current: progress,
       target: targets[index],
@@ -18311,6 +18326,7 @@ List<_AchievementGroup> _discoveryTitleAchievementGroups() {
   return [
     _discoveryTitleGroup(
       id: DiscoveryAchievementService.forYouMovies,
+      milestoneDescription: (target) => 'Watch $target movies recommended to you.',
       name: 'For You · Movies', description: 'Complete movies discovered through For You.',
       icon: Icons.movie_filter_outlined, progress: tracker.progress('for_you_movies'),
       targets: [2, 4, 8, 16, 32], titles: ['Curious Viewer', 'Suggested Seeker', 'For You Fan', 'Algorithm Explorer', 'Destiny Watcher'],
@@ -18318,6 +18334,7 @@ List<_AchievementGroup> _discoveryTitleAchievementGroups() {
     ),
     _discoveryTitleGroup(
       id: DiscoveryAchievementService.forYouAlbums,
+      milestoneDescription: (target) => 'Listen to $target albums recommended to you.',
       name: 'For You · Albums', description: 'Listen to complete albums discovered through For You.',
       icon: Icons.album, progress: tracker.progress('for_you_albums'),
       targets: [2, 4, 8, 16, 32], titles: ['Fresh Listener', 'Taste Explorer', 'Recommended Ear', 'Album Adventurer', 'Discovery Listener'],
@@ -18325,6 +18342,7 @@ List<_AchievementGroup> _discoveryTitleAchievementGroups() {
     ),
     _discoveryTitleGroup(
       id: DiscoveryAchievementService.birthdays,
+      milestoneDescription: (target) => 'Check who has a birthday $target times.',
       name: 'Birthday Spotlights', description: 'Open unique birthday spotlights.',
       icon: Icons.cake_rounded, progress: tracker.progress('birthdays_checked'),
       targets: [2, 4, 8, 16, 32, 64], titles: ['Birthday Visitor', 'Wish Keeper', 'Celebration Scout', 'Cake Chronicler', 'Birthday Archivist', 'Master Celebrant'],
@@ -18332,6 +18350,7 @@ List<_AchievementGroup> _discoveryTitleAchievementGroups() {
     ),
     _discoveryTitleGroup(
       id: DiscoveryAchievementService.memorials,
+      milestoneDescription: (target) => 'Pay your respects $target times.',
       name: 'In Memoriam Spotlights', description: 'Open unique in memoriam spotlights.',
       icon: Icons.local_florist_outlined, progress: tracker.progress('memorials_checked'),
       targets: [2, 4, 8, 16, 32, 64], titles: ['Quiet Visitor', 'Remembrance Keeper', 'Memory Walker', 'Legacy Watcher', 'Honor Bearer', 'Eternal Remembrance'],
@@ -18339,6 +18358,7 @@ List<_AchievementGroup> _discoveryTitleAchievementGroups() {
     ),
     _discoveryTitleGroup(
       id: DiscoveryAchievementService.allTimeMovies,
+      milestoneDescription: (target) => 'Watch $target movies from All Time 100 Lists category.',
       name: 'All Time · Movies', description: 'Complete films discovered through the Movies All Time Top 100.',
       icon: Icons.local_movies_outlined, progress: tracker.progress('all_time_movies'),
       targets: [2, 4, 8, 16, 32, 64], titles: ['Classic Taster', 'Top 100 Tourist', 'All-Time Watcher', 'Cinema Climber', 'Screen Historian', 'All-Time Legend'],
@@ -18346,6 +18366,7 @@ List<_AchievementGroup> _discoveryTitleAchievementGroups() {
     ),
     _discoveryTitleGroup(
       id: DiscoveryAchievementService.allTimeTv,
+      milestoneDescription: (target) => 'Watch $target TV shows from All Time 100 Lists category.',
       name: 'All Time · TV Shows', description: 'Complete TV shows discovered through the TV All Time Top 100.',
       icon: Icons.video_library, progress: tracker.progress('all_time_tv'),
       targets: [2, 4, 8, 16, 32], titles: ['Timeless Pilot', 'Channel Hopper', 'Top Show Viewer', 'Binge Historian', 'Prime-Time Icon'],
@@ -18353,6 +18374,7 @@ List<_AchievementGroup> _discoveryTitleAchievementGroups() {
     ),
     _discoveryTitleGroup(
       id: DiscoveryAchievementService.genreAlbums,
+      milestoneDescription: (target) => 'Listen to $target albums from any genre in 100 Lists.',
       name: '100 Lists · Genre Albums', description: 'Listen to complete albums discovered through any Top 100 genre list.',
       icon: Icons.category_outlined, progress: tracker.progress('genre_top_albums'),
       targets: [2, 4, 8, 16, 32, 64], titles: ['Genre Dipper', 'Sound Wanderer', 'Genre Hunter', 'Chart Crate Digger', 'Genre Voyager', 'Master of Variety'],
@@ -18779,52 +18801,38 @@ class _PublicAchievementsPage extends StatelessWidget {
 
             LayoutBuilder(
               builder: (context, constraints) {
-                final int columns;
-
-                if (constraints.maxWidth < 520) {
-                  columns = 2;
-                } else if (constraints.maxWidth < 760) {
-                  columns = 3;
-                } else {
-                  columns = 4;
-                }
-
-                return GridView.builder(
-                  shrinkWrap: true,
-
-                  physics: const NeverScrollableScrollPhysics(),
-
-                  itemCount: achievementGroups.length,
-
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: columns,
-
-                    crossAxisSpacing: 10,
-
-                    mainAxisSpacing: 13,
-
-                    childAspectRatio: columns == 2
-                        ? 0.68
-                        : columns == 3
-                        ? 0.60
-                        : 0.68,
-                  ),
-
-                  itemBuilder: (context, index) {
-                    final group = achievementGroups[index];
-
-                    return _AchievementGroupCard(
-                      group: group,
-
-                      // Public page has no
-                      // pinned-state editing.
-                      isPinned: false,
-
-                      onTap: () {
-                        _showAchievementGroup(context, group);
-                      },
-                    );
-                  },
+                final columns = constraints.maxWidth < 320 ? 1 :
+                    constraints.maxWidth < 520 ? 2 :
+                    constraints.maxWidth < 760 ? 3 : 4;
+                final rows = (achievementGroups.length + columns - 1) ~/ columns;
+                return Column(
+                  children: [
+                    for (var rowIndex = 0; rowIndex < rows; rowIndex++)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 13),
+                        child: IntrinsicHeight(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              for (var column = 0; column < columns; column++) ...[
+                                if (column > 0) const SizedBox(width: 10),
+                                Expanded(
+                                  child: rowIndex * columns + column < achievementGroups.length
+                                      ? _AchievementGroupCard(
+                                          group: achievementGroups[rowIndex * columns + column],
+                                          isPinned: false,
+                                          onTap: () => _showAchievementGroup(
+                                            context, achievementGroups[rowIndex * columns + column],
+                                          ),
+                                        )
+                                      : const SizedBox.shrink(),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
                 );
               },
             ),
@@ -19330,34 +19338,41 @@ class _AchievementsPageState extends State<AchievementsPage> {
     List<_AchievementGroup> groups,
     MedalPinService pinService,
   ) {
-    return GridView.builder(
-      padding: const EdgeInsets.fromLTRB(18, 8, 18, 35),
-
-      physics: const BouncingScrollPhysics(),
-
-      itemCount: groups.length,
-
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-
-        crossAxisSpacing: 10,
-
-        mainAxisSpacing: 13,
-
-        mainAxisExtent: 250,
-      ),
-
-      itemBuilder: (context, index) {
-        final group = groups[index];
-
-        return _AchievementGroupCard(
-          group: group,
-
-          isPinned: pinService.isPinned(group.id),
-
-          onTap: () {
-            _showAchievementGroup(context, group);
-          },
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Each row takes the natural height of its largest card.
+        // No fixed-height grid cells means no bottom RenderFlex overflows.
+        final columns = constraints.maxWidth < 320 ? 1 :
+            constraints.maxWidth < 760 ? 2 : 3;
+        final rows = (groups.length + columns - 1) ~/ columns;
+        return ListView.builder(
+          padding: const EdgeInsets.fromLTRB(18, 8, 18, 35),
+          physics: const BouncingScrollPhysics(),
+          itemCount: rows,
+          itemBuilder: (context, rowIndex) => Padding(
+            padding: const EdgeInsets.only(bottom: 13),
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (var column = 0; column < columns; column++) ...[
+                    if (column > 0) const SizedBox(width: 10),
+                    Expanded(
+                      child: rowIndex * columns + column < groups.length
+                          ? _AchievementGroupCard(
+                              group: groups[rowIndex * columns + column],
+                              isPinned: pinService.isPinned(groups[rowIndex * columns + column].id),
+                              onTap: () => _showAchievementGroup(
+                                context, groups[rowIndex * columns + column],
+                              ),
+                            )
+                          : const SizedBox.shrink(),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
         );
       },
     );
@@ -19914,6 +19929,8 @@ class _AchievementTierRow extends StatelessWidget {
   }
 }
 
+// All achievement cards preview the NEXT milestone's actual reward.
+// A finished group previews its final earned reward instead.
 class _AchievementGroupCard extends StatelessWidget {
   final _AchievementGroup group;
   final bool isPinned;
@@ -19925,68 +19942,169 @@ class _AchievementGroupCard extends StatelessWidget {
     required this.onTap,
   });
 
+  String get _rewardKind {
+    if (DiscoveryAchievementService.categories.contains(group.id)) {
+      return 'title';
+    }
+    return switch (group.id) {
+      'public_profiles_viewed' => 'avatar',
+      'daily_logins' => 'display_frame',
+      'follow_developer' => 'profile_page_frame',
+      'followers' => 'followers',
+      'runtime_level' || 'ratings_level' => 'level',
+      'medal_collection' => 'collection',
+      'display_name_color' => 'color',
+      _ => 'stat',
+    };
+  }
+
+  String get _rewardLabel => switch (_rewardKind) {
+    'title' => 'REWARDS · Title',
+    'avatar' => 'REWARD · Avatar Frame',
+    'display_frame' => 'REWARD · Display Frame',
+    'profile_page_frame' => 'REWARD · Profile Page Frame',
+    'followers' => 'REWARD · Follower Style',
+    'level' => 'REWARD · Border & Gradient',
+    'collection' => 'REWARDS · Button & Name Color',
+    'color' => 'REWARD · Display Name Color',
+    _ => 'REWARD · Stat Border',
+  };
+
+  Widget _rewardPreview(_Achievement milestone, Color accent) {
+    final colors = _achievementTierColors(milestone);
+    final primary = colors.isNotEmpty ? colors.first : accent;
+    final previewColor = milestone.unlocked ? primary : primary.withValues(alpha: 0.85);
+
+    if (_rewardKind == 'title') {
+      return UiText(
+        milestone.title,
+        textAlign: TextAlign.center,
+        maxLines: 3,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(color: previewColor, fontSize: 10, fontWeight: FontWeight.w700),
+      );
+    }
+
+    if (_rewardKind == 'avatar') {
+      return SizedBox(
+        width: 36,
+        height: 36,
+        child: _AvatarFrame(
+          frameId: milestone.id,
+          child: const DecoratedBox(
+            decoration: BoxDecoration(shape: BoxShape.circle, color: chipluxSurfaceLight),
+            child: Icon(Icons.person_rounded, size: 18, color: Colors.white70),
+          ),
+        ),
+      );
+    }
+
+    if (_rewardKind == 'display_frame') {
+      return _DisplayNameFrame(
+        frameId: milestone.id,
+        radius: 9,
+        child: Container(
+          width: 72,
+          height: 25,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(color: chipluxSurfaceLight, borderRadius: BorderRadius.circular(8)),
+          child: const UiText('Name', style: TextStyle(fontSize: 9, color: Colors.white70)),
+        ),
+      );
+    }
+
+    if (_rewardKind == 'profile_page_frame') {
+      return SizedBox(
+        width: 74,
+        height: 39,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(color: chipluxSurfaceLight, borderRadius: BorderRadius.circular(10)),
+                child: const Icon(Icons.person_outline_rounded, size: 20, color: Colors.white70),
+              ),
+            ),
+            const Positioned.fill(child: _Tier3ProfilePageFrame()),
+          ],
+        ),
+      );
+    }
+
+    // Preview the NEXT tier's gradient, never the previous tier's cosmetics.
+    final gradient = colors.length > 1 ? LinearGradient(colors: colors) : null;
+    return Container(
+      constraints: const BoxConstraints(minHeight: 30),
+      width: double.infinity,
+      padding: const EdgeInsets.all(1.5),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(9),
+        gradient: gradient,
+        border: gradient == null ? Border.all(color: previewColor.withValues(alpha: .65)) : null,
+      ),
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 27),
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+        decoration: BoxDecoration(color: chipluxSurfaceLight, borderRadius: BorderRadius.circular(8)),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_rewardKind == 'followers' || _rewardKind == 'collection' || _rewardKind == 'color') ...[
+              Icon(
+                _rewardKind == 'followers' ? Icons.people_alt_rounded
+                    : _rewardKind == 'collection' ? Icons.workspace_premium_rounded : Icons.format_color_text_rounded,
+                size: 13,
+                color: previewColor,
+              ),
+              const SizedBox(width: 4),
+            ],
+            Flexible(
+              child: UiText(
+                switch (_rewardKind) {
+                  'followers' => 'Followers',
+                  'collection' => 'Medal Collection',
+                  'color' => 'Display Name',
+                  _ => group.title,
+                },
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 8.5, fontWeight: FontWeight.bold, color: previewColor),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final achieved = group.highestUnlockedTier;
-
     final next = group.nextTier;
-
-    final bool isMovieGroup = group.id == 'movies_watched';
-
-    final bool isTvGroup = group.id == 'tv_shows_completed';
-
-    final bool isEpisodeGroup = group.id == 'episodes_watched';
-
-    final bool isDailyLoginGroup = group.id == 'daily_logins';
-
-    final bool isEpisodeRatedGroup = group.id == 'episodes_rated';
-
-    final bool isRatingsLevelGroup = group.id == 'ratings_level';
-
-    final bool isRuntimeLevelGroup = group.id == 'runtime_level';
-
-    final bool isTvShowsRatedGroup = group.id == 'tv_shows_rated';
-
-    final bool isMoviesRatedGroup = group.id == 'movies_rated';
-
-    final bool isTitleRatedGroup = isTvShowsRatedGroup || isMoviesRatedGroup;
-
-    final String titleRatedRewardLabel = isTvShowsRatedGroup
-        ? 'TV Shows Rated'
-        : 'Movies Rated';
-
-    final bool isProfileViewGroup = group.id == 'public_profiles_viewed';
-
-    final Color accent = achieved != null
-        ? _achievementAccent(achieved.rarity)
-        : Colors.white38;
-
-    final String currentTitle = achieved?.title ?? 'No tier unlocked';
-
-    final frameColors = _achievementTierColors(achieved);
+    final preview = next ?? achieved;
+    final accent = achieved == null ? Colors.white38 : _achievementAccent(achieved.rarity);
 
     return Material(
       color: Colors.transparent,
-
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
-
         child: Container(
-          padding: const EdgeInsets.fromLTRB(8, 11, 8, 9),
-
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(8, 11, 8, 10),
           decoration: BoxDecoration(
             color: chipluxSurface,
             borderRadius: BorderRadius.circular(16),
-
             border: Border.all(
-              color: achieved != null
-                  ? accent.withValues(alpha: 0.28)
-                  : Colors.white.withValues(alpha: 0.06),
+              color: achieved == null ? Colors.white.withValues(alpha: 0.06)
+                  : accent.withValues(alpha: 0.28),
             ),
           ),
-
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
               if (achieved != null)
                 _AchievementMedal(achievement: achieved)
@@ -19994,557 +20112,94 @@ class _AchievementGroupCard extends StatelessWidget {
                 Container(
                   width: 62,
                   height: 62,
-
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: Colors.white.withValues(alpha: 0.05),
                     border: Border.all(color: Colors.white12),
                   ),
-
                   child: Icon(group.icon, color: Colors.white24, size: 31),
                 ),
-
               const SizedBox(height: 9),
-
               UiText(
                 group.title,
-                maxLines: 1,
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
-
                 style: TextStyle(
-                  color: achieved != null ? Colors.white : Colors.white54,
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
+                  color: achieved == null ? Colors.white54 : Colors.white,
+                  fontSize: 11, fontWeight: FontWeight.bold,
                 ),
               ),
-
-              const SizedBox(height: 3),
-
+              const SizedBox(height: 4),
               UiText(
-                currentTitle,
-                maxLines: 1,
+                achieved?.title ?? 'No tier unlocked',
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
-
                 style: TextStyle(
-                  color: achieved != null ? accent : Colors.white30,
-                  fontSize: 9.5,
-                  fontWeight: FontWeight.w700,
+                  color: achieved == null ? Colors.white30 : accent,
+                  fontSize: 9.5, fontWeight: FontWeight.w700,
                 ),
               ),
-
-              const SizedBox(height: 3),
-
+              const SizedBox(height: 4),
               UiText(
-                next != null ? 'Next: ${next.target}' : 'Max tier',
+                next == null ? 'Max tier' : 'Next: ${next.target}',
                 style: const TextStyle(color: Colors.white38, fontSize: 8.5),
               ),
-
-              // =========================
-              // MOVIES STAT BORDER
-              // =========================
-              if (isMovieGroup) ...[
+              if (preview != null) ...[
                 const SizedBox(height: 10),
-
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(1.5),
-
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(10),
-
-                    gradient: frameColors.isNotEmpty
-                        ? LinearGradient(colors: frameColors)
-                        : null,
-
-                    border: frameColors.isEmpty
-                        ? Border.all(color: Colors.white12)
-                        : null,
-                  ),
-
-                  child: Container(
-                    height: 33,
-                    alignment: Alignment.center,
-
-                    decoration: BoxDecoration(
-                      color: chipluxSurfaceLight,
-                      borderRadius: BorderRadius.circular(9),
-                    ),
-
-                    child: UiText(
-                      achieved != null ? 'Movies Watched' : 'Locked',
-
-                      style: TextStyle(
-                        color: achieved != null
-                            ? Colors.white70
-                            : Colors.white24,
-                        fontSize: 8,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-
-              // =========================
-              // TV SHOWS STAT BORDER
-              // =========================
-              if (isTvGroup) ...[
-                const SizedBox(height: 10),
-
-                Container(
-                  width: double.infinity,
-
-                  padding: const EdgeInsets.all(1.5),
-
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(10),
-
-                    gradient: frameColors.isNotEmpty
-                        ? LinearGradient(colors: frameColors)
-                        : null,
-
-                    border: frameColors.isEmpty
-                        ? Border.all(color: Colors.white12)
-                        : null,
-                  ),
-
-                  child: Container(
-                    height: 33,
-
-                    alignment: Alignment.center,
-
-                    decoration: BoxDecoration(
-                      color: chipluxSurfaceLight,
-
-                      borderRadius: BorderRadius.circular(9),
-                    ),
-
-                    child: UiText(
-                      achieved != null ? 'TV Shows Watched' : 'Locked',
-
-                      style: TextStyle(
-                        color: achieved != null
-                            ? Colors.white70
-                            : Colors.white24,
-
-                        fontSize: 8,
-
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-
-              // =========================
-              // EPISODES STAT BORDER
-              // =========================
-              if (isEpisodeGroup) ...[
-                const SizedBox(height: 10),
-
-                Container(
-                  width: double.infinity,
-
-                  padding: const EdgeInsets.all(1.5),
-
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(10),
-
-                    gradient: frameColors.isNotEmpty
-                        ? LinearGradient(colors: frameColors)
-                        : null,
-
-                    border: frameColors.isEmpty
-                        ? Border.all(color: Colors.white12)
-                        : null,
-                  ),
-
-                  child: Container(
-                    height: 33,
-
-                    alignment: Alignment.center,
-
-                    decoration: BoxDecoration(
-                      color: chipluxSurfaceLight,
-
-                      borderRadius: BorderRadius.circular(9),
-                    ),
-
-                    child: UiText(
-                      achieved != null ? 'Episodes Watched' : 'Locked',
-
-                      style: TextStyle(
-                        color: achieved != null
-                            ? Colors.white70
-                            : Colors.white24,
-
-                        fontSize: 8,
-
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-
-              // =========================
-              // DAILY LOGIN FRAME
-              // =========================
-              if (isDailyLoginGroup) ...[
-                const SizedBox(height: 10),
-
-                Container(
-                  width: double.infinity,
-
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 7,
-                    vertical: 6,
-                  ),
-
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 7),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.025),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.05),
-                    ),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
                   ),
-
                   child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      const UiText(
-                        'REWARD · Display Frame',
-                        style: TextStyle(
-                          color: Colors.white38,
-                          fontSize: 7.5,
-                          fontWeight: FontWeight.w700,
-                        ),
+                      UiText(
+                        _rewardLabel,
+                        maxLines: 2,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.white38, fontSize: 7.5, fontWeight: FontWeight.w700),
                       ),
-
                       const SizedBox(height: 6),
-
-                      _DisplayNameFrame(
-                        frameId: achieved?.id,
-                        radius: 10,
-
-                        child: Container(
-                          width: 64,
-                          height: 21,
-                          alignment: Alignment.center,
-
-                          decoration: BoxDecoration(
-                            color: chipluxSurfaceLight,
-                            borderRadius: BorderRadius.circular(9),
-                          ),
-
-                          child: UiText(
-                            achieved != null ? 'Name' : 'Locked',
-
-                            style: TextStyle(
-                              color: achieved != null
-                                  ? Colors.white70
-                                  : Colors.white24,
-                              fontSize: 7.5,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                      _rewardPreview(preview, accent),
+                      if (_rewardKind != 'title') ...[
+                        const SizedBox(height: 5),
+                        UiText(
+                          preview.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 8, color: Colors.white54, fontWeight: FontWeight.w600),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ),
               ],
-
-              // =========================
-              // PROFILE VIEW AVATAR FRAME
-              // =========================
-              if (isProfileViewGroup) ...[
-                const SizedBox(height: 10),
-
-                Container(
-                  width: double.infinity,
-
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 7,
-                    vertical: 6,
-                  ),
-
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.025),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.05),
-                    ),
-                  ),
-
-                  child: Column(
-                    children: [
-                      const UiText(
-                        'REWARD · Avatar Frame',
-                        style: TextStyle(
-                          color: Colors.white38,
-                          fontSize: 7.5,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-
-                      const SizedBox(height: 6),
-
-                      SizedBox(
-                        width: 34,
-                        height: 34,
-
-                        child: _AvatarFrame(
-                          frameId: achieved?.id,
-
-                          child: Container(
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: chipluxSurfaceLight,
-                            ),
-
-                            child: Icon(
-                              Icons.person_rounded,
-                              size: 17,
-                              color: achieved != null
-                                  ? Colors.white70
-                                  : Colors.white24,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-
-              // =========================
-              // EPISODES RATED BORDER
-              // =========================
-              if (isEpisodeRatedGroup) ...[
-                const SizedBox(height: 10),
-
-                Container(
-                  width: double.infinity,
-
-                  padding: const EdgeInsets.all(1.5),
-
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(10),
-
-                    gradient: frameColors.isNotEmpty
-                        ? LinearGradient(colors: frameColors)
-                        : null,
-
-                    border: frameColors.isEmpty
-                        ? Border.all(color: Colors.white12)
-                        : null,
-                  ),
-
-                  child: Container(
-                    height: 33,
-
-                    alignment: Alignment.center,
-
-                    decoration: BoxDecoration(
-                      color: chipluxSurfaceLight,
-
-                      borderRadius: BorderRadius.circular(9),
-                    ),
-
-                    child: UiText(
-                      achieved != null ? 'Episodes Rated' : 'Locked',
-
-                      style: TextStyle(
-                        color: achieved != null
-                            ? Colors.white70
-                            : Colors.white24,
-                        fontSize: 8,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-
-              // =========================
-              // TITLE RATED STAT BORDER
-              // =========================
-              if (isTitleRatedGroup) ...[
-                const SizedBox(height: 10),
-
-                Container(
-                  width: double.infinity,
-
-                  padding: const EdgeInsets.all(1.5),
-
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(10),
-
-                    gradient: frameColors.isNotEmpty
-                        ? LinearGradient(colors: frameColors)
-                        : null,
-
-                    border: frameColors.isEmpty
-                        ? Border.all(color: Colors.white12)
-                        : null,
-                  ),
-
-                  child: Container(
-                    height: 33,
-
-                    alignment: Alignment.center,
-
-                    decoration: BoxDecoration(
-                      color: chipluxSurfaceLight,
-
-                      borderRadius: BorderRadius.circular(9),
-                    ),
-
-                    child: UiText(
-                      achieved != null ? titleRatedRewardLabel : 'Locked',
-
-                      style: TextStyle(
-                        color: achieved != null
-                            ? Colors.white70
-                            : Colors.white24,
-                        fontSize: 8,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-
-              if (isRuntimeLevelGroup) ...[
-                const SizedBox(height: 10),
-
-                Container(
-                  width: double.infinity,
-
-                  padding: const EdgeInsets.all(1.5),
-
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(10),
-
-                    gradient: frameColors.isNotEmpty
-                        ? LinearGradient(colors: frameColors)
-                        : null,
-
-                    border: frameColors.isEmpty
-                        ? Border.all(color: Colors.white12)
-                        : null,
-                  ),
-
-                  child: Container(
-                    height: 33,
-
-                    alignment: Alignment.center,
-
-                    decoration: BoxDecoration(
-                      color: chipluxSurfaceLight,
-
-                      borderRadius: BorderRadius.circular(9),
-                    ),
-
-                    child: UiText(
-                      achieved != null ? 'Runtime Level' : 'Locked',
-
-                      style: TextStyle(
-                        color: achieved != null
-                            ? Colors.white70
-                            : Colors.white24,
-
-                        fontSize: 8,
-
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-
-              // =========================
-              // RATINGS LEVEL BORDER
-              // =========================
-              if (isRatingsLevelGroup) ...[
-                const SizedBox(height: 10),
-
-                Container(
-                  width: double.infinity,
-
-                  padding: const EdgeInsets.all(1.5),
-
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(10),
-
-                    gradient: frameColors.isNotEmpty
-                        ? LinearGradient(colors: frameColors)
-                        : null,
-
-                    border: frameColors.isEmpty
-                        ? Border.all(color: Colors.white12)
-                        : null,
-                  ),
-
-                  child: Container(
-                    height: 33,
-
-                    alignment: Alignment.center,
-
-                    decoration: BoxDecoration(
-                      color: chipluxSurfaceLight,
-
-                      borderRadius: BorderRadius.circular(9),
-                    ),
-
-                    child: UiText(
-                      achieved != null ? 'Ratings Level' : 'Locked',
-
-                      style: TextStyle(
-                        color: achieved != null
-                            ? Colors.white70
-                            : Colors.white24,
-
-                        fontSize: 8,
-
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-
-              const Spacer(),
-
+              const SizedBox(height: 12),
               ClipRRect(
                 borderRadius: BorderRadius.circular(20),
-
                 child: LinearProgressIndicator(
                   value: group.progress,
                   minHeight: 4,
                   backgroundColor: Colors.white10,
-
                   valueColor: AlwaysStoppedAnimation<Color>(
-                    achieved != null ? accent : Colors.white30,
+                    achieved == null ? Colors.white30 : accent,
                   ),
                 ),
               ),
-
-              const SizedBox(height: 5),
-
+              const SizedBox(height: 6),
               UiText(
-                next != null
-                    ? '${group.current.clamp(0, next.target)} / ${next.target}'
-                    : isPinned
-                    ? 'PINNED'
-                    : 'COMPLETE',
-
+                next != null ? '${group.current.clamp(0, next.target)} / ${next.target}'
+                    : isPinned ? 'PINNED' : 'COMPLETE',
                 style: TextStyle(
                   color: isPinned ? chipluxCyan : Colors.white38,
-                  fontSize: 8,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 8, fontWeight: FontWeight.bold,
                 ),
               ),
             ],
@@ -26607,7 +26262,7 @@ class _WatchStatCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(15),
 
         child: Container(
-          height: 63,
+          constraints: const BoxConstraints(minHeight: 63),
 
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
 
@@ -26678,6 +26333,9 @@ class _WatchStatCard extends StatelessWidget {
 
                       Text(
                         _formatRuntime(runtimeMinutes!),
+
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
 
                         style: const TextStyle(
                           color: Colors.white38,

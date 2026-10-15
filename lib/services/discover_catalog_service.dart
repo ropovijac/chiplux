@@ -576,6 +576,38 @@ class DiscoverCatalogService {
     return Map<String, dynamic>.from(decoded);
   }
 
+  // Supabase caches may contain missing (null) names. Normalize every
+  // source, including the on-device cache, instead of rendering "null".
+  static const _tmdbGenreFallback = <int, String>{
+    28: 'Action', 12: 'Adventure', 16: 'Animation', 35: 'Comedy',
+    80: 'Crime', 99: 'Documentary', 18: 'Drama', 10751: 'Family',
+    14: 'Fantasy', 36: 'History', 27: 'Horror', 10402: 'Music',
+    9648: 'Mystery', 10749: 'Romance', 878: 'Science Fiction',
+    10770: 'TV Movie', 53: 'Thriller', 10752: 'War', 37: 'Western',
+    10759: 'Action & Adventure', 10762: 'Kids', 10763: 'News',
+    10764: 'Reality', 10765: 'Sci-Fi & Fantasy', 10766: 'Soap',
+    10767: 'Talk', 10768: 'War & Politics',
+  };
+
+  static List<DiscoverGenre> _validTmdbGenres(
+    List<Map<String, dynamic>> rows,
+  ) {
+    final seen = <int>{};
+    final result = <DiscoverGenre>[];
+    for (final row in rows) {
+      final rawId = row['id'];
+      final id = rawId is num ? rawId.toInt() : int.tryParse('$rawId');
+      if (id == null || id <= 0 || !seen.add(id)) continue;
+      final rawName = row['name']?.toString().trim() ?? '';
+      final name = rawName.isEmpty || rawName.toLowerCase() == 'null'
+          ? _tmdbGenreFallback[id]
+          : rawName;
+      if (name == null || name.isEmpty) continue;
+      result.add(DiscoverGenre(id, name));
+    }
+    return result;
+  }
+
   Future<List<DiscoverGenre>> genres(DiscoverCategory category) {
     if (isMusic(category)) {
       return Future.value(musicGenres);
@@ -589,39 +621,18 @@ class DiscoverCatalogService {
         await _initialize();
         final localGenres = _cache['genres:$key'];
         if (localGenres != null) {
-          return localGenres.rows
-              .map(
-                (g) => DiscoverGenre(
-                  (g['id'] as num).toInt(),
-                  g['name'].toString(),
-                ),
-              )
-              .toList();
+          return _validTmdbGenres(localGenres.rows);
         }
         final shared = await _sharedCategory(category);
         final serverGenres = shared['genres:0'];
         if (serverGenres != null && serverGenres.isNotEmpty) {
           _cache['genres:$key'] = (time: DateTime.now(), rows: serverGenres);
           unawaited(_persist('genres:$key', serverGenres));
-          return serverGenres
-              .map(
-                (g) => DiscoverGenre(
-                  (g['id'] as num).toInt(),
-                  g['name'].toString(),
-                ),
-              )
-              .toList();
+          return _validTmdbGenres(serverGenres);
         }
         final saved = _cache['genres:$key'];
         if (saved != null) {
-          return saved.rows
-              .map(
-                (g) => DiscoverGenre(
-                  (g['id'] as num).toInt(),
-                  g['name'].toString(),
-                ),
-              )
-              .toList();
+          return _validTmdbGenres(saved.rows);
         }
         final data = await _get(
           Uri.parse('${TmdbService.baseUrl}/genre/${mediaType(category)}/list')
@@ -638,12 +649,7 @@ class DiscoverCatalogService {
             .toList();
         _cache['genres:$key'] = (time: DateTime.now(), rows: rows);
         unawaited(_persist('genres:$key', rows));
-        return rows
-            .map(
-              (g) =>
-                  DiscoverGenre((g['id'] as num).toInt(), g['name'].toString()),
-            )
-            .toList();
+        return _validTmdbGenres(rows);
       } catch (_) {
         _genreRequests.remove(key);
         rethrow;

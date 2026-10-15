@@ -11,8 +11,50 @@ String _discoverCategoryLabel(
   DiscoverCategory.albums => _discoverText(context, 'Albums', 'Albumi'),
   DiscoverCategory.songs => _discoverText(context, 'Songs', 'Pjesme'),
 };
-String _discoverGenreLabel(BuildContext context, DiscoverGenre genre) {
-  const translations = {
+// TMDB genre IDs are stable, even when a cached record has no display name.
+// Keep the language lookup distinct from music genres (some IDs overlap).
+String _discoverGenreLabel(
+  BuildContext context,
+  DiscoverGenre genre, {
+  DiscoverCategory? category,
+}) {
+  if (category == DiscoverCategory.movies ||
+      category == DiscoverCategory.tvShows) {
+    const names = <int, (String, String)>{
+      28: ('Action', 'Akcija'),
+      12: ('Adventure', 'Avantura'),
+      16: ('Animation', 'Animacija'),
+      35: ('Comedy', 'Komedija'),
+      80: ('Crime', 'Kriminalistički'),
+      99: ('Documentary', 'Dokumentarni'),
+      18: ('Drama', 'Drama'),
+      10751: ('Family', 'Obiteljski'),
+      14: ('Fantasy', 'Fantazija'),
+      36: ('History', 'Povijesni'),
+      27: ('Horror', 'Horor'),
+      10402: ('Music', 'Glazba'),
+      9648: ('Mystery', 'Misterij'),
+      10749: ('Romance', 'Romantika'),
+      878: ('Science Fiction', 'Znanstvena fantastika'),
+      10770: ('TV Movie', 'TV film'),
+      53: ('Thriller', 'Triler'),
+      10752: ('War', 'Ratni'),
+      37: ('Western', 'Vestern'),
+      10759: ('Action & Adventure', 'Akcija i avantura'),
+      10762: ('Kids', 'Dječji'),
+      10763: ('News', 'Vijesti'),
+      10764: ('Reality', 'Reality'),
+      10765: ('Sci-Fi & Fantasy', 'Znanstvena fantastika i fantazija'),
+      10766: ('Soap', 'Sapunice'),
+      10767: ('Talk', 'Razgovorne emisije'),
+      10768: ('War & Politics', 'Rat i politika'),
+    };
+    final name = names[genre.id];
+    if (name != null) {
+      return _discoverText(context, name.$1, name.$2);
+    }
+  }
+  const translations = <String, String>{
     'Alternative': 'Alternativna',
     'Blues': 'Blues',
     'Brazilian': 'Brazilska',
@@ -42,11 +84,35 @@ String _discoverGenreLabel(BuildContext context, DiscoverGenre genre) {
     'Vocal': 'Vokalna',
     'World': 'Glazba svijeta',
   };
+  final originalName = genre.name.trim();
+  if (originalName.isEmpty || originalName.toLowerCase() == 'null') {
+    return _discoverText(context, 'Genre ${genre.id}', 'Žanr ${genre.id}');
+  }
   return _discoverText(
     context,
-    genre.name,
-    translations[genre.name] ?? genre.name,
+    originalName,
+    translations[originalName] ?? originalName,
   );
+}
+
+// The label is localized, but the original Misc key is still used for the
+// Supabase curated cache lookup.
+String _discoverMiscLabel(BuildContext context, String key) {
+  const labels = <String, String>{
+    'Hidden Gems': 'Skriveni dragulji',
+    'Under 90 Minutes': 'Kraći od 90 minuta',
+    'Superhero Movies': 'Filmovi o superjunacima',
+    'Animated Movies': 'Animirani filmovi',
+    'Sitcoms & Comedy': 'Sitcomi i komedije',
+    'Anime & Animation': 'Anime i animacija',
+    'Documentaries': 'Dokumentarne serije',
+    'Crime Series': 'Kriminalističke serije',
+    'Modern Classics': 'Moderni klasici',
+    '90s Albums': 'Albumi iz 90-ih',
+    'Instrumental': 'Instrumentalna glazba',
+    'Soundtracks': 'Filmska glazba',
+  };
+  return _discoverText(context, key, labels[key] ?? key);
 }
 
 String _discoverHeading(
@@ -57,7 +123,7 @@ String _discoverHeading(
 ) {
   final label = genre == null
       ? _discoverText(context, 'General', 'Općenito')
-      : _discoverGenreLabel(context, genre);
+      : _discoverGenreLabel(context, genre, category: category);
   return switch (mode) {
     DiscoverMode.trending => _discoverText(
       context,
@@ -1466,7 +1532,7 @@ class _ChipluxDailyRecommendationState
                     'Iznenadi me · Svi žanrovi'))),
               for (final g in options)
                 DropdownMenuItem(value: g.id,
-                  child: Text(_discoverGenreLabel(context, g))),
+                  child: Text(_discoverGenreLabel(context, g, category: widget.category))),
             ],
             onChanged: genreSnapshot.hasData ? _changeGenre : null,
           ),
@@ -1605,10 +1671,11 @@ class _ChipluxCategorizedListsState extends State<_ChipluxCategorizedLists> {
         child: Row(
           children: [
             for (final (index, name) in [
-              'All Time',
-              'Decade',
-              'Genre',
-              if (widget.category == DiscoverCategory.movies) 'Misc',
+              _discoverText(context, 'All Time', 'Svih vremena'),
+              _discoverText(context, 'Decade', 'Desetljeća'),
+              _discoverText(context, 'Genre', 'Žanrovi'),
+              if (widget.category == DiscoverCategory.movies)
+                _discoverText(context, 'Misc', 'Razno'),
             ].indexed)
               Expanded(
                 child: Padding(
@@ -1672,7 +1739,11 @@ class _ChipluxCategorizedListsState extends State<_ChipluxCategorizedLists> {
             if (tab == 0) {
               options.add((
                 title:
-                    'Top 100 ${_discoverCategoryLabel(context, widget.category)} of All Time',
+                    _discoverText(
+                      context,
+                      'Top 100 ${_discoverCategoryLabel(context, widget.category)} of All Time',
+                      'Top 100: ${_discoverCategoryLabel(context, widget.category)} svih vremena',
+                    ),
                 genre: null,
                 startYear: null,
                 misc: null,
@@ -1680,7 +1751,7 @@ class _ChipluxCategorizedListsState extends State<_ChipluxCategorizedLists> {
             } else if (tab == 1) {
               for (final year in [2020, 2010, 2000, 1990, 1980, 1970, 1960]) {
                 options.add((
-                  title: '${year}s',
+                  title: _discoverText(context, '${year}s', '$year-e'),
                   genre: null,
                   startYear: year,
                   misc: null,
@@ -1689,7 +1760,7 @@ class _ChipluxCategorizedListsState extends State<_ChipluxCategorizedLists> {
             } else if (tab == 2) {
               for (final genre in snapshot.data ?? <DiscoverGenre>[]) {
                 options.add((
-                  title: _discoverGenreLabel(context, genre),
+                  title: _discoverGenreLabel(context, genre, category: widget.category),
                   genre: genre,
                   startYear: null,
                   misc: null,
@@ -1702,7 +1773,7 @@ class _ChipluxCategorizedListsState extends State<_ChipluxCategorizedLists> {
                 'Superhero Movies',
               ]) {
                 options.add((
-                  title: item,
+                  title: _discoverMiscLabel(context, item),
                   genre: null,
                   startYear: null,
                   misc: item,
@@ -1716,7 +1787,7 @@ class _ChipluxCategorizedListsState extends State<_ChipluxCategorizedLists> {
                 'Crime Series',
               ]) {
                 options.add((
-                  title: item,
+                  title: _discoverMiscLabel(context, item),
                   genre: null,
                   startYear: null,
                   misc: item,
@@ -1731,7 +1802,7 @@ class _ChipluxCategorizedListsState extends State<_ChipluxCategorizedLists> {
                 'Soundtracks',
               ]) {
                 options.add((
-                  title: item,
+                  title: _discoverMiscLabel(context, item),
                   genre: null,
                   startYear: null,
                   misc: item,
