@@ -14,6 +14,7 @@ import 'services/cloud_sync_service.dart';
 import 'comments_page.dart';
 import 'services/tmdb_service.dart';
 import 'services/discover_catalog_service.dart';
+import 'services/discovery_achievement_service.dart';
 import 'services/music_service.dart';
 import 'services/music_user_data_service.dart';
 import 'services/auth_service.dart';
@@ -108,6 +109,8 @@ Future<void> _loadCurrentAccountAchievementState() async {
     PushNotificationService.instance.registerCurrentToken(),
   ]);
 
+  await DiscoveryAchievementService.instance.load();
+
   await _MedalCollectionUnlockTracker.instance.initialize();
 
   try {
@@ -172,7 +175,7 @@ _AchievementGroup _movieAchievementGroupFor(int moviesWatched) {
         id: 'movies_2',
         title: 'First Screening',
         description: 'Watch 2 movies',
-        icon: Icons.movie_rounded,
+        icon: Icons.access_time_rounded,
         current: moviesWatched,
         target: 2,
         rarity: _AchievementRarity.common,
@@ -288,7 +291,7 @@ _AchievementGroup _tvAchievementGroupFor(int completedTvShows) {
         id: 'tv_2',
         title: 'Channel Surfer',
         description: 'Complete 2 TV shows',
-        icon: Icons.tv_rounded,
+        icon: Icons.account_circle_outlined,
         current: completedTvShows,
         target: 2,
         rarity: _AchievementRarity.common,
@@ -533,7 +536,7 @@ _AchievementGroup _tvShowsRatedAchievementGroupFor(int tvShowsRated) {
     id: 'tv_shows_rated',
     title: 'TV Shows Rated',
     description: 'Rate TV shows to upgrade your TV Shows Rated stat border.',
-    icon: Icons.live_tv_rounded,
+    icon: Icons.admin_panel_settings_outlined,
     current: tvShowsRated,
     tiers: [
       _Achievement(
@@ -852,7 +855,7 @@ _AchievementGroup _songsListenedAchievementGroupFor(int songsListened) {
         id: 'songs_listened_512',
         title: 'Song Collector',
         description: 'Listen to 512 songs',
-        icon: Icons.library_music_rounded,
+        icon: Icons.alternate_email_rounded,
         current: songsListened,
         target: 512,
         rarity: _AchievementRarity.rare,
@@ -862,7 +865,7 @@ _AchievementGroup _songsListenedAchievementGroupFor(int songsListened) {
         id: 'songs_listened_1024',
         title: 'Playlist Veteran',
         description: 'Listen to 1024 songs',
-        icon: Icons.playlist_play_rounded,
+        icon: Icons.block_rounded,
         current: songsListened,
         target: 1024,
         rarity: _AchievementRarity.epic,
@@ -888,14 +891,14 @@ _AchievementGroup _albumsRatedAchievementGroupFor(int albumsRated) {
     title: 'Albums Rated',
     description:
         'Rate listened albums to upgrade your Albums Rated stat border.',
-    icon: Icons.star_rate_rounded,
+    icon: Icons.bolt_outlined,
     current: albumsRated,
     tiers: [
       _Achievement(
         id: 'albums_rated_2',
         title: 'First Album Verdict',
         description: 'Rate 2 albums',
-        icon: Icons.star_outline_rounded,
+        icon: Icons.bookmark_border,
         current: albumsRated,
         target: 2,
         rarity: _AchievementRarity.common,
@@ -905,7 +908,7 @@ _AchievementGroup _albumsRatedAchievementGroupFor(int albumsRated) {
         id: 'albums_rated_8',
         title: 'Album Reviewer',
         description: 'Rate 8 albums',
-        icon: Icons.rate_review_outlined,
+        icon: Icons.border_style_rounded,
         current: albumsRated,
         target: 8,
         rarity: _AchievementRarity.uncommon,
@@ -925,7 +928,7 @@ _AchievementGroup _albumsRatedAchievementGroupFor(int albumsRated) {
         id: 'albums_rated_64',
         title: 'Album Analyst',
         description: 'Rate 64 albums',
-        icon: Icons.fact_check_rounded,
+        icon: Icons.bug_report_outlined,
         current: albumsRated,
         target: 64,
         rarity: _AchievementRarity.epic,
@@ -935,7 +938,7 @@ _AchievementGroup _albumsRatedAchievementGroupFor(int albumsRated) {
         id: 'albums_rated_128',
         title: 'Album Authority',
         description: 'Rate 128 albums',
-        icon: Icons.workspace_premium_rounded,
+        icon: Icons.cancel_outlined,
         current: albumsRated,
         target: 128,
         rarity: _AchievementRarity.legendary,
@@ -950,14 +953,14 @@ _AchievementGroup _songsRatedAchievementGroupFor(int songsRated) {
     id: 'songs_rated',
     title: 'Songs Rated',
     description: 'Rate songs to upgrade your Songs Rated stat border.',
-    icon: Icons.stars_rounded,
+    icon: Icons.check_circle,
     current: songsRated,
     tiers: [
       _Achievement(
         id: 'songs_rated_16',
         title: 'First Track Reviews',
         description: 'Rate 16 songs',
-        icon: Icons.star_outline_rounded,
+        icon: Icons.check_circle_outline,
         current: songsRated,
         target: 16,
         rarity: _AchievementRarity.common,
@@ -967,7 +970,7 @@ _AchievementGroup _songsRatedAchievementGroupFor(int songsRated) {
         id: 'songs_rated_64',
         title: 'Song Reviewer',
         description: 'Rate 64 songs',
-        icon: Icons.rate_review_outlined,
+        icon: Icons.check_rounded,
         current: songsRated,
         target: 64,
         rarity: _AchievementRarity.uncommon,
@@ -977,7 +980,7 @@ _AchievementGroup _songsRatedAchievementGroupFor(int songsRated) {
         id: 'songs_rated_256',
         title: 'Track Critic',
         description: 'Rate 256 songs',
-        icon: Icons.reviews_rounded,
+        icon: Icons.circle_outlined,
         current: songsRated,
         target: 256,
         rarity: _AchievementRarity.rare,
@@ -987,7 +990,7 @@ _AchievementGroup _songsRatedAchievementGroupFor(int songsRated) {
         id: 'songs_rated_512',
         title: 'Song Analyst',
         description: 'Rate 512 songs',
-        icon: Icons.fact_check_rounded,
+        icon: Icons.cloud_off_rounded,
         current: songsRated,
         target: 512,
         rarity: _AchievementRarity.epic,
@@ -997,7 +1000,7 @@ _AchievementGroup _songsRatedAchievementGroupFor(int songsRated) {
         id: 'songs_rated_1024',
         title: 'Track Authority',
         description: 'Rate 1024 songs',
-        icon: Icons.workspace_premium_rounded,
+        icon: Icons.construction_rounded,
         current: songsRated,
         target: 1024,
         rarity: _AchievementRarity.legendary,
@@ -1024,7 +1027,7 @@ _AchievementGroup _runtimeLevelAchievementGroupFor(int runtimeLevel) {
         id: 'runtime_level_10',
         title: 'Runtime Rookie',
         description: 'Reach Runtime Level 10',
-        icon: Icons.timelapse_rounded,
+        icon: Icons.description_outlined,
         current: runtimeLevel,
         target: 10,
         rarity: _AchievementRarity.common,
@@ -1097,7 +1100,7 @@ _AchievementGroup _ratingsLevelAchievementGroupFor(int ratingsLevel) {
 
     description: 'Reach higher Ratings Levels to upgrade your Ratings Level border and gradient.',
 
-    icon: Icons.star_rate_rounded,
+    icon: Icons.download_outlined,
 
     current: ratingsLevel,
 
@@ -1117,7 +1120,7 @@ _AchievementGroup _ratingsLevelAchievementGroupFor(int ratingsLevel) {
         id: 'ratings_level_20',
         title: 'Established Critic',
         description: 'Reach Ratings Level 20',
-        icon: Icons.star_rate_rounded,
+        icon: Icons.email_outlined,
         current: ratingsLevel,
         target: 20,
         rarity: _AchievementRarity.uncommon,
@@ -1128,7 +1131,7 @@ _AchievementGroup _ratingsLevelAchievementGroupFor(int ratingsLevel) {
         id: 'ratings_level_30',
         title: 'Critical Veteran',
         description: 'Reach Ratings Level 30',
-        icon: Icons.reviews_rounded,
+        icon: Icons.error_outline_rounded,
         current: ratingsLevel,
         target: 30,
         rarity: _AchievementRarity.rare,
@@ -1194,7 +1197,7 @@ _AchievementGroup _followDeveloperAchievementGroupFor(bool unlocked) {
 
         description: 'Follow the Chiplux developer',
 
-        icon: Icons.code_rounded,
+        icon: Icons.favorite,
 
         current: current,
 
@@ -1270,7 +1273,7 @@ _AchievementGroup _dailyLoginAchievementGroupFor(int loginDays) {
         id: 'login_180',
         title: 'Chiplux Veteran',
         description: 'Log in on 180 different days',
-        icon: Icons.calendar_month_rounded,
+        icon: Icons.favorite_border,
         current: loginDays,
         target: 180,
         rarity: _AchievementRarity.epic,
@@ -1947,6 +1950,14 @@ Future<void> _checkPublicProfileViewAchievementUnlock(
 Future<void> _autoApplyAchievementReward(_Achievement achievement) async {
   try {
     final id = achievement.id;
+
+    // The seven Discovery groups reward Profile Titles ONLY. They still count
+    // toward Medal Collection progress, which has its own separate rewards.
+    if (DiscoveryAchievementService.categories.any(
+      (groupId) => id.startsWith('${groupId}_'),
+    )) {
+      return;
+    }
 
     if (achievement.id == followDeveloperAchievementId) {
       await ProfilePageFrameService.instance.apply(
@@ -9327,9 +9338,15 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
     final bool developerPublicTitleActive =
         publicIsDeveloper && selectedPublicTitleId == developerProfileTitleId;
 
+    // Public profiles only expose the equipped title ID, not private
+    // discovery progress. Recognize an equipped discovery title by ID.
     final selectedPublicTitle = _findProfileTitleAchievement(
       publicTitleGroups,
       selectedPublicTitleId,
+    ) ?? _findProfileTitleAchievement(
+      _discoveryTitleAchievementGroups(),
+      selectedPublicTitleId,
+      requireUnlocked: false,
     );
 
     final criticXp = intStat('critic_xp');
@@ -10314,50 +10331,52 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   }
 }
 
-List<_AchievementGroup> _currentUserProfileTitleGroups() {
+// Single source of truth for the current account's normal achievements.
+// Discovery milestones are normal achievements for progress/count purposes.
+// Their direct tier reward is the Profile Title; cosmetic rewards still belong
+// to their existing, separately defined achievement groups.
+List<_AchievementGroup> _currentAccountAchievementGroups() {
   final library = LibraryService.instance;
-
   final critic = CriticService.instance;
-
+  final music = MusicUserDataService.instance;
   final runtimeLevel = _runtimeLevelForMinutes(
     _combinedRuntimeMinutes(library),
   );
 
-  final normalGroups = <_AchievementGroup>[
-    // MOVIES
+  return <_AchievementGroup>[
     _movieAchievementGroupFor(library.moviesWatchedCount),
-
     _moviesRatedAchievementGroupFor(critic.movieRatingCount),
-
-    // TV
     _tvAchievementGroupFor(library.completedTvShowsCount),
-
     _episodeAchievementGroupFor(library.watchedEpisodeCount),
-
     _tvShowsRatedAchievementGroupFor(critic.tvRatingCount),
-
     _episodeRatedAchievementGroupFor(critic.episodeRatingCount),
-
-    // COMMUNITY
+    _albumsListenedAchievementGroupFor(music.listenedAlbumCount),
+    _songsListenedAchievementGroupFor(music.listenedTrackCount),
+    _albumsRatedAchievementGroupFor(critic.albumRatingCount),
+    _songsRatedAchievementGroupFor(critic.songRatingCount),
     _publicProfileViewAchievementGroupFor(
       PublicProfileViewService.instance.viewCount,
     ),
-
     _followersAchievementGroupFor(
       FollowerCountService.instance.peakFollowerCount,
     ),
-
-    // CHIPLUX
     _dailyLoginAchievementGroupFor(DailyLoginService.instance.loginDays),
-
     _runtimeLevelAchievementGroupFor(runtimeLevel),
-
     _ratingsLevelAchievementGroupFor(critic.level),
+    if (!ProfileService.instance.isDeveloper)
+      _followDeveloperAchievementGroupFor(
+        ProfileService.instance.followedDeveloperAchievement,
+      ),
+    ..._discoveryTitleAchievementGroups(),
   ];
+}
 
-  final unlockedCount = _unlockedAchievementCount(normalGroups);
-
-  return [...normalGroups, _medalCollectionAchievementGroupFor(unlockedCount)];
+List<_AchievementGroup> _currentUserProfileTitleGroups() {
+  final groups = _currentAccountAchievementGroups();
+  return <_AchievementGroup>[
+    ...groups,
+    _medalCollectionAchievementGroupFor(_unlockedAchievementCount(groups)),
+  ];
 }
 
 _Achievement? _findProfileTitleAchievement(
@@ -12128,6 +12147,8 @@ class _InMemoriamActorCard extends StatelessWidget {
         onTap: tmdbId == null
             ? null
             : () {
+                DiscoveryAchievementService.instance.recordSpotlight(
+                  DiscoveryAchievementService.memorials, tmdbId);
                 Navigator.push(
                   context,
 
@@ -12427,6 +12448,8 @@ class _BirthdayActorCard extends StatelessWidget {
         onTap: tmdbId == null
             ? null
             : () {
+                DiscoveryAchievementService.instance.recordSpotlight(
+                  DiscoveryAchievementService.birthdays, tmdbId);
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -12889,11 +12912,13 @@ class _Top100Row extends StatelessWidget {
   final int rank;
   final dynamic item;
   final String mediaType;
+  final String? achievementSource;
 
   const _Top100Row({
     required this.rank,
     required this.item,
     required this.mediaType,
+    this.achievementSource,
   });
 
   @override
@@ -13063,6 +13088,10 @@ class _Top100Row extends StatelessWidget {
                 borderRadius: BorderRadius.circular(15),
 
                 onTap: () {
+                  if (achievementSource != null) {
+                    DiscoveryAchievementService.instance.recordSource(
+                      achievementSource!, id.toString());
+                  }
                   Navigator.push(
                     context,
 
@@ -18243,6 +18272,95 @@ class _Achievement {
   }
 }
 
+
+// Discovery milestones each reward a Profile Title, and count as regular
+// achievements in all overall totals and Medal Collection progress.
+_AchievementGroup _discoveryTitleGroup({
+  required String id,
+  required String name,
+  required String description,
+  required IconData icon,
+  required int progress,
+  required List<int> targets,
+  required List<String> titles,
+  required List<IconData> icons,
+}) {
+  assert(targets.length == titles.length && titles.length == icons.length);
+  return _AchievementGroup(
+    id: id, title: name, description: description, icon: icon,
+    current: progress,
+    tiers: List.generate(targets.length, (index) => _Achievement(
+      id: '${id}_${targets[index]}',
+      title: titles[index],
+      description: 'Earn the "${titles[index]}" profile title after ${targets[index]} unique qualifying titles or visits.',
+      icon: icons[index],
+      current: progress,
+      target: targets[index],
+      rarity: index >= 5 ? _AchievementRarity.legendary
+          : index >= 4 ? _AchievementRarity.epic
+          : index >= 3 ? _AchievementRarity.rare
+          : index >= 2 ? _AchievementRarity.uncommon
+          : _AchievementRarity.common,
+      visualTier: index + 1,
+    )),
+  );
+}
+
+List<_AchievementGroup> _discoveryTitleAchievementGroups() {
+  final tracker = DiscoveryAchievementService.instance;
+  return [
+    _discoveryTitleGroup(
+      id: DiscoveryAchievementService.forYouMovies,
+      name: 'For You · Movies', description: 'Complete movies discovered through For You.',
+      icon: Icons.movie_filter_outlined, progress: tracker.progress('for_you_movies'),
+      targets: [2, 4, 8, 16, 32], titles: ['Curious Viewer', 'Suggested Seeker', 'For You Fan', 'Algorithm Explorer', 'Destiny Watcher'],
+      icons: [Icons.play_circle_outline, Icons.movie_outlined, Icons.camera_alt_outlined, Icons.panorama_outlined, Icons.emoji_events_outlined],
+    ),
+    _discoveryTitleGroup(
+      id: DiscoveryAchievementService.forYouAlbums,
+      name: 'For You · Albums', description: 'Listen to complete albums discovered through For You.',
+      icon: Icons.album, progress: tracker.progress('for_you_albums'),
+      targets: [2, 4, 8, 16, 32], titles: ['Fresh Listener', 'Taste Explorer', 'Recommended Ear', 'Album Adventurer', 'Discovery Listener'],
+      icons: [Icons.radio_button_unchecked, Icons.bar_chart_rounded, Icons.query_stats_rounded, Icons.dynamic_feed_rounded, Icons.tune_rounded],
+    ),
+    _discoveryTitleGroup(
+      id: DiscoveryAchievementService.birthdays,
+      name: 'Birthday Spotlights', description: 'Open unique birthday spotlights.',
+      icon: Icons.cake_rounded, progress: tracker.progress('birthdays_checked'),
+      targets: [2, 4, 8, 16, 32, 64], titles: ['Birthday Visitor', 'Wish Keeper', 'Celebration Scout', 'Cake Chronicler', 'Birthday Archivist', 'Master Celebrant'],
+      icons: [Icons.cake_outlined, Icons.today_rounded, Icons.calendar_month_outlined, Icons.notifications_active_outlined, Icons.favorite_border_rounded, Icons.star_rounded],
+    ),
+    _discoveryTitleGroup(
+      id: DiscoveryAchievementService.memorials,
+      name: 'In Memoriam Spotlights', description: 'Open unique in memoriam spotlights.',
+      icon: Icons.local_florist_outlined, progress: tracker.progress('memorials_checked'),
+      targets: [2, 4, 8, 16, 32, 64], titles: ['Quiet Visitor', 'Remembrance Keeper', 'Memory Walker', 'Legacy Watcher', 'Honor Bearer', 'Eternal Remembrance'],
+      icons: [Icons.lightbulb_outline_rounded, Icons.bookmark_border_rounded, Icons.visibility_outlined, Icons.diamond_outlined, Icons.verified_user_outlined, Icons.favorite_rounded],
+    ),
+    _discoveryTitleGroup(
+      id: DiscoveryAchievementService.allTimeMovies,
+      name: 'All Time · Movies', description: 'Complete films discovered through the Movies All Time Top 100.',
+      icon: Icons.local_movies_outlined, progress: tracker.progress('all_time_movies'),
+      targets: [2, 4, 8, 16, 32, 64], titles: ['Classic Taster', 'Top 100 Tourist', 'All-Time Watcher', 'Cinema Climber', 'Screen Historian', 'All-Time Legend'],
+      icons: [Icons.format_list_numbered_rounded, Icons.grid_view_rounded, Icons.flag_outlined, Icons.done_all_rounded, Icons.check_circle_outline_rounded, Icons.check_circle_rounded],
+    ),
+    _discoveryTitleGroup(
+      id: DiscoveryAchievementService.allTimeTv,
+      name: 'All Time · TV Shows', description: 'Complete TV shows discovered through the TV All Time Top 100.',
+      icon: Icons.video_library, progress: tracker.progress('all_time_tv'),
+      targets: [2, 4, 8, 16, 32], titles: ['Timeless Pilot', 'Channel Hopper', 'Top Show Viewer', 'Binge Historian', 'Prime-Time Icon'],
+      icons: [Icons.home_outlined, Icons.timer_outlined, Icons.notes_rounded, Icons.quiz_outlined, Icons.trending_up_rounded],
+    ),
+    _discoveryTitleGroup(
+      id: DiscoveryAchievementService.genreAlbums,
+      name: '100 Lists · Genre Albums', description: 'Listen to complete albums discovered through any Top 100 genre list.',
+      icon: Icons.category_outlined, progress: tracker.progress('genre_top_albums'),
+      targets: [2, 4, 8, 16, 32, 64], titles: ['Genre Dipper', 'Sound Wanderer', 'Genre Hunter', 'Chart Crate Digger', 'Genre Voyager', 'Master of Variety'],
+      icons: [Icons.badge_outlined, Icons.lightbulb_rounded, Icons.palette_outlined, Icons.gradient_rounded, Icons.swap_horiz_rounded, Icons.manage_search_rounded],
+    ),
+  ];
+}
+
 class _AchievementGroup {
   final String id;
   final String title;
@@ -18926,6 +19044,13 @@ class _AchievementsPageState extends State<AchievementsPage> {
                     ),
                   ),
 
+                  if (DiscoveryAchievementService.categories.contains(group.id)) ...[
+                    const SizedBox(height: 11),
+                    _achievementRewardInfo(
+                      accent: accent, icon: Icons.title_rounded,
+                      text: 'Each milestone unlocks its own Profile Title only.',
+                    ),
+                  ],
                   // =========================
                   // MOVIES WATCHED
                   // =========================
@@ -19326,6 +19451,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
               critic,
               followerCountService,
               musicUserData,
+              DiscoveryAchievementService.instance,
             ]),
             builder: (context, _) {
               final int moviesWatched = library.moviesWatchedCount;
@@ -19355,7 +19481,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
               );
 
               final followerGroup = _followersAchievementGroupFor(
-                followerCountService.followerCount,
+                followerCountService.peakFollowerCount,
               );
 
               final episodeRatedGroup = _episodeRatedAchievementGroupFor(
@@ -19402,19 +19528,26 @@ class _AchievementsPageState extends State<AchievementsPage> {
               // CATEGORIES
               // =========================
 
+              final discoveryGroups = _discoveryTitleAchievementGroups();
+
               final movieGroups = <_AchievementGroup>[
                 movieGroup,
+                discoveryGroups[0],
+                discoveryGroups[4],
                 moviesRatedGroup,
               ];
 
               final tvGroups = <_AchievementGroup>[
                 tvGroup,
+                discoveryGroups[5],
                 episodeGroup,
                 tvShowsRatedGroup,
                 episodeRatedGroup,
               ];
 
               final musicGroups = <_AchievementGroup>[
+                discoveryGroups[1],
+                discoveryGroups[6],
                 albumsListenedGroup,
                 songsListenedGroup,
                 albumsRatedGroup,
@@ -19431,6 +19564,8 @@ class _AchievementsPageState extends State<AchievementsPage> {
               );
 
               final chipluxGroups = <_AchievementGroup>[
+                discoveryGroups[2],
+                discoveryGroups[3],
                 if (!ProfileService.instance.isDeveloper) followDeveloperGroup,
 
                 dailyLoginGroup,
@@ -19450,24 +19585,22 @@ class _AchievementsPageState extends State<AchievementsPage> {
                 ...chipluxGroups,
               ];
 
-              final allTiers = allGroups
-                  .expand((group) => group.tiers)
-                  .toList();
+              // Every tier is a normal achievement for overall progress.
+              // Discovery tiers directly grant titles only; Medal Collection
+              // cosmetics are separate aggregate milestone rewards.
+              final medalUnlocked = _unlockedAchievementCount(allGroups);
+              final medalTotal = _totalAchievementCount(allGroups);
 
-              final int unlocked = allTiers
-                  .where((tier) => tier.unlocked)
-                  .length;
-
-              final int collectionPercent = allTiers.isEmpty
+              final int collectionPercent = medalTotal == 0
                   ? 0
-                  : ((unlocked / allTiers.length) * 100).round();
+                  : ((medalUnlocked / medalTotal) * 100).round();
 
               // =========================
               // MEDAL COLLECTION
               // =========================
 
               final medalCollectionGroup = _medalCollectionAchievementGroupFor(
-                unlocked,
+                medalUnlocked,
               );
 
               _scheduleInitialAchievementGroup(
@@ -19553,7 +19686,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
                                       ),
                                       const SizedBox(height: 3),
                                       UiText(
-                                        '$unlocked / ${allTiers.length} unlocked',
+                                        '$medalUnlocked / $medalTotal unlocked',
                                         style: const TextStyle(
                                           color: Colors.white54,
                                           fontSize: 12,
@@ -21237,7 +21370,7 @@ _AchievementGroup _medalCollectionAchievementGroupFor(int unlockedMilestones) {
     id: 'medal_collection',
     title: 'Medal Collection',
     description: 'Unlock achievement milestones to upgrade your achievement button and unlock display name colors.',
-    icon: Icons.workspace_premium_rounded,
+    icon: Icons.forum_rounded,
     current: unlockedMilestones,
     tiers: [
       _Achievement(
@@ -21330,43 +21463,8 @@ int _totalAchievementCount(Iterable<_AchievementGroup> groups) {
   return groups.expand((group) => group.tiers).length;
 }
 
-int _totalUnlockedAchievementMilestones() {
-  final library = LibraryService.instance;
-
-  final critic = CriticService.instance;
-
-  final runtimeLevel = _runtimeLevelForMinutes(
-    _combinedRuntimeMinutes(library),
-  );
-
-  final groups = <_AchievementGroup>[
-    _movieAchievementGroupFor(library.moviesWatchedCount),
-    _tvAchievementGroupFor(library.completedTvShowsCount),
-    _episodeAchievementGroupFor(library.watchedEpisodeCount),
-    _dailyLoginAchievementGroupFor(DailyLoginService.instance.loginDays),
-    _publicProfileViewAchievementGroupFor(
-      PublicProfileViewService.instance.viewCount,
-    ),
-
-    _followersAchievementGroupFor(
-      FollowerCountService.instance.peakFollowerCount,
-    ),
-    _episodeRatedAchievementGroupFor(critic.episodeRatingCount),
-    _tvShowsRatedAchievementGroupFor(critic.tvRatingCount),
-    _moviesRatedAchievementGroupFor(critic.movieRatingCount),
-    _runtimeLevelAchievementGroupFor(runtimeLevel),
-    _ratingsLevelAchievementGroupFor(critic.level),
-    if (!ProfileService.instance.isDeveloper)
-      _followDeveloperAchievementGroupFor(
-        ProfileService.instance.followedDeveloperAchievement,
-      ),
-  ];
-
-  return groups
-      .expand((group) => group.tiers)
-      .where((tier) => tier.unlocked)
-      .length;
-}
+int _totalUnlockedAchievementMilestones() =>
+    _unlockedAchievementCount(_currentAccountAchievementGroups());
 
 class _MedalCollectionUnlockTracker {
   _MedalCollectionUnlockTracker._();
@@ -21385,12 +21483,36 @@ class _MedalCollectionUnlockTracker {
   }
 
   int? _lastCount;
+  bool _watchingDiscovery = false;
+  bool _discoveryCheckQueued = false;
+
+  void _onDiscoveryProgressChanged() {
+    final prior = _lastCount;
+    if (prior == null || _prefKey == null || _discoveryCheckQueued ||
+        _totalUnlockedAchievementMilestones() <= prior) {
+      return;
+    }
+    _discoveryCheckQueued = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _discoveryCheckQueued = false;
+      final context = chipluxNavigatorKey.currentContext;
+      if (context != null && context.mounted) {
+        unawaited(checkForUnlocks(context));
+      }
+    });
+  }
 
   void reset() {
     _lastCount = null;
   }
 
   Future<void> initialize() async {
+    if (!_watchingDiscovery) {
+      DiscoveryAchievementService.instance.addListener(
+        _onDiscoveryProgressChanged,
+      );
+      _watchingDiscovery = true;
+    }
     final key = _prefKey;
 
     if (key == null) {
@@ -21576,7 +21698,7 @@ _AchievementGroup _publicProfileViewAchievementGroupFor(int viewedProfiles) {
 
     description: 'Explore other Chiplux profiles to upgrade your avatar frame.',
 
-    icon: Icons.people_alt_rounded,
+    icon: Icons.group_rounded,
 
     current: viewedProfiles,
 
@@ -23927,6 +24049,7 @@ class _ProfilePageState extends State<ProfilePage> {
           FollowerCountService.instance,
           ProfileTitleService.instance,
           ProfilePageFrameService.instance,
+          DiscoveryAchievementService.instance,
         ]),
         builder: (context, _) {
           final shownName = profile.displayName.isNotEmpty
@@ -24001,23 +24124,9 @@ class _ProfilePageState extends State<ProfilePage> {
             PublicProfileViewService.instance.viewCount,
           );
 
-          final profileAchievementGroups = <_AchievementGroup>[
-            movieGroup,
-            tvGroup,
-            episodeGroup,
-            dailyLoginGroup,
-            profileViewGroup,
-            followerGroup,
-            episodeRatedGroup,
-            tvShowsRatedGroup,
-            moviesRatedGroup,
-            albumsListenedGroup,
-            songsListenedGroup,
-            albumsRatedGroup,
-            songsRatedGroup,
-            runtimeLevelGroup,
-            ratingsLevelGroup,
-          ];
+          // Use the same achievement set as the Achievements screen, so all
+          // 39 Discovery tiers count toward the profile totals as well.
+          final profileAchievementGroups = _currentAccountAchievementGroups();
 
           final int unlockedAchievementCount = _unlockedAchievementCount(
             profileAchievementGroups,
@@ -32286,7 +32395,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   void _showProfileTitleGrid(List<_Achievement> unlocked) {
-    final search = TextEditingController();
+    // Let TextField own and dispose its editing controller with the sheet.
+    // Disposing a controller from the route's completion Future can happen
+    // while its closing animation still has active dependents.
     String filter = '';
     showModalBottomSheet<void>(
       context: context,
@@ -32316,13 +32427,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     const Expanded(child: Text('Choose Profile Title',
                       style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold))),
                     IconButton(icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.pop(sheetContext)),
+                      onPressed: () {
+                        FocusManager.instance.primaryFocus?.unfocus();
+                        Navigator.pop(sheetContext);
+                      }),
                   ]),
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                   child: TextField(
-                    controller: search,
                     onChanged: (value) => refreshSheet(() => filter = value),
                     decoration: InputDecoration(
                       prefixIcon: const Icon(Icons.search_rounded),
@@ -32351,6 +32464,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           achievement: null, selected: selectedTitleId == null,
                           onTap: () {
                             unawaited(_selectProfileTitle(null));
+                            FocusManager.instance.primaryFocus?.unfocus();
                             Navigator.pop(sheetContext);
                           },
                         ));
@@ -32365,6 +32479,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         selected: selectedTitleId == option.id,
                         onTap: () {
                           unawaited(_selectProfileTitle(option.id));
+                          FocusManager.instance.primaryFocus?.unfocus();
                           Navigator.pop(sheetContext);
                         },
                       ));
@@ -32375,7 +32490,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
           );
         },
       ),
-    ).whenComplete(search.dispose);
+    );
   }
 
   Widget buildProfileTitlePicker() {

@@ -832,11 +832,13 @@ class _DiscoverMusicTile extends StatefulWidget {
   final DiscoverCategory category;
   final bool compact;
   final int? rank;
+  final String? achievementSource;
   const _DiscoverMusicTile({
     required this.item,
     required this.category,
     this.compact = false,
     this.rank,
+    this.achievementSource,
   });
   @override
   State<_DiscoverMusicTile> createState() => _DiscoverMusicTileState();
@@ -872,6 +874,11 @@ class _DiscoverMusicTileState extends State<_DiscoverMusicTile> {
         return;
       }
       final resolvedAlbum = album;
+      if (widget.achievementSource != null &&
+          widget.category == DiscoverCategory.albums) {
+        DiscoveryAchievementService.instance.recordSource(
+          widget.achievementSource!, resolvedAlbum.id);
+      }
       await Navigator.push(
         context,
         MaterialPageRoute(
@@ -948,7 +955,9 @@ class _DiscoverMusicTileState extends State<_DiscoverMusicTile> {
 class _DiscoverDailyMediaTile extends StatelessWidget {
   final Map<String, dynamic> item;
   final DiscoverCategory category;
-  const _DiscoverDailyMediaTile({required this.item, required this.category});
+  final String? achievementSource;
+  const _DiscoverDailyMediaTile({required this.item, required this.category,
+    this.achievementSource});
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
     animation: Listenable.merge([
@@ -988,12 +997,18 @@ class _DiscoverDailyMediaTile extends StatelessWidget {
         ratingLabel: type == 'tv'
             ? 'Episodes rated: $ratedEpisodes / ${total > 0 ? total : '?'}'
             : null,
-        onTap: () => Navigator.push(
+        onTap: () {
+          if (achievementSource != null) {
+            DiscoveryAchievementService.instance.recordSource(
+              achievementSource!, id.toString());
+          }
+          Navigator.push(
           context,
           MaterialPageRoute(
             builder: (_) => MediaDetailsPage(id: id, mediaType: type),
           ),
-        ),
+          );
+        },
       );
     },
   );
@@ -1517,9 +1532,13 @@ class _ChipluxDailyRecommendationState
                     ),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                       if (isAlbum) _DiscoverMusicTile(
-                          item: current, category: widget.category, compact: true)
+                          item: current, category: widget.category, compact: true,
+                          achievementSource: DiscoveryAchievementService.forYouAlbums)
                       else _DiscoverDailyMediaTile(
-                          item: current, category: widget.category),
+                          item: current, category: widget.category,
+                          achievementSource: widget.category == DiscoverCategory.movies
+                            ? DiscoveryAchievementService.forYouMovies
+                            : null),
                       const SizedBox(height: 12),
                       Row(children: [
                         Expanded(child: OutlinedButton.icon(
@@ -1812,7 +1831,11 @@ class _ChipluxAllTimeListState extends State<_ChipluxAllTimeList> {
                     item: row, category: widget.category,
                     compact: true, rank: index + 1)
                 : _Top100Row(rank: index + 1, item: row,
-                    mediaType: DiscoverCatalogService.mediaType(widget.category));
+                    mediaType: DiscoverCatalogService.mediaType(widget.category),
+                    achievementSource: widget.category == DiscoverCategory.movies
+                        ? DiscoveryAchievementService.allTimeMovies
+                        : widget.category == DiscoverCategory.tvShows
+                        ? DiscoveryAchievementService.allTimeTv : null);
           },
         ),
       );
@@ -1910,6 +1933,9 @@ class _ChipluxCuratedListPageState extends State<_ChipluxCuratedListPage> {
                       category: widget.category,
                       compact: true,
                       rank: index + 1,
+                      achievementSource: widget.category == DiscoverCategory.albums &&
+                              widget.genre != null
+                          ? DiscoveryAchievementService.genreAlbums : null,
                     )
                   : _Top100Row(
                       rank: index + 1,
