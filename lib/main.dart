@@ -50,6 +50,8 @@ import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 
 import 'services/community_service.dart';
 import 'admin_moderation_page.dart';
+import 'admin_movie_achievements_page.dart';
+import 'services/custom_movie_achievement_service.dart';
 import 'data_export_page.dart';
 import 'services/data_export_service.dart';
 import 'services/feature_suggestion_service.dart';
@@ -110,6 +112,7 @@ Future<void> _loadCurrentAccountAchievementState() async {
   ]);
 
   await DiscoveryAchievementService.instance.load();
+  await CustomMovieAchievementService.instance.load();
 
   await _MedalCollectionUnlockTracker.instance.initialize();
 
@@ -9344,7 +9347,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
       publicTitleGroups,
       selectedPublicTitleId,
     ) ?? _findProfileTitleAchievement(
-      _discoveryTitleAchievementGroups(),
+      [..._discoveryTitleAchievementGroups(), ..._customMovieAchievementGroups()],
       selectedPublicTitleId,
       requireUnlocked: false,
     );
@@ -10368,6 +10371,7 @@ List<_AchievementGroup> _currentAccountAchievementGroups() {
         ProfileService.instance.followedDeveloperAchievement,
       ),
     ..._discoveryTitleAchievementGroups(),
+    ..._customMovieAchievementGroups(),
   ];
 }
 
@@ -18263,6 +18267,9 @@ class _Achievement {
   final int current;
   final int target;
   final _AchievementRarity rarity;
+  // Optional authoritative unlock state for database-verified achievements.
+  // Ordinary milestones keep their existing progress-derived behavior.
+  final bool? unlockedOverride;
 
   const _Achievement({
     required this.id,
@@ -18273,9 +18280,10 @@ class _Achievement {
     required this.target,
     required this.rarity,
     this.visualTier = 1,
+    this.unlockedOverride,
   });
 
-  bool get unlocked => current >= target;
+  bool get unlocked => unlockedOverride ?? current >= target;
 
   double get progress {
     if (target <= 0) {
@@ -18380,6 +18388,73 @@ List<_AchievementGroup> _discoveryTitleAchievementGroups() {
       targets: [2, 4, 8, 16, 32, 64], titles: ['Genre Dipper', 'Sound Wanderer', 'Genre Hunter', 'Chart Crate Digger', 'Genre Voyager', 'Master of Variety'],
       icons: [Icons.badge_outlined, Icons.lightbulb_rounded, Icons.palette_outlined, Icons.gradient_rounded, Icons.swap_horiz_rounded, Icons.manage_search_rounded],
     ),
+  ];
+}
+
+
+// Reserved unique glyphs: one pair per admin-created movie achievement.
+// Database icon_slot is constrained to 0..15 and UNIQUE; no pair is reused.
+const _customMovieGroupIcons = <IconData>[
+  Icons.rocket_launch_outlined,
+  Icons.auto_stories_outlined,
+  Icons.eco_outlined,
+  Icons.flutter_dash_outlined,
+  Icons.castle_outlined,
+  Icons.radar_outlined,
+  Icons.all_inclusive_rounded,
+  Icons.biotech_outlined,
+  Icons.terrain_outlined,
+  Icons.celebration_outlined,
+  Icons.sports_esports_outlined,
+  Icons.hiking_outlined,
+  Icons.wb_twilight_outlined,
+  Icons.camera_roll_outlined,
+  Icons.sentiment_very_satisfied_outlined,
+  Icons.hub_outlined,
+];
+const _customMovieTierIcons = <IconData>[
+  Icons.polymer_outlined,
+  Icons.sports_martial_arts_outlined,
+  Icons.filter_vintage_outlined,
+  Icons.satellite_alt_outlined,
+  Icons.interests_outlined,
+  Icons.webhook_outlined,
+  Icons.fingerprint_outlined,
+  Icons.electric_bolt_outlined,
+  Icons.flare_outlined,
+  Icons.landscape_outlined,
+  Icons.anchor_outlined,
+  Icons.forest_outlined,
+  Icons.interpreter_mode_outlined,
+  Icons.rocket_outlined,
+  Icons.tornado_outlined,
+  Icons.solar_power_outlined,
+];
+
+List<_AchievementGroup> _customMovieAchievementGroups() {
+  final service = CustomMovieAchievementService.instance;
+  return [
+    for (final definition in service.activeDefinitions)
+      _AchievementGroup(
+        id: 'custom_movie_${definition.id}',
+        title: definition.name,
+        description: definition.description,
+        icon: _customMovieGroupIcons[definition.iconSlot],
+        current: service.progress(definition),
+        tiers: [
+          _Achievement(
+            id: 'custom_movie_title_${definition.id}',
+            title: definition.rewardTitle,
+            description: 'Watch all ${definition.movieIds.length} required movies.',
+            icon: _customMovieTierIcons[definition.iconSlot],
+            current: service.progress(definition),
+            target: definition.movieIds.length,
+            rarity: _AchievementRarity.rare,
+            unlockedOverride: service.unlocked(definition),
+            visualTier: 1,
+          ),
+        ],
+      ),
   ];
 }
 
@@ -18861,6 +18936,19 @@ class AchievementsPage extends StatefulWidget {
 class _AchievementsPageState extends State<AchievementsPage> {
   bool _didOpenInitialAchievement = false;
 
+  @override
+  void initState() {
+    super.initState();
+    // Always re-evaluate server-authoritative claims when the tab is opened,
+    // including when an admin added a new movie while the app was closed.
+    unawaited(_refreshCustomMovieEntitlements());
+  }
+
+  Future<void> _refreshCustomMovieEntitlements() async {
+    await CustomMovieAchievementService.instance.load();
+    await ProfileTitleService.instance.load();
+  }
+
   void _showAchievementGroup(BuildContext context, _AchievementGroup group) {
     final pinService = MedalPinService.instance;
 
@@ -18915,6 +19003,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
     final bool isPinned = pinService.isPinned(group.id);
 
     final currentTier = group.highestUnlockedTier;
+    final customMovie = CustomMovieAchievementService.instance.byGroupId(group.id);
 
     final currentTierColors = _achievementTierColors(currentTier);
 
@@ -19052,7 +19141,8 @@ class _AchievementsPageState extends State<AchievementsPage> {
                     ),
                   ),
 
-                  if (DiscoveryAchievementService.categories.contains(group.id)) ...[
+                  if (DiscoveryAchievementService.categories.contains(group.id) ||
+                      group.id.startsWith('custom_movie_')) ...[
                     const SizedBox(height: 11),
                     _achievementRewardInfo(
                       accent: accent, icon: Icons.title_rounded,
@@ -19202,6 +19292,32 @@ class _AchievementsPageState extends State<AchievementsPage> {
                       icon: Icons.workspace_premium_rounded,
                       text: 'Unlock Achievement Button styles and new colors for your display name.',
                     ),
+                  ],
+
+                  if (customMovie != null) ...[
+                    const SizedBox(height: 17),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text('Required movies',
+                        style: TextStyle(color: accent, fontWeight: FontWeight.w700)),
+                    ),
+                    const SizedBox(height: 8),
+                    for (final movieId in customMovie.movieIds)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 5),
+                        child: Row(children: [
+                          Icon(
+                            CustomMovieAchievementService.instance.hasWatched(movieId) || group.completed
+                                ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                            size: 18,
+                            color: CustomMovieAchievementService.instance.hasWatched(movieId) || group.completed
+                                ? chipluxCyan : Colors.white38,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(child: Text(customMovie.movieTitles[movieId] ?? 'Movie #$movieId',
+                            style: const TextStyle(color: Colors.white70, fontSize: 12))),
+                        ]),
+                      ),
                   ],
 
                   const SizedBox(height: 17),
@@ -19467,6 +19583,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
               followerCountService,
               musicUserData,
               DiscoveryAchievementService.instance,
+              CustomMovieAchievementService.instance,
             ]),
             builder: (context, _) {
               final int moviesWatched = library.moviesWatchedCount;
@@ -19546,6 +19663,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
               final discoveryGroups = _discoveryTitleAchievementGroups();
 
               final movieGroups = <_AchievementGroup>[
+                ..._customMovieAchievementGroups(),
                 movieGroup,
                 discoveryGroups[0],
                 discoveryGroups[4],
@@ -19943,7 +20061,8 @@ class _AchievementGroupCard extends StatelessWidget {
   });
 
   String get _rewardKind {
-    if (DiscoveryAchievementService.categories.contains(group.id)) {
+    if (DiscoveryAchievementService.categories.contains(group.id) ||
+        group.id.startsWith('custom_movie_')) {
       return 'title';
     }
     return switch (group.id) {
@@ -21139,6 +21258,7 @@ class _MedalCollectionUnlockTracker {
 
   int? _lastCount;
   bool _watchingDiscovery = false;
+  bool _watchingCustomMovies = false;
   bool _discoveryCheckQueued = false;
 
   void _onDiscoveryProgressChanged() {
@@ -21167,6 +21287,12 @@ class _MedalCollectionUnlockTracker {
         _onDiscoveryProgressChanged,
       );
       _watchingDiscovery = true;
+    }
+    if (!_watchingCustomMovies) {
+      CustomMovieAchievementService.instance.addListener(
+        _onDiscoveryProgressChanged,
+      );
+      _watchingCustomMovies = true;
     }
     final key = _prefKey;
 
@@ -23705,6 +23831,7 @@ class _ProfilePageState extends State<ProfilePage> {
           ProfileTitleService.instance,
           ProfilePageFrameService.instance,
           DiscoveryAchievementService.instance,
+          CustomMovieAchievementService.instance,
         ]),
         builder: (context, _) {
           final shownName = profile.displayName.isNotEmpty
@@ -30176,6 +30303,7 @@ class _ProfileSettingsTab extends StatelessWidget {
     passwordController.dispose();
 
     if (confirmed == true && context.mounted) {
+      CustomMovieAchievementService.instance.clear();
       _MedalCollectionUnlockTracker.instance.reset();
 
       await NotificationService.instance.clear();
@@ -30203,6 +30331,7 @@ class _ProfileSettingsTab extends StatelessWidget {
 
     await AuthService.instance.signOut();
 
+    CustomMovieAchievementService.instance.clear();
     _MedalCollectionUnlockTracker.instance.reset();
 
     await FollowerCountService.instance.clear();
@@ -30289,6 +30418,16 @@ class _ProfileSettingsTab extends StatelessWidget {
                   icon: Icons.admin_panel_settings_outlined,
                   title: l10n.adminModeration,
                   subtitle: l10n.adminModerationSubtitle,
+                ),
+              ),
+              const _ProfileMenuDivider(),
+              InkWell(
+                onTap: () => Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const AdminMovieAchievementsPage())),
+                child: const _ProfileMenuRow(
+                  icon: Icons.add_circle_outline_rounded,
+                  title: 'Manage Movie Achievements',
+                  subtitle: 'Create, edit, publish or delete movie achievements.',
                 ),
               ),
             ],
