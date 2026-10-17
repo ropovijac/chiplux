@@ -61,6 +61,7 @@ class AuthService {
     final response = await client.auth.signUp(
       email: email.trim(),
       password: password,
+      emailRedirectTo: 'https://maktavision.com/auth/confirmed/',
 
       // Supabase stores this in
       // auth.users.raw_user_meta_data.
@@ -77,6 +78,23 @@ class AuthService {
     }
 
     return response;
+  }
+
+  // =====================================================
+  // RESEND MAKTAVISION EMAIL CONFIRMATION
+  // =====================================================
+
+  Future<void> resendSignupConfirmation(String email) async {
+    final normalizedEmail = email.trim();
+    if (normalizedEmail.isEmpty || !normalizedEmail.contains('@')) {
+      throw const AuthException('Enter a valid email address.');
+    }
+
+    await client.auth.resend(
+      type: OtpType.signup,
+      email: normalizedEmail,
+      emailRedirectTo: 'https://maktavision.com/auth/confirmed/',
+    );
   }
 
   // =====================================================

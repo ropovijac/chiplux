@@ -55,6 +55,7 @@ import 'services/custom_movie_achievement_service.dart';
 import 'data_export_page.dart';
 import 'services/data_export_service.dart';
 import 'services/feature_suggestion_service.dart';
+import 'maktavision_support_page.dart';
 
 part 'discover_browser.dart';
 part 'music_collection_ui.dart';
@@ -3664,6 +3665,9 @@ class _LoginPageState extends State<LoginPage> {
   bool loading = false;
   bool signupMode = false;
   bool showPassword = false;
+  bool awaitingVerification = false;
+  bool resendingConfirmation = false;
+  String? pendingVerificationEmail;
 
   bool rememberMe = false;
 
@@ -3924,6 +3928,8 @@ class _LoginPageState extends State<LoginPage> {
         );
 
         if (response.session != null) {
+          awaitingVerification = false;
+          pendingVerificationEmail = null;
           await LibraryService.instance.syncToCloud();
 
           await _loadCurrentAccountAchievementState();
@@ -3942,7 +3948,11 @@ class _LoginPageState extends State<LoginPage> {
 
           if (mounted) {
             setState(() {
-              message = 'Account created. Check your email and confirm your account, then sign in.';
+              signupMode = false;
+              awaitingVerification = true;
+              pendingVerificationEmail = identifier.trim();
+              passwordController.clear();
+              message = null;
             });
           }
         }
@@ -3958,6 +3968,8 @@ class _LoginPageState extends State<LoginPage> {
         identifier: identifier,
         password: password,
       );
+      awaitingVerification = false;
+      pendingVerificationEmail = null;
 
       // Authentication succeeded.
       //
@@ -4035,6 +4047,13 @@ class _LoginPageState extends State<LoginPage> {
 
           if (error.contains('already taken')) {
             message = 'That username is already taken.';
+          } else if (error.toLowerCase().contains('email not confirmed')) {
+            message = 'Please confirm your Maktavision email before signing in. If needed, sign in using your email address to request another confirmation.';
+            if (identifier.contains('@')) {
+              signupMode = false;
+              awaitingVerification = true;
+              pendingVerificationEmail = identifier;
+            }
           } else if (error.contains('Invalid username or password') ||
               error.contains('Invalid login credentials')) {
             message = 'Invalid email, username or password.';
@@ -4053,6 +4072,36 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   // =====================================================
+  // RESEND CONFIRMATION
+  // =====================================================
+
+  Future<void> _resendConfirmation() async {
+    final email = pendingVerificationEmail;
+    if (resendingConfirmation || email == null || email.isEmpty) return;
+
+    setState(() {
+      resendingConfirmation = true;
+      message = null;
+    });
+    try {
+      await AuthService.instance.resendSignupConfirmation(email);
+      if (mounted) {
+        setState(() {
+          message = 'Another confirmation email has been requested. Check your inbox and spam folder.';
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          message = 'Could not resend the verification email. Please wait and try again. ($e)';
+        });
+      }
+    } finally {
+      if (mounted) setState(() => resendingConfirmation = false);
+    }
+  }
+
+  // =====================================================
   // CHANGE MODE
   // =====================================================
 
@@ -4065,6 +4114,8 @@ class _LoginPageState extends State<LoginPage> {
 
     setState(() {
       signupMode = !signupMode;
+      awaitingVerification = false;
+      pendingVerificationEmail = null;
 
       message = null;
 
@@ -4141,7 +4192,61 @@ class _LoginPageState extends State<LoginPage> {
                       style: TextStyle(color: Colors.white54, letterSpacing: 2),
                     ),
 
-                    const SizedBox(height: 42),
+                    const SizedBox(height: 12),
+                    UiText(
+                      signupMode
+                          ? 'Create a Maktavision account'
+                          : 'Sign in with your Maktavision account',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 7),
+                    const UiText(
+                      'One account across Maktavision applications.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 12, color: Colors.white54),
+                    ),
+                    if (awaitingVerification) ...[
+                      const SizedBox(height: 22),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: chipluxSurface,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: chipluxCyan.withValues(alpha: 0.38)),
+                        ),
+                        child: Column(
+                          children: [
+                            const Icon(Icons.mark_email_unread_outlined,
+                                color: chipluxCyan, size: 31),
+                            const SizedBox(height: 9),
+                            const UiText('Verify your Maktavision email address',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 7),
+                            UiText(
+                              Localizations.localeOf(context).languageCode == 'hr'
+                                  ? 'Provjeri e-poštu na adresi ${pendingVerificationEmail ?? 'tvojoj adresi'}. Otvori poveznicu, potvrdi e-poštu na maktavision.com i vrati se u Chiplux radi prijave.'
+                                  : 'Check ${pendingVerificationEmail ?? 'your inbox'} for the confirmation link. Verify your email on maktavision.com, then return here to sign in.',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(fontSize: 12, color: Colors.white70),
+                            ),
+                            const SizedBox(height: 8),
+                            TextButton(
+                              onPressed: resendingConfirmation ? null : _resendConfirmation,
+                              child: UiText(resendingConfirmation
+                                  ? 'Sending…' : 'Resend confirmation email'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 32),
 
                     // =====================================
                     // USERNAME - CREATE ACCOUNT ONLY
@@ -4423,7 +4528,7 @@ class _LoginPageState extends State<LoginPage> {
                                   ),
                                 )
                               : UiText(
-                                  signupMode ? 'Create Account' : 'Sign In',
+                                  signupMode ? 'Create Maktavision Account' : 'Sign In',
                                 ),
                         ),
                       ),
@@ -4439,9 +4544,20 @@ class _LoginPageState extends State<LoginPage> {
 
                       child: UiText(
                         signupMode
-                            ? 'Already have an account? Sign In'
-                            : 'Don\'t have an account? Create Account',
+                            ? 'Already have a Maktavision account? Sign In'
+                            : 'Need a Maktavision account? Create Account',
                       ),
+                    ),
+                    const SizedBox(height: 6),
+                    TextButton.icon(
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const MaktavisionSupportPage(),
+                        ),
+                      ),
+                      icon: const Icon(Icons.support_agent_outlined, size: 17),
+                      label: const UiText('Maktavision Support'),
                     ),
                   ],
                 ),
@@ -29777,7 +29893,7 @@ class _ProfileSettingsTab extends StatelessWidget {
                                       const SizedBox(height: 3),
 
                                       const UiText(
-                                        'Keep your Chiplux account secure.',
+                                        'Keep your Maktavision account secure.',
 
                                         style: TextStyle(
                                           color: Colors.white38,
@@ -30232,14 +30348,14 @@ class _ProfileSettingsTab extends StatelessWidget {
 
             return AlertDialog(
               backgroundColor: chipluxSurface,
-              title: const UiText('Delete Chiplux account?'),
+              title: const UiText('Delete Maktavision account?'),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const UiText(
-                      'This permanently deletes your account and Chiplux data. This cannot be undone.',
+                      'This permanently deletes your shared Maktavision account and Chiplux data. You will lose access to other apps linked to this account. This cannot be undone.',
                       style: TextStyle(color: Colors.white70, height: 1.4),
                     ),
                     const SizedBox(height: 16),
@@ -30585,10 +30701,7 @@ class _ProfileHelpTab extends StatelessWidget {
               Icons.mail_outline_rounded,
               l10n.contact,
               l10n.contactSubtitle,
-              const _SimpleHelpPage(
-                title: 'Contact',
-                body: 'Chiplux contact details will be added before release.',
-              ),
+              const MaktavisionSupportPage(),
             ),
             const _ProfileMenuDivider(),
             row(
@@ -30625,39 +30738,6 @@ class _ProfileHelpTab extends StatelessWidget {
   }
 }
 
-class _SimpleHelpPage extends StatelessWidget {
-  final String title;
-  final String body;
-
-  const _SimpleHelpPage({required this.title, required this.body});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: chipluxBackground,
-      appBar: AppBar(backgroundColor: chipluxBackground, elevation: 0),
-      body: ChipluxBackground(
-        style: ChipluxBackgroundStyle.profile,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(18, 8, 18, 35),
-          children: [
-            _HelpPageHeader(
-              title: title,
-              description: AppLocalizations.of(context).informationSupport,
-            ),
-            const SizedBox(height: 18),
-            _HelpGradientCard(
-              child: UiText(
-                body,
-                style: const TextStyle(color: Colors.white70, height: 1.55),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 class _HelpPageHeader extends StatelessWidget {
   final String title;
@@ -30887,7 +30967,7 @@ class _PrivacyPolicyPage extends StatelessWidget {
         ),
         _LegalSection(
           title: '12. Contact',
-          body: 'For privacy questions or requests, use the Contact option in Chiplux. Before public release, the developer should also publish a monitored privacy or support email address here.',
+          body: 'For privacy questions or requests, use Contact in Chiplux or write to support@maktavision.com.',
         ),
       ],
     );
@@ -30950,7 +31030,7 @@ class _TermsOfUsePage extends StatelessWidget {
         ),
         _LegalSection(
           title: '12. Contact',
-          body: 'Questions about these Terms can be sent through the Contact option in Chiplux. Before public release, the developer should also publish a monitored support email address here.',
+          body: 'Questions about these Terms can be sent through Contact in Chiplux or support@maktavision.com.',
         ),
       ],
     );
@@ -31603,7 +31683,7 @@ class _ReportBugPageState extends State<_ReportBugPage> {
           children: [
             const _HelpPageHeader(
               title: 'Report a Bug',
-              description: 'Tell us what happened so the issue can be reproduced and fixed.',
+              description: 'Send a bug report to our in-app system, or contact bugs@maktavision.com.',
             ),
 
             const SizedBox(height: 18),

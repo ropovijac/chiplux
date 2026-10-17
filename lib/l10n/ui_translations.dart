@@ -399,6 +399,21 @@ String _translateCroatianPattern(String value) {
 }
 
 const Map<String, String> _hrExact = {
+  'Maktavision Support': 'Maktavision podrška',
+  'Create a Maktavision account': 'Izradi Maktavision račun',
+  'Sign in with your Maktavision account': 'Prijavi se svojim Maktavision računom',
+  'One account across Maktavision applications.': 'Jedan račun za Maktavision aplikacije.',
+  'Verify your Maktavision email address': 'Potvrdi adresu e-pošte Maktavision računa',
+  'Resend confirmation email': 'Ponovno pošalji e-poruku za potvrdu',
+  'Sending…': 'Slanje…',
+  'Create Maktavision Account': 'Izradi Maktavision račun',
+  'Already have a Maktavision account? Sign In': 'Već imaš Maktavision račun? Prijavi se',
+  'Need a Maktavision account? Create Account': 'Nemaš Maktavision račun? Izradi ga',
+  'Keep your Maktavision account secure.': 'Zaštiti svoj Maktavision račun.',
+  'Delete Maktavision account?': 'Izbrisati Maktavision račun?',
+  'This permanently deletes your shared Maktavision account and Chiplux data. You will lose access to other apps linked to this account. This cannot be undone.': 'Ovo trajno briše zajednički Maktavision račun i Chiplux podatke. Izgubit ćeš pristup drugim aplikacijama povezanima s tim računom. Radnju nije moguće poništiti.',
+  'Another confirmation email has been requested. Check your inbox and spam folder.': 'Zatražena je nova poruka za potvrdu. Provjeri pristiglu poštu i neželjenu poštu.',
+
   "1 comment": "1 komentar",
   "1. About this policy": "1. O ovim pravilima privatnosti",
   "1. Acceptance": "1. Prihvaćanje uvjeta",
