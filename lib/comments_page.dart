@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'theme/chiplux_palette.dart';
 
 import 'l10n/generated/app_localizations.dart';
 import 'l10n/ui_translations.dart';
@@ -9,13 +10,13 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'services/comment_service.dart';
 
-const Color _commentsBackground = Color(0xFF07111C);
+const Color _commentsBackground = chipluxBackground;
 
-const Color _commentsSurface = Color(0xFF111D2A);
+const Color _commentsSurface = chipluxSurface;
 
-const Color _commentsSurfaceLight = Color(0xFF162536);
+const Color _commentsSurfaceLight = chipluxSurfaceLight;
 
-const Color _commentsCyan = Color(0xFF43E8FF);
+const Color _commentsCyan = chipluxGold;
 
 class CommentsPage extends StatefulWidget {
   final String mediaType;
@@ -2445,17 +2446,7 @@ class _DeveloperCommentBadgeState extends State<_DeveloperCommentBadge>
 
                   end: Alignment(0.5 + (t * 2), 0),
 
-                  colors: const [
-                    Color(0xFF00E5FF),
-
-                    Color(0xFFB388FF),
-
-                    Color(0xFFFFD166),
-
-                    Color(0xFFFF4FD8),
-
-                    Color(0xFF00E5FF),
-                  ],
+                  colors: const [chipluxGold, chipluxBrightGold, chipluxGold],
                 ).createShader(bounds);
               },
 

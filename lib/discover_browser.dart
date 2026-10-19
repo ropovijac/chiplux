@@ -295,7 +295,12 @@ class _DiscoverBrowsePage extends StatefulWidget {
   State<_DiscoverBrowsePage> createState() => _DiscoverBrowsePageState();
 }
 
-class _DiscoverBrowsePageState extends State<_DiscoverBrowsePage> {
+class _DiscoverBrowsePageState extends State<_DiscoverBrowsePage>
+    with AutomaticKeepAliveClientMixin<_DiscoverBrowsePage> {
+  // Retain filters and scroll positions while swiping between sections.
+  @override
+  bool get wantKeepAlive => true;
+
   DiscoverCategory category = DiscoverCategory.movies;
   late Future<List<DiscoverGenre>> genres;
   int generation = 0;
@@ -324,6 +329,7 @@ class _DiscoverBrowsePageState extends State<_DiscoverBrowsePage> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return Column(
       children: [
         Padding(
@@ -339,10 +345,16 @@ class _DiscoverBrowsePageState extends State<_DiscoverBrowsePage> {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 3),
                     child: Material(
-                      color: category == value
-                          ? chipluxViolet.withValues(alpha: .22)
-                          : chipluxSurface,
-                      borderRadius: BorderRadius.circular(13),
+                      color: Colors.transparent,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(13),
+                        side: BorderSide(
+                          color: category == value
+                              ? chipluxGold.withValues(alpha: .90)
+                              : chipluxGold.withValues(alpha: .35),
+                          width: category == value ? 1.4 : 1.0,
+                        ),
+                      ),
                       child: InkWell(
                         borderRadius: BorderRadius.circular(13),
                         onTap: () => select(value),
@@ -358,8 +370,8 @@ class _DiscoverBrowsePageState extends State<_DiscoverBrowsePage> {
                               style: TextStyle(
                                 fontWeight: FontWeight.w700,
                                 color: category == value
-                                    ? Colors.white
-                                    : Colors.white60,
+                                    ? chipluxGold
+                                    : chipluxGold.withValues(alpha: .75),
                               ),
                             ),
                           ),
@@ -413,7 +425,7 @@ class _DiscoverBrowsePageState extends State<_DiscoverBrowsePage> {
                     ? chipluxTopLists.skip(2).toList()
                     : <ChipluxListDefinition>[];
                 return RefreshIndicator(
-                  color: chipluxCyan,
+                  color: chipluxGold,
                   onRefresh: () async {
                     // Refresh the visible category. Sections reload on demand, avoiding
                     // a burst of requests for every genre and inactive tab.
@@ -534,9 +546,9 @@ class _DiscoverRankedCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const accents = [
-      chipluxCyan,
-      chipluxViolet,
-      chipluxPurple,
+      chipluxGold,
+      chipluxBrightGold,
+      chipluxAmber,
       Color(0xFFFFB84D),
       Color(0xFF43D9C5),
       Color(0xFFFF6C9E),
@@ -558,7 +570,7 @@ class _DiscoverRankedCard extends StatelessWidget {
               colors: [
                 Color.alphaBlend(accent.withValues(alpha: .34), chipluxSurface),
                 Color.alphaBlend(
-                  chipluxViolet.withValues(alpha: .12),
+                  chipluxBrightGold.withValues(alpha: .12),
                   chipluxSurface,
                 ),
                 chipluxSurface,
@@ -579,7 +591,7 @@ class _DiscoverRankedCard extends StatelessWidget {
                   gradient: LinearGradient(
                     colors: [
                       accent.withValues(alpha: .40),
-                      chipluxPurple.withValues(alpha: .22),
+                      chipluxAmber.withValues(alpha: .22),
                     ],
                   ),
                 ),
@@ -1464,7 +1476,7 @@ class _ChipluxDailyRecommendationState
             Padding(
               padding: const EdgeInsets.all(18),
               child: Row(children: [
-                const Icon(Icons.favorite_rounded, color: chipluxCyan),
+                const Icon(Icons.favorite_rounded, color: chipluxGold),
                 const SizedBox(width: 10),
                 Expanded(child: Text(
                   _discoverText(sheetContext, 'Interested titles', 'Naslovi koji me zanimaju'),
@@ -1594,7 +1606,7 @@ class _ChipluxDailyRecommendationState
                     decoration: BoxDecoration(
                       color: chipluxSurface,
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: chipluxViolet.withValues(alpha: .45)),
+                      border: Border.all(color: chipluxBrightGold.withValues(alpha: .45)),
                     ),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                       if (isAlbum) _DiscoverMusicTile(
@@ -1636,7 +1648,7 @@ class _ChipluxDailyRecommendationState
           const SizedBox(height: 10),
           OutlinedButton.icon(
             onPressed: _showInterested,
-            icon: const Icon(Icons.bookmarks_outlined, color: chipluxCyan),
+            icon: const Icon(Icons.bookmarks_outlined, color: chipluxGold),
             label: Text(_discoverText(context,
                 'Saved Interested (${interestedItems.length})',
                 'Spremljeni favoriti (${interestedItems.length})')),
@@ -1687,7 +1699,7 @@ class _ChipluxCategorizedListsState extends State<_ChipluxCategorizedLists> {
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       decoration: BoxDecoration(
                         color: tab == index
-                            ? chipluxViolet.withValues(alpha: .24)
+                            ? chipluxBrightGold.withValues(alpha: .24)
                             : chipluxSurface,
                         borderRadius: BorderRadius.circular(12),
                       ),

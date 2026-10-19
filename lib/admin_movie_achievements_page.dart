@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
+import 'theme/chiplux_palette.dart';
 
 import 'services/custom_movie_achievement_service.dart';
 import 'services/profile_service.dart';
 import 'services/tmdb_service.dart';
 
-const _bg = Color(0xFF07111C);
-const _surface = Color(0xFF111D2A);
-const _cyan = Color(0xFF43E8FF);
-const _violet = Color(0xFF8B7CFF);
+const _bg = chipluxBackground;
+const _surface = chipluxSurface;
+const _cyan = chipluxGold;
+const _violet = chipluxBrightGold;
 
 /// Admin-only manager for published and unpublished movie-watch achievements.
 /// Authorization is also enforced in Supabase RLS policies.

@@ -61,7 +61,7 @@ class _CollectionCard extends StatelessWidget {
         ? gold
         : isCompleted
         ? green
-        : chipluxCyan.withValues(alpha: .25);
+        : chipluxGold.withValues(alpha: .25);
     final frame = isFavorite
         ? [isRated || isCompleted ? base : red, red]
         : [base, base];
@@ -123,7 +123,7 @@ class _CollectionCard extends StatelessWidget {
                     child: Text(
                       '#$rank',
                       style: const TextStyle(
-                        color: chipluxCyan,
+                        color: chipluxGold,
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
                       ),
@@ -170,7 +170,7 @@ class _CollectionCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             fontSize: 11,
-                            color: chipluxPurple,
+                            color: chipluxAmber,
                           ),
                         ),
                       ],
@@ -248,12 +248,12 @@ class _AlbumTrackCard extends StatelessWidget {
         red = Color(0xFFFF5C72),
         green = Color(0xFF7BE8A8);
     final accent = selected
-        ? chipluxCyan
+        ? chipluxGold
         : state.rating != null
         ? gold
         : state.isListened
         ? green
-        : chipluxViolet;
+        : chipluxBrightGold;
     return Container(
       padding: const EdgeInsets.all(1.2),
       decoration: BoxDecoration(
@@ -627,9 +627,9 @@ class _MusicMemberWorksPageState extends State<MusicMemberWorksPage> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(14),
           gradient: LinearGradient(
-            colors: [chipluxViolet.withValues(alpha: .16), chipluxSurface],
+            colors: [chipluxBrightGold.withValues(alpha: .16), chipluxSurface],
           ),
-          border: Border.all(color: chipluxViolet.withValues(alpha: .25)),
+          border: Border.all(color: chipluxBrightGold.withValues(alpha: .25)),
         ),
         child: Row(
           children: [
@@ -637,7 +637,7 @@ class _MusicMemberWorksPageState extends State<MusicMemberWorksPage> {
               entity == 'work'
                   ? Icons.edit_note_rounded
                   : Icons.music_note_rounded,
-              color: chipluxPurple,
+              color: chipluxAmber,
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -989,7 +989,7 @@ class _MusicLibraryFramedCardState extends State<_MusicLibraryFramedCard> {
                                 if (state.isListened)
                                   pill('Completed', green)
                                 else if (entry.isPlanned)
-                                  pill('Plan', chipluxPurple)
+                                  pill('Plan', chipluxAmber)
                                 else if (entry.isDropped)
                                   pill('Dropped', red),
                                 if (entry.isAlbum)

@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
+import 'theme/chiplux_palette.dart';
 
 import 'l10n/generated/app_localizations.dart';
 import 'l10n/ui_translations.dart';
 
 import 'services/data_export_service.dart';
 
-const Color _exportBackground = Color(0xFF07111C);
-const Color _exportSurface = Color(0xFF111D2A);
-const Color _exportSurfaceLight = Color(0xFF162536);
-const Color _exportCyan = Color(0xFF43E8FF);
-const Color _exportViolet = Color(0xFF8B7CFF);
-const Color _exportPurple = Color(0xFFD65CFF);
+const Color _exportBackground = chipluxBackground;
+const Color _exportSurface = chipluxSurface;
+const Color _exportSurfaceLight = chipluxSurfaceLight;
+const Color _exportCyan = chipluxGold;
+const Color _exportViolet = chipluxBrightGold;
+const Color _exportPurple = chipluxAmber;
 
 class DataExportPage extends StatefulWidget {
   const DataExportPage({super.key});
@@ -187,9 +188,7 @@ class _DataExportPageState extends State<DataExportPage> {
     return ShaderMask(
       blendMode: BlendMode.srcIn,
       shaderCallback: (bounds) {
-        return const LinearGradient(
-          colors: [_exportCyan, _exportViolet, _exportPurple],
-        ).createShader(bounds);
+        return chipluxTextGradient.createShader(bounds);
       },
       child: UiText(
         text,

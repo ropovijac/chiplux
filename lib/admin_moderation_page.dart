@@ -1,21 +1,22 @@
 import 'package:flutter/material.dart';
-
-import 'l10n/generated/app_localizations.dart';
-
+import 'theme/chiplux_palette.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
+import 'l10n/generated/app_localizations.dart';
 import 'services/feature_suggestion_service.dart';
 import 'services/profile_service.dart';
 
-const Color _adminBackground = Color(0xFF07111C);
-const Color _adminSurface = Color(0xFF111D2A);
-const Color _adminSurfaceLight = Color(0xFF162536);
-const Color _adminCyan = Color(0xFF43E8FF);
-const Color _adminViolet = Color(0xFF8B7CFF);
-const Color _adminPurple = Color(0xFFD65CFF);
+const Color _adminBackground = chipluxBackground;
+const Color _adminSurface = chipluxSurface;
+const Color _adminSurfaceLight = chipluxSurfaceLight;
+const Color _adminCyan = chipluxGold;
+const Color _adminViolet = chipluxBrightGold;
+const Color _adminPurple = chipluxAmber;
 const Color _adminGreen = Color(0xFF65E6A5);
 const Color _adminRed = Color(0xFFFF6B8A);
 
+/// Only feature suggestions belong on this moderation screen.
+/// Bug, user and comment reports are retained in their database tables,
+/// with email notifications handled by the Supabase report-mail webhook.
 class AdminModerationPage extends StatefulWidget {
   const AdminModerationPage({super.key});
 
@@ -23,25 +24,13 @@ class AdminModerationPage extends StatefulWidget {
   State<AdminModerationPage> createState() => _AdminModerationPageState();
 }
 
-class _AdminModerationPageState extends State<AdminModerationPage>
-    with SingleTickerProviderStateMixin {
+class _AdminModerationPageState extends State<AdminModerationPage> {
   final client = Supabase.instance.client;
   final featureService = FeatureSuggestionService.instance;
-
-  late final TabController _tabs;
-
   bool loading = true;
   String? errorMessage;
-
-  List<Map<String, dynamic>> userReports = [];
-  List<Map<String, dynamic>> commentReports = [];
-  List<Map<String, dynamic>> bugReports = [];
   List<Map<String, dynamic>> featureSuggestions = [];
-
   final Map<String, Map<String, dynamic>> profiles = {};
-  final Map<String, Map<String, dynamic>> comments = {};
-  final Map<String, Map<String, dynamic>> musicAlbumComments = {};
-
   String suggestionFilter = 'pending';
 
   bool get _allowed => ProfileService.instance.isDeveloper;
@@ -49,7 +38,6 @@ class _AdminModerationPageState extends State<AdminModerationPage>
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 4, vsync: this);
     _load();
   }
 
@@ -58,196 +46,46 @@ class _AdminModerationPageState extends State<AdminModerationPage>
       if (mounted) {
         setState(() {
           loading = false;
-          errorMessage = AppLocalizations.of(context).developerAccessRequired;
+          errorMessage = 'Developer access required.';
         });
       }
       return;
     }
 
     try {
-      final raw = await Future.wait([
-        client
-            .from('user_reports')
-            .select()
-            .order('created_at', ascending: false),
-        client
-            .from('comment_reports')
-            .select()
-            .order('created_at', ascending: false),
-        client
-            .from('music_album_comment_reports')
-            .select()
-            .order('created_at', ascending: false),
-        client
-            .from('bug_reports')
-            .select()
-            .order('created_at', ascending: false),
-        client
-            .from('feature_suggestions')
-            .select()
-            .order('created_at', ascending: false),
-      ]);
-
-      final users = List<Map<String, dynamic>>.from(raw[0] as List);
-      final commentRows = List<Map<String, dynamic>>.from(raw[1] as List)
-          .map((row) => {...row, '_report_source': 'media'})
-          .toList();
-      final musicCommentRows = List<Map<String, dynamic>>.from(raw[2] as List)
-          .map((row) => {...row, '_report_source': 'music_album'})
-          .toList();
-
-      final bugs = List<Map<String, dynamic>>.from(raw[3] as List)
-          .where((row) => row['status']?.toString() != 'resolved')
-          .toList();
-
-      final suggestions = List<Map<String, dynamic>>.from(raw[4] as List);
-
-      final profileIds = <String>{};
-
-      for (final report in users) {
-        final reporterId = report['reporter_id']?.toString();
-        final reportedId = report['reported_user_id']?.toString();
-
-        if (reporterId != null) profileIds.add(reporterId);
-        if (reportedId != null) profileIds.add(reportedId);
-      }
-
-      for (final report in commentRows) {
-        final reporterId = report['reporter_id']?.toString();
-        if (reporterId != null) profileIds.add(reporterId);
-      }
-
-      for (final report in musicCommentRows) {
-        final reporterId = report['reporter_id']?.toString();
-        if (reporterId != null) profileIds.add(reporterId);
-      }
-
-      for (final report in bugs) {
-        final userId = report['user_id']?.toString();
-        if (userId != null) profileIds.add(userId);
-      }
-
-      for (final suggestion in suggestions) {
-        final userId = suggestion['user_id']?.toString();
-        if (userId != null) profileIds.add(userId);
-      }
-
-      final commentIds = commentRows
-          .map((report) => report['comment_id']?.toString())
-          .whereType<String>()
-          .toSet()
-          .toList();
-
-      final loadedComments = <Map<String, dynamic>>[];
-
-      if (commentIds.isNotEmpty) {
-        final rows = await client
-            .from('media_comments')
-            .select(
-              'id, user_id, body, media_type, tmdb_id, '
-              'season_number, episode_number',
-            )
-            .inFilter('id', commentIds);
-
-        loadedComments.addAll(List<Map<String, dynamic>>.from(rows));
-
-        for (final comment in loadedComments) {
-          final userId = comment['user_id']?.toString();
-          if (userId != null) profileIds.add(userId);
-        }
-      }
-
-      final musicCommentIds = musicCommentRows
-          .map((report) => report['comment_id']?.toString())
-          .whereType<String>()
-          .toSet()
-          .toList();
-
-      final loadedMusicComments = <Map<String, dynamic>>[];
-
-      if (musicCommentIds.isNotEmpty) {
-        final rows = await client
-            .from('music_album_comments')
-            .select(
-              'id, user_id, body, album_id, album_title, artist_name, cover_url',
-            )
-            .inFilter('id', musicCommentIds);
-
-        loadedMusicComments.addAll(List<Map<String, dynamic>>.from(rows));
-
-        for (final comment in loadedMusicComments) {
-          final userId = comment['user_id']?.toString();
-          if (userId != null) profileIds.add(userId);
-        }
-      }
-
+      // Do not query bug_reports, user_reports, comment_reports or
+      // music_album_comment_reports from this page.
+      final raw = await client.from('feature_suggestions')
+          .select().order('created_at', ascending: false);
+      final suggestions = List<Map<String, dynamic>>.from(raw);
+      final userIds = suggestions.map((row) => row['user_id']?.toString())
+          .whereType<String>().toSet().toList();
       final loadedProfiles = <Map<String, dynamic>>[];
-
-      if (profileIds.isNotEmpty) {
-        final rows = await client.rpc(
-          'get_safe_profile_cards',
-          params: {'p_user_ids': profileIds.toList()},
+      if (userIds.isNotEmpty) {
+        final cards = await client.rpc(
+          'get_safe_profile_cards', params: {'p_user_ids': userIds},
         );
-
-        if (rows is List) {
-          loadedProfiles.addAll(
-            rows
-                .whereType<Map>()
-                .map((row) => Map<String, dynamic>.from(row)),
-          );
+        if (cards is List) {
+          loadedProfiles.addAll(cards.whereType<Map>().map(
+            (card) => Map<String, dynamic>.from(card),
+          ));
         }
       }
-
       if (!mounted) return;
-
       setState(() {
-        userReports = users;
-        commentReports = [...commentRows, ...musicCommentRows]
-          ..sort((a, b) {
-            final aDate = DateTime.tryParse(a['created_at']?.toString() ?? '');
-            final bDate = DateTime.tryParse(b['created_at']?.toString() ?? '');
-            if (aDate == null && bDate == null) return 0;
-            if (aDate == null) return 1;
-            if (bDate == null) return -1;
-            return bDate.compareTo(aDate);
-          });
-        bugReports = bugs;
         featureSuggestions = suggestions;
-
         profiles
           ..clear()
-          ..addEntries(
-            loadedProfiles
-                .where((profile) => profile['id'] != null)
-                .map((profile) => MapEntry(profile['id'].toString(), profile)),
-          );
-
-        comments
-          ..clear()
-          ..addEntries(
-            loadedComments
-                .where((comment) => comment['id'] != null)
-                .map((comment) => MapEntry(comment['id'].toString(), comment)),
-          );
-
-        musicAlbumComments
-          ..clear()
-          ..addEntries(
-            loadedMusicComments
-                .where((comment) => comment['id'] != null)
-                .map((comment) => MapEntry(comment['id'].toString(), comment)),
-          );
-
+          ..addEntries(loadedProfiles.where((p) => p['id'] != null)
+              .map((p) => MapEntry(p['id'].toString(), p)));
         loading = false;
         errorMessage = null;
       });
     } catch (e) {
       if (!mounted) return;
-
       setState(() {
         loading = false;
-        errorMessage = AppLocalizations.of(context)
-            .couldNotLoadModeration(e.toString());
+        errorMessage = 'Could not load suggestions: $e';
       });
     }
   }
@@ -280,110 +118,6 @@ class _AdminModerationPageState extends State<AdminModerationPage>
     final minute = date.minute.toString().padLeft(2, '0');
 
     return '$day.$month.${date.year}. · $hour:$minute';
-  }
-
-  Future<void> _status(String table, Object id, String value) async {
-    try {
-      await client.from(table).update({'status': value}).eq('id', id);
-      await _load();
-    } catch (e) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: _adminSurfaceLight,
-          content: Text('Could not update report: $e'),
-        ),
-      );
-    }
-  }
-
-  Future<void> _resolveBug(Map<String, dynamic> report) async {
-    final id = report['id'];
-    if (id == null) return;
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          backgroundColor: _adminSurface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(22),
-            side: BorderSide(color: _adminCyan.withValues(alpha: 0.28)),
-          ),
-          title: _dialogGradientTitle(
-            AppLocalizations.of(context).resolveBugQuestion,
-          ),
-          content: const Text(
-            'This will mark the bug as solved and remove it from the active Bugs queue.',
-            style: TextStyle(color: Colors.white70, height: 1.4),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton.icon(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              icon: const Icon(Icons.check_circle_outline_rounded),
-              label: const Text('Resolve'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (confirmed != true) return;
-
-    await _status('bug_reports', id, 'resolved');
-  }
-
-  Future<void> _deleteComment(Map<String, dynamic> report) async {
-    final id = report['comment_id']?.toString();
-    if (id == null) return;
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          backgroundColor: _adminSurface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(22),
-            side: BorderSide(color: _adminRed.withValues(alpha: 0.28)),
-          ),
-          title: _dialogGradientTitle(
-            AppLocalizations.of(context).deleteReportedComment,
-          ),
-          content: const Text(
-            'This permanently removes the comment.',
-            style: TextStyle(color: Colors.white70),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text(
-                'Delete',
-                style: TextStyle(color: Colors.redAccent),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (confirmed != true) return;
-
-    final source = report['_report_source']?.toString();
-    final table = source == 'music_album'
-        ? 'music_album_comments'
-        : 'media_comments';
-
-    await client.from(table).delete().eq('id', id);
-    await _load();
   }
 
   Future<void> _setSuggestionStatus(
@@ -655,211 +389,6 @@ class _AdminModerationPageState extends State<AdminModerationPage>
     }
   }
 
-  Widget _actions(String table, Object id, {VoidCallback? deleteComment}) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        OutlinedButton(
-          onPressed: () => _status(table, id, 'reviewing'),
-          child: const Text('Reviewing'),
-        ),
-        OutlinedButton(
-          onPressed: () => _status(table, id, 'dismissed'),
-          child: const Text('Dismiss'),
-        ),
-        FilledButton(
-          onPressed: () => _status(table, id, 'resolved'),
-          child: const Text('Resolve'),
-        ),
-        if (deleteComment != null)
-          TextButton.icon(
-            onPressed: deleteComment,
-            icon: const Icon(
-              Icons.delete_outline_rounded,
-              color: Colors.redAccent,
-            ),
-            label: const Text(
-              'Delete comment',
-              style: TextStyle(color: Colors.redAccent),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _bugActions(Map<String, dynamic> report) {
-    return SizedBox(
-      width: double.infinity,
-      child: FilledButton.icon(
-        onPressed: () => _resolveBug(report),
-        icon: const Icon(Icons.check_circle_outline_rounded),
-        label: const Text('Resolve'),
-        style: FilledButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 13),
-          backgroundColor: _adminCyan,
-          foregroundColor: _adminBackground,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _card(
-    String header,
-    String status,
-    String title,
-    String subtitle,
-    String body,
-    Widget actions,
-  ) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(14, 8, 14, 8),
-      padding: const EdgeInsets.all(1.1),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(19),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            _adminCyan.withValues(alpha: 0.42),
-            _adminViolet.withValues(alpha: 0.24),
-            _adminPurple.withValues(alpha: 0.30),
-          ],
-        ),
-      ),
-      child: Container(
-        padding: const EdgeInsets.all(15),
-        decoration: BoxDecoration(
-          color: _adminSurface,
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text(
-                  header,
-                  style: const TextStyle(
-                    color: _adminCyan,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1,
-                  ),
-                ),
-                const Spacer(),
-                _statusPill(status),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 3),
-            Text(
-              subtitle,
-              style: const TextStyle(color: Colors.white38, fontSize: 11),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: _adminSurfaceLight,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                body,
-                style: const TextStyle(color: Colors.white70, height: 1.4),
-              ),
-            ),
-            const SizedBox(height: 12),
-            actions,
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _user(Map<String, dynamic> report) {
-    final id = report['id'];
-    final status = report['status']?.toString() ?? 'open';
-    final reason = report['reason']?.toString() ?? 'No reason';
-    final details = report['details']?.toString().trim() ?? '';
-
-    return _card(
-      'USER REPORT',
-      status,
-      _who(report['reported_user_id']?.toString()),
-      'Reported by ${_who(report['reporter_id']?.toString())}',
-      details.isEmpty ? reason : '$reason\n\n$details',
-      _actions('user_reports', id),
-    );
-  }
-
-  Widget _comment(Map<String, dynamic> report) {
-    final id = report['id'];
-    final status = report['status']?.toString() ?? 'open';
-    final commentId = report['comment_id']?.toString();
-    final source = report['_report_source']?.toString() ?? 'media';
-    final isMusicAlbum = source == 'music_album';
-    final comment = commentId == null
-        ? null
-        : isMusicAlbum
-        ? musicAlbumComments[commentId]
-        : comments[commentId];
-    final type = report['report_type']?.toString() ?? 'comment';
-    final table = isMusicAlbum
-        ? 'music_album_comment_reports'
-        : 'comment_reports';
-
-    final albumTitle = comment?['album_title']?.toString().trim() ?? '';
-    final artistName = comment?['artist_name']?.toString().trim() ?? '';
-    final targetLabel = isMusicAlbum && albumTitle.isNotEmpty
-        ? artistName.isEmpty
-            ? 'Album: $albumTitle'
-            : 'Album: $albumTitle — $artistName'
-        : 'Reported by ${_who(report['reporter_id']?.toString())}';
-
-    final reportTitle = isMusicAlbum
-        ? type == 'spoiler'
-            ? 'ALBUM SPOILER REPORT'
-            : 'ALBUM COMMENT REPORT'
-        : type == 'spoiler'
-        ? 'SPOILER REPORT'
-        : 'COMMENT REPORT';
-
-    return _card(
-      reportTitle,
-      status,
-      _who(comment?['user_id']?.toString()),
-      isMusicAlbum
-          ? '$targetLabel\nReported by ${_who(report['reporter_id']?.toString())}'
-          : targetLabel,
-      comment?['body']?.toString() ?? 'Comment no longer exists.',
-      _actions(
-        table,
-        id,
-        deleteComment: commentId == null ? null : () => _deleteComment(report),
-      ),
-    );
-  }
-
-  Widget _bug(Map<String, dynamic> report) {
-    return _card(
-      'BUG REPORT',
-      report['status']?.toString() ?? 'open',
-      _who(report['user_id']?.toString()),
-      _dateLabel(report['created_at']),
-      report['description']?.toString() ?? '',
-      _bugActions(report),
-    );
-  }
-
   Widget _suggestion(Map<String, dynamic> suggestion) {
     final status = suggestion['status']?.toString() ?? 'pending';
     final title = suggestion['title']?.toString() ?? 'Untitled suggestion';
@@ -1031,51 +560,6 @@ class _AdminModerationPageState extends State<AdminModerationPage>
     );
   }
 
-  Widget _list(
-    List<Map<String, dynamic>> rows,
-    Widget Function(Map<String, dynamic>) builder,
-  ) {
-    if (loading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (errorMessage != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text(errorMessage!, textAlign: TextAlign.center),
-        ),
-      );
-    }
-
-    if (rows.isEmpty) {
-      return RefreshIndicator(
-        onRefresh: _load,
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          children: const [
-            SizedBox(height: 160),
-            Center(
-              child: Text(
-                'No reports.',
-                style: TextStyle(color: Colors.white54),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return RefreshIndicator(
-      onRefresh: _load,
-      child: ListView.builder(
-        physics: const AlwaysScrollableScrollPhysics(),
-        itemCount: rows.length,
-        itemBuilder: (context, index) => builder(rows[index]),
-      ),
-    );
-  }
-
   Widget _suggestionsTab() {
     if (loading) {
       return const Center(child: CircularProgressIndicator());
@@ -1163,16 +647,10 @@ class _AdminModerationPageState extends State<AdminModerationPage>
         padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(999),
-          gradient: selected
-              ? const LinearGradient(
-                  colors: [_adminCyan, _adminViolet, _adminPurple],
-                )
-              : null,
-          color: selected ? null : _adminSurface,
+          color: Colors.transparent,
           border: Border.all(
-            color: selected
-                ? Colors.transparent
-                : Colors.white.withValues(alpha: 0.08),
+            color: _adminCyan.withValues(alpha: selected ? .95 : .42),
+            width: selected ? 1.5 : 1,
           ),
         ),
         child: Row(
@@ -1181,7 +659,7 @@ class _AdminModerationPageState extends State<AdminModerationPage>
             Text(
               label,
               style: TextStyle(
-                color: selected ? Colors.white : Colors.white70,
+                color: _adminCyan,
                 fontWeight: FontWeight.w800,
                 fontSize: 12,
               ),
@@ -1190,7 +668,7 @@ class _AdminModerationPageState extends State<AdminModerationPage>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: selected ? 0.20 : 0.16),
+                color: Colors.transparent,
                 borderRadius: BorderRadius.circular(99),
               ),
               child: Text(
@@ -1262,9 +740,7 @@ class _AdminModerationPageState extends State<AdminModerationPage>
     return ShaderMask(
       blendMode: BlendMode.srcIn,
       shaderCallback: (bounds) {
-        return const LinearGradient(
-          colors: [_adminCyan, _adminViolet, _adminPurple],
-        ).createShader(bounds);
+        return chipluxTextGradient.createShader(bounds);
       },
       child: Text(
         text,
@@ -1281,9 +757,7 @@ class _AdminModerationPageState extends State<AdminModerationPage>
     return ShaderMask(
       blendMode: BlendMode.srcIn,
       shaderCallback: (bounds) {
-        return const LinearGradient(
-          colors: [_adminCyan, _adminViolet, _adminPurple],
-        ).createShader(bounds);
+        return chipluxTextGradient.createShader(bounds);
       },
       child: Text(
         text,
@@ -1297,6 +771,7 @@ class _AdminModerationPageState extends State<AdminModerationPage>
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
     if (!_allowed) {
       return const Scaffold(
@@ -1309,89 +784,25 @@ class _AdminModerationPageState extends State<AdminModerationPage>
       backgroundColor: _adminBackground,
       appBar: AppBar(backgroundColor: _adminBackground, elevation: 0),
       body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(18, 8, 18, 14),
+            padding: const EdgeInsets.fromLTRB(18, 8, 18, 15),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _gradientTitle('Admin Moderation'),
-                const SizedBox(height: 5),
+                _gradientTitle('Suggestion Moderation'),
+                const SizedBox(height: 7),
                 const Text(
-                  'Review reports, resolve bugs and decide which community feature ideas become public.',
-                  style: TextStyle(
-                    color: Colors.white54,
-                    fontSize: 12,
-                    height: 1.4,
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: _adminSurface,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.06),
-                    ),
-                  ),
-                  child: TabBar(
-                    controller: _tabs,
-                    isScrollable: true,
-                    tabAlignment: TabAlignment.start,
-                    dividerColor: Colors.transparent,
-                    indicatorSize: TabBarIndicatorSize.tab,
-                    indicator: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      gradient: const LinearGradient(
-                        colors: [_adminCyan, _adminViolet, _adminPurple],
-                      ),
-                    ),
-                    labelColor: Colors.white,
-                    unselectedLabelColor: Colors.white54,
-                    labelStyle: const TextStyle(fontWeight: FontWeight.w800),
-                    tabs: const [
-                      Tab(
-                        icon: Icon(Icons.person_outline_rounded, size: 18),
-                        text: 'Users',
-                      ),
-                      Tab(
-                        icon: Icon(Icons.forum_outlined, size: 18),
-                        text: 'Comments',
-                      ),
-                      Tab(
-                        icon: Icon(Icons.bug_report_outlined, size: 18),
-                        text: 'Bugs',
-                      ),
-                      Tab(
-                        icon: Icon(Icons.lightbulb_outline_rounded, size: 18),
-                        text: 'Suggestions',
-                      ),
-                    ],
-                  ),
+                  'Review community feature requests, publish decisions and post developer updates.',
+                  style: TextStyle(color: Colors.white54, fontSize: 12, height: 1.4),
                 ),
               ],
             ),
           ),
-          Expanded(
-            child: TabBarView(
-              controller: _tabs,
-              children: [
-                _list(userReports, _user),
-                _list(commentReports, _comment),
-                _list(bugReports, _bug),
-                _suggestionsTab(),
-              ],
-            ),
-          ),
+          Expanded(child: _suggestionsTab()),
         ],
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _tabs.dispose();
-    super.dispose();
   }
 }

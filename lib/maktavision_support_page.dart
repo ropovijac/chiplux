@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'theme/chiplux_palette.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -7,9 +8,9 @@ import 'package:url_launcher/url_launcher.dart';
 class MaktavisionSupportPage extends StatelessWidget {
   const MaktavisionSupportPage({super.key});
 
-  static const _background = Color(0xFF07111C);
-  static const _surface = Color(0xFF111D2A);
-  static const _accent = Color(0xFF43E8FF);
+  static const _background = chipluxBackground;
+  static const _surface = chipluxSurface;
+  static const _accent = chipluxGold;
 
   Future<void> _contact(
     BuildContext context, {

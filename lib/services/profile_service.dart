@@ -13,6 +13,8 @@ class ProfileService extends ChangeNotifier {
   String? avatarUrl;
 
   bool isDeveloper = false;
+  // Server-verified, single-account reward entitlement (not achievement progress).
+  bool hasDeveloperRewardAccess = false;
   bool followedDeveloperAchievement = false;
 
   int? bannerTmdbId;
@@ -60,6 +62,18 @@ class ProfileService extends ChangeNotifier {
       avatarUrl = data?['avatar_url']?.toString();
 
       isDeveloper = data?['is_developer'] == true;
+
+      // The RPC checks the *authenticated user* against a private server-side
+      // allowlist. Do not derive exclusive reward access from a local boolean.
+      hasDeveloperRewardAccess = false;
+      if (isDeveloper) {
+        try {
+          hasDeveloperRewardAccess =
+              await client.rpc('chiplux_my_reward_access') == true;
+        } catch (error) {
+          debugPrint('Could not verify developer reward entitlement: $error');
+        }
+      }
 
       followedDeveloperAchievement =
           data?['followed_developer_achievement'] == true;
@@ -216,6 +230,7 @@ class ProfileService extends ChangeNotifier {
     avatarUrl = null;
 
     isDeveloper = false;
+    hasDeveloperRewardAccess = false;
 
     bannerTmdbId = null;
 

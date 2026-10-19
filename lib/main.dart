@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'theme/chiplux_palette.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'l10n/generated/app_localizations.dart';
 import 'l10n/ui_translations.dart';
@@ -50,6 +52,7 @@ import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 
 import 'services/community_service.dart';
 import 'admin_moderation_page.dart';
+import 'admin_report_moderation_page.dart';
 import 'admin_movie_achievements_page.dart';
 import 'services/custom_movie_achievement_service.dart';
 import 'data_export_page.dart';
@@ -61,17 +64,11 @@ part 'discover_browser.dart';
 part 'music_collection_ui.dart';
 part 'discover_vector_icons.dart';
 
-const Color chipluxBackground = Color(0xFF07111C);
 
-const Color chipluxSurface = Color(0xFF111D2A);
 
-const Color chipluxSurfaceLight = Color(0xFF162536);
 
-const Color chipluxCyan = Color(0xFF43E8FF);
 
-const Color chipluxViolet = Color(0xFF8B7CFF);
 
-const Color chipluxPurple = Color(0xFFD65CFF);
 
 const String developerProfileTitleId = 'developer';
 
@@ -2256,7 +2253,7 @@ class _AchievementUnlockDialogState extends State<_AchievementUnlockDialog>
                           borderRadius: BorderRadius.circular(25),
 
                           color: Color.alphaBlend(
-                            chipluxViolet.withValues(alpha: 0.035),
+                            chipluxBrightGold.withValues(alpha: 0.035),
 
                             chipluxSurface,
                           ),
@@ -2281,7 +2278,21 @@ class _AchievementUnlockDialogState extends State<_AchievementUnlockDialog>
                                 letterSpacing: 1.7,
                               ),
                             ),
-
+                            if (achievement.visualTier == 9) ...[
+                              const SizedBox(height: 7),
+                              const UiText(
+                                'MYTHIC • TIER IX',
+                                style: TextStyle(
+                                  color: Color(0xFFFFE27A),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 2.3,
+                                  shadows: [Shadow(
+                                    color: Color(0xFFB16BFF), blurRadius: 12,
+                                  )],
+                                ),
+                              ),
+                            ],
                             const SizedBox(height: 24),
 
                             // =========================
@@ -2504,48 +2515,8 @@ class _AchievementFireworksPainter extends CustomPainter {
   }
 }
 
-List<Color> _achievementPopupColors(_Achievement achievement) {
-  switch (achievement.visualTier) {
-    case 1:
-      return const [Color(0xFFF7F9FC), Color(0xFFBFC9D4)];
-
-    case 2:
-      // Strong blue
-      return const [Color(0xFF38BDF8), Color(0xFF2563EB)];
-
-    case 3:
-      // Strong violet / magenta
-      return const [Color(0xFFA855F7), Color(0xFFD946EF), Color(0xFF6366F1)];
-
-    case 4:
-      // Pure gold
-      return const [Color(0xFFFFF3A3), Color(0xFFFFC400), Color(0xFFE6A700)];
-
-    case 5:
-      // Fire / molten
-      return const [Color(0xFFFF8A3D), Color(0xFFFF4D4D), Color(0xFFD91E36)];
-
-    case 6:
-      return const [Color(0xFFFF416C), Color(0xFFD65CFF), Color(0xFF7A5CFF)];
-
-    case 7:
-      return const [Color(0xFF5CFFD1), Color(0xFF25D98F), Color(0xFF43E8FF)];
-
-    case 8:
-      return const [Color(0xFFFF6BFF), Color(0xFF9B5CFF), Color(0xFF5C7CFF)];
-
-    case 9:
-      return const [
-        Color(0xFFFFD86B),
-        Color(0xFFFF6B8A),
-        Color(0xFFD65CFF),
-        Color(0xFF43E8FF),
-      ];
-
-    default:
-      return const [Color(0xFFFFFFFF), Color(0xFFCBD5E1), Color(0xFF94A3B8)];
-  }
-}
+List<Color> _achievementPopupColors(_Achievement achievement) =>
+    _achievementTierColors(achievement);
 
 class ChipluxBackground extends StatelessWidget {
   final ChipluxBackgroundStyle style;
@@ -2584,33 +2555,33 @@ class _ChipluxBackgroundPainter extends CustomPainter {
 
     switch (style) {
       case ChipluxBackgroundStyle.discover:
-        firstColor = chipluxCyan;
-        secondColor = chipluxViolet;
-        thirdColor = chipluxPurple;
+        firstColor = chipluxGold;
+        secondColor = chipluxBrightGold;
+        thirdColor = chipluxAmber;
         break;
 
       case ChipluxBackgroundStyle.search:
-        firstColor = chipluxViolet;
-        secondColor = chipluxCyan;
-        thirdColor = chipluxPurple;
+        firstColor = chipluxBrightGold;
+        secondColor = chipluxGold;
+        thirdColor = chipluxAmber;
         break;
 
       case ChipluxBackgroundStyle.watch:
-        firstColor = chipluxCyan;
-        secondColor = chipluxPurple;
-        thirdColor = chipluxViolet;
+        firstColor = chipluxGold;
+        secondColor = chipluxAmber;
+        thirdColor = chipluxBrightGold;
         break;
 
       case ChipluxBackgroundStyle.community:
-        firstColor = chipluxCyan;
-        secondColor = chipluxViolet;
-        thirdColor = chipluxPurple;
+        firstColor = chipluxGold;
+        secondColor = chipluxBrightGold;
+        thirdColor = chipluxAmber;
         break;
 
       case ChipluxBackgroundStyle.profile:
-        firstColor = chipluxPurple;
-        secondColor = chipluxViolet;
-        thirdColor = chipluxCyan;
+        firstColor = chipluxAmber;
+        secondColor = chipluxBrightGold;
+        thirdColor = chipluxGold;
         break;
     }
 
@@ -2620,7 +2591,7 @@ class _ChipluxBackgroundPainter extends CustomPainter {
       center: Offset(-size.width * 0.10, size.height * 0.12),
       radius: size.width * 0.85,
       color: firstColor,
-      opacity: 0.12,
+      opacity: 0.055,
     );
 
     // RIGHT / MIDDLE GLOW
@@ -2629,7 +2600,7 @@ class _ChipluxBackgroundPainter extends CustomPainter {
       center: Offset(size.width * 1.08, size.height * 0.45),
       radius: size.width * 0.90,
       color: secondColor,
-      opacity: 0.095,
+      opacity: 0.042,
     );
 
     // LOWER LEFT GLOW
@@ -2638,7 +2609,7 @@ class _ChipluxBackgroundPainter extends CustomPainter {
       center: Offset(size.width * 0.05, size.height * 0.90),
       radius: size.width * 0.80,
       color: thirdColor,
-      opacity: 0.07,
+      opacity: 0.030,
     );
 
     _drawLines(canvas, size, secondColor);
@@ -2883,14 +2854,14 @@ Future<void> _showChipluxUpdateDialog({
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                chipluxCyan.withValues(alpha: 0.90),
-                chipluxViolet.withValues(alpha: 0.75),
-                chipluxPurple.withValues(alpha: 0.88),
+                chipluxGold.withValues(alpha: 0.90),
+                chipluxBrightGold.withValues(alpha: 0.75),
+                chipluxAmber.withValues(alpha: 0.88),
               ],
             ),
             boxShadow: [
               BoxShadow(
-                color: chipluxViolet.withValues(alpha: 0.20),
+                color: chipluxBrightGold.withValues(alpha: 0.20),
                 blurRadius: 34,
                 spreadRadius: 2,
               ),
@@ -2918,7 +2889,7 @@ Future<void> _showChipluxUpdateDialog({
                         gradient: const LinearGradient(
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
-                          colors: [chipluxCyan, chipluxViolet, chipluxPurple],
+                          colors: [chipluxGold, chipluxBrightGold, chipluxAmber],
                         ),
                       ),
                       child: Container(
@@ -2928,7 +2899,7 @@ Future<void> _showChipluxUpdateDialog({
                         ),
                         child: const Icon(
                           Icons.auto_awesome_rounded,
-                          color: chipluxCyan,
+                          color: chipluxGold,
                           size: 25,
                         ),
                       ),
@@ -2948,16 +2919,16 @@ Future<void> _showChipluxUpdateDialog({
                                   vertical: 5,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: chipluxCyan.withValues(alpha: 0.08),
+                                  color: chipluxGold.withValues(alpha: 0.08),
                                   borderRadius: BorderRadius.circular(999),
                                   border: Border.all(
-                                    color: chipluxCyan.withValues(alpha: 0.40),
+                                    color: chipluxGold.withValues(alpha: 0.40),
                                   ),
                                 ),
                                 child: const UiText(
                                   'CHIPLUX UPDATE',
                                   style: TextStyle(
-                                    color: chipluxCyan,
+                                    color: chipluxGold,
                                     fontSize: 9,
                                     fontWeight: FontWeight.w800,
                                     letterSpacing: 1.1,
@@ -2970,10 +2941,10 @@ Future<void> _showChipluxUpdateDialog({
                                   vertical: 5,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: chipluxViolet.withValues(alpha: 0.08),
+                                  color: chipluxBrightGold.withValues(alpha: 0.08),
                                   borderRadius: BorderRadius.circular(999),
                                   border: Border.all(
-                                    color: chipluxViolet.withValues(
+                                    color: chipluxBrightGold.withValues(
                                       alpha: 0.38,
                                     ),
                                   ),
@@ -2983,14 +2954,14 @@ Future<void> _showChipluxUpdateDialog({
                                   children: [
                                     Icon(
                                       Icons.verified_rounded,
-                                      color: chipluxViolet,
+                                      color: chipluxBrightGold,
                                       size: 11,
                                     ),
                                     SizedBox(width: 4),
                                     UiText(
                                       'OFFICIAL',
                                       style: TextStyle(
-                                        color: chipluxViolet,
+                                        color: chipluxBrightGold,
                                         fontSize: 9,
                                         fontWeight: FontWeight.w800,
                                         letterSpacing: 1.0,
@@ -3004,13 +2975,7 @@ Future<void> _showChipluxUpdateDialog({
                           const SizedBox(height: 11),
                           ShaderMask(
                             shaderCallback: (bounds) {
-                              return const LinearGradient(
-                                colors: [
-                                  Colors.white,
-                                  chipluxCyan,
-                                  chipluxViolet,
-                                ],
-                              ).createShader(bounds);
+                              return chipluxTextGradient.createShader(bounds);
                             },
                             child: Text(
                               title,
@@ -3034,8 +2999,8 @@ Future<void> _showChipluxUpdateDialog({
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        chipluxCyan.withValues(alpha: 0.55),
-                        chipluxViolet.withValues(alpha: 0.35),
+                        chipluxGold.withValues(alpha: 0.55),
+                        chipluxBrightGold.withValues(alpha: 0.35),
                         Colors.transparent,
                       ],
                     ),
@@ -3076,7 +3041,7 @@ Future<void> _showChipluxUpdateDialog({
                   children: [
                     Icon(
                       Icons.lock_outline_rounded,
-                      color: chipluxCyan.withValues(alpha: 0.65),
+                      color: chipluxGold.withValues(alpha: 0.65),
                       size: 13,
                     ),
                     const SizedBox(width: 6),
@@ -3106,7 +3071,7 @@ Future<void> _showChipluxUpdateDialog({
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(14),
                         gradient: const LinearGradient(
-                          colors: [chipluxCyan, chipluxViolet, chipluxPurple],
+                          colors: [chipluxGold, chipluxBrightGold, chipluxAmber],
                         ),
                       ),
                       child: const Row(
@@ -3597,9 +3562,9 @@ class _ChipluxAppState extends State<ChipluxApp> {
             scaffoldBackgroundColor: chipluxBackground,
 
             colorScheme: const ColorScheme.dark(
-              primary: chipluxCyan,
+              primary: chipluxGold,
 
-              secondary: chipluxViolet,
+              secondary: chipluxBrightGold,
 
               surface: chipluxSurface,
             ),
@@ -4102,6 +4067,42 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   // =====================================================
+  // MAKTAVISION PASSWORD RECOVERY
+  // =====================================================
+
+  Future<void> _openMaktavisionPasswordRecovery() async {
+    final recoveryUrl = Uri.parse(
+      'https://maktavision.com/auth/forgot-password/',
+    );
+
+    try {
+      final opened = await launchUrl(
+        recoveryUrl,
+        mode: LaunchMode.externalApplication,
+      );
+
+      if (!opened) {
+        throw StateError('Could not open password recovery page.');
+      }
+    } catch (error) {
+      debugPrint('Could not open Maktavision password recovery: $error');
+
+      if (!mounted) return;
+
+      final isCroatian = Localizations.localeOf(context).languageCode == 'hr';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isCroatian
+                ? 'Nije moguće otvoriti stranicu za oporavak lozinke. Posjetite maktavision.com/auth/forgot-password/.'
+                : 'Could not open the password recovery page. Visit maktavision.com/auth/forgot-password/.',
+          ),
+        ),
+      );
+    }
+  }
+
+  // =====================================================
   // CHANGE MODE
   // =====================================================
 
@@ -4218,12 +4219,12 @@ class _LoginPageState extends State<LoginPage> {
                         decoration: BoxDecoration(
                           color: chipluxSurface,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: chipluxCyan.withValues(alpha: 0.38)),
+                          border: Border.all(color: chipluxGold.withValues(alpha: 0.38)),
                         ),
                         child: Column(
                           children: [
                             const Icon(Icons.mark_email_unread_outlined,
-                                color: chipluxCyan, size: 31),
+                                color: chipluxGold, size: 31),
                             const SizedBox(height: 9),
                             const UiText('Verify your Maktavision email address',
                                 textAlign: TextAlign.center,
@@ -4428,6 +4429,29 @@ class _LoginPageState extends State<LoginPage> {
                     ),
 
                     // =====================================
+                    // MAKTAVISION PASSWORD RECOVERY
+                    // =====================================
+                    if (!signupMode) ...[
+                      const SizedBox(height: 4),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: loading ? null : _openMaktavisionPasswordRecovery,
+                          child: UiText(
+                            Localizations.localeOf(context).languageCode == 'hr'
+                                ? 'Zaboravili ste lozinku?'
+                                : 'Forgot password?',
+                            style: const TextStyle(
+                              color: chipluxGold,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+
+                    // =====================================
                     // REMEMBER ME
                     // =====================================
                     if (!signupMode) ...[
@@ -4438,7 +4462,7 @@ class _LoginPageState extends State<LoginPage> {
                           Checkbox(
                             value: rememberMe,
 
-                            activeColor: chipluxCyan,
+                            activeColor: chipluxGold,
 
                             checkColor: Colors.black,
 
@@ -5506,128 +5530,109 @@ class _CommunityPageState extends State<CommunityPage>
     return SafeArea(
       child: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-            child: Row(
-              children: [
-                const Expanded(
-                  child: UiText(
-                    'Community',
-                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-                  ),
-                ),
-
-                Icon(
-                  Icons.people_rounded,
-                  color: chipluxCyan.withValues(alpha: 0.9),
-                  size: 28,
-                ),
-              ],
+          const Padding(
+            padding: EdgeInsets.fromLTRB(20, 20, 20, 24),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: BrandedTitle(
+                whitePart: 'Comm', gradientPart: 'unity', fontSize: 30,
+              ),
             ),
           ),
-
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Container(
-              height: 64,
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: chipluxSurface.withValues(alpha: 0.45),
-                borderRadius: BorderRadius.circular(22),
-              ),
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: SizedBox(
+              height: 56,
               child: TabBar(
                 controller: _tabController,
-
                 isScrollable: true,
-
                 tabAlignment: TabAlignment.start,
-
-                indicator: BoxDecoration(
-                  color: Colors.transparent,
-
-                  borderRadius: BorderRadius.circular(18),
-
-                  border: Border.all(color: chipluxCyan, width: 2),
-                ),
-
-                indicatorSize: TabBarIndicatorSize.tab,
-
+                labelPadding: const EdgeInsets.symmetric(horizontal: 16),
                 dividerColor: Colors.transparent,
-
                 overlayColor: WidgetStateProperty.all(Colors.transparent),
-
                 splashFactory: NoSplash.splashFactory,
-
-                labelColor: chipluxCyan,
-
-                unselectedLabelColor: Colors.white70,
-
+                labelColor: chipluxGold,
+                unselectedLabelColor: Colors.white60,
                 labelStyle: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
+                  fontWeight: FontWeight.w800, fontSize: 14,
                 ),
-
                 unselectedLabelStyle: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
+                  fontWeight: FontWeight.w600, fontSize: 14,
                 ),
-
-                labelPadding: const EdgeInsets.symmetric(horizontal: 20),
-
+                indicatorSize: TabBarIndicatorSize.label,
+                indicator: const UnderlineTabIndicator(
+                  borderSide: BorderSide(color: chipluxGold, width: 3),
+                  insets: EdgeInsets.symmetric(horizontal: 6),
+                ),
                 tabs: [
-                  const Tab(child: UiText('Friends Watch')),
-
-                  const Tab(child: UiText('Find Friends')),
-
-                  Tab(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const UiText('Followers'),
-
-                        if (newFollowersToday > 0) ...[
-                          const SizedBox(width: 6),
-
-                          Container(
-                            width: 21,
-                            height: 21,
-                            alignment: Alignment.center,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFFFFC857),
-                              shape: BoxShape.circle,
-                            ),
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: Padding(
-                                padding: const EdgeInsets.all(3),
-                                child: UiText(
-                                  '$newFollowersToday',
-                                  style: const TextStyle(
-                                    color: Colors.black,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                  const Tab(child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.play_circle_outline_rounded, size: 19),
+                      SizedBox(width: 7),
+                      UiText('Friends Watch'),
+                    ],
+                  )),
+                  const Tab(child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.person_search_outlined, size: 19),
+                      SizedBox(width: 7),
+                      UiText('Find Friends'),
+                    ],
+                  )),
+                  Tab(child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.people_outline_rounded, size: 19),
+                      const SizedBox(width: 7),
+                      const UiText('Followers'),
+                      if (newFollowersToday > 0) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          width: 21, height: 21,
+                          alignment: Alignment.center,
+                          decoration: const BoxDecoration(
+                            color: chipluxGold, shape: BoxShape.circle,
+                          ),
+                          child: FittedBox(
+                            child: Padding(
+                              padding: const EdgeInsets.all(3),
+                              child: UiText(
+                                '$newFollowersToday',
+                                style: const TextStyle(
+                                  color: Colors.black, fontSize: 11,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ),
                           ),
-                        ],
+                        ),
                       ],
-                    ),
-                  ),
-
-                  const Tab(child: UiText('Following')),
-
-                  const Tab(
-                    icon: Icon(Icons.lightbulb_outline_rounded, size: 18),
-                    child: UiText('Feature Board'),
-                  ),
+                    ],
+                  )),
+                  const Tab(child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.person_add_alt_1_outlined, size: 19),
+                      SizedBox(width: 7),
+                      UiText('Following'),
+                    ],
+                  )),
+                  const Tab(child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.lightbulb_outline_rounded, size: 19),
+                      SizedBox(width: 7),
+                      UiText('Feature Board'),
+                    ],
+                  )),
                 ],
               ),
             ),
           ),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
 
           Expanded(
             child: TabBarView(
@@ -5812,7 +5817,7 @@ class _FeatureBoardTabState extends State<_FeatureBoardTab> {
         return const Color(0xFFFF6B8A);
       case 'in_progress':
       default:
-        return chipluxViolet;
+        return chipluxBrightGold;
     }
   }
 
@@ -5888,48 +5893,32 @@ class _FeatureBoardTabState extends State<_FeatureBoardTab> {
 
   Widget _filterPill(String value, String label, IconData icon) {
     final selected = filter == value;
-
     return InkWell(
-      borderRadius: BorderRadius.circular(999),
-      onTap: () {
-        setState(() {
-          filter = value;
-        });
-      },
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => setState(() => filter = value),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(999),
-          gradient: selected
-              ? const LinearGradient(
-                  colors: [chipluxCyan, chipluxViolet, chipluxPurple],
-                )
-              : null,
-          color: selected ? null : chipluxSurface.withValues(alpha: 0.72),
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: selected
-                ? Colors.transparent
-                : Colors.white.withValues(alpha: 0.08),
+            color: chipluxGold.withValues(alpha: selected ? .95 : .42),
+            width: selected ? 1.5 : 1.0,
           ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              size: 16,
-              color: selected ? Colors.white : Colors.white54,
-            ),
-            const SizedBox(width: 6),
-            UiText(
-              label,
-              style: TextStyle(
-                color: selected ? Colors.white : Colors.white70,
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
+            Icon(icon, size: 17, color: chipluxGold.withValues(
+              alpha: selected ? 1 : .78,
+            )),
+            const SizedBox(width: 7),
+            UiText(label, style: TextStyle(
+              color: chipluxGold.withValues(alpha: selected ? 1 : .78),
+              fontSize: 12,
+              fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+            )),
           ],
         ),
       ),
@@ -6036,7 +6025,7 @@ class _FeatureBoardTabState extends State<_FeatureBoardTab> {
                     TextSpan(
                       text: label,
                       style: const TextStyle(
-                        color: chipluxCyan,
+                        color: chipluxGold,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -6077,9 +6066,9 @@ class _FeatureBoardTabState extends State<_FeatureBoardTab> {
             width: double.infinity,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: chipluxViolet.withValues(alpha: 0.06),
+              color: chipluxBrightGold.withValues(alpha: 0.06),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: chipluxViolet.withValues(alpha: 0.16)),
+              border: Border.all(color: chipluxBrightGold.withValues(alpha: 0.16)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -6088,14 +6077,14 @@ class _FeatureBoardTabState extends State<_FeatureBoardTab> {
                   children: [
                     const Icon(
                       Icons.auto_awesome_rounded,
-                      color: chipluxViolet,
+                      color: chipluxBrightGold,
                       size: 15,
                     ),
                     const SizedBox(width: 6),
                     const UiText(
                       'CHIPLUX UPDATE',
                       style: TextStyle(
-                        color: chipluxViolet,
+                        color: chipluxBrightGold,
                         fontSize: 9.5,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 0.8,
@@ -6146,8 +6135,8 @@ class _FeatureBoardTabState extends State<_FeatureBoardTab> {
           end: Alignment.bottomRight,
           colors: [
             statusColor.withValues(alpha: 0.55),
-            chipluxViolet.withValues(alpha: 0.24),
-            chipluxPurple.withValues(alpha: 0.30),
+            chipluxBrightGold.withValues(alpha: 0.24),
+            chipluxAmber.withValues(alpha: 0.30),
           ],
         ),
       ),
@@ -6203,12 +6192,12 @@ class _FeatureBoardTabState extends State<_FeatureBoardTab> {
                       ),
                       decoration: BoxDecoration(
                         color: liked
-                            ? chipluxPurple.withValues(alpha: 0.10)
+                            ? chipluxAmber.withValues(alpha: 0.10)
                             : Colors.white.withValues(alpha: 0.035),
                         borderRadius: BorderRadius.circular(999),
                         border: Border.all(
                           color: liked
-                              ? chipluxPurple.withValues(alpha: 0.30)
+                              ? chipluxAmber.withValues(alpha: 0.30)
                               : Colors.white.withValues(alpha: 0.07),
                         ),
                       ),
@@ -6219,14 +6208,14 @@ class _FeatureBoardTabState extends State<_FeatureBoardTab> {
                             liked
                                 ? Icons.favorite_rounded
                                 : Icons.favorite_border_rounded,
-                            color: liked ? chipluxPurple : Colors.white54,
+                            color: liked ? chipluxAmber : Colors.white54,
                             size: 18,
                           ),
                           const SizedBox(width: 7),
                           UiText(
                             '$likeCount',
                             style: TextStyle(
-                              color: liked ? chipluxPurple : Colors.white70,
+                              color: liked ? chipluxAmber : Colors.white70,
                               fontWeight: FontWeight.w800,
                             ),
                           ),
@@ -6566,7 +6555,7 @@ class _FindFriendsTabState extends State<_FindFriendsTab> {
 
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(color: chipluxCyan, width: 1.5),
+                borderSide: const BorderSide(color: chipluxGold, width: 1.5),
               ),
             ),
           ),
@@ -7154,7 +7143,7 @@ class _FriendsWatchRow extends StatelessWidget {
                             ? trUi(context, target)
                             : target,
                         style: TextStyle(
-                          color: canOpenTarget ? chipluxCyan : chipluxViolet,
+                          color: canOpenTarget ? chipluxGold : chipluxBrightGold,
 
                           fontSize: 14,
 
@@ -7164,7 +7153,7 @@ class _FriendsWatchRow extends StatelessWidget {
                               ? TextDecoration.underline
                               : TextDecoration.none,
 
-                          decorationColor: chipluxCyan,
+                          decorationColor: chipluxGold,
                         ),
                       ),
                     ),
@@ -7813,14 +7802,14 @@ class _PublicCompletedTvShowsPageState
               Expanded(
                 child: loading
                     ? const Center(
-                        child: CircularProgressIndicator(color: chipluxCyan),
+                        child: CircularProgressIndicator(color: chipluxGold),
                       )
                     : errorMessage != null
                     ? _buildError()
                     : shows.isEmpty
                     ? _buildEmpty()
                     : RefreshIndicator(
-                        color: chipluxCyan,
+                        color: chipluxGold,
                         backgroundColor: chipluxSurface,
                         onRefresh: _loadShows,
 
@@ -8274,14 +8263,14 @@ class _PublicWatchedMoviesPageState extends State<_PublicWatchedMoviesPage> {
               Expanded(
                 child: loading
                     ? const Center(
-                        child: CircularProgressIndicator(color: chipluxCyan),
+                        child: CircularProgressIndicator(color: chipluxGold),
                       )
                     : errorMessage != null
                     ? _buildError()
                     : movies.isEmpty
                     ? _buildEmpty()
                     : RefreshIndicator(
-                        color: chipluxCyan,
+                        color: chipluxGold,
                         backgroundColor: chipluxSurface,
                         onRefresh: _loadMovies,
                         child: GridView.builder(
@@ -8701,7 +8690,7 @@ class _PublicFollowersPageState extends State<_PublicFollowersPage> {
                         '${followers.length}',
 
                         style: const TextStyle(
-                          color: chipluxCyan,
+                          color: chipluxGold,
 
                           fontSize: 15,
 
@@ -8714,7 +8703,7 @@ class _PublicFollowersPageState extends State<_PublicFollowersPage> {
                     const Icon(
                       Icons.people_alt_rounded,
 
-                      color: chipluxCyan,
+                      color: chipluxGold,
 
                       size: 24,
                     ),
@@ -8804,10 +8793,10 @@ class _ProfileTitleOption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = achievement == null
-        ? const [chipluxCyan, chipluxViolet]
+        ? const [chipluxGold, chipluxBrightGold]
         : _achievementTierColors(achievement);
 
-    final accent = colors.isNotEmpty ? colors.first : chipluxCyan;
+    final accent = colors.isNotEmpty ? colors.first : chipluxGold;
 
     final title = achievement?.title ?? 'None';
 
@@ -9126,7 +9115,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
       builder: (sheetContext) {
         Widget option(String value, String label, IconData icon) {
           return ListTile(
-            leading: Icon(icon, color: chipluxCyan),
+            leading: Icon(icon, color: chipluxGold),
             title: UiText(label),
             onTap: () {
               Navigator.pop(sheetContext, value);
@@ -9678,7 +9667,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
 
         child: SafeArea(
           child: RefreshIndicator(
-            color: chipluxCyan,
+            color: chipluxGold,
 
             backgroundColor: chipluxSurface,
 
@@ -9894,9 +9883,9 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                                 avatarUrl.isEmpty
                                             ? const LinearGradient(
                                                 colors: [
-                                                  chipluxCyan,
-                                                  chipluxViolet,
-                                                  chipluxPurple,
+                                                  chipluxGold,
+                                                  chipluxBrightGold,
+                                                  chipluxAmber,
                                                 ],
                                               )
                                             : null,
@@ -10073,7 +10062,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: following
                                             ? chipluxSurfaceLight
-                                            : chipluxViolet,
+                                            : chipluxBrightGold,
 
                                         foregroundColor: Colors.white,
 
@@ -10106,7 +10095,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                 children: [
                                   const Icon(
                                     Icons.lock_outline_rounded,
-                                    color: chipluxCyan,
+                                    color: chipluxGold,
                                     size: 36,
                                   ),
                                   const SizedBox(height: 12),
@@ -10514,7 +10503,8 @@ _Achievement? _findProfileTitleAchievement(
         continue;
       }
 
-      if (requireUnlocked && !tier.unlocked) {
+      if (requireUnlocked && !tier.unlocked &&
+          !ProfileService.instance.hasDeveloperRewardAccess) {
         return null;
       }
 
@@ -10524,6 +10514,27 @@ _Achievement? _findProfileTitleAchievement(
 
   return null;
 }
+
+// Genre segments and ratings use distinct categorical colors for readability.
+// This affects chart data only; the surrounding Chiplux branding stays gold.
+const _genreChartColors = <Color>[
+  Color(0xFF60A5FA), // Blue
+  Color(0xFF4ADE80), // Green
+  Color(0xFFF87171), // Red
+  Color(0xFFA78BFA), // Purple
+  Color(0xFFFBBF24), // Amber
+  Color(0xFF2DD4BF), // Teal
+  Color(0xFFFB7185), // Rose
+  Color(0xFF818CF8), // Indigo
+];
+
+const _ratingChartColors = <Color>[
+  Color(0xFFF87171), // 1 star · Red
+  Color(0xFFFB923C), // 2 stars · Orange
+  Color(0xFFA78BFA), // 3 stars · Purple
+  Color(0xFF60A5FA), // 4 stars · Blue
+  Color(0xFF4ADE80), // 5 stars · Green
+];
 
 class _PublicGenreRuntimeCard extends StatefulWidget {
   final String title;
@@ -10566,16 +10577,7 @@ class _PublicGenreRuntimeCardState extends State<_PublicGenreRuntimeCard> {
 
     final visible = expanded ? stats : stats.take(4).toList();
 
-    const colors = <Color>[
-      chipluxCyan,
-      Color(0xFF55C7FF),
-      chipluxViolet,
-      chipluxPurple,
-      Color(0xFF6F7CFF),
-      Color(0xFF43B8FF),
-      Color(0xFFB56DFF),
-      Color(0xFF5363B8),
-    ];
+    const colors = _genreChartColors;
 
     Color statColor(int index) {
       return colors[index % colors.length];
@@ -10587,14 +10589,14 @@ class _PublicGenreRuntimeCardState extends State<_PublicGenreRuntimeCard> {
       decoration: BoxDecoration(
         color: chipluxSurface,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: chipluxCyan.withValues(alpha: 0.14)),
+        border: Border.all(color: chipluxGold.withValues(alpha: 0.14)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(widget.icon, color: chipluxCyan, size: 27),
+              Icon(widget.icon, color: chipluxGold, size: 27),
 
               const SizedBox(width: 10),
 
@@ -10744,7 +10746,7 @@ class _PublicGenreRuntimeCardState extends State<_PublicGenreRuntimeCard> {
                             ? 'Show less'
                             : 'Show all ${stats.length} genres',
                         style: const TextStyle(
-                          color: chipluxCyan,
+                          color: chipluxGold,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -10755,7 +10757,7 @@ class _PublicGenreRuntimeCardState extends State<_PublicGenreRuntimeCard> {
                         expanded
                             ? Icons.keyboard_arrow_up_rounded
                             : Icons.keyboard_arrow_down_rounded,
-                        color: chipluxCyan,
+                        color: chipluxGold,
                       ),
                     ],
                   ),
@@ -10817,16 +10819,16 @@ class _RatingDistributionFilterBar extends StatelessWidget {
                   gradient: active
                       ? LinearGradient(
                           colors: [
-                            chipluxCyan.withValues(alpha: 0.24),
-                            chipluxViolet.withValues(alpha: 0.22),
-                            chipluxPurple.withValues(alpha: 0.22),
+                            chipluxGold.withValues(alpha: 0.24),
+                            chipluxBrightGold.withValues(alpha: 0.22),
+                            chipluxAmber.withValues(alpha: 0.22),
                           ],
                         )
                       : null,
                   color: active ? null : chipluxSurfaceLight,
                   border: Border.all(
                     color: active
-                        ? chipluxViolet.withValues(alpha: 0.38)
+                        ? chipluxBrightGold.withValues(alpha: 0.38)
                         : Colors.white.withValues(alpha: 0.06),
                   ),
                 ),
@@ -10864,7 +10866,6 @@ class _PublicRatingDistributionCardState
   @override
   Widget build(BuildContext context) {
     const criticGold = Color(0xFFFFC857);
-    const criticOrange = Color(0xFFFF8A4C);
 
     final distribution =
         widget.distributions[selected] ??
@@ -10873,13 +10874,7 @@ class _PublicRatingDistributionCardState
 
     final total = distribution.values.fold<int>(0, (sum, value) => sum + value);
 
-    Color ratingColor(int rating) {
-      final t = (rating - 1) / 4;
-      if (t < 0.5) {
-        return Color.lerp(criticOrange, criticGold, t * 2)!;
-      }
-      return Color.lerp(criticGold, chipluxPurple, (t - 0.5) * 2)!;
-    }
+    Color ratingColor(int rating) => _ratingChartColors[(rating - 1).clamp(0, 4).toInt()];
 
     final active = <int>[];
     for (int rating = 1; rating <= 5; rating++) {
@@ -11050,66 +11045,28 @@ class _ChipluxBottomNav extends StatelessWidget {
             ),
           ),
         ),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final itemWidth = constraints.maxWidth / items.length;
-
-            return Stack(
+        child: Stack(
+          children: [
+            Row(
               children: [
-                // MOVING GRADIENT PILL
-                AnimatedPositioned(
-                  duration: const Duration(milliseconds: 320),
-                  curve: Curves.easeInOutCubic,
-                  left: currentIndex * itemWidth + 17,
-                  top: 12,
-                  width: itemWidth - 34,
-                  height: 40,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(24),
-                      gradient: LinearGradient(
-                        colors: [
-                          chipluxCyan.withValues(alpha: 0.24),
-                          chipluxViolet.withValues(alpha: 0.22),
-                          chipluxPurple.withValues(alpha: 0.24),
-                        ],
-                      ),
-                      border: Border.all(
-                        color: chipluxViolet.withValues(alpha: 0.25),
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: chipluxPurple.withValues(alpha: 0.08),
-                          blurRadius: 15,
-                        ),
-                      ],
+                for (int i = 0; i < items.length; i++)
+                  Expanded(
+                    child: _BottomNavItem(
+                      label: items[i].label,
+                      icon: items[i].icon,
+                      selectedIcon: items[i].selectedIcon,
+                      selected: currentIndex == i,
+                      avatarUrl: i == 4 ? avatarUrl : null,
+                      onTap: () => onTap(i),
                     ),
                   ),
-                ),
-
-                Row(
-                  children: [
-                    for (int i = 0; i < items.length; i++)
-                      Expanded(
-                        child: _BottomNavItem(
-                          label: items[i].label,
-                          icon: items[i].icon,
-                          selectedIcon: items[i].selectedIcon,
-                          selected: currentIndex == i,
-                          avatarUrl: i == 4 ? avatarUrl : null,
-                          onTap: () => onTap(i),
-                        ),
-                      ),
-                  ],
-                ),
-
-                if (showProfileFrame)
-                  Positioned.fill(
-                    child: _profileNavigationFrameWidget(profilePageFrameId)!,
-                  ),
               ],
-            );
-          },
+            ),
+            if (showProfileFrame)
+              Positioned.fill(
+                child: _profileNavigationFrameWidget(profilePageFrameId)!,
+              ),
+          ],
         ),
       ),
     );
@@ -11150,9 +11107,7 @@ class _BottomNavItem extends StatelessWidget {
                     : selected
                     ? ShaderMask(
                         shaderCallback: (bounds) {
-                          return const LinearGradient(
-                            colors: [chipluxCyan, chipluxViolet, chipluxPurple],
-                          ).createShader(bounds);
+                          return chipluxTextGradient.createShader(bounds);
                         },
                         child: Icon(
                           selectedIcon,
@@ -11214,17 +11169,9 @@ class _BottomNavAvatar extends StatelessWidget {
       return Icon(selected ? Icons.person : Icons.person_outline);
     }
 
-    return Container(
+    return SizedBox(
       width: 28,
       height: 28,
-      padding: const EdgeInsets.all(2),
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: selected ? chipluxCyan : Colors.white38,
-          width: selected ? 2 : 1,
-        ),
-      ),
       child: ClipOval(
         child: Image.network(
           avatarUrl!,
@@ -11283,9 +11230,7 @@ class GradientText extends StatelessWidget {
   Widget build(BuildContext context) {
     return ShaderMask(
       shaderCallback: (bounds) {
-        return const LinearGradient(
-          colors: [chipluxCyan, chipluxViolet, chipluxPurple],
-        ).createShader(bounds);
+        return chipluxTextGradient.createShader(bounds);
       },
       child: UiText(text, style: style.copyWith(color: Colors.white)),
     );
@@ -11416,15 +11361,15 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage>
+    with SingleTickerProviderStateMixin {
   final TmdbService tmdbService = TmdbService();
 
   final LibraryService library = LibraryService.instance;
 
-  // 0 = Trending
-  // 1 = 100 Lists
-  // 2 = Today
-  int discoverTab = 0;
+  // Share the same swipe / tap navigation system used by Community.
+  late final TabController _discoverTabController;
+  int _lastDiscoverTabIndex = 0;
 
   // ====================================================
   // TRENDING CACHE
@@ -11455,6 +11400,13 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
 
+    _discoverTabController = TabController(
+      length: 4,
+      vsync: this,
+      animationDuration: const Duration(milliseconds: 300),
+    );
+    _discoverTabController.addListener(_onDiscoverTabChanged);
+
     unawaited(DiscoverCatalogService.instance.preload());
 
     // Preload Today in the background.
@@ -11471,104 +11423,101 @@ class _HomePageState extends State<HomePage> {
   // TRENDING
   // ====================================================
 
-  void _selectDiscoverTab(int index) {
-    if (discoverTab == index) {
+  void _onDiscoverTabChanged() {
+    // The controller updates its index after a swipe and on tab taps.
+    // Keep the existing Today/For You refresh behavior without reloading
+    // content for every intermediate animation frame.
+    if (!mounted || _discoverTabController.indexIsChanging) {
       return;
     }
-    setState(() {
-      discoverTab = index;
-    });
+    final index = _discoverTabController.index;
+    if (index == _lastDiscoverTabIndex) {
+      return;
+    }
+    _lastDiscoverTabIndex = index;
     if (index == 2 || index == 3) {
       unawaited(_loadToday());
     }
   }
 
+  @override
+  void dispose() {
+    _discoverTabController.removeListener(_onDiscoverTabChanged);
+    _discoverTabController.dispose();
+    super.dispose();
+  }
+
   Widget _buildDiscoverTabs() {
-    const labels = ['Trending', '100 Lists', 'Today', 'For You'];
-    const icons = [
-      Icons.trending_up_rounded,
-      Icons.format_list_numbered_rounded,
-      Icons.today_rounded,
-      Icons.auto_awesome_rounded,
-    ];
+    // Scrollable icon+label tabs avoid squeezing four controls on small phones.
+    // A yellow underline indicates the active section; no fill or glow.
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-      child: Container(
-        height: 78,
-        padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          color: chipluxSurface.withValues(alpha: .75),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: chipluxCyan.withValues(alpha: .16)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: .18),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            for (var i = 0; i < labels.length; i++)
-              Expanded(
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(14),
-                  onTap: () => _selectDiscoverTab(i),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 250),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(14),
-                      gradient: discoverTab == i
-                          ? LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                chipluxCyan.withValues(alpha: .20),
-                                chipluxViolet.withValues(alpha: .18),
-                                chipluxPurple.withValues(alpha: .12),
-                              ],
-                            )
-                          : null,
-                      border: Border.all(
-                        color: discoverTab == i
-                            ? chipluxCyan.withValues(alpha: .35)
-                            : Colors.transparent,
-                      ),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          icons[i],
-                          size: 20,
-                          color: discoverTab == i
-                              ? chipluxCyan
-                              : Colors.white54,
-                        ),
-                        const SizedBox(height: 7),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 3),
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: UiText(
-                              labels[i],
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: .7,
-                                color: discoverTab == i
-                                    ? chipluxCyan
-                                    : Colors.white54,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 4),
+      child: SizedBox(
+        height: 56,
+        child: TabBar(
+          controller: _discoverTabController,
+          isScrollable: true,
+          tabAlignment: TabAlignment.start,
+          labelPadding: const EdgeInsets.symmetric(horizontal: 18),
+          labelColor: chipluxGold,
+          unselectedLabelColor: Colors.white60,
+          labelStyle: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w800,
+          ),
+          unselectedLabelStyle: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+          dividerColor: Colors.transparent,
+          overlayColor: WidgetStateProperty.all(Colors.transparent),
+          splashFactory: NoSplash.splashFactory,
+          indicatorSize: TabBarIndicatorSize.label,
+          indicator: const UnderlineTabIndicator(
+            borderSide: BorderSide(color: chipluxGold, width: 3),
+            insets: EdgeInsets.symmetric(horizontal: 6),
+          ),
+          tabs: const [
+            Tab(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.trending_up_rounded, size: 19),
+                  SizedBox(width: 8),
+                  UiText('Trending'),
+                ],
               ),
+            ),
+            Tab(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.format_list_numbered_rounded, size: 19),
+                  SizedBox(width: 8),
+                  UiText('100 Lists'),
+                ],
+              ),
+            ),
+            Tab(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.today_rounded, size: 19),
+                  SizedBox(width: 8),
+                  UiText('Today'),
+                ],
+              ),
+            ),
+            Tab(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.favorite_border_rounded, size: 19),
+                  SizedBox(width: 8),
+                  UiText('For You'),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -11981,7 +11930,7 @@ class _HomePageState extends State<HomePage> {
 
     if (todayError != null) {
       return RefreshIndicator(
-        color: chipluxCyan,
+        color: chipluxGold,
         onRefresh: () {
           return _loadToday(forceRefresh: true);
         },
@@ -12008,7 +11957,7 @@ class _HomePageState extends State<HomePage> {
     }
 
     return RefreshIndicator(
-      color: chipluxCyan,
+      color: chipluxGold,
 
       backgroundColor: chipluxSurface,
 
@@ -12172,7 +12121,7 @@ class _HomePageState extends State<HomePage> {
                 ),
                 IconButton(
                   tooltip: 'Chiplux Shop',
-                  icon: const Icon(Icons.shopping_bag_outlined, color: chipluxCyan, size: 29),
+                  icon: const Icon(Icons.shopping_bag_outlined, color: chipluxGold, size: 29),
                   onPressed: () {
                     ScaffoldMessenger.of(context)
                       ..hideCurrentSnackBar()
@@ -12195,8 +12144,8 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(height: 4),
 
           Expanded(
-            child: IndexedStack(
-              index: discoverTab,
+            child: TabBarView(
+              controller: _discoverTabController,
               children: [
                 _buildTrendingPage(),
                 _buildListsPage(),
@@ -12607,7 +12556,7 @@ class _BirthdayActorCard extends StatelessWidget {
             gradient: const LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Color(0xFFFFC857), Color(0xFFFF8A4C), chipluxPurple],
+              colors: [Color(0xFFFFC857), Color(0xFFFF8A4C), chipluxAmber],
             ),
 
             borderRadius: BorderRadius.circular(20),
@@ -12815,7 +12764,7 @@ class _TodayCompactMediaCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: chipluxSurface,
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: chipluxViolet.withValues(alpha: 0.12)),
+            border: Border.all(color: chipluxBrightGold.withValues(alpha: 0.12)),
           ),
           child: Row(
             children: [
@@ -12871,7 +12820,7 @@ class _TodayCompactMediaCard extends StatelessWidget {
                     UiText(
                       mediaType == 'tv' ? 'TV Show' : 'Movie',
                       style: const TextStyle(
-                        color: chipluxCyan,
+                        color: chipluxGold,
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
@@ -13017,7 +12966,7 @@ class _DiscoverTop100PageState extends State<DiscoverTop100Page> {
                 ),
               )
             : RefreshIndicator(
-                color: chipluxCyan,
+                color: chipluxGold,
                 onRefresh: () {
                   return _load(force: true);
                 },
@@ -13654,7 +13603,9 @@ class SearchPage extends StatefulWidget {
   State<SearchPage> createState() => _SearchPageState();
 }
 
-class _SearchPageState extends State<SearchPage> {
+class _SearchPageState extends State<SearchPage>
+    with SingleTickerProviderStateMixin {
+  late final TabController _searchTabController;
   final TextEditingController controller = TextEditingController();
 
   final TmdbService tmdbService = TmdbService();
@@ -13673,6 +13624,25 @@ class _SearchPageState extends State<SearchPage> {
 
   _SearchCategory category = _SearchCategory.titles;
   _MusicSearchScope musicScope = _MusicSearchScope.albums;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchTabController = TabController(
+      length: 3,
+      vsync: this,
+      animationDuration: const Duration(milliseconds: 300),
+    );
+    _searchTabController.addListener(_onSearchTabChanged);
+  }
+
+  void _onSearchTabChanged() {
+    if (!mounted) {
+      return;
+    }
+    // Keeps the selected search provider synchronized with tab taps and swipes.
+    _changeCategory(_SearchCategory.values[_searchTabController.index]);
+  }
 
   String _searchError(Object error) {
     if (error is TimeoutException) {
@@ -14136,8 +14106,32 @@ class _SearchPageState extends State<SearchPage> {
     _searchDebounce?.cancel();
     _searchDeadline?.cancel();
     ++_searchGeneration;
+    _searchTabController.removeListener(_onSearchTabChanged);
+    _searchTabController.dispose();
     controller.dispose();
     super.dispose();
+  }
+
+  Widget _searchNavigationTab(IconData icon, String title) {
+    return Tab(
+      height: 46,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+        decoration: BoxDecoration(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(13),
+          border: Border.all(color: chipluxGold.withValues(alpha: .32)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 18),
+            const SizedBox(width: 7),
+            UiText(title),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -14151,52 +14145,55 @@ class _SearchPageState extends State<SearchPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const BrandedTitle(
-                  whitePart: 'Se',
-                  gradientPart: 'arch',
+                  whitePart: 'Sea',
+                  gradientPart: 'rch',
                   fontSize: 30,
                 ),
 
                 const SizedBox(height: 14),
 
-                Row(
-                  children: [
-                    Expanded(
-                      child: _SearchTabPill(
-                        icon: Icons.movie_filter_rounded,
-                        label: 'Movies & TV Shows',
-                        selected: category == _SearchCategory.titles,
-                        onTap: () {
-                          _changeCategory(_SearchCategory.titles);
-                        },
-                      ),
+                // Same swipeable icon-tab system as Discover, with gold
+                // frames instead of the old filled/gradient button pills.
+                SizedBox(
+                  height: 58,
+                  child: TabBar(
+                    controller: _searchTabController,
+                    isScrollable: true,
+                    tabAlignment: TabAlignment.start,
+                    labelPadding: const EdgeInsets.symmetric(horizontal: 5),
+                    labelColor: chipluxGold,
+                    unselectedLabelColor: chipluxGold.withValues(alpha: .76),
+                    labelStyle: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
                     ),
-
-                    const SizedBox(width: 7),
-
-                    Expanded(
-                      child: _SearchTabPill(
-                        icon: Icons.library_music_rounded,
-                        label: 'Music',
-                        selected: category == _SearchCategory.music,
-                        onTap: () {
-                          _changeCategory(_SearchCategory.music);
-                        },
-                      ),
+                    unselectedLabelStyle: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
                     ),
-
-                    const SizedBox(width: 7),
-
-                    Expanded(
-                      child: _SearchTabPill(
-                        icon: Icons.person_search_rounded,
-                        label: 'People',
-                        selected: category == _SearchCategory.people,
-                        onTap: () {
-                          _changeCategory(_SearchCategory.people);
-                        },
-                      ),
+                    dividerColor: Colors.transparent,
+                    overlayColor: WidgetStateProperty.all(Colors.transparent),
+                    splashFactory: NoSplash.splashFactory,
+                    indicatorSize: TabBarIndicatorSize.label,
+                    indicator: const UnderlineTabIndicator(
+                      borderSide: BorderSide(color: chipluxGold, width: 3),
+                      insets: EdgeInsets.symmetric(horizontal: 7),
                     ),
-                  ],
+                    tabs: [
+                      _searchNavigationTab(
+                        Icons.movie_filter_rounded,
+                        'Movies & TV Shows',
+                      ),
+                      _searchNavigationTab(
+                        Icons.library_music_rounded,
+                        'Music',
+                      ),
+                      _searchNavigationTab(
+                        Icons.person_search_rounded,
+                        'People',
+                      ),
+                    ],
+                  ),
                 ),
 
                 const SizedBox(height: 12),
@@ -14255,7 +14252,7 @@ class _SearchPageState extends State<SearchPage> {
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(18),
                       borderSide: const BorderSide(
-                        color: chipluxCyan,
+                        color: chipluxGold,
                         width: 1.3,
                       ),
                     ),
@@ -14265,218 +14262,108 @@ class _SearchPageState extends State<SearchPage> {
             ),
           ),
 
-          if (isLoading)
-            const Padding(
-              padding: EdgeInsets.all(20),
-              child: CircularProgressIndicator(),
+          Expanded(
+            child: TabBarView(
+              controller: _searchTabController,
+              children: [
+                _buildSearchResultsPage(_SearchCategory.titles),
+                _buildSearchResultsPage(_SearchCategory.music),
+                _buildSearchResultsPage(_SearchCategory.people),
+              ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
 
-          if (errorMessage != null)
-            UiText(
-              errorMessage!,
-              style: const TextStyle(color: Colors.redAccent),
-            ),
-          if (errorMessage != null)
-            TextButton.icon(
-              onPressed: () => performSearch(),
-              icon: const Icon(Icons.refresh),
-              label: const UiText('Retry'),
-            ),
+  Widget _buildSearchResultsPage(_SearchCategory pageCategory) {
+    if (category != pageCategory) {
+      return const SizedBox.expand();
+    }
+    return Column(
+      children: [
+        if (isLoading)
+          const Padding(
+            padding: EdgeInsets.all(20),
+            child: CircularProgressIndicator(),
+          ),
 
-          if (!isLoading)
-            Expanded(
-              child: ListView.separated(
-                padding: const EdgeInsets.all(20),
-                itemCount: results.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final item = Map<String, dynamic>.from(results[index] as Map);
+        if (errorMessage != null)
+          UiText(
+            errorMessage!,
+            style: const TextStyle(color: Colors.redAccent),
+          ),
+        if (errorMessage != null)
+          TextButton.icon(
+            onPressed: () => performSearch(),
+            icon: const Icon(Icons.refresh),
+            label: const UiText('Retry'),
+          ),
 
-                  if (category == _SearchCategory.music) {
-                    switch (item['_music_result_type']?.toString()) {
-                      case 'album':
-                        return _MusicAlbumSearchCard(
-                          item: item,
-                          onTap: () {
-                            _openMusicAlbum(item);
-                          },
-                        );
+        if (!isLoading)
+          Expanded(
+            child: ListView.separated(
+              padding: const EdgeInsets.all(20),
+              itemCount: results.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                final item = Map<String, dynamic>.from(results[index] as Map);
 
-                      case 'song':
-                        return _MusicSongSearchCard(
-                          item: item,
-                          onTap: () {
-                            _openMusicSong(item);
-                          },
-                        );
+                if (category == _SearchCategory.music) {
+                  switch (item['_music_result_type']?.toString()) {
+                    case 'album':
+                      return _MusicAlbumSearchCard(
+                        item: item,
+                        onTap: () {
+                          _openMusicAlbum(item);
+                        },
+                      );
 
-                      case 'artist':
-                      default:
-                        return _MusicArtistSearchCard(
-                          artist: item,
-                          onTap: () {
-                            _openMusicArtist(item);
-                          },
-                        );
-                    }
-                  }
+                    case 'song':
+                      return _MusicSongSearchCard(
+                        item: item,
+                        onTap: () {
+                          _openMusicSong(item);
+                        },
+                      );
 
-                  if (category == _SearchCategory.people) {
-                    if (item['_chiplux_source'] == 'musicbrainz') {
+                    case 'artist':
+                    default:
                       return _MusicArtistSearchCard(
                         artist: item,
                         onTap: () {
                           _openMusicArtist(item);
                         },
                       );
-                    }
+                  }
+                }
 
-                    final name = item['name']?.toString() ?? 'Unknown';
-
-                    final department =
-                        item['known_for_department']?.toString() ?? 'Person';
-
-                    final imagePath = item['profile_path']?.toString();
-
-                    final popularity = item['popularity'] is num
-                        ? (item['popularity'] as num).toDouble()
-                        : 0.0;
-
-                    return InkWell(
-                      borderRadius: BorderRadius.circular(17),
+                if (category == _SearchCategory.people) {
+                  if (item['_chiplux_source'] == 'musicbrainz') {
+                    return _MusicArtistSearchCard(
+                      artist: item,
                       onTap: () {
-                        _openPersonProjects(item);
+                        _openMusicArtist(item);
                       },
-                      child: Container(
-                        padding: const EdgeInsets.all(1.1),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(17),
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              chipluxCyan.withValues(alpha: 0.34),
-                              chipluxViolet.withValues(alpha: 0.22),
-                              chipluxPurple.withValues(alpha: 0.28),
-                            ],
-                          ),
-                        ),
-                        child: Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: chipluxSurface,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Row(
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: imagePath != null
-                                    ? Image.network(
-                                        'https://image.tmdb.org/t/p/w185$imagePath',
-                                        width: 72,
-                                        height: 92,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (_, _, _) => Container(
-                                          width: 72,
-                                          height: 92,
-                                          color: chipluxSurfaceLight,
-                                          child: const Icon(
-                                            Icons.person_rounded,
-                                            color: Colors.white38,
-                                          ),
-                                        ),
-                                      )
-                                    : Container(
-                                        width: 72,
-                                        height: 92,
-                                        color: chipluxSurfaceLight,
-                                        child: const Icon(
-                                          Icons.person_rounded,
-                                          color: Colors.white38,
-                                        ),
-                                      ),
-                              ),
-
-                              const SizedBox(width: 14),
-
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      name,
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    UiText(
-                                      department,
-                                      style: const TextStyle(
-                                        color: chipluxViolet,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 5),
-                                    UiText(
-                                      'Popularity ${popularity.toStringAsFixed(1)}',
-                                      style: const TextStyle(
-                                        color: Colors.white38,
-                                        fontSize: 11,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-
-                              const Icon(
-                                Icons.chevron_right_rounded,
-                                color: Colors.white38,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
                     );
                   }
 
-                  final mediaType = item['media_type']?.toString();
+                  final name = item['name']?.toString() ?? 'Unknown';
 
-                  final title = item['title'] ?? item['name'] ?? 'Unknown';
+                  final department =
+                      item['known_for_department']?.toString() ?? 'Person';
 
-                  final date =
-                      item['release_date'] ?? item['first_air_date'] ?? '';
+                  final imagePath = item['profile_path']?.toString();
 
-                  final year = date.toString().length >= 4
-                      ? date.toString().substring(0, 4)
-                      : '';
-
-                  final posterPath = item['poster_path'];
-
-                  final posterUrl = posterPath != null
-                      ? 'https://image.tmdb.org/t/p/w185$posterPath'
-                      : null;
+                  final popularity = item['popularity'] is num
+                      ? (item['popularity'] as num).toDouble()
+                      : 0.0;
 
                   return InkWell(
                     borderRadius: BorderRadius.circular(17),
                     onTap: () {
-                      final rawId = item['id'];
-
-                      if (rawId is! num || mediaType == null) {
-                        return;
-                      }
-
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => MediaDetailsPage(
-                            id: rawId.toInt(),
-                            mediaType: mediaType,
-                          ),
-                        ),
-                      );
+                      _openPersonProjects(item);
                     },
                     child: Container(
                       padding: const EdgeInsets.all(1.1),
@@ -14486,9 +14373,9 @@ class _SearchPageState extends State<SearchPage> {
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: [
-                            chipluxCyan.withValues(alpha: 0.32),
-                            chipluxViolet.withValues(alpha: 0.20),
-                            chipluxPurple.withValues(alpha: 0.24),
+                            chipluxGold.withValues(alpha: 0.34),
+                            chipluxBrightGold.withValues(alpha: 0.22),
+                            chipluxAmber.withValues(alpha: 0.28),
                           ],
                         ),
                       ),
@@ -14502,28 +14389,28 @@ class _SearchPageState extends State<SearchPage> {
                           children: [
                             ClipRRect(
                               borderRadius: BorderRadius.circular(12),
-                              child: posterUrl != null
+                              child: imagePath != null
                                   ? Image.network(
-                                      posterUrl,
+                                      'https://image.tmdb.org/t/p/w185$imagePath',
                                       width: 72,
-                                      height: 105,
+                                      height: 92,
                                       fit: BoxFit.cover,
                                       errorBuilder: (_, _, _) => Container(
                                         width: 72,
-                                        height: 105,
+                                        height: 92,
                                         color: chipluxSurfaceLight,
                                         child: const Icon(
-                                          Icons.movie_outlined,
+                                          Icons.person_rounded,
                                           color: Colors.white38,
                                         ),
                                       ),
                                     )
                                   : Container(
                                       width: 72,
-                                      height: 105,
+                                      height: 92,
                                       color: chipluxSurfaceLight,
                                       child: const Icon(
-                                        Icons.movie_outlined,
+                                        Icons.person_rounded,
                                         color: Colors.white38,
                                       ),
                                     ),
@@ -14536,29 +14423,28 @@ class _SearchPageState extends State<SearchPage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    title.toString(),
+                                    name,
                                     style: const TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                  const SizedBox(height: 7),
+                                  const SizedBox(height: 6),
                                   UiText(
-                                    mediaType == 'tv' ? 'TV Show' : 'Movie',
+                                    department,
                                     style: const TextStyle(
-                                      color: chipluxCyan,
+                                      color: chipluxBrightGold,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
-                                  if (year.isNotEmpty) ...[
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      year,
-                                      style: const TextStyle(
-                                        color: Colors.white54,
-                                      ),
+                                  const SizedBox(height: 5),
+                                  UiText(
+                                    'Popularity ${popularity.toStringAsFixed(1)}',
+                                    style: const TextStyle(
+                                      color: Colors.white38,
+                                      fontSize: 11,
                                     ),
-                                  ],
+                                  ),
                                 ],
                               ),
                             ),
@@ -14572,11 +14458,142 @@ class _SearchPageState extends State<SearchPage> {
                       ),
                     ),
                   );
-                },
-              ),
+                }
+
+                final mediaType = item['media_type']?.toString();
+
+                final title = item['title'] ?? item['name'] ?? 'Unknown';
+
+                final date =
+                    item['release_date'] ?? item['first_air_date'] ?? '';
+
+                final year = date.toString().length >= 4
+                    ? date.toString().substring(0, 4)
+                    : '';
+
+                final posterPath = item['poster_path'];
+
+                final posterUrl = posterPath != null
+                    ? 'https://image.tmdb.org/t/p/w185$posterPath'
+                    : null;
+
+                return InkWell(
+                  borderRadius: BorderRadius.circular(17),
+                  onTap: () {
+                    final rawId = item['id'];
+
+                    if (rawId is! num || mediaType == null) {
+                      return;
+                    }
+
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => MediaDetailsPage(
+                          id: rawId.toInt(),
+                          mediaType: mediaType,
+                        ),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(1.1),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(17),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          chipluxGold.withValues(alpha: 0.32),
+                          chipluxBrightGold.withValues(alpha: 0.20),
+                          chipluxAmber.withValues(alpha: 0.24),
+                        ],
+                      ),
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: chipluxSurface,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: posterUrl != null
+                                ? Image.network(
+                                    posterUrl,
+                                    width: 72,
+                                    height: 105,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, _, _) => Container(
+                                      width: 72,
+                                      height: 105,
+                                      color: chipluxSurfaceLight,
+                                      child: const Icon(
+                                        Icons.movie_outlined,
+                                        color: Colors.white38,
+                                      ),
+                                    ),
+                                  )
+                                : Container(
+                                    width: 72,
+                                    height: 105,
+                                    color: chipluxSurfaceLight,
+                                    child: const Icon(
+                                      Icons.movie_outlined,
+                                      color: Colors.white38,
+                                    ),
+                                  ),
+                          ),
+
+                          const SizedBox(width: 14),
+
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  title.toString(),
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 7),
+                                UiText(
+                                  mediaType == 'tv' ? 'TV Show' : 'Movie',
+                                  style: const TextStyle(
+                                    color: chipluxGold,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                if (year.isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    year,
+                                    style: const TextStyle(
+                                      color: Colors.white54,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+
+                          const Icon(
+                            Icons.chevron_right_rounded,
+                            color: Colors.white38,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
-        ],
-      ),
+          ),
+      ],
     );
   }
 }
@@ -14614,7 +14631,7 @@ class _MusicArtistPhotoViewState extends State<_MusicArtistPhotoView> {
 
   Widget placeholder() => Icon(
     widget.isGroup ? Icons.groups_rounded : Icons.music_note_rounded,
-    color: chipluxPurple,
+    color: chipluxAmber,
     size: 34,
   );
   @override
@@ -14720,9 +14737,9 @@ class _MusicArtistSearchCard extends StatelessWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              chipluxPurple.withValues(alpha: 0.36),
-              chipluxViolet.withValues(alpha: 0.24),
-              chipluxCyan.withValues(alpha: 0.26),
+              chipluxAmber.withValues(alpha: 0.36),
+              chipluxBrightGold.withValues(alpha: 0.24),
+              chipluxGold.withValues(alpha: 0.26),
             ],
           ),
         ),
@@ -14744,8 +14761,8 @@ class _MusicArtistSearchCard extends StatelessWidget {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      chipluxPurple.withValues(alpha: 0.22),
-                      chipluxCyan.withValues(alpha: 0.10),
+                      chipluxAmber.withValues(alpha: 0.22),
+                      chipluxGold.withValues(alpha: 0.10),
                     ],
                   ),
                 ),
@@ -14773,7 +14790,7 @@ class _MusicArtistSearchCard extends StatelessWidget {
                     UiText(
                       type,
                       style: const TextStyle(
-                        color: chipluxPurple,
+                        color: chipluxAmber,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -14856,9 +14873,9 @@ class _MusicSongSearchCard extends StatelessWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              chipluxCyan.withValues(alpha: 0.30),
-              chipluxViolet.withValues(alpha: 0.27),
-              chipluxPurple.withValues(alpha: 0.24),
+              chipluxGold.withValues(alpha: 0.30),
+              chipluxBrightGold.withValues(alpha: 0.27),
+              chipluxAmber.withValues(alpha: 0.24),
             ],
           ),
         ),
@@ -14904,7 +14921,7 @@ class _MusicSongSearchCard extends StatelessWidget {
                           'Song',
                           style: TextStyle(
                             fontSize: 10,
-                            color: chipluxCyan,
+                            color: chipluxGold,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -14995,20 +15012,12 @@ class _MusicSearchScopePill extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            gradient: selected
-                ? LinearGradient(
-                    colors: [
-                      chipluxCyan.withValues(alpha: 0.22),
-                      chipluxViolet.withValues(alpha: 0.18),
-                      chipluxPurple.withValues(alpha: 0.20),
-                    ],
-                  )
-                : null,
-            color: selected ? null : chipluxSurfaceLight,
+            color: Colors.transparent,
             border: Border.all(
               color: selected
-                  ? chipluxCyan.withValues(alpha: 0.34)
-                  : Colors.white.withValues(alpha: 0.05),
+                  ? chipluxGold.withValues(alpha: .90)
+                  : chipluxGold.withValues(alpha: .35),
+              width: selected ? 1.4 : 1.0,
             ),
           ),
           child: Row(
@@ -15017,7 +15026,9 @@ class _MusicSearchScopePill extends StatelessWidget {
               Icon(
                 icon,
                 size: 16,
-                color: selected ? chipluxCyan : Colors.white54,
+                color: selected
+                    ? chipluxGold
+                    : chipluxGold.withValues(alpha: .75),
               ),
               const SizedBox(width: 5),
               Flexible(
@@ -15026,91 +15037,15 @@ class _MusicSearchScopePill extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: selected ? Colors.white : Colors.white60,
+                    color: selected
+                        ? chipluxGold
+                        : chipluxGold.withValues(alpha: .75),
                     fontSize: 11,
                     fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
                   ),
                 ),
               ),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SearchTabPill extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _SearchTabPill({
-    required this.icon,
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOut,
-          padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 8),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            gradient: selected
-                ? const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [chipluxCyan, chipluxViolet, chipluxPurple],
-                  )
-                : null,
-            color: selected ? null : chipluxSurface,
-            border: Border.all(
-              color: selected
-                  ? Colors.transparent
-                  : Colors.white.withValues(alpha: 0.08),
-            ),
-            boxShadow: selected
-                ? [
-                    BoxShadow(
-                      color: chipluxViolet.withValues(alpha: 0.16),
-                      blurRadius: 14,
-                    ),
-                  ]
-                : null,
-          ),
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  icon,
-                  size: 17,
-                  color: selected ? chipluxBackground : Colors.white54,
-                ),
-                const SizedBox(width: 6),
-                UiText(
-                  label,
-                  maxLines: 1,
-                  style: TextStyle(
-                    color: selected ? chipluxBackground : Colors.white70,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ],
-            ),
           ),
         ),
       ),
@@ -15136,11 +15071,15 @@ class LibraryPage extends StatefulWidget {
   State<LibraryPage> createState() => _LibraryPageState();
 }
 
-class _LibraryPageState extends State<LibraryPage> {
+class _LibraryPageState extends State<LibraryPage>
+    with SingleTickerProviderStateMixin {
+  static const List<String> _libraryFilters = [
+    'watching', 'favorites', 'completed', 'plan', 'dropped',
+  ];
+
+  late final TabController _libraryTabController;
   late String filter;
   late String selectedMediaType;
-
-  final ScrollController _filterScrollController = ScrollController();
 
   final mediaUserDataService = MediaUserDataService.instance;
 
@@ -15246,8 +15185,8 @@ class _LibraryPageState extends State<LibraryPage> {
     }
   }
 
-  void _sortMusicList(List<MusicLibraryEntry> items) {
-    final sortMode = _sortModeByList[_currentSortKey];
+  void _sortMusicList(List<MusicLibraryEntry> items, {String? sortKey}) {
+    final sortMode = _sortModeByList[sortKey ?? _currentSortKey];
 
     items.sort((a, b) {
       final aRated = a.rating != null;
@@ -15306,8 +15245,8 @@ class _LibraryPageState extends State<LibraryPage> {
     return overallRating != null && ratedEpisodes >= total;
   }
 
-  void _sortCurrentList(List<LibraryItem> items) {
-    final sortMode = _sortModeByList[_currentSortKey];
+  void _sortCurrentList(List<LibraryItem> items, {String? sortKey}) {
+    final sortMode = _sortModeByList[sortKey ?? _currentSortKey];
 
     items.sort((a, b) {
       final bool aRated = _isFullyRated(a);
@@ -15396,7 +15335,7 @@ class _LibraryPageState extends State<LibraryPage> {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: selected != null
-              ? chipluxViolet.withValues(alpha: 0.45)
+              ? chipluxBrightGold.withValues(alpha: 0.45)
               : Colors.white.withValues(alpha: 0.05),
         ),
       ),
@@ -15406,7 +15345,7 @@ class _LibraryPageState extends State<LibraryPage> {
         icon: Icon(
           Icons.sort_rounded,
           size: 27,
-          color: selected != null ? chipluxCyan : Colors.white70,
+          color: selected != null ? chipluxGold : Colors.white70,
         ),
         color: chipluxSurface,
         onSelected: (value) {
@@ -15479,7 +15418,15 @@ class _LibraryPageState extends State<LibraryPage> {
 
     unawaited(_loadWatchingRecency());
 
-    filter = widget.initialFilter;
+    filter = _libraryFilters.contains(widget.initialFilter)
+        ? widget.initialFilter : _libraryFilters.first;
+    _libraryTabController = TabController(
+      length: _libraryFilters.length,
+      initialIndex: _libraryFilters.indexOf(filter),
+      animationDuration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _libraryTabController.addListener(_onLibraryTabChanged);
 
     selectedMediaType = widget.initialMediaType;
 
@@ -15500,49 +15447,20 @@ class _LibraryPageState extends State<LibraryPage> {
     });
   }
 
-  void _scrollFilterIntoView(int index) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_filterScrollController.hasClients) {
-        return;
-      }
-
-      const horizontalPadding = 20.0;
-
-      final itemLeft =
-          horizontalPadding + index * (_filterTabWidth + _filterGap);
-
-      final itemRight = itemLeft + _filterTabWidth;
-
-      final position = _filterScrollController.position;
-
-      final currentOffset = position.pixels;
-
-      final viewportWidth = position.viewportDimension;
-
-      const edgePadding = 12.0;
-
-      double target = currentOffset;
-
-      // Selected tab is cut off
-      // on the right.
-      if (itemRight > currentOffset + viewportWidth - edgePadding) {
-        target = itemRight - viewportWidth + edgePadding;
-      }
-
-      // Selected tab is cut off
-      // on the left.
-      if (itemLeft < currentOffset + edgePadding) {
-        target = itemLeft - edgePadding;
-      }
-
-      target = target.clamp(0.0, position.maxScrollExtent);
-
-      _filterScrollController.animateTo(
-        target,
-        duration: const Duration(milliseconds: 320),
-        curve: Curves.easeInOutCubic,
-      );
+  void _onLibraryTabChanged() {
+    final nextFilter = _libraryFilters[_libraryTabController.index];
+    if (!mounted || nextFilter == filter) return;
+    setState(() {
+      filter = nextFilter;
+      _ensureValidMediaTypeForFilter();
     });
+  }
+
+  @override
+  void dispose() {
+    _libraryTabController.removeListener(_onLibraryTabChanged);
+    _libraryTabController.dispose();
+    super.dispose();
   }
 
   @override
@@ -15554,7 +15472,8 @@ class _LibraryPageState extends State<LibraryPage> {
         oldWidget.initialMediaType != widget.initialMediaType ||
         oldWidget.initialSortMode != widget.initialSortMode) {
       setState(() {
-        filter = widget.initialFilter;
+        filter = _libraryFilters.contains(widget.initialFilter)
+            ? widget.initialFilter : _libraryFilters.first;
 
         selectedMediaType = widget.initialMediaType;
 
@@ -15564,25 +15483,24 @@ class _LibraryPageState extends State<LibraryPage> {
           _sortModeByList[_currentSortKey] = widget.initialSortMode!;
         }
       });
+      final index = _libraryFilters.indexOf(filter);
+      if (_libraryTabController.index != index) {
+        _libraryTabController.animateTo(index);
+      }
     }
   }
 
   Widget _mediaTypeSelector() {
     final mediaTypes = _mediaTypesForCurrentFilter();
-
-    IconData iconFor(String type) {
-      switch (type) {
-        case 'movie':
-          return Icons.movie_outlined;
-        case 'album':
-          return Icons.album_outlined;
-        case 'track':
-          return Icons.music_note_rounded;
-        case 'tv':
-        default:
-          return Icons.tv_outlined;
-      }
-    }
+    // Media type chips inherit the Library section's status accent.
+    const statusColors = <String, Color>{
+      'watching': chipluxGold,
+      'favorites': Color(0xFFFF5252),
+      'completed': Color(0xFF44D586),
+      'plan': Color(0xFFB18CFF),
+      'dropped': Color(0xFFFF5252),
+    };
+    final accent = statusColors[filter] ?? chipluxGold;
 
     String labelFor(String type) {
       switch (type) {
@@ -15598,107 +15516,53 @@ class _LibraryPageState extends State<LibraryPage> {
       }
     }
 
-    Color accentFor(String type) {
-      switch (type) {
-        case 'movie':
-          return chipluxPurple;
-        case 'album':
-          return const Color(0xFFB388FF);
-        case 'track':
-          return const Color(0xFFFF7CCB);
-        case 'tv':
-        default:
-          return chipluxCyan;
-      }
-    }
-
-    final rawSelectedIndex = mediaTypes.indexOf(selectedMediaType);
-    final selectedIndex = rawSelectedIndex < 0 ? 0 : rawSelectedIndex;
-
     return Container(
       height: 54,
       margin: const EdgeInsets.fromLTRB(20, 8, 20, 6),
-      padding: const EdgeInsets.all(5),
-      decoration: BoxDecoration(
-        color: chipluxSurface,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final tabWidth = constraints.maxWidth / mediaTypes.length;
-
-          return Stack(
-            children: [
-              AnimatedPositioned(
-                duration: const Duration(milliseconds: 250),
-                curve: Curves.easeInOutCubic,
-                left: selectedIndex * tabWidth,
-                top: 0,
-                bottom: 0,
-                width: tabWidth,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: chipluxSurfaceLight,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: accentFor(selectedMediaType)
-                          .withValues(alpha: 0.35),
+      color: Colors.transparent,
+      child: Row(
+        children: [
+          for (final type in mediaTypes) ...[
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 3),
+                child: Material(
+                  color: Colors.transparent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(
+                      color: accent.withValues(
+                        alpha: selectedMediaType == type ? .95 : .34,
+                      ),
+                      width: selectedMediaType == type ? 1.5 : 1.0,
                     ),
                   ),
-                ),
-              ),
-              Row(
-                children: [
-                  for (final type in mediaTypes)
-                    Expanded(
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(14),
-                        onTap: () {
-                          setState(() {
-                            selectedMediaType = type;
-                          });
-                        },
-                        child: Center(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 3),
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    iconFor(type),
-                                    size: 17,
-                                    color: selectedMediaType == type
-                                        ? accentFor(type)
-                                        : Colors.white38,
-                                  ),
-                                  const SizedBox(width: 5),
-                                  UiText(
-                                    labelFor(type),
-                                    maxLines: 1,
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: selectedMediaType == type
-                                          ? FontWeight.bold
-                                          : FontWeight.w500,
-                                      color: selectedMediaType == type
-                                          ? Colors.white
-                                          : Colors.white38,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () => setState(() => selectedMediaType = type),
+                    child: Center(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: UiText(
+                          labelFor(type),
+                          maxLines: 1,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: selectedMediaType == type
+                                ? FontWeight.bold : FontWeight.w600,
+                            color: accent.withValues(
+                              alpha: selectedMediaType == type ? 1 : .80,
                             ),
                           ),
                         ),
                       ),
                     ),
-                ],
+                  ),
+                ),
               ),
-            ],
-          );
-        },
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -15706,133 +15570,106 @@ class _LibraryPageState extends State<LibraryPage> {
   @override
   Widget build(BuildContext context) {
     final library = LibraryService.instance;
-
     return SafeArea(
       child: AnimatedBuilder(
         animation: Listenable.merge([
-          library,
-          mediaUserDataService,
-          musicUserDataService,
+          library, mediaUserDataService, musicUserDataService,
           CriticService.instance,
         ]),
-        builder: (context, _) {
-          List<LibraryItem> items = library.items.toList();
-
-          final bool showMediaTypeSelector =
-              filter == 'favorites' ||
-              filter == 'completed' ||
-              filter == 'plan' ||
-              filter == 'dropped';
-
-          final musicSelected = _musicMediaSelected;
-          List<MusicLibraryEntry> musicItems = <MusicLibraryEntry>[];
-
-          if (musicSelected &&
-              (filter == 'favorites' ||
-                  filter == 'completed' ||
-                  filter == 'plan' ||
-                  filter == 'dropped')) {
-            musicItems = selectedMediaType == 'album'
-                ? musicUserDataService.albumEntries.toList()
-                : musicUserDataService.trackEntries.toList();
-
-            if (filter == 'favorites') {
-              musicItems = musicItems
-                  .where((item) => item.isFavorite)
-                  .toList(growable: false);
-            } else if (filter == 'completed') {
-              musicItems = musicItems
-                  .where((item) => item.isAlbum && item.isListened)
-                  .toList(growable: false);
-            } else {
-              // Plan and Dropped are album-only Library buckets.
-              musicItems = musicItems
-                  .where((item) => item.isAlbum && item.libraryStatus == filter)
-                  .toList(growable: false);
-            }
-
-            _sortMusicList(musicItems);
-          } else {
-            if (filter == 'favorites') {
-              items = items.where((item) {
-                return mediaUserDataService.isFavorite(item.id, item.mediaType);
-              }).toList();
-            } else {
-              items = items.where((item) {
-                return item.status == filter;
-              }).toList();
-            }
-
-            if (showMediaTypeSelector) {
-              items = items.where((item) {
-                return item.mediaType == selectedMediaType;
-              }).toList();
-            }
-
-            _sortCurrentList(items);
-          }
-
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
-                child: Row(
-                  children: [
-                    Builder(
-                      builder: (context) {
-                        final title = trUi(context, 'Library');
-                        final split = title.length >= 2 ? 2 : title.length;
-
-                        return BrandedTitle(
-                          whitePart: title.substring(0, split),
-                          gradientPart: title.substring(split),
-                          fontSize: 30,
-                        );
-                      },
-                    ),
-
-                    const Spacer(),
-
-                    _buildSortButton(),
-                  ],
-                ),
+        builder: (context, _) => Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+              child: Row(
+                children: [
+                  const BrandedTitle(
+                    whitePart: 'Libr',
+                    gradientPart: 'ary',
+                    fontSize: 30,
+                  ),
+                  const Spacer(),
+                  _buildSortButton(),
+                ],
               ),
-
-              _buildAnimatedFilterBar(),
-
-              if (filter == 'favorites' ||
-                  filter == 'completed' ||
-                  filter == 'plan' ||
-                  filter == 'dropped')
-                _mediaTypeSelector(),
-
-              Expanded(
-                child: musicSelected
-                    ? musicItems.isEmpty
-                          ? const Center(
-                              child: UiText(
-                                'Nothing here yet.',
-                                style: TextStyle(color: Colors.white54),
-                              ),
-                            )
-                          : _buildMusicLibraryList(musicItems)
-                    : items.isEmpty
-                    ? const Center(
-                        child: UiText(
-                          'Nothing here yet.',
-                          style: TextStyle(color: Colors.white54),
-                        ),
-                      )
-                    : filter == 'watching'
-                    ? _buildWatchingContent(items)
-                    : _buildNormalLibraryGrid(items),
+            ),
+            _buildAnimatedFilterBar(),
+            if (filter != 'watching') _mediaTypeSelector(),
+            Expanded(
+              child: TabBarView(
+                controller: _libraryTabController,
+                children: [
+                  for (final pageFilter in _libraryFilters)
+                    _buildLibraryFilterContent(pageFilter),
+                ],
               ),
-            ],
-          );
-        },
+            ),
+          ],
+        ),
       ),
     );
+  }
+
+  Widget _buildLibraryFilterContent(String pageFilter) {
+    final library = LibraryService.instance;
+    List<LibraryItem> items = library.items.toList();
+    final usesMediaType = pageFilter != 'watching';
+    final musicSelected = usesMediaType && _musicMediaSelected &&
+        ((pageFilter == 'favorites') || (pageFilter == 'completed') ||
+         (pageFilter == 'plan') || (pageFilter == 'dropped'));
+    List<MusicLibraryEntry> musicItems = <MusicLibraryEntry>[];
+    final sortKey = usesMediaType
+        ? '$pageFilter:$selectedMediaType' : pageFilter;
+
+    if (musicSelected) {
+      musicItems = selectedMediaType == 'album'
+          ? musicUserDataService.albumEntries.toList()
+          : musicUserDataService.trackEntries.toList();
+      if (pageFilter == 'favorites') {
+        musicItems = musicItems.where((item) => item.isFavorite).toList();
+      } else if (pageFilter == 'completed') {
+        musicItems = musicItems.where(
+          (item) => item.isAlbum && item.isListened,
+        ).toList();
+      } else {
+        musicItems = musicItems.where(
+          (item) => item.isAlbum && item.libraryStatus == pageFilter,
+        ).toList();
+      }
+      _sortMusicList(musicItems, sortKey: sortKey);
+    } else {
+      if (pageFilter == 'favorites') {
+        items = items.where((item) =>
+          mediaUserDataService.isFavorite(item.id, item.mediaType),
+        ).toList();
+      } else {
+        items = items.where((item) => item.status == pageFilter).toList();
+      }
+      if (usesMediaType) {
+        items = items.where(
+          (item) => item.mediaType == selectedMediaType,
+        ).toList();
+      }
+      _sortCurrentList(items, sortKey: sortKey);
+    }
+
+    if (musicSelected) {
+      return musicItems.isEmpty
+          ? const Center(
+              child: UiText('Nothing here yet.',
+                style: TextStyle(color: Colors.white54)),
+            )
+          : _buildMusicLibraryList(musicItems);
+    }
+    if (items.isEmpty) {
+      return const Center(
+        child: UiText('Nothing here yet.',
+          style: TextStyle(color: Colors.white54)),
+      );
+    }
+    return pageFilter == 'watching'
+        ? _buildWatchingContent(items)
+        : _buildNormalLibraryGrid(items);
   }
 
   Widget _buildWatchingContent(List<LibraryItem> items) {
@@ -15959,51 +15796,14 @@ class _LibraryPageState extends State<LibraryPage> {
     );
   }
 
-  static const double _filterTabWidth = 128;
-  static const double _filterTabHeight = 40;
-  static const double _filterGap = 4;
-
   Color _filterAccent(String value) {
     switch (value) {
-      case 'watching':
-        return chipluxCyan;
-
-      case 'favorites':
-        return const Color(0xFFFFB84D);
-
-      case 'completed':
-        return const Color(0xFF7BE8A8);
-
-      case 'plan':
-        return chipluxPurple;
-
-      case 'dropped':
-        return const Color(0xFFFF6B6B);
-
-      default:
-        return chipluxCyan;
-    }
-  }
-
-  Color _filterBackground(String value) {
-    switch (value) {
-      case 'watching':
-        return const Color(0xFF173A50);
-
-      case 'favorites':
-        return const Color(0xFF3A2A17);
-
-      case 'completed':
-        return const Color(0xFF173A29);
-
-      case 'plan':
-        return const Color(0xFF3A2047);
-
-      case 'dropped':
-        return const Color(0xFF3A1C22);
-
-      default:
-        return chipluxSurfaceLight;
+      case 'watching': return chipluxGold;
+      case 'favorites': return const Color(0xFFFF5252);
+      case 'completed': return const Color(0xFF44D586);
+      case 'plan': return const Color(0xFFB18CFF);
+      case 'dropped': return const Color(0xFFFF5252);
+      default: return chipluxGold;
     }
   }
 
@@ -16052,127 +15852,55 @@ class _LibraryPageState extends State<LibraryPage> {
   }
 
   Widget _buildAnimatedFilterBar() {
-    const filters = ['watching', 'favorites', 'completed', 'plan', 'dropped'];
-
-    final rawIndex = filters.indexOf(filter);
-
-    final selectedIndex = rawIndex < 0 ? 0 : rawIndex;
-
-    final selectedAccent = _filterAccent(filters[selectedIndex]);
-
-    final selectedBackground = _filterBackground(filters[selectedIndex]);
-
-    final totalWidth =
-        (_filterTabWidth * filters.length) +
-        (_filterGap * (filters.length - 1)) +
-        8;
-
-    return SizedBox(
-      height: 52,
-      child: SingleChildScrollView(
-        controller: _filterScrollController,
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Container(
-          width: totalWidth,
-          height: 48,
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: chipluxSurface,
-            borderRadius: BorderRadius.circular(18),
+    // Community-style swipe navigation: each category retains its own color.
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 4, 14, 2),
+      child: SizedBox(
+        height: 60,
+        child: TabBar(
+          controller: _libraryTabController,
+          isScrollable: true,
+          tabAlignment: TabAlignment.start,
+          labelPadding: const EdgeInsets.symmetric(horizontal: 15),
+          dividerColor: Colors.transparent,
+          overlayColor: WidgetStateProperty.all(Colors.transparent),
+          splashFactory: NoSplash.splashFactory,
+          indicatorSize: TabBarIndicatorSize.label,
+          indicator: UnderlineTabIndicator(
+            borderSide: BorderSide(
+              color: _filterAccent(filter), width: 3,
+            ),
+            insets: const EdgeInsets.symmetric(horizontal: 4),
           ),
-          child: Stack(
-            children: [
-              // MOVING HIGHLIGHT
-              AnimatedPositioned(
-                duration: const Duration(milliseconds: 320),
-                curve: Curves.easeInOutCubic,
-                left: selectedIndex * (_filterTabWidth + _filterGap),
-                top: 0,
-                bottom: 0,
-                width: _filterTabWidth,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 280),
-                  curve: Curves.easeInOut,
-                  decoration: BoxDecoration(
-                    color: selectedBackground,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: selectedAccent.withValues(alpha: 0.65),
-                      width: 1.3,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: selectedAccent.withValues(alpha: 0.12),
-                        blurRadius: 12,
+          tabs: [
+            for (final value in _libraryFilters)
+              Tab(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      _filterIcon(value),
+                      size: 19,
+                      color: _filterAccent(value).withValues(
+                        alpha: filter == value ? 1 : .72,
                       ),
-                    ],
-                  ),
-                ),
-              ),
-
-              // BUTTONS
-              Row(
-                children: [
-                  for (int i = 0; i < filters.length; i++) ...[
-                    SizedBox(
-                      width: _filterTabWidth,
-                      height: _filterTabHeight,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(14),
-                        onTap: () {
-                          setState(() {
-                            filter = filters[i];
-                            _ensureValidMediaTypeForFilter();
-                          });
-
-                          _scrollFilterIntoView(i);
-                        },
-                        child: Center(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    _filterIcon(filters[i]),
-                                    size: 17,
-                                    color: filter == filters[i]
-                                        ? _filterAccent(filters[i])
-                                        : Colors.white60,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  UiText(
-                                    _filterLabel(filters[i]),
-                                    maxLines: 1,
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: filter == filters[i]
-                                          ? FontWeight.bold
-                                          : FontWeight.w500,
-                                      color: filter == filters[i]
-                                          ? _filterAccent(filters[i])
-                                          : Colors.white70,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
+                    ),
+                    const SizedBox(width: 7),
+                    UiText(
+                      _filterLabel(value),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: filter == value
+                            ? FontWeight.w800 : FontWeight.w600,
+                        color: _filterAccent(value).withValues(
+                          alpha: filter == value ? 1 : .72,
                         ),
                       ),
                     ),
-
-                    if (i != filters.length - 1)
-                      const SizedBox(width: _filterGap),
                   ],
-                ],
+                ),
               ),
-            ],
-          ),
+          ],
         ),
       ),
     );
@@ -16954,12 +16682,12 @@ class _WatchingTvCardState extends State<_WatchingTvCard> {
           gradient: const LinearGradient(
             begin: Alignment.centerLeft,
             end: Alignment.centerRight,
-            colors: [chipluxCyan, chipluxViolet, chipluxPurple],
+            colors: [chipluxGold, chipluxBrightGold, chipluxAmber],
           ),
 
           boxShadow: [
             BoxShadow(
-              color: chipluxViolet.withValues(
+              color: chipluxBrightGold.withValues(
                 alpha: 0.04 + (_swipeProgress * 0.12),
               ),
               blurRadius: 8 + (_swipeProgress * 10),
@@ -16976,7 +16704,7 @@ class _WatchingTvCardState extends State<_WatchingTvCard> {
             borderRadius: BorderRadius.circular(17),
 
             color: Color.alphaBlend(
-              chipluxViolet.withValues(alpha: 0.025 + (_swipeProgress * 0.035)),
+              chipluxBrightGold.withValues(alpha: 0.025 + (_swipeProgress * 0.035)),
               chipluxBackground,
             ),
           ),
@@ -16995,11 +16723,7 @@ class _WatchingTvCardState extends State<_WatchingTvCard> {
                 children: [
                   ShaderMask(
                     shaderCallback: (bounds) {
-                      return const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [chipluxCyan, chipluxViolet, chipluxPurple],
-                      ).createShader(bounds);
+                      return chipluxTextGradient.createShader(bounds);
                     },
 
                     child: const Icon(
@@ -17105,7 +16829,7 @@ class _WatchingTvCardState extends State<_WatchingTvCard> {
                             'Season $seasonNumber',
 
                             style: const TextStyle(
-                              color: chipluxCyan,
+                              color: chipluxGold,
 
                               fontSize: 12,
 
@@ -17227,7 +16951,7 @@ class _WatchingTvCardState extends State<_WatchingTvCard> {
                               backgroundColor: Colors.white12,
 
                               valueColor: const AlwaysStoppedAnimation<Color>(
-                                chipluxPurple,
+                                chipluxAmber,
                               ),
                             ),
                           ),
@@ -17442,7 +17166,7 @@ class _LibraryListCard extends StatelessWidget {
         break;
 
       case 'plan':
-        statusColor = chipluxPurple;
+        statusColor = chipluxAmber;
         break;
 
       case 'dropped':
@@ -17450,7 +17174,7 @@ class _LibraryListCard extends StatelessWidget {
         break;
 
       default:
-        statusColor = chipluxCyan;
+        statusColor = chipluxGold;
     }
 
     // =====================================
@@ -17952,7 +17676,7 @@ class _LibraryPosterCard extends StatelessWidget {
                       _statusLabel(item.status),
                       style: const TextStyle(
                         fontSize: 10,
-                        color: chipluxCyan,
+                        color: chipluxGold,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -18301,7 +18025,7 @@ class _BannerOptionTileState extends State<_BannerOptionTile> {
                       UiText(
                         widget.item.mediaType == 'tv' ? 'TV' : 'MOVIE',
                         style: const TextStyle(
-                          color: chipluxCyan,
+                          color: chipluxGold,
                           fontSize: 9,
                           fontWeight: FontWeight.bold,
                         ),
@@ -18344,9 +18068,9 @@ class _ProfileBanner extends StatelessWidget {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    chipluxViolet.withValues(alpha: 0.18),
-                    chipluxPurple.withValues(alpha: 0.12),
-                    chipluxCyan.withValues(alpha: 0.10),
+                    chipluxBrightGold.withValues(alpha: 0.18),
+                    chipluxAmber.withValues(alpha: 0.12),
+                    chipluxGold.withValues(alpha: 0.10),
                   ],
                 ),
               ),
@@ -18453,56 +18177,56 @@ List<_AchievementGroup> _discoveryTitleAchievementGroups() {
       milestoneDescription: (target) => 'Watch $target movies recommended to you.',
       name: 'For You · Movies', description: 'Complete movies discovered through For You.',
       icon: Icons.movie_filter_outlined, progress: tracker.progress('for_you_movies'),
-      targets: [2, 4, 8, 16, 32], titles: ['Curious Viewer', 'Suggested Seeker', 'For You Fan', 'Algorithm Explorer', 'Destiny Watcher'],
-      icons: [Icons.play_circle_outline, Icons.movie_outlined, Icons.camera_alt_outlined, Icons.panorama_outlined, Icons.emoji_events_outlined],
+      targets: [1, 2, 4, 6, 8, 12, 16, 24, 32], titles: ['First Recommendation', 'Curious Viewer', 'Suggested Seeker', 'Personal Picks', 'For You Fan', 'Taste Tracker', 'Algorithm Explorer', 'Hidden Gem Hunter', 'Destiny Watcher'],
+      icons: [Icons.play_circle_outline_rounded, Icons.play_circle_outline, Icons.movie_outlined, Icons.recommend_rounded, Icons.camera_alt_outlined, Icons.explore_rounded, Icons.panorama_outlined, Icons.travel_explore_rounded, Icons.emoji_events_outlined],
     ),
     _discoveryTitleGroup(
       id: DiscoveryAchievementService.forYouAlbums,
       milestoneDescription: (target) => 'Listen to $target albums recommended to you.',
       name: 'For You · Albums', description: 'Listen to complete albums discovered through For You.',
       icon: Icons.album, progress: tracker.progress('for_you_albums'),
-      targets: [2, 4, 8, 16, 32], titles: ['Fresh Listener', 'Taste Explorer', 'Recommended Ear', 'Album Adventurer', 'Discovery Listener'],
-      icons: [Icons.radio_button_unchecked, Icons.bar_chart_rounded, Icons.query_stats_rounded, Icons.dynamic_feed_rounded, Icons.tune_rounded],
+      targets: [1, 2, 4, 6, 8, 12, 16, 24, 32], titles: ['First Discovery', 'Fresh Listener', 'Taste Explorer', 'New Sound Scout', 'Recommended Ear', 'Playlist Pioneer', 'Album Adventurer', 'Discovery Curator', 'Discovery Listener'],
+      icons: [Icons.music_note_outlined, Icons.radio_button_unchecked, Icons.bar_chart_rounded, Icons.queue_music_rounded, Icons.query_stats_rounded, Icons.headphones_rounded, Icons.dynamic_feed_rounded, Icons.library_music_outlined, Icons.tune_rounded],
     ),
     _discoveryTitleGroup(
       id: DiscoveryAchievementService.birthdays,
       milestoneDescription: (target) => 'Check who has a birthday $target times.',
       name: 'Birthday Spotlights', description: 'Open unique birthday spotlights.',
       icon: Icons.cake_rounded, progress: tracker.progress('birthdays_checked'),
-      targets: [2, 4, 8, 16, 32, 64], titles: ['Birthday Visitor', 'Wish Keeper', 'Celebration Scout', 'Cake Chronicler', 'Birthday Archivist', 'Master Celebrant'],
-      icons: [Icons.cake_outlined, Icons.today_rounded, Icons.calendar_month_outlined, Icons.notifications_active_outlined, Icons.favorite_border_rounded, Icons.star_rounded],
+      targets: [1, 2, 4, 8, 12, 16, 32, 48, 64], titles: ['First Candle', 'Birthday Visitor', 'Wish Keeper', 'Celebration Scout', 'Party Planner', 'Cake Chronicler', 'Birthday Archivist', 'Spotlight Keeper', 'Master Celebrant'],
+      icons: [Icons.celebration_outlined, Icons.cake_outlined, Icons.today_rounded, Icons.calendar_month_outlined, Icons.local_activity_rounded, Icons.notifications_active_outlined, Icons.favorite_border_rounded, Icons.stars_rounded, Icons.star_rounded],
     ),
     _discoveryTitleGroup(
       id: DiscoveryAchievementService.memorials,
       milestoneDescription: (target) => 'Pay your respects $target times.',
       name: 'In Memoriam Spotlights', description: 'Open unique in memoriam spotlights.',
       icon: Icons.local_florist_outlined, progress: tracker.progress('memorials_checked'),
-      targets: [2, 4, 8, 16, 32, 64], titles: ['Quiet Visitor', 'Remembrance Keeper', 'Memory Walker', 'Legacy Watcher', 'Honor Bearer', 'Eternal Remembrance'],
-      icons: [Icons.lightbulb_outline_rounded, Icons.bookmark_border_rounded, Icons.visibility_outlined, Icons.diamond_outlined, Icons.verified_user_outlined, Icons.favorite_rounded],
+      targets: [1, 2, 4, 8, 12, 16, 32, 48, 64], titles: ['First Tribute', 'Quiet Visitor', 'Remembrance Keeper', 'Memory Walker', 'Legacy Reader', 'Legacy Watcher', 'Honor Bearer', 'Guardian of Memory', 'Eternal Remembrance'],
+      icons: [Icons.local_florist_outlined, Icons.lightbulb_outline_rounded, Icons.bookmark_border_rounded, Icons.visibility_outlined, Icons.auto_stories_outlined, Icons.diamond_outlined, Icons.verified_user_outlined, Icons.history_toggle_off_rounded, Icons.favorite_rounded],
     ),
     _discoveryTitleGroup(
       id: DiscoveryAchievementService.allTimeMovies,
       milestoneDescription: (target) => 'Watch $target movies from All Time 100 Lists category.',
       name: 'All Time · Movies', description: 'Complete films discovered through the Movies All Time Top 100.',
       icon: Icons.local_movies_outlined, progress: tracker.progress('all_time_movies'),
-      targets: [2, 4, 8, 16, 32, 64], titles: ['Classic Taster', 'Top 100 Tourist', 'All-Time Watcher', 'Cinema Climber', 'Screen Historian', 'All-Time Legend'],
-      icons: [Icons.format_list_numbered_rounded, Icons.grid_view_rounded, Icons.flag_outlined, Icons.done_all_rounded, Icons.check_circle_outline_rounded, Icons.check_circle_rounded],
+      targets: [1, 2, 4, 8, 12, 16, 32, 48, 64], titles: ['First Classic', 'Classic Taster', 'Top 100 Tourist', 'All-Time Watcher', 'Cinema Pathfinder', 'Cinema Climber', 'Screen Historian', 'Classic Curator', 'All-Time Legend'],
+      icons: [Icons.movie_outlined, Icons.format_list_numbered_rounded, Icons.grid_view_rounded, Icons.flag_outlined, Icons.theaters_rounded, Icons.done_all_rounded, Icons.check_circle_outline_rounded, Icons.local_movies_outlined, Icons.check_circle_rounded],
     ),
     _discoveryTitleGroup(
       id: DiscoveryAchievementService.allTimeTv,
       milestoneDescription: (target) => 'Watch $target TV shows from All Time 100 Lists category.',
       name: 'All Time · TV Shows', description: 'Complete TV shows discovered through the TV All Time Top 100.',
       icon: Icons.video_library, progress: tracker.progress('all_time_tv'),
-      targets: [2, 4, 8, 16, 32], titles: ['Timeless Pilot', 'Channel Hopper', 'Top Show Viewer', 'Binge Historian', 'Prime-Time Icon'],
-      icons: [Icons.home_outlined, Icons.timer_outlined, Icons.notes_rounded, Icons.quiz_outlined, Icons.trending_up_rounded],
+      targets: [1, 2, 4, 6, 8, 12, 16, 24, 32], titles: ['First Favorite', 'Timeless Pilot', 'Channel Hopper', 'Show Sampler', 'Top Show Viewer', 'Series Historian', 'Binge Historian', 'Television Curator', 'Prime-Time Icon'],
+      icons: [Icons.tv_outlined, Icons.home_outlined, Icons.timer_outlined, Icons.live_tv_rounded, Icons.notes_rounded, Icons.video_library_outlined, Icons.quiz_outlined, Icons.workspace_premium_outlined, Icons.trending_up_rounded],
     ),
     _discoveryTitleGroup(
       id: DiscoveryAchievementService.genreAlbums,
       milestoneDescription: (target) => 'Listen to $target albums from any genre in 100 Lists.',
       name: '100 Lists · Genre Albums', description: 'Listen to complete albums discovered through any Top 100 genre list.',
       icon: Icons.category_outlined, progress: tracker.progress('genre_top_albums'),
-      targets: [2, 4, 8, 16, 32, 64], titles: ['Genre Dipper', 'Sound Wanderer', 'Genre Hunter', 'Chart Crate Digger', 'Genre Voyager', 'Master of Variety'],
-      icons: [Icons.badge_outlined, Icons.lightbulb_rounded, Icons.palette_outlined, Icons.gradient_rounded, Icons.swap_horiz_rounded, Icons.manage_search_rounded],
+      targets: [1, 2, 4, 8, 12, 16, 32, 48, 64], titles: ['First Genre', 'Genre Dipper', 'Sound Wanderer', 'Genre Hunter', 'Genre Collector', 'Chart Crate Digger', 'Genre Voyager', 'Cross-Genre Curator', 'Master of Variety'],
+      icons: [Icons.music_note_rounded, Icons.badge_outlined, Icons.lightbulb_rounded, Icons.palette_outlined, Icons.headphones_rounded, Icons.gradient_rounded, Icons.swap_horiz_rounded, Icons.album_outlined, Icons.manage_search_rounded],
     ),
   ];
 }
@@ -18574,6 +18298,124 @@ List<_AchievementGroup> _customMovieAchievementGroups() {
   ];
 }
 
+// New milestones are inserted BETWEEN existing tiers where feasible, keeping
+// published IDs and previous final requirements stable. The visual ladder is
+// tied to milestone order (1..9), not the numeric target.
+const _extraBuiltInMilestones = <String, List<(int, String)>>{
+    'tv_shows_completed': [(4, 'Pilot Collector'), (96, 'Prime-Time Regular')],
+    'episodes_watched': [(32, 'Episode Explorer'), (64, 'Season Sampler'), (384, 'Serial Devotee'), (1536, 'Binge Veteran')],
+    'episodes_rated': [(4, 'First Episode Critic'), (384, 'Episode Connoisseur')],
+    'tv_shows_rated': [(4, 'Show Reviewer'), (96, 'Television Critic')],
+    'movies_rated': [(4, 'Reel Reviewer'), (96, 'Film Evaluator')],
+    'albums_listened': [(4, 'Vinyl Wanderer'), (16, 'Sound Collector'), (48, 'Album Enthusiast'), (96, 'Deep Cuts Listener')],
+    'songs_listened': [(16, 'First Playlist'), (64, 'Playlist Builder'), (256, 'Tune Tracker'), (768, 'Sound Archivist')],
+    'albums_rated': [(4, 'Record Reviewer'), (16, 'Album Judge'), (48, 'Sleeve Critic'), (96, 'Album Curator')],
+    'songs_rated': [(8, 'First Song Critic'), (32, 'Melody Reviewer'), (128, 'Playlist Judge'), (768, 'Track Connoisseur')],
+    'runtime_level': [(5, 'Screen Apprentice'), (40, 'Runtime Pathfinder'), (60, 'Runtime Expert')],
+    'ratings_level': [(5, 'Rookie Reviewer'), (15, 'Rising Critic'), (35, 'Critic Virtuoso')],
+    'daily_logins': [(3, 'New Regular'), (21, 'Three-Week Regular'), (60, 'Dedicated Visitor')],
+    'followers': [(4, 'First Audience'), (24, 'Growing Circle'), (96, 'Community Favorite')],
+    'public_profiles_viewed': [(8, 'First Connections'), (384, 'Profile Pathfinder')],
+    'medal_collection': [(4, 'First Medals'), (12, 'Medal Seeker'), (24, 'Collection Builder'), (96, 'Prestige Collector')],
+};
+
+const _newMilestoneIcons = <IconData>[
+  Icons.explore_rounded, Icons.analytics_rounded, Icons.stars_rounded, Icons.auto_awesome_rounded, Icons.workspace_premium_outlined, Icons.military_tech_outlined, Icons.diamond_outlined, Icons.electric_bolt_outlined, Icons.psychology_rounded, Icons.emoji_events_outlined, Icons.flag_outlined, Icons.hiking_outlined, Icons.local_activity_rounded, Icons.interests_outlined, Icons.movie_filter_outlined, Icons.camera_roll_outlined, Icons.music_note_outlined, Icons.graphic_eq_rounded, Icons.playlist_add_check_rounded, Icons.headphones_rounded, Icons.record_voice_over_rounded, Icons.celebration_outlined, Icons.leaderboard_rounded, Icons.travel_explore_rounded, Icons.reviews_outlined, Icons.verified_rounded, Icons.public_rounded, Icons.favorite_border_rounded, Icons.bolt_outlined, Icons.palette_outlined, Icons.lightbulb_outline_rounded, Icons.hourglass_full_rounded
+];
+
+_AchievementRarity _rarityForMilestone(int index) {
+  if (index >= 8) return _AchievementRarity.legendary;
+  if (index >= 6) return _AchievementRarity.epic;
+  if (index >= 4) return _AchievementRarity.rare;
+  if (index >= 2) return _AchievementRarity.uncommon;
+  return _AchievementRarity.common;
+}
+
+List<_Achievement> _normalizeBuiltinAchievementTiers(
+  String groupId, int current, List<_Achievement> originals,
+) {
+  // These have their own authored requirements and must never be expanded.
+  if (groupId == 'follow_developer' || groupId.startsWith('custom_movie_')) {
+    return originals;
+  }
+  final result = <_Achievement>[...originals];
+  final extras = _extraBuiltInMilestones[groupId] ?? const <(int, String)>[];
+  final usedIcons = result.map((tier) => tier.icon).toSet();
+  var nextIcon = 0;
+  for (final (target, title) in extras) {
+    if (result.any((tier) => tier.target == target)) continue;
+    while (nextIcon < _newMilestoneIcons.length &&
+        usedIcons.contains(_newMilestoneIcons[nextIcon])) {
+      nextIcon++;
+    }
+    final icon = _newMilestoneIcons[nextIcon % _newMilestoneIcons.length];
+    usedIcons.add(icon);
+    nextIcon++;
+    result.add(_Achievement(
+      id: '${_builtinRewardPrefixes[groupId]}_$target',
+      title: title,
+      description: _builtinMilestoneDescriptions[groupId]!
+          .replaceAll('{n}', '$target'),
+      icon: icon,
+      current: current,
+      target: target,
+      rarity: _AchievementRarity.common,
+    ));
+  }
+  result.sort((a, b) => a.target.compareTo(b.target));
+  assert(result.length == 9,
+      'Built-in achievement group $groupId must have exactly nine milestones. Found ${result.length}.');
+  return List<_Achievement>.generate(result.length, (i) {
+    final tier = result[i];
+    return _Achievement(
+      id: tier.id,
+      title: tier.title,
+      description: tier.description,
+      icon: tier.icon,
+      current: tier.current,
+      target: tier.target,
+      rarity: _rarityForMilestone(i),
+      visualTier: i + 1,
+      unlockedOverride: tier.unlockedOverride,
+    );
+  }, growable: false);
+}
+
+const _builtinRewardPrefixes = <String, String>{
+  'tv_shows_completed': 'tv',
+  'episodes_watched': 'episodes',
+  'episodes_rated': 'episodes_rated',
+  'tv_shows_rated': 'tv_rated',
+  'movies_rated': 'movies_rated',
+  'albums_listened': 'albums_listened',
+  'songs_listened': 'songs_listened',
+  'albums_rated': 'albums_rated',
+  'songs_rated': 'songs_rated',
+  'runtime_level': 'runtime_level',
+  'ratings_level': 'ratings_level',
+  'daily_logins': 'login',
+  'followers': 'followers',
+  'public_profiles_viewed': 'profile_views',
+  'medal_collection': 'medal_collection',
+};
+const _builtinMilestoneDescriptions = <String, String>{
+  'tv_shows_completed': 'Complete {n} TV shows',
+  'episodes_watched': 'Watch {n} episodes',
+  'episodes_rated': 'Rate {n} episodes',
+  'tv_shows_rated': 'Rate {n} TV shows',
+  'movies_rated': 'Rate {n} movies',
+  'albums_listened': 'Listen to {n} albums',
+  'songs_listened': 'Listen to {n} songs',
+  'albums_rated': 'Rate {n} albums',
+  'songs_rated': 'Rate {n} songs',
+  'runtime_level': 'Reach Runtime Level {n}',
+  'ratings_level': 'Reach Ratings Level {n}',
+  'daily_logins': 'Log in on {n} different days',
+  'followers': 'Have {n} followers',
+  'public_profiles_viewed': 'View {n} public profiles',
+  'medal_collection': 'Unlock {n} achievement milestones',
+};
+
 class _AchievementGroup {
   final String id;
   final String title;
@@ -18582,14 +18424,14 @@ class _AchievementGroup {
   final int current;
   final List<_Achievement> tiers;
 
-  const _AchievementGroup({
+  _AchievementGroup({
     required this.id,
     required this.title,
     required this.description,
     required this.icon,
     required this.current,
-    required this.tiers,
-  });
+    required List<_Achievement> tiers,
+  }) : tiers = _normalizeBuiltinAchievementTiers(id, current, tiers);
 
   _Achievement? get highestUnlockedTier {
     _Achievement? result;
@@ -19427,7 +19269,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
                                 ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
                             size: 18,
                             color: CustomMovieAchievementService.instance.hasWatched(movieId) || group.completed
-                                ? chipluxCyan : Colors.white38,
+                                ? chipluxGold : Colors.white38,
                           ),
                           const SizedBox(width: 8),
                           Expanded(child: Text(customMovie.movieTitles[movieId] ?? 'Movie #$movieId',
@@ -19993,10 +19835,10 @@ class _AchievementsPageState extends State<AchievementsPage> {
                         indicatorSize: TabBarIndicatorSize.tab,
                         indicator: BoxDecoration(
                           borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: chipluxCyan, width: 1.5),
-                          color: chipluxCyan.withValues(alpha: 0.07),
+                          border: Border.all(color: chipluxGold, width: 1.5),
+                          color: chipluxGold.withValues(alpha: 0.07),
                         ),
-                        labelColor: chipluxCyan,
+                        labelColor: chipluxGold,
                         unselectedLabelColor: Colors.white54,
                         labelStyle: const TextStyle(
                           fontSize: 12,
@@ -20433,7 +20275,7 @@ class _AchievementGroupCard extends StatelessWidget {
                 next != null ? '${group.current.clamp(0, next.target)} / ${next.target}'
                     : isPinned ? 'PINNED' : 'COMPLETE',
                 style: TextStyle(
-                  color: isPinned ? chipluxCyan : Colors.white38,
+                  color: isPinned ? chipluxGold : Colors.white38,
                   fontSize: 8, fontWeight: FontWeight.bold,
                 ),
               ),
@@ -20451,7 +20293,7 @@ Color _achievementAccent(_AchievementRarity rarity) {
       return Colors.white;
 
     case _AchievementRarity.uncommon:
-      return chipluxCyan;
+      return chipluxGold;
 
     case _AchievementRarity.rare:
       return const Color(0xFFFFC857);
@@ -20460,61 +20302,173 @@ Color _achievementAccent(_AchievementRarity rarity) {
       return const Color(0xFFFF5C72);
 
     case _AchievementRarity.legendary:
-      return chipluxPurple;
+      return chipluxAmber;
+  }
+}
+
+List<Color> _achievementTierPalette(int tier) {
+  switch (tier) {
+    case 0: return const [Color(0xFF9CA3AF), Color(0xFF9CA3AF)]; // Locked / no reward
+    case 1: return const [Color(0xFF4ADE80), Color(0xFF4ADE80)]; // Green
+    case 2: return const [Color(0xFF60A5FA), Color(0xFF60A5FA)]; // Blue
+    case 3: return const [Color(0xFFFACC15), Color(0xFFFACC15)]; // Yellow
+    case 4: return const [Color(0xFFB388FF), Color(0xFFB388FF)]; // Purple
+    case 5: return const [Color(0xFFFF5252), Color(0xFFFF5252)]; // Red
+    case 6: return const [Color(0xFFFFD54F), Color(0xFFFF453A)];
+    case 7: return const [Color(0xFF36E5C2), Color(0xFF3B82F6), Color(0xFFB477FF)];
+    case 8: return const [Color(0xFFFF4757), Color(0xFFA855F7), Color(0xFFFBBF24), Color(0xFF22D3EE)];
+    case 9: return const [
+      Color(0xFFFFE27A), Color(0xFFFF4173), Color(0xFFB16BFF),
+      Color(0xFF5CE1FF), Color(0xFF4CFFB8), Color(0xFFFFE27A),
+    ];
+    default: return const [Color(0xFF9CA3AF)];
   }
 }
 
 List<Color> _achievementTierColors(_Achievement? achievement) {
-  if (achievement == null) {
-    return const [];
+  if (achievement == null) return const [];
+  // Do not re-theme developer-created titles or the follow-developer prize.
+  if (achievement.id.startsWith('custom_movie_title_')) {
+    return const [Color(0xFFF7F9FC), Color(0xFFBFC9D4)];
+  }
+  if (achievement.id == followDeveloperAchievementId) {
+    return const [Color(0xFFA855F7), Color(0xFFD946EF)];
+  }
+  return _achievementTierPalette(achievement.visualTier);
+}
+
+
+// Ninth-tier achievement rewards have a signature animated prismatic outline.
+// All earlier tiers are intentionally static and visually quieter.
+class _LegendaryTierAura extends StatefulWidget {
+  final Widget child;
+  final bool enabled;
+  final double borderRadius;
+  final bool circle;
+  const _LegendaryTierAura({
+    required this.child,
+    required this.enabled,
+    this.borderRadius = 14,
+    this.circle = false,
+  });
+
+  @override
+  State<_LegendaryTierAura> createState() => _LegendaryTierAuraState();
+}
+
+class _LegendaryTierAuraState extends State<_LegendaryTierAura>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _motion;
+
+  @override
+  void initState() {
+    super.initState();
+    _motion = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 5800),
+    );
+    if (widget.enabled) _motion.repeat();
   }
 
-  switch (achievement.visualTier) {
-    case 1:
-      // Silver
-      return const [Color(0xFFF7F9FC), Color(0xFFBFC9D4)];
-
-    case 2:
-      // Strong blue
-      return const [Color(0xFF38BDF8), Color(0xFF2563EB)];
-
-    case 3:
-      // Strong violet / magenta
-      return const [Color(0xFFA855F7), Color(0xFFD946EF), Color(0xFF6366F1)];
-
-    case 4:
-      // Pure gold
-      return const [Color(0xFFFFF3A3), Color(0xFFFFC400), Color(0xFFE6A700)];
-
-    case 5:
-      // Fire / molten
-      return const [Color(0xFFFF8A3D), Color(0xFFFF4D4D), Color(0xFFD91E36)];
-
-    case 6:
-      // Crimson / magenta
-      return const [Color(0xFFFF416C), Color(0xFFD65CFF), Color(0xFF7A5CFF)];
-
-    case 7:
-      // Emerald / aurora
-      return const [Color(0xFF5CFFD1), Color(0xFF25D98F), Color(0xFF43E8FF)];
-
-    case 8:
-      // Mythic purple
-      return const [Color(0xFFFF6BFF), Color(0xFF9B5CFF), Color(0xFF5C7CFF)];
-
-    case 9:
-      // Legendary prism
-      return const [
-        Color(0xFFFFD86B),
-        Color(0xFFFF6B8A),
-        Color(0xFFD65CFF),
-        Color(0xFF43E8FF),
-      ];
-
-    default:
-      // Ultra / future tiers
-      return const [Color(0xFFFFFFFF), Color(0xFFCBD5E1), Color(0xFF94A3B8)];
+  @override
+  void didUpdateWidget(covariant _LegendaryTierAura oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.enabled && !_motion.isAnimating) _motion.repeat();
+    if (!widget.enabled && _motion.isAnimating) _motion.stop();
   }
+
+  @override
+  void dispose() {
+    _motion.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!widget.enabled) return widget.child;
+    return Stack(
+      fit: StackFit.passthrough,
+      children: [
+        widget.child,
+        Positioned.fill(
+          child: IgnorePointer(
+            child: RepaintBoundary(
+              child: AnimatedBuilder(
+                animation: _motion,
+                builder: (context, _) => CustomPaint(
+                  painter: _LegendaryTierAuraPainter(
+                    phase: _motion.value,
+                    borderRadius: widget.borderRadius,
+                    circle: widget.circle,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _LegendaryTierAuraPainter extends CustomPainter {
+  final double phase;
+  final double borderRadius;
+  final bool circle;
+  const _LegendaryTierAuraPainter({
+    required this.phase,
+    required this.borderRadius,
+    required this.circle,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.isEmpty) return;
+    final bounds = Offset.zero & size;
+    final rect = bounds.deflate(1.8);
+    final path = Path();
+    if (circle) {
+      path.addOval(rect);
+    } else {
+      path.addRRect(RRect.fromRectAndRadius(
+        rect, Radius.circular(borderRadius),
+      ));
+    }
+    final palette = _achievementTierPalette(9);
+    final sweep = SweepGradient(
+      colors: palette,
+      transform: GradientRotation(phase * math.pi * 2),
+    ).createShader(bounds);
+    canvas.drawPath(path, Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.4
+      ..color = const Color(0xFFA855F7).withValues(alpha:
+          0.20 + 0.12 * math.sin(phase * math.pi * 2).abs())
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8));
+    canvas.drawPath(path, Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.1
+      ..shader = sweep);
+    // Four orbiting glints run around the frame at slightly different phases.
+    final perim = path.computeMetrics().first;
+    for (var i = 0; i < 4; i++) {
+      final t = (phase + i / 4) % 1.0;
+      final tangent = perim.getTangentForOffset(perim.length * t);
+      if (tangent == null) continue;
+      final center = tangent.position;
+      final radius = i.isEven ? 2.4 : 1.6;
+      canvas.drawCircle(center, radius + 2, Paint()
+        ..color = Colors.white.withValues(alpha: 0.20)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4));
+      canvas.drawCircle(center, radius,
+          Paint()..color = i.isEven ? const Color(0xFFFFF3C2) : Colors.white);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _LegendaryTierAuraPainter oldDelegate) =>
+      oldDelegate.phase != phase ||
+      oldDelegate.borderRadius != borderRadius || oldDelegate.circle != circle;
 }
 
 class _AchievementMedal extends StatefulWidget {
@@ -20551,7 +20505,7 @@ class _AchievementMedalState extends State<_AchievementMedal>
 
   void _updateAnimation() {
     final shouldAnimate =
-        widget.achievement.unlocked && widget.achievement.visualTier >= 5;
+        widget.achievement.unlocked && widget.achievement.visualTier == 9;
 
     if (shouldAnimate) {
       if (!_controller.isAnimating) {
@@ -20573,70 +20527,9 @@ class _AchievementMedalState extends State<_AchievementMedal>
     super.dispose();
   }
 
-  List<Color> _colors() {
-    if (!widget.achievement.unlocked) {
-      return const [Colors.white24, Colors.white12];
-    }
-
-    switch (widget.achievement.visualTier) {
-      // =========================
-      // TIER 1
-      // WHITE / SILVER
-      // =========================
-      case 1:
-        return const [Colors.white, Color(0xFFBFC9D4)];
-
-      // =========================
-      // TIER 2
-      // CYAN / BLUE
-      // =========================
-      case 2:
-        return const [chipluxCyan, Color(0xFF64BFFF)];
-
-      // =========================
-      // TIER 3
-      // CYAN / VIOLET
-      // =========================
-      case 3:
-        return const [chipluxCyan, chipluxViolet];
-
-      // =========================
-      // TIER 4
-      // GOLD
-      // =========================
-      case 4:
-        return const [Color(0xFFFFF1A8), Color(0xFFFFC857)];
-
-      // =========================
-      // TIER 5
-      // ORANGE / RED
-      // =========================
-      case 5:
-        return const [Color(0xFFFFC857), Color(0xFFFF8A4C), Color(0xFFFF5C72)];
-
-      // =========================
-      // TIER 6
-      // RED / PURPLE
-      // =========================
-      case 6:
-        return const [Color(0xFFFF5C72), chipluxPurple, chipluxViolet];
-
-      // =========================
-      // TIER 7+
-      // RAINBOW / ENDGAME
-      // =========================
-      default:
-        return const [
-          chipluxCyan,
-          Colors.white,
-          chipluxViolet,
-          chipluxPurple,
-          Color(0xFFFF5C72),
-          Color(0xFFFFC857),
-          chipluxCyan,
-        ];
-    }
-  }
+  List<Color> _colors() => widget.achievement.unlocked
+      ? _achievementTierColors(widget.achievement)
+      : _achievementTierPalette(0);
 
   @override
   Widget build(BuildContext context) {
@@ -20646,9 +20539,9 @@ class _AchievementMedalState extends State<_AchievementMedal>
       animation: _controller,
 
       builder: (context, _) {
-        final bool rotating = widget.achievement.visualTier >= 5 && unlocked;
+        final bool rotating = widget.achievement.visualTier == 9 && unlocked;
 
-        final bool finalTier = widget.achievement.visualTier >= 7 && unlocked;
+        final bool finalTier = widget.achievement.visualTier == 9 && unlocked;
 
         final rotation = rotating ? _controller.value * math.pi * 2 : 0.0;
 
@@ -20731,65 +20624,21 @@ class _AchievementMedalState extends State<_AchievementMedal>
 }
 
 List<Color> _avatarFrameColors(String frameId) {
-  switch (frameId) {
-    case 'profile_views_16':
-      return const [Colors.white, Color(0xFFBFC9D4)];
-
-    case 'profile_views_32':
-      return const [chipluxCyan, Color(0xFF64BFFF)];
-
-    case 'profile_views_64':
-      return const [chipluxCyan, chipluxViolet];
-
-    case 'profile_views_128':
-      return const [Color(0xFFFFF1A8), Color(0xFFFFC857)];
-
-    case 'profile_views_256':
-      return const [Color(0xFFFFC857), Color(0xFFFF8A4C), Color(0xFFFF5C72)];
-
-    case 'profile_views_512':
-      return const [Color(0xFFFF5C72), chipluxPurple, chipluxViolet];
-
-    case 'profile_views_1024':
-      return const [
-        chipluxCyan,
-        Colors.white,
-        chipluxViolet,
-        chipluxPurple,
-        Color(0xFFFF5C72),
-        Color(0xFFFFC857),
-        chipluxCyan,
-      ];
-
-    default:
-      return const [Colors.white, Colors.white54];
+  final group = _publicProfileViewAchievementGroupFor(0);
+  for (final tier in group.tiers) {
+    if (tier.id == frameId) return _achievementTierColors(tier);
   }
+  return _achievementTierPalette(0);
 }
 
 List<Color> _displayNameFrameColors(String frameId) {
-  switch (frameId) {
-    case 'login_7':
-      return const [Colors.white, Color(0xFFBFC9D4)];
-
-    case 'login_14':
-      return const [chipluxCyan, Color(0xFF64BFFF)];
-
-    case 'login_30':
-      return const [chipluxCyan, chipluxViolet];
-
-    case 'login_90':
-      return const [Color(0xFFFFF1A8), Color(0xFFFFC857)];
-
-    case 'login_180':
-      return const [Color(0xFFFFC857), Color(0xFFFF8A4C), Color(0xFFFF5C72)];
-
-    case 'login_360':
-      return const [Color(0xFFFF5C72), chipluxPurple, chipluxViolet];
-
-    default:
-      return const [Colors.white, Colors.white54];
+  final group = _dailyLoginAchievementGroupFor(0);
+  for (final tier in group.tiers) {
+    if (tier.id == frameId) return _achievementTierColors(tier);
   }
+  return _achievementTierPalette(0);
 }
+
 
 class DailyLoginService extends ChangeNotifier {
   DailyLoginService._();
@@ -21962,7 +21811,8 @@ class _AchievementCosmeticService extends ChangeNotifier {
     }
 
     for (final tier in group.tiers) {
-      if (tier.id == selectedId && tier.unlocked) {
+      if (tier.id == selectedId &&
+          (tier.unlocked || ProfileService.instance.hasDeveloperRewardAccess)) {
         return tier;
       }
     }
@@ -22102,7 +21952,11 @@ class _AvatarFrame extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = frameId == null ? null : _avatarFrameColors(frameId!);
 
-    return Container(
+    return _LegendaryTierAura(
+      enabled: frameId != null && _publicProfileViewAchievementGroupFor(0).tiers.last.id == frameId,
+      borderRadius: 44,
+      circle: true,
+      child: Container(
       padding: EdgeInsets.all(frameId == null ? 3 : 4),
 
       decoration: BoxDecoration(
@@ -22137,7 +21991,7 @@ class _AvatarFrame extends StatelessWidget {
       ),
 
       child: child,
-    );
+    ));
   }
 }
 
@@ -22150,9 +22004,13 @@ class _ProfileTitleLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = _achievementTierColors(achievement);
 
-    final accent = colors.isNotEmpty ? colors.first : chipluxCyan;
+    final accent = colors.isNotEmpty ? colors.first : chipluxGold;
 
-    return Container(
+    return _LegendaryTierAura(
+      enabled: achievement.visualTier == 9,
+      borderRadius: 18,
+      circle: false,
+      child: Container(
       constraints: const BoxConstraints(maxWidth: 220),
 
       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 4),
@@ -22188,7 +22046,7 @@ class _ProfileTitleLabel extends StatelessWidget {
           letterSpacing: 0.9,
         ),
       ),
-    );
+    ));
   }
 }
 
@@ -22696,7 +22554,7 @@ class _DeveloperTitleLabelState extends State<_DeveloperTitleLabel>
               const Color(0xFFFFD166),
               pulse,
             ) ??
-            chipluxCyan;
+            chipluxGold;
 
         return Container(
           constraints: const BoxConstraints(maxWidth: 220),
@@ -22749,13 +22607,7 @@ class _DeveloperTitleLabelState extends State<_DeveloperTitleLabel>
 
                   end: Alignment(0.5 + (t * 2), 0),
 
-                  colors: const [
-                    Color(0xFF00E5FF),
-                    Color(0xFFB388FF),
-                    Color(0xFFFFD166),
-                    Color(0xFFFF4FD8),
-                    Color(0xFF00E5FF),
-                  ],
+                  colors: const [chipluxGold, chipluxBrightGold, chipluxGold],
                 ).createShader(bounds);
               },
 
@@ -22786,7 +22638,7 @@ class _DeveloperTitleLabelState extends State<_DeveloperTitleLabel>
                   SizedBox(width: 5),
 
                   Icon(
-                    Icons.auto_awesome_rounded,
+                    Icons.code_rounded,
 
                     color: Colors.white,
 
@@ -22818,7 +22670,11 @@ class _DisplayNameFrame extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = frameId == null ? null : _displayNameFrameColors(frameId!);
 
-    return Container(
+    return _LegendaryTierAura(
+      enabled: frameId != null && _dailyLoginAchievementGroupFor(0).tiers.last.id == frameId,
+      borderRadius: 30,
+      circle: false,
+      child: Container(
       padding: EdgeInsets.all(frameId == null ? 1.2 : 1.6),
 
       decoration: BoxDecoration(
@@ -22850,7 +22706,7 @@ class _DisplayNameFrame extends StatelessWidget {
       ),
 
       child: child,
-    );
+    ));
   }
 }
 
@@ -22896,7 +22752,7 @@ class _DisplayNameFrameOption extends StatelessWidget {
 
               border: Border.all(
                 color: selected
-                    ? chipluxCyan.withValues(alpha: 0.65)
+                    ? chipluxGold.withValues(alpha: 0.65)
                     : Colors.white.withValues(alpha: 0.06),
 
                 width: selected ? 1.3 : 1,
@@ -23506,16 +23362,7 @@ class _ProfilePageState extends State<ProfilePage> {
     final visibleStats = expanded ? stats : stats.take(4).toList();
     final canExpand = stats.length > 4;
 
-    const genreColors = <Color>[
-      chipluxCyan,
-      Color(0xFF55C7FF),
-      chipluxViolet,
-      chipluxPurple,
-      Color(0xFF6F7CFF),
-      Color(0xFF43B8FF),
-      Color(0xFFB56DFF),
-      Color(0xFF5363B8),
-    ];
+    const genreColors = _genreChartColors;
 
     Color genreColor(int index) {
       return genreColors[index % genreColors.length];
@@ -23545,10 +23392,10 @@ class _ProfilePageState extends State<ProfilePage> {
       decoration: BoxDecoration(
         color: chipluxSurface,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: chipluxCyan.withValues(alpha: 0.14)),
+        border: Border.all(color: chipluxGold.withValues(alpha: 0.14)),
         boxShadow: [
           BoxShadow(
-            color: chipluxViolet.withValues(alpha: 0.07),
+            color: chipluxBrightGold.withValues(alpha: 0.07),
             blurRadius: 18,
             spreadRadius: 1,
           ),
@@ -23559,7 +23406,7 @@ class _ProfilePageState extends State<ProfilePage> {
         children: [
           Row(
             children: [
-              Icon(icon, color: chipluxCyan, size: 27),
+              Icon(icon, color: chipluxGold, size: 27),
               const SizedBox(width: 10),
               Expanded(
                 child: FittedBox(
@@ -23705,7 +23552,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           ? 'Show less'
                           : 'Show all ${stats.length} genres',
                       style: const TextStyle(
-                        color: chipluxCyan,
+                        color: chipluxGold,
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),
@@ -23715,7 +23562,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       expanded
                           ? Icons.keyboard_arrow_up_rounded
                           : Icons.keyboard_arrow_down_rounded,
-                      color: chipluxCyan,
+                      color: chipluxGold,
                       size: 20,
                     ),
                   ],
@@ -23782,13 +23629,7 @@ class _ProfilePageState extends State<ProfilePage> {
       (sum, count) => sum + count,
     );
 
-    Color ratingColor(int rating) {
-      final t = (rating - 1) / 4;
-      if (t < 0.5) {
-        return Color.lerp(criticOrange, criticGold, t * 2)!;
-      }
-      return Color.lerp(criticGold, chipluxPurple, (t - 0.5) * 2)!;
-    }
+    Color ratingColor(int rating) => _ratingChartColors[(rating - 1).clamp(0, 4).toInt()];
 
     final activeRatings = <int>[];
     for (int rating = 1; rating <= 5; rating++) {
@@ -24045,7 +23886,8 @@ class _ProfilePageState extends State<ProfilePage> {
 
           if (selectedDisplayNameColorId != null) {
             for (final tier in medalCollectionGroup.tiers) {
-              if (tier.id == selectedDisplayNameColorId && tier.unlocked) {
+              if (tier.id == selectedDisplayNameColorId &&
+                  (tier.unlocked || profile.hasDeveloperRewardAccess)) {
                 selectedDisplayNameColorAchievement = tier;
 
                 break;
@@ -24057,10 +23899,7 @@ class _ProfilePageState extends State<ProfilePage> {
             selectedDisplayNameColorAchievement,
           );
 
-          final Color displayNameColor =
-              selectedDisplayNameColorAchievement?.visualTier == 4
-              ? const Color(0xFFFFC857)
-              : displayNameColors.isNotEmpty
+          final Color displayNameColor = displayNameColors.isNotEmpty
               ? displayNameColors.first
               : Colors.white;
 
@@ -24115,7 +23954,7 @@ class _ProfilePageState extends State<ProfilePage> {
               : null;
 
           return RefreshIndicator(
-            color: chipluxCyan,
+            color: chipluxGold,
             backgroundColor: chipluxSurface,
             onRefresh: _refreshProfile,
             child: ListView(
@@ -24215,77 +24054,24 @@ class _ProfilePageState extends State<ProfilePage> {
 
                                       const Spacer(),
 
+                                      if (Supabase.instance.client.auth.currentUser != null)
+                                        const _NotificationBellButton(),
+                                      const SizedBox(width: 8),
                                       Container(
-                                        padding: const EdgeInsets.all(1),
+                                        width: 46,
+                                        height: 46,
                                         decoration: BoxDecoration(
-                                          borderRadius: BorderRadius.circular(
-                                            18,
+                                          color: Colors.transparent,
+                                          borderRadius: BorderRadius.circular(14),
+                                          border: Border.all(
+                                            color: Colors.white.withValues(alpha: 0.42),
+                                            width: 1.1,
                                           ),
-                                          gradient: LinearGradient(
-                                            begin: Alignment.topLeft,
-                                            end: Alignment.bottomRight,
-                                            colors: [
-                                              chipluxCyan.withValues(
-                                                alpha: 0.42,
-                                              ),
-                                              chipluxViolet.withValues(
-                                                alpha: 0.30,
-                                              ),
-                                              chipluxPurple.withValues(
-                                                alpha: 0.20,
-                                              ),
-                                            ],
-                                          ),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.black.withValues(
-                                                alpha: 0.28,
-                                              ),
-                                              blurRadius: 14,
-                                              offset: const Offset(0, 5),
-                                            ),
-                                          ],
                                         ),
-                                        child: Container(
-                                          height: 46,
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 3,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: chipluxBackground.withValues(
-                                              alpha: 0.62,
-                                            ),
-                                            borderRadius: BorderRadius.circular(
-                                              17,
-                                            ),
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              if (Supabase
-                                                      .instance
-                                                      .client
-                                                      .auth
-                                                      .currentUser !=
-                                                  null)
-                                                const _NotificationBellButton(),
-
-                                              Container(
-                                                width: 1,
-                                                height: 22,
-                                                color: Colors.white.withValues(
-                                                  alpha: 0.10,
-                                                ),
-                                              ),
-
-                                              IconButton(
-                                                tooltip: trUi(
-                                                  context,
-                                                  'Profile Menu',
-                                                ),
-                                                visualDensity:
-                                                    VisualDensity.compact,
-                                                onPressed: () async {
+                                        child: IconButton(
+                                          tooltip: trUi(context, 'Customize Profile'),
+                                          padding: EdgeInsets.zero,
+onPressed: () async {
                                                   await Navigator.push(
                                                     context,
                                                     MaterialPageRoute(
@@ -24300,14 +24086,8 @@ class _ProfilePageState extends State<ProfilePage> {
 
                                                   await profile.loadProfile();
                                                 },
-                                                icon: const Icon(
-                                                  Icons.menu_rounded,
-                                                  size: 27,
-                                                ),
-                                                color: Colors.white,
-                                              ),
-                                            ],
-                                          ),
+                                          icon: const Icon(Icons.menu_rounded, size: 27),
+                                          color: Colors.white,
                                         ),
                                       ),
                                     ],
@@ -24348,9 +24128,9 @@ class _ProfilePageState extends State<ProfilePage> {
                                                           end: Alignment
                                                               .bottomRight,
                                                           colors: [
-                                                            chipluxCyan,
-                                                            chipluxViolet,
-                                                            chipluxPurple,
+                                                            chipluxGold,
+                                                            chipluxBrightGold,
+                                                            chipluxAmber,
                                                           ],
                                                         )
                                                       : null,
@@ -24725,7 +24505,11 @@ class _AchievementCollectionButton extends StatelessWidget {
 
     final bool hasReward = styleAchievement != null && colors.isNotEmpty;
 
-    return GestureDetector(
+    return _LegendaryTierAura(
+      enabled: styleAchievement?.visualTier == 9,
+      borderRadius: 16,
+      circle: false,
+      child: GestureDetector(
       onTap: onTap,
 
       behavior: HitTestBehavior.opaque,
@@ -24797,7 +24581,7 @@ class _AchievementCollectionButton extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ));
   }
 }
 
@@ -24943,7 +24727,9 @@ class _FollowerCountBadgeState extends State<_FollowerCountBadge> {
 
     if (selectedId != null) {
       for (final tier in group.tiers) {
-        if (tier.id == selectedId && tier.unlocked) {
+        // Server validates saved rewards; an entitled developer may equip a
+        // tier without earning it. Show their selected style publicly too.
+        if (tier.id == selectedId) {
           styleAchievement = tier;
 
           break;
@@ -24959,7 +24745,11 @@ class _FollowerCountBadgeState extends State<_FollowerCountBadge> {
 
     final bool hasReward = styleAchievement != null && colors.isNotEmpty;
 
-    return GestureDetector(
+    return _LegendaryTierAura(
+      enabled: styleAchievement?.visualTier == 9,
+      borderRadius: 16,
+      circle: false,
+      child: GestureDetector(
       onTap: widget.onTap,
 
       behavior: HitTestBehavior.opaque,
@@ -25045,7 +24835,7 @@ class _FollowerCountBadgeState extends State<_FollowerCountBadge> {
           ),
         ),
       ),
-    );
+    ));
   }
 }
 
@@ -25284,7 +25074,7 @@ class _PinnedAchievementBadgeState extends State<_PinnedAchievementBadge>
 
   void _updateAnimation() {
     final shouldAnimate =
-        widget.achievement.unlocked && widget.achievement.visualTier >= 5;
+        widget.achievement.unlocked && widget.achievement.visualTier == 9;
 
     if (shouldAnimate) {
       if (!_controller.isAnimating) {
@@ -25299,38 +25089,7 @@ class _PinnedAchievementBadgeState extends State<_PinnedAchievementBadge>
     }
   }
 
-  List<Color> _colors() {
-    switch (widget.achievement.visualTier) {
-      case 1:
-        return const [Colors.white, Color(0xFFBFC9D4)];
-
-      case 2:
-        return const [chipluxCyan, Color(0xFF64BFFF)];
-
-      case 3:
-        return const [chipluxCyan, chipluxViolet];
-
-      case 4:
-        return const [Color(0xFFFFF1A8), Color(0xFFFFC857)];
-
-      case 5:
-        return const [Color(0xFFFFC857), Color(0xFFFF8A4C), Color(0xFFFF5C72)];
-
-      case 6:
-        return const [Color(0xFFFF5C72), chipluxPurple, chipluxViolet];
-
-      default:
-        return const [
-          chipluxCyan,
-          Colors.white,
-          chipluxViolet,
-          chipluxPurple,
-          Color(0xFFFF5C72),
-          Color(0xFFFFC857),
-          chipluxCyan,
-        ];
-    }
-  }
+  List<Color> _colors() => _achievementTierColors(widget.achievement);
 
   @override
   void dispose() {
@@ -25346,10 +25105,10 @@ class _PinnedAchievementBadgeState extends State<_PinnedAchievementBadge>
 
       builder: (context, _) {
         final bool rotating =
-            widget.achievement.visualTier >= 5 && widget.achievement.unlocked;
+            widget.achievement.visualTier == 9 && widget.achievement.unlocked;
 
         final bool finalTier =
-            widget.achievement.visualTier >= 7 && widget.achievement.unlocked;
+            widget.achievement.visualTier == 9 && widget.achievement.unlocked;
 
         final double rotation = rotating
             ? _controller.value * math.pi * 2
@@ -25601,7 +25360,11 @@ class _CriticReputationCard extends StatelessWidget {
 
     final accentColor = activeColors.first;
 
-    return GestureDetector(
+    return _LegendaryTierAura(
+      enabled: frameAchievement?.visualTier == 9,
+      borderRadius: 20,
+      circle: false,
+      child: GestureDetector(
       behavior: HitTestBehavior.opaque,
 
       onTap: onTap,
@@ -25793,7 +25556,7 @@ class _CriticReputationCard extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ));
   }
 }
 
@@ -25865,7 +25628,7 @@ class _CriticProgressBarState extends State<_CriticProgressBar>
   Widget build(BuildContext context) {
     final colors = widget.colors.isNotEmpty
         ? widget.colors
-        : const [Color(0xFFFFC857), Color(0xFFFF8A4C), chipluxPurple];
+        : const [Color(0xFFFFC857), Color(0xFFFF8A4C), chipluxAmber];
 
     final glowColor = colors.first;
 
@@ -26174,11 +25937,13 @@ class _LevelCardState extends State<_LevelCard> with TickerProviderStateMixin {
 
     final Color glowColor = activeColors.first;
 
-    final Color titleColor = widget.frameAchievement?.visualTier == 4
-        ? const Color(0xFFFFC857)
-        : activeColors.first;
+    final Color titleColor = activeColors.first;
 
-    return GestureDetector(
+    return _LegendaryTierAura(
+      enabled: widget.frameAchievement?.visualTier == 9,
+      borderRadius: 20,
+      circle: false,
+      child: GestureDetector(
       behavior: HitTestBehavior.opaque,
 
       onTap: widget.onTap,
@@ -26435,7 +26200,7 @@ class _LevelCardState extends State<_LevelCard> with TickerProviderStateMixin {
           ),
         ),
       ),
-    );
+    ));
   }
 
   @override
@@ -26490,13 +26255,15 @@ class _WatchStatCard extends StatelessWidget {
 
     final bool hasAchievement = frameColors.isNotEmpty;
 
-    final Color achievementColor = frameAchievement?.visualTier == 4
-        ? const Color(0xFFFFC857)
-        : hasAchievement
+    final Color achievementColor = hasAchievement
         ? frameColors.first
         : const Color(0xFFBFC9D4);
 
-    return Material(
+    return _LegendaryTierAura(
+      enabled: frameAchievement?.visualTier == 9,
+      borderRadius: 14,
+      circle: false,
+      child: Material(
       color: Colors.transparent,
 
       child: InkWell(
@@ -26620,7 +26387,7 @@ class _WatchStatCard extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ));
   }
 }
 
@@ -26652,7 +26419,11 @@ class _RatingStatCard extends StatelessWidget {
         ? frameColors.first
         : const Color(0xFFBFC9D4);
 
-    return Material(
+    return _LegendaryTierAura(
+      enabled: frameAchievement?.visualTier == 9,
+      borderRadius: 14,
+      circle: false,
+      child: Material(
       color: Colors.transparent,
 
       child: InkWell(
@@ -26747,7 +26518,7 @@ class _RatingStatCard extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ));
   }
 }
 
@@ -26790,10 +26561,17 @@ class _NotificationBellButtonState extends State<_NotificationBellButton> {
   Widget build(BuildContext context) {
     final unread = service.unreadCount;
 
-    return SizedBox(
+    return Container(
       width: 46,
       height: 46,
-
+      decoration: BoxDecoration(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.42),
+          width: 1.1,
+        ),
+      ),
       child: Stack(
         clipBehavior: Clip.none,
 
@@ -27440,14 +27218,14 @@ class _NotificationInboxPageState extends State<_NotificationInboxPage> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: chipluxCyan.withValues(alpha: 0.07),
+          color: chipluxGold.withValues(alpha: 0.07),
           borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: chipluxCyan.withValues(alpha: 0.30)),
+          border: Border.all(color: chipluxGold.withValues(alpha: 0.30)),
         ),
         child: UiText(
           _labelFor(notification),
           style: const TextStyle(
-            color: chipluxCyan,
+            color: chipluxGold,
             fontSize: 8,
             fontWeight: FontWeight.w900,
             letterSpacing: 0.9,
@@ -27512,10 +27290,10 @@ class _NotificationInboxPageState extends State<_NotificationInboxPage> {
                         vertical: 7,
                       ),
                       decoration: BoxDecoration(
-                        color: chipluxViolet.withValues(alpha: 0.07),
+                        color: chipluxBrightGold.withValues(alpha: 0.07),
                         borderRadius: BorderRadius.circular(999),
                         border: Border.all(
-                          color: chipluxViolet.withValues(alpha: 0.32),
+                          color: chipluxBrightGold.withValues(alpha: 0.32),
                         ),
                       ),
                       child: const Row(
@@ -27523,14 +27301,14 @@ class _NotificationInboxPageState extends State<_NotificationInboxPage> {
                         children: [
                           Icon(
                             Icons.done_all_rounded,
-                            color: chipluxViolet,
+                            color: chipluxBrightGold,
                             size: 14,
                           ),
                           SizedBox(width: 5),
                           UiText(
                             'READ ALL',
                             style: TextStyle(
-                              color: chipluxViolet,
+                              color: chipluxBrightGold,
                               fontSize: 9,
                               fontWeight: FontWeight.w900,
                               letterSpacing: 0.8,
@@ -27550,7 +27328,7 @@ class _NotificationInboxPageState extends State<_NotificationInboxPage> {
         style: ChipluxBackgroundStyle.profile,
 
         child: RefreshIndicator(
-          color: chipluxCyan,
+          color: chipluxGold,
 
           backgroundColor: chipluxSurface,
 
@@ -27573,9 +27351,9 @@ class _NotificationInboxPageState extends State<_NotificationInboxPage> {
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: [
-                            chipluxCyan.withValues(alpha: 0.65),
-                            chipluxViolet.withValues(alpha: 0.45),
-                            chipluxPurple.withValues(alpha: 0.30),
+                            chipluxGold.withValues(alpha: 0.65),
+                            chipluxBrightGold.withValues(alpha: 0.45),
+                            chipluxAmber.withValues(alpha: 0.30),
                           ],
                         ),
                       ),
@@ -27595,9 +27373,9 @@ class _NotificationInboxPageState extends State<_NotificationInboxPage> {
                                 shape: BoxShape.circle,
                                 gradient: const LinearGradient(
                                   colors: [
-                                    chipluxCyan,
-                                    chipluxViolet,
-                                    chipluxPurple,
+                                    chipluxGold,
+                                    chipluxBrightGold,
+                                    chipluxAmber,
                                   ],
                                 ),
                               ),
@@ -27608,7 +27386,7 @@ class _NotificationInboxPageState extends State<_NotificationInboxPage> {
                                 ),
                                 child: const Icon(
                                   Icons.notifications_none_rounded,
-                                  color: chipluxCyan,
+                                  color: chipluxGold,
                                   size: 29,
                                 ),
                               ),
@@ -27622,16 +27400,16 @@ class _NotificationInboxPageState extends State<_NotificationInboxPage> {
                                 vertical: 5,
                               ),
                               decoration: BoxDecoration(
-                                color: chipluxCyan.withValues(alpha: 0.07),
+                                color: chipluxGold.withValues(alpha: 0.07),
                                 borderRadius: BorderRadius.circular(999),
                                 border: Border.all(
-                                  color: chipluxCyan.withValues(alpha: 0.30),
+                                  color: chipluxGold.withValues(alpha: 0.30),
                                 ),
                               ),
                               child: const UiText(
                                 'ALL CAUGHT UP',
                                 style: TextStyle(
-                                  color: chipluxCyan,
+                                  color: chipluxGold,
                                   fontSize: 9,
                                   fontWeight: FontWeight.w900,
                                   letterSpacing: 1.2,
@@ -27701,8 +27479,8 @@ class _NotificationInboxPageState extends State<_NotificationInboxPage> {
                                 decoration: BoxDecoration(
                                   gradient: LinearGradient(
                                     colors: [
-                                      chipluxCyan.withValues(alpha: 0.35),
-                                      chipluxViolet.withValues(alpha: 0.18),
+                                      chipluxGold.withValues(alpha: 0.35),
+                                      chipluxBrightGold.withValues(alpha: 0.18),
                                       Colors.transparent,
                                     ],
                                   ),
@@ -27718,10 +27496,10 @@ class _NotificationInboxPageState extends State<_NotificationInboxPage> {
                                   vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: chipluxViolet.withValues(alpha: 0.08),
+                                  color: chipluxBrightGold.withValues(alpha: 0.08),
                                   borderRadius: BorderRadius.circular(999),
                                   border: Border.all(
-                                    color: chipluxViolet.withValues(
+                                    color: chipluxBrightGold.withValues(
                                       alpha: 0.28,
                                     ),
                                   ),
@@ -27729,7 +27507,7 @@ class _NotificationInboxPageState extends State<_NotificationInboxPage> {
                                 child: UiText(
                                   '$unreadCount UNREAD',
                                   style: const TextStyle(
-                                    color: chipluxViolet,
+                                    color: chipluxBrightGold,
                                     fontSize: 8,
                                     fontWeight: FontWeight.w900,
                                     letterSpacing: 0.8,
@@ -27813,9 +27591,9 @@ class _NotificationInboxPageState extends State<_NotificationInboxPage> {
                                       begin: Alignment.topLeft,
                                       end: Alignment.bottomRight,
                                       colors: [
-                                        chipluxCyan.withValues(alpha: 0.72),
-                                        chipluxViolet.withValues(alpha: 0.50),
-                                        chipluxPurple.withValues(alpha: 0.36),
+                                        chipluxGold.withValues(alpha: 0.72),
+                                        chipluxBrightGold.withValues(alpha: 0.50),
+                                        chipluxAmber.withValues(alpha: 0.36),
                                       ],
                                     ),
                             ),
@@ -27838,17 +27616,17 @@ class _NotificationInboxPageState extends State<_NotificationInboxPage> {
                                         begin: Alignment.topLeft,
                                         end: Alignment.bottomRight,
                                         colors: [
-                                          chipluxCyan.withValues(
+                                          chipluxGold.withValues(
                                             alpha: notification.isRead
                                                 ? 0.22
                                                 : 0.75,
                                           ),
-                                          chipluxViolet.withValues(
+                                          chipluxBrightGold.withValues(
                                             alpha: notification.isRead
                                                 ? 0.14
                                                 : 0.48,
                                           ),
-                                          chipluxPurple.withValues(
+                                          chipluxAmber.withValues(
                                             alpha: notification.isRead
                                                 ? 0.10
                                                 : 0.28,
@@ -27863,7 +27641,7 @@ class _NotificationInboxPageState extends State<_NotificationInboxPage> {
                                       ),
                                       child: Icon(
                                         _iconFor(notification),
-                                        color: chipluxCyan,
+                                        color: chipluxGold,
                                         size: 22,
                                       ),
                                     ),
@@ -27889,14 +27667,14 @@ class _NotificationInboxPageState extends State<_NotificationInboxPage> {
                                                       vertical: 4,
                                                     ),
                                                 decoration: BoxDecoration(
-                                                  color: chipluxViolet
+                                                  color: chipluxBrightGold
                                                       .withValues(alpha: 0.10),
                                                   borderRadius:
                                                       BorderRadius.circular(
                                                         999,
                                                       ),
                                                   border: Border.all(
-                                                    color: chipluxViolet
+                                                    color: chipluxBrightGold
                                                         .withValues(
                                                           alpha: 0.33,
                                                         ),
@@ -27905,7 +27683,7 @@ class _NotificationInboxPageState extends State<_NotificationInboxPage> {
                                                 child: const UiText(
                                                   'NEW',
                                                   style: TextStyle(
-                                                    color: chipluxViolet,
+                                                    color: chipluxBrightGold,
                                                     fontSize: 8,
                                                     fontWeight: FontWeight.w900,
                                                     letterSpacing: 0.8,
@@ -27993,9 +27771,20 @@ class ProfileMenuPage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
 
             children: [
-              GradientText(
-                AppLocalizations.of(context).profile,
-                style: TextStyle(
+              Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(
+                      text: AppLocalizations.of(context).profile.substring(0, 3),
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                    TextSpan(
+                      text: AppLocalizations.of(context).profile.substring(3),
+                      style: const TextStyle(color: chipluxGold),
+                    ),
+                  ],
+                ),
+                style: const TextStyle(
                   fontSize: 25,
                   fontWeight: FontWeight.w900,
                   letterSpacing: -0.6,
@@ -28021,101 +27810,37 @@ class ProfileMenuPage extends StatelessWidget {
           ),
 
           bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(62),
-
+            preferredSize: const Size.fromHeight(67),
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(14, 3, 14, 12),
-
-              child: Container(
-                padding: const EdgeInsets.all(4),
-
-                decoration: BoxDecoration(
-                  color: chipluxSurface.withValues(alpha: 0.75),
-
-                  borderRadius: BorderRadius.circular(18),
-
-                  border: Border.all(
-                    color: chipluxCyan.withValues(alpha: 0.16),
-                  ),
-
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.18),
-
-                      blurRadius: 12,
-
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+              padding: const EdgeInsets.fromLTRB(14, 3, 14, 11),
+              child: TabBar(
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
+                dividerColor: Colors.transparent,
+                indicatorSize: TabBarIndicatorSize.label,
+                indicator: const UnderlineTabIndicator(
+                  borderSide: BorderSide(color: chipluxGold, width: 3),
+                  insets: EdgeInsets.symmetric(horizontal: 6),
                 ),
-
-                child: TabBar(
-                  dividerColor: Colors.transparent,
-
-                  indicatorSize: TabBarIndicatorSize.tab,
-
-                  indicator: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-
-                      end: Alignment.bottomRight,
-
-                      colors: [
-                        chipluxCyan.withValues(alpha: 0.20),
-
-                        chipluxViolet.withValues(alpha: 0.18),
-
-                        chipluxPurple.withValues(alpha: 0.12),
-                      ],
-                    ),
-
-                    border: Border.all(
-                      color: chipluxCyan.withValues(alpha: 0.35),
-                    ),
+                labelPadding: const EdgeInsets.symmetric(horizontal: 4),
+                labelColor: chipluxGold,
+                unselectedLabelColor: chipluxGold,
+                labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900),
+                unselectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                tabs: [
+                  _ProfileGoldTab(
+                    icon: Icons.auto_awesome_rounded,
+                    label: AppLocalizations.of(context).customize,
                   ),
-
-                  labelColor: chipluxCyan,
-
-                  unselectedLabelColor: Colors.white54,
-
-                  labelStyle: const TextStyle(
-                    fontSize: 11,
-
-                    fontWeight: FontWeight.w900,
-
-                    letterSpacing: 0.7,
+                  _ProfileGoldTab(
+                    icon: Icons.tune_rounded,
+                    label: AppLocalizations.of(context).settings,
                   ),
-
-                  unselectedLabelStyle: const TextStyle(
-                    fontSize: 11,
-
-                    fontWeight: FontWeight.w700,
-
-                    letterSpacing: 0.5,
+                  _ProfileGoldTab(
+                    icon: Icons.help_outline_rounded,
+                    label: AppLocalizations.of(context).help,
                   ),
-
-                  tabs: [
-                    Tab(
-                      icon: Icon(Icons.auto_awesome_rounded, size: 17),
-
-                      text: AppLocalizations.of(context).customize,
-                    ),
-
-                    Tab(
-                      icon: Icon(Icons.tune_rounded, size: 17),
-
-                      text: AppLocalizations.of(context).settings,
-                    ),
-
-                    Tab(
-                      icon: Icon(Icons.help_outline_rounded, size: 17),
-
-                      text: AppLocalizations.of(context).help,
-                    ),
-                  ],
-                ),
+                ],
               ),
             ),
           ),
@@ -28133,6 +27858,38 @@ class ProfileMenuPage extends StatelessWidget {
               _ProfileHelpTab(),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+
+/// Clear, swipeable profile navigation. No gradient or filled tab backgrounds.
+class _ProfileGoldTab extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _ProfileGoldTab({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Tab(
+      height: 47,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+        decoration: BoxDecoration(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: chipluxGold.withValues(alpha: .48)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: chipluxGold, size: 17),
+            const SizedBox(width: 7),
+            Text(label, style: const TextStyle(color: chipluxGold)),
+          ],
         ),
       ),
     );
@@ -28174,7 +27931,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
         borderRadius: BorderRadius.circular(18),
         gradient: LinearGradient(
           colors: selected
-              ? [chipluxCyan, chipluxViolet, chipluxPurple]
+              ? [chipluxGold, chipluxBrightGold, chipluxAmber]
               : [
                   Colors.white.withValues(alpha: .08),
                   Colors.white.withValues(alpha: .03),
@@ -28210,7 +27967,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
                         title,
                         style: TextStyle(
                           fontWeight: FontWeight.w800,
-                          color: selected ? chipluxCyan : Colors.white,
+                          color: selected ? chipluxGold : Colors.white,
                         ),
                       ),
                       const SizedBox(height: 3),
@@ -28227,7 +27984,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
                 const SizedBox(width: 10),
                 Icon(
                   selected ? Icons.check_circle_rounded : Icons.circle_outlined,
-                  color: selected ? chipluxCyan : Colors.white24,
+                  color: selected ? chipluxGold : Colors.white24,
                 ),
               ],
             ),
@@ -28289,14 +28046,14 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: chipluxViolet.withValues(alpha: .06),
+                color: chipluxBrightGold.withValues(alpha: .06),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: chipluxViolet.withValues(alpha: .18)),
+                border: Border.all(color: chipluxBrightGold.withValues(alpha: .18)),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.movie_filter_outlined, color: chipluxCyan),
+                  const Icon(Icons.movie_filter_outlined, color: chipluxGold),
                   const SizedBox(width: 11),
                   Expanded(
                     child: Text(
@@ -28387,7 +28144,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
         text,
 
         style: const TextStyle(
-          color: chipluxCyan,
+          color: chipluxGold,
           fontSize: 11,
           fontWeight: FontWeight.bold,
           letterSpacing: 1.2,
@@ -28576,12 +28333,12 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                     padding: const EdgeInsets.all(14),
 
                     decoration: BoxDecoration(
-                      color: chipluxCyan.withValues(alpha: 0.05),
+                      color: chipluxGold.withValues(alpha: 0.05),
 
                       borderRadius: BorderRadius.circular(14),
 
                       border: Border.all(
-                        color: chipluxCyan.withValues(alpha: 0.12),
+                        color: chipluxGold.withValues(alpha: 0.12),
                       ),
                     ),
 
@@ -28592,7 +28349,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                         Icon(
                           Icons.notifications_active_outlined,
 
-                          color: chipluxCyan,
+                          color: chipluxGold,
 
                           size: 18,
                         ),
@@ -28708,7 +28465,7 @@ class _PrivacySettingsPageState extends State<PrivacySettingsPage> {
       child: UiText(
         text,
         style: const TextStyle(
-          color: chipluxCyan,
+          color: chipluxGold,
           fontSize: 11,
           fontWeight: FontWeight.bold,
           letterSpacing: 1.2,
@@ -29173,15 +28930,15 @@ class _PrivacyValueRow extends StatelessWidget {
                   borderRadius: BorderRadius.circular(13),
                   gradient: LinearGradient(
                     colors: [
-                      chipluxCyan.withValues(alpha: 0.18),
-                      chipluxViolet.withValues(alpha: 0.12),
+                      chipluxGold.withValues(alpha: 0.18),
+                      chipluxBrightGold.withValues(alpha: 0.12),
                     ],
                   ),
                   border: Border.all(
-                    color: chipluxCyan.withValues(alpha: 0.20),
+                    color: chipluxGold.withValues(alpha: 0.20),
                   ),
                 ),
-                child: Icon(icon, color: chipluxCyan, size: 20),
+                child: Icon(icon, color: chipluxGold, size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -29212,7 +28969,7 @@ class _PrivacyValueRow extends StatelessWidget {
               UiText(
                 value,
                 style: const TextStyle(
-                  color: chipluxCyan,
+                  color: chipluxGold,
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
                 ),
@@ -29258,12 +29015,12 @@ class _PrivacyChoiceSheetTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
           decoration: BoxDecoration(
             color: selected
-                ? chipluxCyan.withValues(alpha: 0.06)
+                ? chipluxGold.withValues(alpha: 0.06)
                 : Colors.white.withValues(alpha: 0.025),
             borderRadius: BorderRadius.circular(15),
             border: Border.all(
               color: selected
-                  ? chipluxCyan.withValues(alpha: 0.38)
+                  ? chipluxGold.withValues(alpha: 0.38)
                   : Colors.white.withValues(alpha: 0.05),
             ),
           ),
@@ -29271,7 +29028,7 @@ class _PrivacyChoiceSheetTile extends StatelessWidget {
             children: [
               Icon(
                 icon,
-                color: selected ? chipluxCyan : Colors.white54,
+                color: selected ? chipluxGold : Colors.white54,
                 size: 21,
               ),
               const SizedBox(width: 12),
@@ -29282,7 +29039,7 @@ class _PrivacyChoiceSheetTile extends StatelessWidget {
                     UiText(
                       title,
                       style: TextStyle(
-                        color: selected ? chipluxCyan : Colors.white,
+                        color: selected ? chipluxGold : Colors.white,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -29300,7 +29057,7 @@ class _PrivacyChoiceSheetTile extends StatelessWidget {
               if (selected)
                 const Icon(
                   Icons.check_circle_rounded,
-                  color: chipluxCyan,
+                  color: chipluxGold,
                   size: 20,
                 ),
             ],
@@ -29483,9 +29240,9 @@ class _BlockedUsersPageState extends State<BlockedUsersPage> {
                             _unblock(user);
                           },
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: chipluxCyan,
+                            foregroundColor: chipluxGold,
                             side: BorderSide(
-                              color: chipluxCyan.withValues(alpha: 0.42),
+                              color: chipluxGold.withValues(alpha: 0.42),
                             ),
                           ),
                           child: const UiText('Unblock'),
@@ -29532,12 +29289,12 @@ class _NotificationSettingRow extends StatelessWidget {
             height: 38,
 
             decoration: BoxDecoration(
-              color: chipluxCyan.withValues(alpha: 0.08),
+              color: chipluxGold.withValues(alpha: 0.08),
 
               borderRadius: BorderRadius.circular(11),
             ),
 
-            child: Icon(icon, color: chipluxCyan, size: 21),
+            child: Icon(icon, color: chipluxGold, size: 21),
           ),
 
           const SizedBox(width: 12),
@@ -29583,9 +29340,9 @@ class _NotificationSettingRow extends StatelessWidget {
 
             onChanged: onChanged,
 
-            activeThumbColor: chipluxCyan,
+            activeThumbColor: chipluxGold,
 
-            activeTrackColor: chipluxViolet.withValues(alpha: 0.55),
+            activeTrackColor: chipluxBrightGold.withValues(alpha: 0.55),
 
             inactiveThumbColor: Colors.white54,
 
@@ -29717,11 +29474,11 @@ class _ProfileSettingsTab extends StatelessWidget {
                 ),
 
                 floatingLabelStyle: const TextStyle(
-                  color: chipluxCyan,
+                  color: chipluxGold,
                   fontWeight: FontWeight.w600,
                 ),
 
-                prefixIcon: Icon(icon, color: chipluxCyan, size: 21),
+                prefixIcon: Icon(icon, color: chipluxGold, size: 21),
 
                 suffixIcon: IconButton(
                   onPressed: saving ? null : onVisibilityTap,
@@ -29756,7 +29513,7 @@ class _ProfileSettingsTab extends StatelessWidget {
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(15),
 
-                  borderSide: const BorderSide(color: chipluxCyan, width: 1.4),
+                  borderSide: const BorderSide(color: chipluxGold, width: 1.4),
                 ),
 
                 disabledBorder: OutlineInputBorder(
@@ -29791,12 +29548,12 @@ class _ProfileSettingsTab extends StatelessWidget {
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
 
-                        colors: [chipluxCyan, chipluxViolet, chipluxPurple],
+                        colors: [chipluxGold, chipluxBrightGold, chipluxAmber],
                       ),
 
                       boxShadow: [
                         BoxShadow(
-                          color: chipluxViolet.withValues(alpha: 0.20),
+                          color: chipluxBrightGold.withValues(alpha: 0.20),
 
                           blurRadius: 28,
                           spreadRadius: 1,
@@ -29837,12 +29594,12 @@ class _ProfileSettingsTab extends StatelessWidget {
 
                                       end: Alignment.bottomRight,
 
-                                      colors: [chipluxCyan, chipluxViolet],
+                                      colors: [chipluxGold, chipluxBrightGold],
                                     ),
 
                                     boxShadow: [
                                       BoxShadow(
-                                        color: chipluxCyan.withValues(
+                                        color: chipluxGold.withValues(
                                           alpha: 0.16,
                                         ),
 
@@ -29868,13 +29625,7 @@ class _ProfileSettingsTab extends StatelessWidget {
                                     children: [
                                       ShaderMask(
                                         shaderCallback: (bounds) {
-                                          return const LinearGradient(
-                                            colors: [
-                                              chipluxCyan,
-                                              chipluxViolet,
-                                              chipluxPurple,
-                                            ],
-                                          ).createShader(bounds);
+                                          return chipluxTextGradient.createShader(bounds);
                                         },
 
                                         child: const UiText(
@@ -29966,11 +29717,11 @@ class _ProfileSettingsTab extends StatelessWidget {
 
                                 gradient: LinearGradient(
                                   colors: [
-                                    chipluxCyan.withValues(alpha: 0.45),
+                                    chipluxGold.withValues(alpha: 0.45),
 
-                                    chipluxViolet.withValues(alpha: 0.30),
+                                    chipluxBrightGold.withValues(alpha: 0.30),
 
-                                    chipluxPurple.withValues(alpha: 0.40),
+                                    chipluxAmber.withValues(alpha: 0.40),
                                   ],
                                 ),
                               ),
@@ -30190,15 +29941,15 @@ class _ProfileSettingsTab extends StatelessWidget {
                                         end: Alignment.bottomRight,
 
                                         colors: [
-                                          chipluxCyan,
-                                          chipluxViolet,
-                                          chipluxPurple,
+                                          chipluxGold,
+                                          chipluxBrightGold,
+                                          chipluxAmber,
                                         ],
                                       ),
 
                                       boxShadow: [
                                         BoxShadow(
-                                          color: chipluxViolet.withValues(
+                                          color: chipluxBrightGold.withValues(
                                             alpha: 0.18,
                                           ),
 
@@ -30492,6 +30243,7 @@ class _ProfileSettingsTab extends StatelessWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(18, 22, 18, 32),
       children: [
+        const ChipluxModerationWarnings(),
         _ProfileMenuSectionTitle(
           title: l10n.account,
           subtitle: l10n.accountSubtitle,
@@ -30522,6 +30274,16 @@ class _ProfileSettingsTab extends StatelessWidget {
             if (ProfileService.instance.isDeveloper) ...[
               const _ProfileMenuDivider(),
               InkWell(
+                onTap: () => Navigator.push(context, MaterialPageRoute(
+                    builder: (_) => const AdminReportModerationPage())),
+                child: const _ProfileMenuRow(
+                  icon: Icons.report_outlined,
+                  title: 'Report Moderation',
+                  subtitle: 'Review reported comments and users (3+ reports).',
+                ),
+              ),
+              const _ProfileMenuDivider(),
+              InkWell(
                 onTap: () {
                   Navigator.push(
                     context,
@@ -30532,8 +30294,8 @@ class _ProfileSettingsTab extends StatelessWidget {
                 },
                 child: _ProfileMenuRow(
                   icon: Icons.admin_panel_settings_outlined,
-                  title: l10n.adminModeration,
-                  subtitle: l10n.adminModerationSubtitle,
+                  title: 'Suggestion Moderation',
+                  subtitle: 'Review and publish community feature suggestions.', 
                 ),
               ),
               const _ProfileMenuDivider(),
@@ -30791,9 +30553,9 @@ class _HelpGradientCard extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            chipluxCyan.withValues(alpha: 0.42),
-            chipluxViolet.withValues(alpha: 0.25),
-            chipluxPurple.withValues(alpha: 0.30),
+            chipluxGold.withValues(alpha: 0.42),
+            chipluxBrightGold.withValues(alpha: 0.25),
+            chipluxAmber.withValues(alpha: 0.30),
           ],
         ),
       ),
@@ -30881,7 +30643,7 @@ class _FaqCard extends StatelessWidget {
         child: ExpansionTile(
           tilePadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 2),
           childrenPadding: const EdgeInsets.fromLTRB(15, 0, 15, 15),
-          iconColor: chipluxCyan,
+          iconColor: chipluxGold,
           collapsedIconColor: Colors.white38,
           title: UiText(
             question,
@@ -31072,7 +30834,7 @@ class _LegalPage extends StatelessWidget {
             UiText(
               'Effective $effectiveDate',
               style: const TextStyle(
-                color: chipluxCyan,
+                color: chipluxGold,
                 fontSize: 10.5,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 0.4,
@@ -31248,7 +31010,7 @@ class _SuggestFeaturePageState extends State<_SuggestFeaturePage> {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(24),
               gradient: const LinearGradient(
-                colors: [chipluxCyan, chipluxViolet, chipluxPurple],
+                colors: [chipluxGold, chipluxBrightGold, chipluxAmber],
               ),
             ),
             child: ConstrainedBox(
@@ -31270,7 +31032,7 @@ class _SuggestFeaturePageState extends State<_SuggestFeaturePage> {
                         height: 54,
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
-                            colors: [chipluxCyan, chipluxViolet],
+                            colors: [chipluxGold, chipluxBrightGold],
                           ),
                           borderRadius: BorderRadius.circular(17),
                         ),
@@ -31302,7 +31064,7 @@ class _SuggestFeaturePageState extends State<_SuggestFeaturePage> {
                       UiText(
                         'Next suggestion: ${_dateLabel(availability?.nextAllowedAt)}',
                         style: const TextStyle(
-                          color: chipluxCyan,
+                          color: chipluxGold,
                           fontSize: 11.5,
                           fontWeight: FontWeight.w800,
                         ),
@@ -31342,7 +31104,7 @@ class _SuggestFeaturePageState extends State<_SuggestFeaturePage> {
         children: [
           Row(
             children: [
-              Icon(icon, color: chipluxCyan, size: 19),
+              Icon(icon, color: chipluxGold, size: 19),
               const SizedBox(width: 8),
               UiText(
                 label,
@@ -31370,7 +31132,7 @@ class _SuggestFeaturePageState extends State<_SuggestFeaturePage> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(15),
-                borderSide: const BorderSide(color: chipluxCyan),
+                borderSide: const BorderSide(color: chipluxGold),
               ),
             ),
           ),
@@ -31388,9 +31150,9 @@ class _SuggestFeaturePageState extends State<_SuggestFeaturePage> {
         borderRadius: BorderRadius.circular(18),
         gradient: LinearGradient(
           colors: [
-            chipluxCyan.withValues(alpha: 0.40),
-            chipluxViolet.withValues(alpha: 0.26),
-            chipluxPurple.withValues(alpha: 0.28),
+            chipluxGold.withValues(alpha: 0.40),
+            chipluxBrightGold.withValues(alpha: 0.26),
+            chipluxAmber.withValues(alpha: 0.28),
           ],
         ),
       ),
@@ -31406,14 +31168,14 @@ class _SuggestFeaturePageState extends State<_SuggestFeaturePage> {
               width: 42,
               height: 42,
               decoration: BoxDecoration(
-                color: (allowed ? chipluxCyan : chipluxViolet).withValues(
+                color: (allowed ? chipluxGold : chipluxBrightGold).withValues(
                   alpha: 0.09,
                 ),
                 borderRadius: BorderRadius.circular(13),
               ),
               child: Icon(
                 allowed ? Icons.add_rounded : Icons.schedule_rounded,
-                color: allowed ? chipluxCyan : chipluxViolet,
+                color: allowed ? chipluxGold : chipluxBrightGold,
               ),
             ),
             const SizedBox(width: 12),
@@ -31444,13 +31206,13 @@ class _SuggestFeaturePageState extends State<_SuggestFeaturePage> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
               decoration: BoxDecoration(
-                color: chipluxCyan.withValues(alpha: 0.08),
+                color: chipluxGold.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(99),
               ),
               child: const UiText(
                 '30 DAYS',
                 style: TextStyle(
-                  color: chipluxCyan,
+                  color: chipluxGold,
                   fontSize: 9,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 0.7,
@@ -31547,9 +31309,9 @@ class _SuggestFeaturePageState extends State<_SuggestFeaturePage> {
                       gradient: canSubmit
                           ? const LinearGradient(
                               colors: [
-                                chipluxCyan,
-                                chipluxViolet,
-                                chipluxPurple,
+                                chipluxGold,
+                                chipluxBrightGold,
+                                chipluxAmber,
                               ],
                             )
                           : null,
@@ -31696,7 +31458,7 @@ class _ReportBugPageState extends State<_ReportBugPage> {
                     children: [
                       Icon(
                         Icons.bug_report_outlined,
-                        color: chipluxCyan,
+                        color: chipluxGold,
                         size: 20,
                       ),
                       SizedBox(width: 9),
@@ -31733,7 +31495,7 @@ class _ReportBugPageState extends State<_ReportBugPage> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: chipluxCyan),
+                        borderSide: const BorderSide(color: chipluxGold),
                       ),
                     ),
                   ),
@@ -31756,7 +31518,7 @@ class _ReportBugPageState extends State<_ReportBugPage> {
                     : const Icon(Icons.send_rounded),
                 label: const UiText('Send Bug Report'),
                 style: FilledButton.styleFrom(
-                  backgroundColor: chipluxCyan,
+                  backgroundColor: chipluxGold,
                   foregroundColor: chipluxBackground,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
@@ -31833,11 +31595,11 @@ class _ProfileMenuCard extends StatelessWidget {
           end: Alignment.bottomRight,
 
           colors: [
-            chipluxCyan.withValues(alpha: 0.38),
+            chipluxGold.withValues(alpha: 0.38),
 
-            chipluxViolet.withValues(alpha: 0.25),
+            chipluxBrightGold.withValues(alpha: 0.25),
 
-            chipluxPurple.withValues(alpha: 0.15),
+            chipluxAmber.withValues(alpha: 0.15),
           ],
         ),
 
@@ -31898,11 +31660,11 @@ class _ProfileMenuRow extends StatelessWidget {
                 end: Alignment.bottomRight,
 
                 colors: [
-                  chipluxCyan.withValues(alpha: 0.60),
+                  chipluxGold.withValues(alpha: 0.60),
 
-                  chipluxViolet.withValues(alpha: 0.35),
+                  chipluxBrightGold.withValues(alpha: 0.35),
 
-                  chipluxPurple.withValues(alpha: 0.20),
+                  chipluxAmber.withValues(alpha: 0.20),
                 ],
               ),
             ),
@@ -31914,7 +31676,7 @@ class _ProfileMenuRow extends StatelessWidget {
                 borderRadius: BorderRadius.circular(11),
               ),
 
-              child: Icon(icon, color: chipluxCyan, size: 20),
+              child: Icon(icon, color: chipluxGold, size: 20),
             ),
           ),
           const SizedBox(width: 12),
@@ -32228,7 +31990,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
               boxShadow: selected
                   ? [
                       BoxShadow(
-                        color: chipluxCyan.withValues(alpha: 0.20),
+                        color: chipluxGold.withValues(alpha: 0.20),
                         blurRadius: 10,
                       ),
                     ]
@@ -32299,7 +32061,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(18, 16, 12, 10),
                   child: Row(children: [
-                    const Icon(Icons.workspace_premium_outlined, color: chipluxCyan),
+                    const Icon(Icons.workspace_premium_outlined, color: chipluxGold),
                     const SizedBox(width: 10),
                     const Expanded(child: Text('Choose Profile Title',
                       style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold))),
@@ -32378,7 +32140,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     final unlocked = <_Achievement>[];
     for (final group in _currentUserProfileTitleGroups()) {
       for (final tier in group.tiers) {
-        if (tier.unlocked) unlocked.add(tier);
+        if (tier.unlocked || profile.hasDeveloperRewardAccess) unlocked.add(tier);
       }
     }
     String label = 'None';
@@ -32410,7 +32172,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
               child: Row(children: [
-                const Icon(Icons.workspace_premium_outlined, color: chipluxCyan),
+                const Icon(Icons.workspace_premium_outlined, color: chipluxGold),
                 const SizedBox(width: 12),
                 Expanded(child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -32421,12 +32183,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       style: const TextStyle(fontSize: 11, color: Colors.white54)),
                   ],
                 )),
-                const Icon(Icons.grid_view_rounded, color: chipluxViolet),
+                const Icon(Icons.grid_view_rounded, color: chipluxBrightGold),
               ]),
             ),
           ),
         ),
-        if (unlocked.isEmpty && !profile.isDeveloper)
+        if (unlocked.isEmpty && !profile.hasDeveloperRewardAccess && !profile.isDeveloper)
           const Padding(
             padding: EdgeInsets.only(top: 8),
             child: UiText('Unlock achievements to earn more titles.',
@@ -32510,7 +32272,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
               border: Border.all(
                 color: selected
-                    ? chipluxCyan.withValues(alpha: 0.65)
+                    ? chipluxGold.withValues(alpha: 0.65)
                     : Colors.white.withValues(alpha: 0.07),
 
                 width: selected ? 1.3 : 1,
@@ -32572,7 +32334,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
                         size: 11,
 
-                        color: chipluxCyan,
+                        color: chipluxGold,
                       ),
 
                       const SizedBox(width: 4),
@@ -32683,7 +32445,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
       );
 
       final bool validAndUnlocked = dailyLoginGroup.tiers.any(
-        (tier) => tier.id == loadedFrameId && tier.unlocked,
+        (tier) => tier.id == loadedFrameId &&
+            (tier.unlocked || profile.hasDeveloperRewardAccess),
       );
 
       if (!validAndUnlocked) {
@@ -32718,7 +32481,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
       );
 
       final bool validAndUnlocked = profileViewGroup.tiers.any(
-        (tier) => tier.id == loadedFrameId && tier.unlocked,
+        (tier) => tier.id == loadedFrameId &&
+            (tier.unlocked || profile.hasDeveloperRewardAccess),
       );
 
       if (!validAndUnlocked) {
@@ -32760,6 +32524,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   Map<String, _AchievementGroup> _achievementCosmeticGroups() {
+    final music = MusicUserDataService.instance;
     final runtimeLevel = _runtimeLevelForMinutes(
       _combinedRuntimeMinutes(library),
     );
@@ -32798,6 +32563,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
       _episodeAchievementGroupFor(library.watchedEpisodeCount),
 
       _episodeRatedAchievementGroupFor(critic.episodeRatingCount),
+      _albumsListenedAchievementGroupFor(music.listenedAlbumCount),
+      _songsListenedAchievementGroupFor(music.listenedTrackCount),
+      _albumsRatedAchievementGroupFor(critic.albumRatingCount),
+      _songsRatedAchievementGroupFor(critic.songRatingCount),
     ];
 
     return {for (final group in groups) group.id: group};
@@ -32903,7 +32672,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
         }
       }
 
-      if (matchingTier == null || !matchingTier.unlocked) {
+      if (matchingTier == null ||
+          (!matchingTier.unlocked && !profile.hasDeveloperRewardAccess)) {
         setState(() {
           errorMessage = 'That achievement customization is still locked.';
         });
@@ -32943,7 +32713,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
         }
       }
 
-      if (matching == null || !matching.unlocked) {
+      if (matching == null ||
+          (!matching.unlocked && !profile.hasDeveloperRewardAccess)) {
         setState(() {
           errorMessage = 'That display name frame is still locked.';
         });
@@ -32971,7 +32742,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
         }
       }
 
-      if (matching == null || !matching.unlocked) {
+      if (matching == null ||
+          (!matching.unlocked && !profile.hasDeveloperRewardAccess)) {
         setState(() {
           errorMessage = 'That avatar frame is still locked.';
         });
@@ -33142,7 +32914,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
               gradient: imageProvider == null
                   ? const LinearGradient(
-                      colors: [chipluxCyan, chipluxViolet, chipluxPurple],
+                      colors: [chipluxGold, chipluxBrightGold, chipluxAmber],
                     )
                   : null,
 
@@ -33176,7 +32948,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
               decoration: const BoxDecoration(
                 shape: BoxShape.circle,
-                color: chipluxCyan,
+                color: chipluxGold,
               ),
 
               child: const Icon(
@@ -33211,7 +32983,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         _AvatarFrameOption(
           label: tier.title,
           frameId: tier.id,
-          unlocked: tier.unlocked,
+          unlocked: tier.unlocked || profile.hasDeveloperRewardAccess,
           selected: selectedAvatarFrameId == tier.id,
           onTap: () {
             unawaited(_selectAvatarFrame(tier.id));
@@ -33280,7 +33052,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         _DisplayNameFrameOption(
           label: tier.title,
           frameId: tier.id,
-          unlocked: tier.unlocked,
+          unlocked: tier.unlocked || profile.hasDeveloperRewardAccess,
           selected: selectedFrameId == tier.id,
           onTap: () {
             unawaited(_selectDisplayNameFrame(tier.id));
@@ -33355,7 +33127,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
           label: tier.title,
           achievement: tier,
           icon: group.icon,
-          unlocked: tier.unlocked,
+          unlocked: tier.unlocked || profile.hasDeveloperRewardAccess,
           selected: selectedId == tier.id,
           onTap: () {
             unawaited(_selectAchievementCosmetic(group.id, tier.id));
@@ -33432,6 +33204,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
     final episodesWatchedGroup = groups['episodes_watched']!;
 
     final episodesRatedGroup = groups['episodes_rated']!;
+
+    final albumsListenedGroup = groups['albums_listened']!;
+    final songsListenedGroup = groups['songs_listened']!;
+    final albumsRatedGroup = groups['albums_rated']!;
+    final songsRatedGroup = groups['songs_rated']!;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -33524,10 +33301,36 @@ class _EditProfilePageState extends State<EditProfilePage> {
         const SizedBox(height: 22),
 
         buildAchievementCosmeticPicker(
+          title: 'Albums Listened',
+          description: 'Choose the frame and text accent for the Albums Listened profile statistic.',
+          group: albumsListenedGroup,
+        ),
+        const SizedBox(height: 22),
+
+        buildAchievementCosmeticPicker(
+          title: 'Songs Listened',
+          description: 'Choose the frame and text accent for the Songs Listened profile statistic.',
+          group: songsListenedGroup,
+        ),
+        const SizedBox(height: 22),
+
+        buildAchievementCosmeticPicker(
+          title: 'Albums Rated',
+          description: 'Choose the frame and text accent for the Albums Rated profile statistic.',
+          group: albumsRatedGroup,
+        ),
+        const SizedBox(height: 22),
+
+        buildAchievementCosmeticPicker(
+          title: 'Songs Rated',
+          description: 'Choose the frame and text accent for the Songs Rated profile statistic.',
+          group: songsRatedGroup,
+        ),
+        const SizedBox(height: 22),
+
+        buildAchievementCosmeticPicker(
           title: 'Follower Counter',
-
           description: 'Choose the unlocked Followers style used for your follower counter border and icon.',
-
           group: followersGroup,
         ),
       ],
@@ -33585,9 +33388,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           decoration: const BoxDecoration(
                             gradient: LinearGradient(
                               colors: [
-                                chipluxCyan,
-                                chipluxViolet,
-                                chipluxPurple,
+                                chipluxGold,
+                                chipluxBrightGold,
+                                chipluxAmber,
                               ],
                             ),
                           ),
@@ -33598,7 +33401,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     Container(
                       decoration: const BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [chipluxCyan, chipluxViolet, chipluxPurple],
+                          colors: [chipluxGold, chipluxBrightGold, chipluxAmber],
                         ),
                       ),
                     ),
@@ -33746,7 +33549,7 @@ class _AvatarFrameOption extends StatelessWidget {
 
               border: Border.all(
                 color: selected
-                    ? chipluxCyan.withValues(alpha: 0.65)
+                    ? chipluxGold.withValues(alpha: 0.65)
                     : Colors.white.withValues(alpha: 0.06),
               ),
             ),
@@ -35342,7 +35145,7 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
               child: UiText(
                 '${(mediaUserData.rating! / 2).round()} / 5',
                 style: const TextStyle(
-                  color: chipluxCyan,
+                  color: chipluxGold,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -35500,7 +35303,7 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
         case 'in production':
         case 'planned':
           showStatus = 'Ongoing';
-          showStatusColor = chipluxCyan;
+          showStatusColor = chipluxGold;
           break;
 
         default:
@@ -35960,7 +35763,7 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
                               status: 'watching',
                               label: 'Watching',
                               icon: Icons.play_circle_outline,
-                              color: chipluxCyan,
+                              color: chipluxGold,
                             ),
 
                             const SizedBox(width: 7),
@@ -35978,7 +35781,7 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
                               status: 'plan',
                               label: 'Plan',
                               icon: Icons.bookmark_border,
-                              color: chipluxPurple,
+                              color: chipluxAmber,
                             ),
 
                             const SizedBox(width: 7),
@@ -36018,7 +35821,7 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
                             status: 'plan',
                             label: 'Plan',
                             icon: Icons.bookmark_border,
-                            color: chipluxPurple,
+                            color: chipluxAmber,
                           ),
 
                           if (item != null) ...[
@@ -36087,13 +35890,13 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
                               ),
 
                               style: OutlinedButton.styleFrom(
-                                foregroundColor: chipluxCyan,
+                                foregroundColor: chipluxGold,
 
                                 side: BorderSide(
-                                  color: chipluxCyan.withValues(alpha: 0.65),
+                                  color: chipluxGold.withValues(alpha: 0.65),
                                 ),
 
-                                backgroundColor: chipluxCyan.withValues(
+                                backgroundColor: chipluxGold.withValues(
                                   alpha: 0.06,
                                 ),
 
@@ -36192,7 +35995,7 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
                                           ? 'View less'
                                           : 'View more',
                                       style: const TextStyle(
-                                        color: chipluxCyan,
+                                        color: chipluxGold,
                                         fontSize: 13,
                                         fontWeight: FontWeight.bold,
                                       ),
@@ -36204,7 +36007,7 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
                                       _overviewExpanded
                                           ? Icons.keyboard_arrow_up_rounded
                                           : Icons.keyboard_arrow_down_rounded,
-                                      color: chipluxCyan,
+                                      color: chipluxGold,
                                       size: 19,
                                     ),
                                   ],
@@ -36463,7 +36266,7 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
                                         backgroundColor: chipluxSurfaceLight,
                                         color: showSeasonGreen
                                             ? const Color(0xFF7BE8A8)
-                                            : chipluxCyan,
+                                            : chipluxGold,
                                       ),
                                     ),
                                   ],
@@ -36702,9 +36505,9 @@ class _TopCastCard extends StatelessWidget {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      chipluxCyan.withValues(alpha: 0.45),
-                      chipluxViolet.withValues(alpha: 0.35),
-                      chipluxPurple.withValues(alpha: 0.40),
+                      chipluxGold.withValues(alpha: 0.45),
+                      chipluxBrightGold.withValues(alpha: 0.35),
+                      chipluxAmber.withValues(alpha: 0.40),
                     ],
                   ),
                 ),
@@ -36744,7 +36547,7 @@ class _TopCastCard extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: chipluxViolet,
+                    color: chipluxBrightGold,
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
                   ),
@@ -36790,19 +36593,19 @@ class _CastViewMoreCard extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  chipluxCyan.withValues(alpha: 0.14),
-                  chipluxViolet.withValues(alpha: 0.18),
-                  chipluxPurple.withValues(alpha: 0.16),
+                  chipluxGold.withValues(alpha: 0.14),
+                  chipluxBrightGold.withValues(alpha: 0.18),
+                  chipluxAmber.withValues(alpha: 0.16),
                 ],
               ),
-              border: Border.all(color: chipluxViolet.withValues(alpha: 0.45)),
+              border: Border.all(color: chipluxBrightGold.withValues(alpha: 0.45)),
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Icon(
                   Icons.arrow_forward_rounded,
-                  color: chipluxCyan,
+                  color: chipluxGold,
                   size: 30,
                 ),
 
@@ -37008,11 +36811,11 @@ class _CreatorChip extends StatelessWidget {
             gradient: const LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [chipluxCyan, chipluxViolet, chipluxPurple],
+              colors: [chipluxGold, chipluxBrightGold, chipluxAmber],
             ),
             boxShadow: [
               BoxShadow(
-                color: chipluxViolet.withValues(alpha: 0.10),
+                color: chipluxBrightGold.withValues(alpha: 0.10),
                 blurRadius: 15,
               ),
             ],
@@ -37030,15 +36833,15 @@ class _CreatorChip extends StatelessWidget {
                 end: Alignment.bottomRight,
                 colors: [
                   Color.alphaBlend(
-                    chipluxCyan.withValues(alpha: 0.11),
+                    chipluxGold.withValues(alpha: 0.11),
                     chipluxSurface,
                   ),
                   Color.alphaBlend(
-                    chipluxViolet.withValues(alpha: 0.08),
+                    chipluxBrightGold.withValues(alpha: 0.08),
                     chipluxSurface,
                   ),
                   Color.alphaBlend(
-                    chipluxPurple.withValues(alpha: 0.08),
+                    chipluxAmber.withValues(alpha: 0.08),
                     chipluxSurface,
                   ),
                 ],
@@ -37056,7 +36859,7 @@ class _CreatorChip extends StatelessWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: chipluxViolet.withValues(alpha: 0.55),
+                      color: chipluxBrightGold.withValues(alpha: 0.55),
                       width: 1.2,
                     ),
                   ),
@@ -37099,7 +36902,7 @@ class _CreatorChip extends StatelessWidget {
                       UiText(
                         role.toUpperCase(),
                         style: const TextStyle(
-                          color: chipluxCyan,
+                          color: chipluxGold,
                           fontSize: 9,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 1.2,
@@ -37313,7 +37116,7 @@ class _MusicArtistPageState extends State<MusicArtistPage> {
                   color: chipluxSurface,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: chipluxPurple.withValues(alpha: 0.18),
+                    color: chipluxAmber.withValues(alpha: 0.18),
                   ),
                 ),
                 child: Row(
@@ -37328,8 +37131,8 @@ class _MusicArtistPageState extends State<MusicArtistPage> {
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: [
-                            chipluxPurple.withValues(alpha: 0.34),
-                            chipluxCyan.withValues(alpha: 0.14),
+                            chipluxAmber.withValues(alpha: 0.34),
+                            chipluxGold.withValues(alpha: 0.14),
                           ],
                         ),
                       ),
@@ -37355,7 +37158,7 @@ class _MusicArtistPageState extends State<MusicArtistPage> {
                           UiText(
                             typeLabel,
                             style: const TextStyle(
-                              color: chipluxPurple,
+                              color: chipluxAmber,
                               fontSize: 13,
                               fontWeight: FontWeight.w700,
                             ),
@@ -37541,7 +37344,7 @@ class _MusicMetadataRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(icon, color: chipluxCyan, size: 19),
+          Icon(icon, color: chipluxGold, size: 19),
           const SizedBox(width: 10),
           SizedBox(
             width: 92,
@@ -37602,7 +37405,7 @@ class _MusicMemberWrap extends StatelessWidget {
                   color: chipluxSurface,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: chipluxPurple.withValues(alpha: 0.16),
+                    color: chipluxAmber.withValues(alpha: 0.16),
                   ),
                 ),
                 child: Column(
@@ -38559,9 +38362,9 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  chipluxCyan.withValues(alpha: 0.42),
-                  chipluxViolet.withValues(alpha: 0.28),
-                  chipluxPurple.withValues(alpha: 0.34),
+                  chipluxGold.withValues(alpha: 0.42),
+                  chipluxBrightGold.withValues(alpha: 0.28),
+                  chipluxAmber.withValues(alpha: 0.34),
                 ],
               ),
             ),
@@ -38585,7 +38388,7 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(10),
                   gradient: const LinearGradient(
-                    colors: [chipluxCyan, chipluxViolet, chipluxPurple],
+                    colors: [chipluxGold, chipluxBrightGold, chipluxAmber],
                   ),
                 ),
                 child: Icon(icon, size: 19, color: Colors.white),
@@ -38594,9 +38397,7 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
               ShaderMask(
                 blendMode: BlendMode.srcIn,
                 shaderCallback: (bounds) {
-                  return const LinearGradient(
-                    colors: [chipluxCyan, chipluxViolet, chipluxPurple],
-                  ).createShader(bounds);
+                  return chipluxTextGradient.createShader(bounds);
                 },
                 child: UiText(
                   text,
@@ -38738,7 +38539,7 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
                                           maxLines: 2,
                                           overflow: TextOverflow.ellipsis,
                                           style: const TextStyle(
-                                            color: chipluxPurple,
+                                            color: chipluxAmber,
                                             fontSize: 14,
                                             fontWeight: FontWeight.w700,
                                           ),
@@ -38812,7 +38613,7 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
                               _albumAction(
                                 icon: Icons.bookmark_border_rounded,
                                 label: 'Plan',
-                                accent: chipluxPurple,
+                                accent: chipluxAmber,
                                 active: albumState.libraryStatus == 'plan',
                                 onTap: trackingEnabled && !albumState.isListened
                                     ? () {
@@ -38917,7 +38718,7 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
                                       style: TextStyle(
                                         color: albumState.isListened
                                             ? const Color(0xFF7BE8A8)
-                                            : chipluxCyan,
+                                            : chipluxGold,
                                         fontSize: 12,
                                         fontWeight: FontWeight.w800,
                                       ),
@@ -38934,7 +38735,7 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
                                     valueColor: AlwaysStoppedAnimation<Color>(
                                       albumState.isListened
                                           ? const Color(0xFF7BE8A8)
-                                          : chipluxCyan,
+                                          : chipluxGold,
                                     ),
                                   ),
                                 ),
@@ -39124,11 +38925,11 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
                               musicAlbumId: widget.album.id,
                             ),
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: chipluxCyan,
+                              foregroundColor: chipluxGold,
                               side: BorderSide(
-                                color: chipluxCyan.withValues(alpha: 0.55),
+                                color: chipluxGold.withValues(alpha: 0.55),
                               ),
-                              backgroundColor: chipluxCyan.withValues(
+                              backgroundColor: chipluxGold.withValues(
                                 alpha: 0.045,
                               ),
                               padding: const EdgeInsets.symmetric(vertical: 13),
@@ -39471,7 +39272,7 @@ class _PersonProjectsPageState extends State<PersonProjectsPage> {
                         UiText(
                           widget.role,
                           style: const TextStyle(
-                            color: chipluxCyan,
+                            color: chipluxGold,
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                           ),
@@ -39579,7 +39380,7 @@ class _PersonProjectCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: chipluxSurface,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: chipluxViolet.withValues(alpha: 0.12)),
+            border: Border.all(color: chipluxBrightGold.withValues(alpha: 0.12)),
           ),
           child: Row(
             children: [
@@ -39637,7 +39438,7 @@ class _PersonProjectCard extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          color: chipluxViolet,
+                          color: chipluxBrightGold,
                           fontSize: 11,
                           fontWeight: FontWeight.w500,
                         ),
@@ -39651,7 +39452,7 @@ class _PersonProjectCard extends StatelessWidget {
                         UiText(
                           mediaType == 'tv' ? 'TV Show' : 'Movie',
                           style: const TextStyle(
-                            color: chipluxCyan,
+                            color: chipluxGold,
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
                           ),
@@ -40036,7 +39837,7 @@ class _EpisodeTile extends StatelessWidget {
 
         style: const TextStyle(
           fontSize: 10,
-          color: chipluxCyan,
+          color: chipluxGold,
           fontWeight: FontWeight.bold,
         ),
       ),
@@ -40619,7 +40420,7 @@ class EpisodeInfoPage extends StatelessWidget {
                                 Icons.chevron_left_rounded,
                                 size: 20,
                                 color: hasPreviousEpisode
-                                    ? chipluxCyan
+                                    ? chipluxGold
                                     : Colors.white24,
                               ),
 
@@ -40673,7 +40474,7 @@ class EpisodeInfoPage extends StatelessWidget {
                                 Icons.chevron_right_rounded,
                                 size: 20,
                                 color: hasNextEpisode
-                                    ? chipluxCyan
+                                    ? chipluxGold
                                     : Colors.white24,
                               ),
                             ],
@@ -40730,7 +40531,7 @@ class EpisodeInfoPage extends StatelessWidget {
                                 overflow: TextOverflow.ellipsis,
 
                                 style: const TextStyle(
-                                  color: chipluxCyan,
+                                  color: chipluxGold,
 
                                   fontSize: 14,
 
@@ -40744,7 +40545,7 @@ class EpisodeInfoPage extends StatelessWidget {
                             const Icon(
                               Icons.chevron_right_rounded,
 
-                              color: chipluxCyan,
+                              color: chipluxGold,
 
                               size: 18,
                             ),
@@ -40761,7 +40562,7 @@ class EpisodeInfoPage extends StatelessWidget {
               Text(
                 episodeCode,
                 style: const TextStyle(
-                  color: chipluxCyan,
+                  color: chipluxGold,
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 1.2,
@@ -40915,7 +40716,7 @@ class EpisodeInfoPage extends StatelessWidget {
 
                     foregroundColor: watched
                         ? const Color(0xFF7BE8A8)
-                        : chipluxCyan,
+                        : chipluxGold,
                   ),
                 ),
               ),
@@ -40976,13 +40777,13 @@ class EpisodeInfoPage extends StatelessWidget {
                     ),
 
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: chipluxCyan,
+                      foregroundColor: chipluxGold,
 
                       side: BorderSide(
-                        color: chipluxCyan.withValues(alpha: 0.65),
+                        color: chipluxGold.withValues(alpha: 0.65),
                       ),
 
-                      backgroundColor: chipluxCyan.withValues(alpha: 0.06),
+                      backgroundColor: chipluxGold.withValues(alpha: 0.06),
 
                       padding: const EdgeInsets.symmetric(vertical: 14),
 
@@ -41035,7 +40836,7 @@ class EpisodeInfoPage extends StatelessWidget {
       child: Text(
         episodeCode,
         style: const TextStyle(
-          color: chipluxCyan,
+          color: chipluxGold,
           fontSize: 24,
           fontWeight: FontWeight.bold,
         ),
@@ -41176,7 +40977,7 @@ class _FavoriteBurstPainter extends CustomPainter {
       Colors.pinkAccent,
       Color(0xFFFF5C72),
       Color(0xFFFF8A9A),
-      chipluxPurple,
+      chipluxAmber,
     ];
 
     const int count = 14;
@@ -41270,7 +41071,7 @@ Future<void> _showTvShowAutoCompletedPopup(
               gradient: const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [chipluxCyan, chipluxViolet, chipluxPurple],
+                colors: [chipluxGold, chipluxBrightGold, chipluxAmber],
               ),
             ),
             child: Container(
@@ -41324,7 +41125,7 @@ Future<void> _showTvShowAutoCompletedPopup(
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      color: chipluxCyan,
+                      color: chipluxGold,
                       fontSize: 17,
                       fontWeight: FontWeight.w700,
                     ),
@@ -41347,7 +41148,7 @@ Future<void> _showTvShowAutoCompletedPopup(
                         Navigator.pop(dialogContext);
                       },
                       style: FilledButton.styleFrom(
-                        backgroundColor: chipluxCyan,
+                        backgroundColor: chipluxGold,
                         foregroundColor: chipluxBackground,
                         padding: const EdgeInsets.symmetric(vertical: 13),
                         shape: RoundedRectangleBorder(
@@ -41462,9 +41263,9 @@ class _CompletionBurstPainter extends CustomPainter {
 
     const colors = [
       Color(0xFFFFC857),
-      chipluxCyan,
-      chipluxViolet,
-      chipluxPurple,
+      chipluxGold,
+      chipluxBrightGold,
+      chipluxAmber,
       Color(0xFF7BE8A8),
     ];
 
