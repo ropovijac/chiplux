@@ -47,6 +47,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'services/critic_service.dart';
 
 import 'dart:math' as math;
+import 'dart:ui' show PathMetric;
 
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 
@@ -2283,7 +2284,7 @@ class _AchievementUnlockDialogState extends State<_AchievementUnlockDialog>
                               const UiText(
                                 'MYTHIC • TIER IX',
                                 style: TextStyle(
-                                  color: Color(0xFFFFE27A),
+                                  color: Color(0xFFFF62AD),
                                   fontSize: 11,
                                   fontWeight: FontWeight.w900,
                                   letterSpacing: 2.3,
@@ -20068,6 +20069,7 @@ class _AchievementGroupCard extends StatelessWidget {
         height: 36,
         child: _AvatarFrame(
           frameId: milestone.id,
+          playIntroShimmer: false,
           child: const DecoratedBox(
             decoration: BoxDecoration(shape: BoxShape.circle, color: chipluxSurfaceLight),
             child: Icon(Icons.person_rounded, size: 18, color: Colors.white70),
@@ -20080,6 +20082,7 @@ class _AchievementGroupCard extends StatelessWidget {
       return _DisplayNameFrame(
         frameId: milestone.id,
         radius: 9,
+        playIntroShimmer: false,
         child: Container(
           width: 72,
           height: 25,
@@ -20108,16 +20111,23 @@ class _AchievementGroupCard extends StatelessWidget {
       );
     }
 
-    // Preview the NEXT tier's gradient, never the previous tier's cosmetics.
-    final gradient = colors.length > 1 ? LinearGradient(colors: colors) : null;
-    return Container(
+    // Preview the NEXT tier's actual colors and animated prestige outline.
+    final animated = _achievementHasAnimatedPrestigeAura(milestone) && _rewardKind != 'color';
+    final gradient = !animated && colors.length > 1 ? LinearGradient(colors: colors) : null;
+    return _LegendaryTierAura(
+      enabled: animated,
+      colors: colors,
+      playIntroShimmer: false,
+      borderRadius: 9,
+      child: Container(
       constraints: const BoxConstraints(minHeight: 30),
       width: double.infinity,
       padding: const EdgeInsets.all(1.5),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(9),
         gradient: gradient,
-        border: gradient == null ? Border.all(color: previewColor.withValues(alpha: .65)) : null,
+        border: animated ? null : gradient == null
+            ? Border.all(color: previewColor.withValues(alpha: .65)) : null,
       ),
       child: Container(
         constraints: const BoxConstraints(minHeight: 27),
@@ -20154,7 +20164,7 @@ class _AchievementGroupCard extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ));
   }
 
   @override
@@ -20314,12 +20324,32 @@ List<Color> _achievementTierPalette(int tier) {
     case 3: return const [Color(0xFFFACC15), Color(0xFFFACC15)]; // Yellow
     case 4: return const [Color(0xFFB388FF), Color(0xFFB388FF)]; // Purple
     case 5: return const [Color(0xFFFF5252), Color(0xFFFF5252)]; // Red
-    case 6: return const [Color(0xFFFFD54F), Color(0xFFFF453A)];
-    case 7: return const [Color(0xFF36E5C2), Color(0xFF3B82F6), Color(0xFFB477FF)];
-    case 8: return const [Color(0xFFFF4757), Color(0xFFA855F7), Color(0xFFFBBF24), Color(0xFF22D3EE)];
+    case 6: return const [
+      Color(0xFFFFD54F), // gold
+      Color(0xFFFF7A45), // orange ember
+      Color(0xFFFF453A), // vivid red-orange
+    ];
+    case 7: return const [
+      Color(0xFF36E5C2), // aqua teal
+      Color(0xFF3B82F6), // blue
+      Color(0xFF8B5CF6), // violet
+    ];
+    // Tier VIII: the previous top-tier Runtime Level look.
+    // Pink/magenta/violet only, distinct from both Tier VII and Tier IX.
+    case 8: return const [
+      Color(0xFFFF4B8D), // luminous rose
+      Color(0xFFEE47B6), // rich magenta
+      Color(0xFFB65AF0), // orchid
+      Color(0xFF8767F5), // electric amethyst
+      Color(0xFFFF4B8D),
+    ];
+    // Tier IX: developer-rainbow prestige animation.
     case 9: return const [
-      Color(0xFFFFE27A), Color(0xFFFF4173), Color(0xFFB16BFF),
-      Color(0xFF5CE1FF), Color(0xFF4CFFB8), Color(0xFFFFE27A),
+      Color(0xFF00E5FF), // cyan
+      Color(0xFF875CFF), // violet
+      Color(0xFFFF4FD8), // pink
+      Color(0xFFFFD166), // gold
+      Color(0xFF00E5FF),
     ];
     default: return const [Color(0xFF9CA3AF)];
   }
@@ -20337,19 +20367,31 @@ List<Color> _achievementTierColors(_Achievement? achievement) {
   return _achievementTierPalette(achievement.visualTier);
 }
 
+bool _achievementHasAnimatedPrestigeAura(_Achievement? achievement) {
+  return achievement != null && achievement.visualTier >= 8;
+}
 
-// Ninth-tier achievement rewards have a signature animated prismatic outline.
-// All earlier tiers are intentionally static and visually quieter.
+
+// A SINGLE shared Tier IX renderer for live profile items and Customize
+// Profile previews. The sweep-gradient itself rotates continuously, while a
+// clearly visible white glint follows a SECOND path just inside the border.
+// A profile entrance adds one quick extra glint lap without resetting either
+// animation or causing a jump when the entrance finishes.
 class _LegendaryTierAura extends StatefulWidget {
   final Widget child;
   final bool enabled;
   final double borderRadius;
   final bool circle;
+  final bool playIntroShimmer;
+  final List<Color> colors;
+
   const _LegendaryTierAura({
     required this.child,
     required this.enabled,
+    required this.colors,
     this.borderRadius = 14,
     this.circle = false,
+    this.playIntroShimmer = true,
   });
 
   @override
@@ -20357,118 +20399,262 @@ class _LegendaryTierAura extends StatefulWidget {
 }
 
 class _LegendaryTierAuraState extends State<_LegendaryTierAura>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _motion;
+    with TickerProviderStateMixin {
+  late final AnimationController _orbit;
+  late final AnimationController _entrance;
+  bool _entranceCompleted = false;
 
   @override
   void initState() {
     super.initState();
-    _motion = AnimationController(
+    // Faster than the old 12-second cycle so colors visibly travel around
+    // the whole border, without abrupt flashes or jumps.
+    _orbit = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 5800),
+      duration: _sweepDuration(),
     );
-    if (widget.enabled) _motion.repeat();
+    _entrance = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1900),
+    );
+    _entrance.addStatusListener(_handleEntranceStatus);
+  }
+
+  void _handleEntranceStatus(AnimationStatus status) {
+    if (status == AnimationStatus.completed) {
+      _entranceCompleted = true;
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncMotion();
   }
 
   @override
   void didUpdateWidget(covariant _LegendaryTierAura oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.enabled && !_motion.isAnimating) _motion.repeat();
-    if (!widget.enabled && _motion.isAnimating) _motion.stop();
+    if (oldWidget.enabled != widget.enabled ||
+        oldWidget.playIntroShimmer != widget.playIntroShimmer) {
+      _entranceCompleted = false;
+      _entrance.reset();
+      _orbit.reset();
+    }
+    _syncMotion();
+  }
+
+  Duration _sweepDuration() =>
+      widget.colors.isNotEmpty && widget.colors.first == const Color(0xFF00E5FF)
+          ? const Duration(seconds: 4) // developer-title rainbow cadence
+          : const Duration(seconds: 8); // pink Runtime Level Tier VIII
+
+  void _syncMotion() {
+    final targetDuration = _sweepDuration();
+    if (_orbit.duration != targetDuration) {
+      _orbit.duration = targetDuration;
+    }
+    // Preserve the colors, but stop the motion for reduced-motion users.
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    if (!widget.enabled || reduceMotion) {
+      _orbit.stop();
+      _entrance.stop();
+      return;
+    }
+    if (!_orbit.isAnimating) _orbit.repeat();
+    if (widget.playIntroShimmer && !_entranceCompleted &&
+        !_entrance.isAnimating) {
+      _entrance.forward();
+    }
   }
 
   @override
   void dispose() {
-    _motion.dispose();
+    _entrance.removeStatusListener(_handleEntranceStatus);
+    _orbit.dispose();
+    _entrance.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     if (!widget.enabled) return widget.child;
-    return Stack(
-      fit: StackFit.passthrough,
-      children: [
-        widget.child,
-        Positioned.fill(
-          child: IgnorePointer(
-            child: RepaintBoundary(
-              child: AnimatedBuilder(
-                animation: _motion,
-                builder: (context, _) => CustomPaint(
-                  painter: _LegendaryTierAuraPainter(
-                    phase: _motion.value,
-                    borderRadius: widget.borderRadius,
-                    circle: widget.circle,
-                  ),
-                ),
-              ),
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    // The foregroundPainter always paints AFTER the actual reward widget.
+    // This fixes the earlier second-overlay border/dot being invisible on
+    // certain compositions while preserving the child's original hit testing.
+    return RepaintBoundary(
+      child: AnimatedBuilder(
+        animation: Listenable.merge([_orbit, _entrance]),
+        child: widget.child,
+        builder: (context, child) {
+          final bonusLap = _entrance.isAnimating
+              ? Curves.easeInOutCubic.transform(_entrance.value)
+              : 0.0;
+          return CustomPaint(
+            foregroundPainter: _LegendaryTierAuraPainter(
+              gradientPhase: reduceMotion ? 0.0 : _orbit.value,
+              glintPhase: reduceMotion ? 0.0 :
+                  (_orbit.value + bonusLap) % 1.0,
+              glintEnabled: !reduceMotion,
+              entranceActive: _entrance.isAnimating,
+              borderRadius: widget.borderRadius,
+              circle: widget.circle,
+              colors: widget.colors,
             ),
-          ),
-        ),
-      ],
+            child: child,
+          );
+        },
+      ),
     );
   }
 }
 
 class _LegendaryTierAuraPainter extends CustomPainter {
-  final double phase;
+  final double gradientPhase;
+  final double glintPhase;
+  final bool glintEnabled;
+  final bool entranceActive;
   final double borderRadius;
   final bool circle;
+  final List<Color> colors;
+
   const _LegendaryTierAuraPainter({
-    required this.phase,
+    required this.gradientPhase,
+    required this.glintPhase,
+    required this.glintEnabled,
+    required this.entranceActive,
     required this.borderRadius,
     required this.circle,
+    required this.colors,
   });
 
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (size.isEmpty) return;
-    final bounds = Offset.zero & size;
-    final rect = bounds.deflate(1.8);
+  Path _outline(Rect bounds, double inset) {
+    final rect = bounds.deflate(inset);
     final path = Path();
     if (circle) {
       path.addOval(rect);
     } else {
+      // Shrink the corner radius as the path moves inward, so the dot always
+      // travels inside the rounded frame rather than cutting its corners.
+      final radius = math.max(0.0, borderRadius - inset);
       path.addRRect(RRect.fromRectAndRadius(
-        rect, Radius.circular(borderRadius),
+        rect, Radius.circular(radius),
       ));
     }
-    final palette = _achievementTierPalette(9);
-    final sweep = SweepGradient(
-      colors: palette,
-      transform: GradientRotation(phase * math.pi * 2),
-    ).createShader(bounds);
-    canvas.drawPath(path, Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.4
-      ..color = const Color(0xFFA855F7).withValues(alpha:
-          0.20 + 0.12 * math.sin(phase * math.pi * 2).abs())
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8));
-    canvas.drawPath(path, Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.1
-      ..shader = sweep);
-    // Four orbiting glints run around the frame at slightly different phases.
-    final perim = path.computeMetrics().first;
-    for (var i = 0; i < 4; i++) {
-      final t = (phase + i / 4) % 1.0;
-      final tangent = perim.getTangentForOffset(perim.length * t);
-      if (tangent == null) continue;
-      final center = tangent.position;
-      final radius = i.isEven ? 2.4 : 1.6;
-      canvas.drawCircle(center, radius + 2, Paint()
-        ..color = Colors.white.withValues(alpha: 0.20)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4));
-      canvas.drawCircle(center, radius,
-          Paint()..color = i.isEven ? const Color(0xFFFFF3C2) : Colors.white);
+    return path;
+  }
+
+  void _drawWrappedSegment(
+      Canvas canvas, PathMetric metric, double start, double end, Paint paint) {
+    final perimeter = metric.length;
+    // Segments here are shorter than the perimeter. Wrap seamlessly across
+    // PathMetric's origin (the top-right corner for some shapes).
+    final a = (start % perimeter + perimeter) % perimeter;
+    final b = (end % perimeter + perimeter) % perimeter;
+    if (a <= b) {
+      canvas.drawPath(metric.extractPath(a, b), paint);
+    } else {
+      canvas.drawPath(metric.extractPath(a, perimeter), paint);
+      canvas.drawPath(metric.extractPath(0, b), paint);
     }
   }
 
   @override
-  bool shouldRepaint(covariant _LegendaryTierAuraPainter oldDelegate) =>
-      oldDelegate.phase != phase ||
-      oldDelegate.borderRadius != borderRadius || oldDelegate.circle != circle;
+  void paint(Canvas canvas, Size size) {
+    if (size.isEmpty || size.shortestSide <= 4) return;
+    final bounds = Offset.zero & size;
+    final outline = _outline(bounds, 1.8);
+
+    final auraColors = colors.isNotEmpty ? colors : _achievementTierPalette(9);
+    final glowBase = auraColors.length > 2 ? auraColors[2] : auraColors.first;
+
+    // Two pass chrome effect: animated prestige glow + bright sweep-gradient.
+    final shader = SweepGradient(
+      colors: auraColors,
+      transform: GradientRotation(gradientPhase * math.pi * 2),
+    ).createShader(bounds);
+
+    canvas.drawPath(outline, Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4.8
+      ..color = glowBase.withValues(alpha: 0.30)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 7.5));
+    canvas.drawPath(outline, Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.9
+      ..shader = shader);
+    // A slender bright specular edge adds polish without whitening the colors.
+    canvas.drawPath(outline, Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.65
+      ..color = Colors.white.withValues(alpha: 0.17));
+
+    if (!glintEnabled || size.shortestSide < 14) return;
+
+    // IMPORTANT: this is an INNER path, not the frame's centerline. The
+    // hotspot therefore appears just inside the frame (including corners).
+    final inset = math.min(6.0, size.shortestSide * 0.18);
+    final innerPath = _outline(bounds, inset);
+    final metrics = innerPath.computeMetrics();
+    if (metrics.isEmpty) return;
+    final metric = metrics.first;
+    final perimeter = metric.length;
+    if (perimeter <= 0) return;
+    final head = (glintPhase % 1.0) * perimeter;
+
+    // Small luminous trailing streak (about 20-28 logical px on a profile
+    // frame). The segmented strokes follow PathMetric through every corner.
+    final tailLength = math.min(38.0, perimeter * 0.13);
+    const parts = 24;
+    for (var i = 0; i < parts; i++) {
+      final t0 = i / parts;
+      final t1 = (i + 1) / parts;
+      final strength = t1 * t1;
+      final tailPaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeWidth = 0.95 + 1.8 * t1
+        ..color = Colors.white.withValues(
+          alpha: 0.10 + 0.80 * strength,
+        );
+      _drawWrappedSegment(
+        canvas, metric,
+        head - tailLength + tailLength * t0,
+        head - tailLength + tailLength * t1,
+        tailPaint,
+      );
+    }
+
+    // One visible, white, softly flashing dot. Its translucent glow keeps
+    // it discernible on both purple and pink sections of the frame.
+    final point = metric.getTangentForOffset(head)?.position;
+    if (point == null) return;
+    final twinkle = (math.sin(glintPhase * math.pi * 2 * 5.5) + 1) * 0.5;
+    // Large enough to be visible on a phone, but never eclipses the frame.
+    final brightness = (0.82 + 0.18 * twinkle) *
+        (entranceActive ? 1.0 : 0.98);
+    final core = (size.shortestSide * 0.052).clamp(3.0, 3.8).toDouble();
+    canvas.drawCircle(point, core + 6.5, Paint()
+      ..color = Colors.white.withValues(alpha: 0.82 * brightness)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5.5));
+    canvas.drawCircle(point, core + 2.8, Paint()
+      ..color = Colors.white.withValues(alpha: 0.23 * brightness));
+    canvas.drawCircle(point, core + 0.45, Paint()
+      ..color = Colors.white.withValues(alpha: brightness));
+    canvas.drawCircle(point, core * 0.52, Paint()
+      ..color = Colors.white);
+  }
+
+  @override
+  bool shouldRepaint(covariant _LegendaryTierAuraPainter old) =>
+      old.gradientPhase != gradientPhase ||
+      old.glintPhase != glintPhase ||
+      old.glintEnabled != glintEnabled ||
+      old.entranceActive != entranceActive ||
+      old.borderRadius != borderRadius ||
+      old.circle != circle ||
+      old.colors != colors;
 }
 
 class _AchievementMedal extends StatefulWidget {
@@ -20505,7 +20691,7 @@ class _AchievementMedalState extends State<_AchievementMedal>
 
   void _updateAnimation() {
     final shouldAnimate =
-        widget.achievement.unlocked && widget.achievement.visualTier == 9;
+        widget.achievement.unlocked && widget.achievement.visualTier >= 8;
 
     if (shouldAnimate) {
       if (!_controller.isAnimating) {
@@ -20539,9 +20725,9 @@ class _AchievementMedalState extends State<_AchievementMedal>
       animation: _controller,
 
       builder: (context, _) {
-        final bool rotating = widget.achievement.visualTier == 9 && unlocked;
+        final bool rotating = widget.achievement.visualTier >= 8 && unlocked;
 
-        final bool finalTier = widget.achievement.visualTier == 9 && unlocked;
+        final bool finalTier = widget.achievement.visualTier >= 8 && unlocked;
 
         final rotation = rotating ? _controller.value * math.pi * 2 : 0.0;
 
@@ -21945,8 +22131,13 @@ class _AchievementCosmeticService extends ChangeNotifier {
 class _AvatarFrame extends StatelessWidget {
   final String? frameId;
   final Widget child;
+  final bool playIntroShimmer;
 
-  const _AvatarFrame({required this.frameId, required this.child});
+  const _AvatarFrame({
+    required this.frameId,
+    required this.child,
+    this.playIntroShimmer = true,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -21954,8 +22145,10 @@ class _AvatarFrame extends StatelessWidget {
 
     return _LegendaryTierAura(
       enabled: frameId != null && _publicProfileViewAchievementGroupFor(0).tiers.last.id == frameId,
+      colors: colors ?? _achievementTierPalette(0),
       borderRadius: 44,
       circle: true,
+      playIntroShimmer: playIntroShimmer,
       child: Container(
       padding: EdgeInsets.all(frameId == null ? 3 : 4),
 
@@ -22007,7 +22200,8 @@ class _ProfileTitleLabel extends StatelessWidget {
     final accent = colors.isNotEmpty ? colors.first : chipluxGold;
 
     return _LegendaryTierAura(
-      enabled: achievement.visualTier == 9,
+      enabled: _achievementHasAnimatedPrestigeAura(achievement),
+      colors: colors,
       borderRadius: 18,
       circle: false,
       child: Container(
@@ -22020,7 +22214,8 @@ class _ProfileTitleLabel extends StatelessWidget {
 
         borderRadius: BorderRadius.circular(18),
 
-        border: Border.all(color: accent.withValues(alpha: 0.38)),
+        border: _achievementHasAnimatedPrestigeAura(achievement)
+            ? null : Border.all(color: accent.withValues(alpha: 0.38)),
 
         boxShadow: [
           BoxShadow(color: accent.withValues(alpha: 0.05), blurRadius: 8),
@@ -22657,13 +22852,14 @@ class _DeveloperTitleLabelState extends State<_DeveloperTitleLabel>
 class _DisplayNameFrame extends StatelessWidget {
   final String? frameId;
   final Widget child;
-
   final double radius;
+  final bool playIntroShimmer;
 
   const _DisplayNameFrame({
     required this.frameId,
     required this.child,
     this.radius = 30,
+    this.playIntroShimmer = true,
   });
 
   @override
@@ -22672,8 +22868,10 @@ class _DisplayNameFrame extends StatelessWidget {
 
     return _LegendaryTierAura(
       enabled: frameId != null && _dailyLoginAchievementGroupFor(0).tiers.last.id == frameId,
+      colors: colors ?? _achievementTierPalette(0),
       borderRadius: 30,
       circle: false,
+      playIntroShimmer: playIntroShimmer,
       child: Container(
       padding: EdgeInsets.all(frameId == null ? 1.2 : 1.6),
 
@@ -22752,7 +22950,7 @@ class _DisplayNameFrameOption extends StatelessWidget {
 
               border: Border.all(
                 color: selected
-                    ? chipluxGold.withValues(alpha: 0.65)
+                    ? Colors.white.withValues(alpha: 0.34)
                     : Colors.white.withValues(alpha: 0.06),
 
                 width: selected ? 1.3 : 1,
@@ -22768,8 +22966,8 @@ class _DisplayNameFrameOption extends StatelessWidget {
 
                   child: _DisplayNameFrame(
                     frameId: frameId,
-
                     radius: 18,
+                    playIntroShimmer: false,
 
                     child: Container(
                       width: double.infinity,
@@ -24506,7 +24704,8 @@ class _AchievementCollectionButton extends StatelessWidget {
     final bool hasReward = styleAchievement != null && colors.isNotEmpty;
 
     return _LegendaryTierAura(
-      enabled: styleAchievement?.visualTier == 9,
+      enabled: _achievementHasAnimatedPrestigeAura(styleAchievement),
+      colors: colors,
       borderRadius: 16,
       circle: false,
       child: GestureDetector(
@@ -24746,7 +24945,8 @@ class _FollowerCountBadgeState extends State<_FollowerCountBadge> {
     final bool hasReward = styleAchievement != null && colors.isNotEmpty;
 
     return _LegendaryTierAura(
-      enabled: styleAchievement?.visualTier == 9,
+      enabled: _achievementHasAnimatedPrestigeAura(styleAchievement),
+      colors: colors,
       borderRadius: 16,
       circle: false,
       child: GestureDetector(
@@ -25074,7 +25274,7 @@ class _PinnedAchievementBadgeState extends State<_PinnedAchievementBadge>
 
   void _updateAnimation() {
     final shouldAnimate =
-        widget.achievement.unlocked && widget.achievement.visualTier == 9;
+        widget.achievement.unlocked && widget.achievement.visualTier >= 8;
 
     if (shouldAnimate) {
       if (!_controller.isAnimating) {
@@ -25105,10 +25305,10 @@ class _PinnedAchievementBadgeState extends State<_PinnedAchievementBadge>
 
       builder: (context, _) {
         final bool rotating =
-            widget.achievement.visualTier == 9 && widget.achievement.unlocked;
+            widget.achievement.visualTier >= 8 && widget.achievement.unlocked;
 
         final bool finalTier =
-            widget.achievement.visualTier == 9 && widget.achievement.unlocked;
+            widget.achievement.visualTier >= 8 && widget.achievement.unlocked;
 
         final double rotation = rotating
             ? _controller.value * math.pi * 2
@@ -25361,7 +25561,8 @@ class _CriticReputationCard extends StatelessWidget {
     final accentColor = activeColors.first;
 
     return _LegendaryTierAura(
-      enabled: frameAchievement?.visualTier == 9,
+      enabled: _achievementHasAnimatedPrestigeAura(frameAchievement),
+      colors: activeColors,
       borderRadius: 20,
       circle: false,
       child: GestureDetector(
@@ -25940,7 +26141,8 @@ class _LevelCardState extends State<_LevelCard> with TickerProviderStateMixin {
     final Color titleColor = activeColors.first;
 
     return _LegendaryTierAura(
-      enabled: widget.frameAchievement?.visualTier == 9,
+      enabled: _achievementHasAnimatedPrestigeAura(widget.frameAchievement),
+      colors: activeColors,
       borderRadius: 20,
       circle: false,
       child: GestureDetector(
@@ -26260,7 +26462,8 @@ class _WatchStatCard extends StatelessWidget {
         : const Color(0xFFBFC9D4);
 
     return _LegendaryTierAura(
-      enabled: frameAchievement?.visualTier == 9,
+      enabled: _achievementHasAnimatedPrestigeAura(frameAchievement),
+      colors: frameColors,
       borderRadius: 14,
       circle: false,
       child: Material(
@@ -26281,13 +26484,14 @@ class _WatchStatCard extends StatelessWidget {
 
             borderRadius: BorderRadius.circular(14),
 
-            border: Border.all(
-              color: hasAchievement
-                  ? achievementColor.withValues(alpha: 0.32)
-                  : Colors.white.withValues(alpha: 0.055),
-
-              width: hasAchievement ? 1.1 : 1.0,
-            ),
+            border: _achievementHasAnimatedPrestigeAura(frameAchievement)
+                ? null
+                : Border.all(
+                    color: hasAchievement
+                        ? achievementColor.withValues(alpha: 0.32)
+                        : Colors.white.withValues(alpha: 0.055),
+                    width: hasAchievement ? 1.1 : 1.0,
+                  ),
           ),
 
           child: Row(
@@ -26420,7 +26624,8 @@ class _RatingStatCard extends StatelessWidget {
         : const Color(0xFFBFC9D4);
 
     return _LegendaryTierAura(
-      enabled: frameAchievement?.visualTier == 9,
+      enabled: _achievementHasAnimatedPrestigeAura(frameAchievement),
+      colors: frameColors,
       borderRadius: 14,
       circle: false,
       child: Material(
@@ -26441,13 +26646,14 @@ class _RatingStatCard extends StatelessWidget {
 
             borderRadius: BorderRadius.circular(14),
 
-            border: Border.all(
-              color: hasAchievement
-                  ? achievementColor.withValues(alpha: 0.32)
-                  : Colors.white.withValues(alpha: 0.055),
-
-              width: hasAchievement ? 1.1 : 1.0,
-            ),
+            border: _achievementHasAnimatedPrestigeAura(frameAchievement)
+                ? null
+                : Border.all(
+                    color: hasAchievement
+                        ? achievementColor.withValues(alpha: 0.32)
+                        : Colors.white.withValues(alpha: 0.055),
+                    width: hasAchievement ? 1.1 : 1.0,
+                  ),
           ),
 
           child: Row(
@@ -33113,6 +33319,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     final options = <Widget>[
       _AchievementCosmeticOption(
         label: 'Default',
+        groupId: group.id,
         achievement: null,
         icon: group.icon,
         unlocked: true,
@@ -33125,6 +33332,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
       for (final tier in group.tiers)
         _AchievementCosmeticOption(
           label: tier.title,
+          groupId: group.id,
           achievement: tier,
           icon: group.icon,
           unlocked: tier.unlocked || profile.hasDeveloperRewardAccess,
@@ -33549,7 +33757,7 @@ class _AvatarFrameOption extends StatelessWidget {
 
               border: Border.all(
                 color: selected
-                    ? chipluxGold.withValues(alpha: 0.65)
+                    ? Colors.white.withValues(alpha: 0.34)
                     : Colors.white.withValues(alpha: 0.06),
               ),
             ),
@@ -33565,6 +33773,7 @@ class _AvatarFrameOption extends StatelessWidget {
 
                     child: _AvatarFrame(
                       frameId: frameId,
+                      playIntroShimmer: false,
 
                       child: Container(
                         decoration: const BoxDecoration(
@@ -33602,6 +33811,7 @@ class _AvatarFrameOption extends StatelessWidget {
 
 class _AchievementCosmeticOption extends StatelessWidget {
   final String label;
+  final String groupId;
 
   final _Achievement? achievement;
 
@@ -33615,6 +33825,7 @@ class _AchievementCosmeticOption extends StatelessWidget {
 
   const _AchievementCosmeticOption({
     required this.label,
+    required this.groupId,
     required this.achievement,
     required this.icon,
     required this.unlocked,
@@ -33629,6 +33840,47 @@ class _AchievementCosmeticOption extends StatelessWidget {
         : _achievementTierColors(achievement);
 
     final accent = colors.first;
+    final bool isTextColor = groupId == 'display_name_color';
+    final bool usesGradientBorder = groupId == 'medal_collection' ||
+        groupId == 'followers' || groupId == 'runtime_level' ||
+        groupId == 'ratings_level';
+    final bool isPrestigeBorder = _achievementHasAnimatedPrestigeAura(achievement) && !isTextColor;
+
+    // Exact reward palette + identical animated outline from the live profile.
+    // Stats have a solid accent border; cards and badges use a full gradient.
+    final sample = Container(
+      width: 48,
+      height: 48,
+      padding: const EdgeInsets.all(1.5),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(13),
+        color: chipluxSurface,
+        gradient: !isPrestigeBorder && usesGradientBorder && achievement != null
+            ? LinearGradient(colors: colors,
+                begin: Alignment.topLeft, end: Alignment.bottomRight)
+            : null,
+        border: isPrestigeBorder || (usesGradientBorder && achievement != null)
+            ? null
+            : Border.all(color: accent.withValues(alpha: 0.58), width: 1.4),
+        boxShadow: [BoxShadow(
+          color: accent.withValues(alpha: 0.09), blurRadius: 7,
+        )],
+      ),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: chipluxSurface,
+          borderRadius: BorderRadius.circular(11.5),
+        ),
+        child: Center(
+          child: isTextColor
+              ? Text('Aa', style: TextStyle(
+                  color: achievement == null ? Colors.white : accent,
+                  fontWeight: FontWeight.bold, fontSize: 19,
+                ))
+              : Icon(icon, color: accent, size: 23),
+        ),
+      ),
+    );
 
     return SizedBox(
       width: 105,
@@ -33653,7 +33905,7 @@ class _AchievementCosmeticOption extends StatelessWidget {
 
               border: Border.all(
                 color: selected
-                    ? accent.withValues(alpha: 0.80)
+                    ? Colors.white.withValues(alpha: 0.34)
                     : Colors.white.withValues(alpha: 0.06),
 
                 width: selected ? 1.3 : 1,
@@ -33667,31 +33919,12 @@ class _AchievementCosmeticOption extends StatelessWidget {
                 Opacity(
                   opacity: unlocked ? 1 : 0.30,
 
-                  child: Container(
-                    width: 48,
-                    height: 48,
-
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(13),
-
-                      color: chipluxSurface,
-
-                      border: Border.all(
-                        color: accent.withValues(alpha: 0.75),
-
-                        width: 1.5,
-                      ),
-
-                      boxShadow: [
-                        BoxShadow(
-                          color: accent.withValues(alpha: 0.12),
-
-                          blurRadius: 8,
-                        ),
-                      ],
-                    ),
-
-                    child: Icon(icon, color: accent, size: 23),
+                  child: _LegendaryTierAura(
+                    enabled: isPrestigeBorder,
+                    colors: colors,
+                    playIntroShimmer: false,
+                    borderRadius: 13,
+                    child: sample,
                   ),
                 ),
 
