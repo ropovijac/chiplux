@@ -28,7 +28,6 @@ class DiscoverCatalogService {
   final _genreRequests = <String, Future<List<DiscoverGenre>>>{};
   SharedPreferences? _preferences;
   Future<void>? _initialization;
-  Future<void>? _preload;
   static const _diskPrefix = 'chiplux_discover_v4:';
 
   Future<void> _initialize() => _initialization ??= _restore();
@@ -79,37 +78,14 @@ class DiscoverCatalogService {
     }
   }
 
-  // Start overall lists for every media tab before loading background genres.
-  Future<void> preload() => _preload ??= _preloadAll();
-  Future<void> _preloadAll() async {
-    await _initialize();
-    await Future.wait(
-      [
-        DiscoverCategory.movies,
-        DiscoverCategory.tvShows,
-        DiscoverCategory.albums,
-      ].map((category) async {
-        try {
-          await _sharedCategory(category);
-        } catch (_) {
-          /* Saved results remain usable. */
-        }
-        try {
-          await genres(category);
-        } catch (_) {
-          /* Retry when opened. */
-        }
-        for (final mode in [DiscoverMode.trending, DiscoverMode.top100]) {
-          try {
-            await load(category, mode);
-          } catch (_) {
-            /* Keep navigation available. */
-          }
-        }
-      }),
-    );
-  }
+  // Restore saved discovery results without launching requests for every tab.
+  // The visible Discover page already requests its selected category/mode.
+  // Fetching all three categories and their genres here competed with that
+  // first screen and could flood a slow mobile connection at page open.
+  Future<void> preload() => _initialize();
 
+  // Only warm the category the user actually opens. Other categories remain
+  // on demand; _sharedCategory deduplicates concurrent visible requests.
   Future<void> preloadCategory(
     DiscoverCategory category,
     DiscoverMode mode,

@@ -290,7 +290,12 @@ List<Map<String, dynamic>> _discoverDailyPick(
 
 class _DiscoverBrowsePage extends StatefulWidget {
   final DiscoverMode mode;
-  const _DiscoverBrowsePage({super.key, required this.mode});
+  final int openRequest;
+  const _DiscoverBrowsePage({
+    super.key,
+    required this.mode,
+    this.openRequest = 0,
+  });
   @override
   State<_DiscoverBrowsePage> createState() => _DiscoverBrowsePageState();
 }
@@ -304,6 +309,8 @@ class _DiscoverBrowsePageState extends State<_DiscoverBrowsePage>
   DiscoverCategory category = DiscoverCategory.movies;
   late Future<List<DiscoverGenre>> genres;
   int generation = 0;
+  // An explicit category re-tap should also return its rows to item zero.
+  int categoryResetRequest = 0;
   @override
   void initState() {
     super.initState();
@@ -315,10 +322,12 @@ class _DiscoverBrowsePageState extends State<_DiscoverBrowsePage>
 
   void select(DiscoverCategory value) {
     if (value == category) {
+      setState(() => categoryResetRequest++);
       return;
     }
     setState(() {
       category = value;
+      categoryResetRequest++;
       generation++;
       genres = DiscoverCatalogService.instance.genres(value);
     });
@@ -451,8 +460,8 @@ class _DiscoverBrowsePageState extends State<_DiscoverBrowsePage>
                               ChipluxTopListType.superheroMovies => -2,
                               _ => -3,
                             }, definition.title),
-                            colorIndex: index,
                             heading: trUi(context, definition.title),
+                            accentIndex: index,
                             onTap: () => Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -470,7 +479,7 @@ class _DiscoverBrowsePageState extends State<_DiscoverBrowsePage>
                           child: _DiscoverRankedCard(
                             category: category,
                             genre: genre,
-                            colorIndex: index,
+                            accentIndex: index,
                             onTap: () => Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -490,6 +499,8 @@ class _DiscoverBrowsePageState extends State<_DiscoverBrowsePage>
                         category: category,
                         mode: widget.mode,
                         genre: genre,
+                        openRequest: widget.openRequest,
+                        categoryResetRequest: categoryResetRequest,
                       );
                     },
                   ),
@@ -525,35 +536,42 @@ IconData _chipluxCuratedIcon(int? decade, String? misc) {
   };
 }
 
+// Pick a stable accent for each row. The golden-angle hue spacing makes
+// adjacent groups visually distinct without relying on bright card fills.
+Color _discoverTop100GroupAccent(int index, DiscoverCategory category) {
+  final categoryOffset = switch (category) {
+    DiscoverCategory.movies => 0.0,
+    DiscoverCategory.tvShows => 29.0,
+    DiscoverCategory.albums => 62.0,
+    DiscoverCategory.songs => 94.0,
+  };
+  final hue = (10.0 + categoryOffset + index * 137.507764) % 360.0;
+  return HSVColor.fromAHSV(1.0, hue, 0.67, 0.98).toColor();
+}
+
 class _DiscoverRankedCard extends StatelessWidget {
   final DiscoverCategory category;
   final DiscoverGenre? genre;
   final VoidCallback onTap;
-  final int colorIndex;
   final String? heading;
   final int? decade;
   final String? misc;
+  final int accentIndex;
   const _DiscoverRankedCard({
     required this.category,
     this.genre,
     required this.onTap,
-    required this.colorIndex,
     this.heading,
     this.decade,
     this.misc,
+    this.accentIndex = 0,
   });
 
   @override
   Widget build(BuildContext context) {
-    const accents = [
-      chipluxGold,
-      chipluxBrightGold,
-      chipluxAmber,
-      Color(0xFFFFB84D),
-      Color(0xFF43D9C5),
-      Color(0xFFFF6C9E),
-    ];
-    final accent = accents[colorIndex % accents.length];
+    final accent = _discoverTop100GroupAccent(accentIndex, category);
+    // Transparent grouped-list cards: white heading with a different accent
+    // for each group's border, icon frame, icon, and navigation chevron.
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -563,23 +581,12 @@ class _DiscoverRankedCard extends StatelessWidget {
           constraints: const BoxConstraints(minHeight: 108),
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
+            color: Colors.transparent,
             borderRadius: BorderRadius.circular(20),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color.alphaBlend(accent.withValues(alpha: .34), chipluxSurface),
-                Color.alphaBlend(
-                  chipluxBrightGold.withValues(alpha: .12),
-                  chipluxSurface,
-                ),
-                chipluxSurface,
-              ],
+            border: Border.all(
+              color: accent.withValues(alpha: .88),
+              width: 1.3,
             ),
-            border: Border.all(color: accent.withValues(alpha: .30)),
-            boxShadow: [
-              BoxShadow(color: accent.withValues(alpha: .08), blurRadius: 18),
-            ],
           ),
           child: Row(
             children: [
@@ -587,17 +594,20 @@ class _DiscoverRankedCard extends StatelessWidget {
                 width: 64,
                 height: 64,
                 decoration: BoxDecoration(
+                  color: Colors.transparent,
                   borderRadius: BorderRadius.circular(18),
-                  gradient: LinearGradient(
-                    colors: [
-                      accent.withValues(alpha: .40),
-                      chipluxAmber.withValues(alpha: .22),
-                    ],
+                  border: Border.all(
+                    color: accent.withValues(alpha: .85),
+                    width: 1.2,
                   ),
                 ),
                 child: Center(
                   child: (decade != null || misc != null)
-                      ? Icon(_chipluxCuratedIcon(decade, misc), color: accent, size: 38)
+                      ? Icon(
+                          _chipluxCuratedIcon(decade, misc),
+                          color: accent,
+                          size: 38,
+                        )
                       : _DiscoverVectorIcon(
                           category: category,
                           genreId: genre?.id,
@@ -618,11 +628,16 @@ class _DiscoverRankedCard extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 19,
                     fontWeight: FontWeight.w800,
+                    color: Colors.white,
                   ),
                 ),
               ),
               const SizedBox(width: 8),
-              Icon(Icons.chevron_right_rounded, color: accent, size: 26),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: accent,
+                size: 26,
+              ),
             ],
           ),
         ),
@@ -635,11 +650,15 @@ class _DiscoverGenreSection extends StatefulWidget {
   final DiscoverCategory category;
   final DiscoverMode mode;
   final DiscoverGenre? genre;
+  final int openRequest;
+  final int categoryResetRequest;
   const _DiscoverGenreSection({
     super.key,
     required this.category,
     required this.mode,
     this.genre,
+    this.openRequest = 0,
+    this.categoryResetRequest = 0,
   });
   @override
   State<_DiscoverGenreSection> createState() => _DiscoverGenreSectionState();
@@ -647,10 +666,40 @@ class _DiscoverGenreSection extends StatefulWidget {
 
 class _DiscoverGenreSectionState extends State<_DiscoverGenreSection> {
   late Future<List<Map<String, dynamic>>> future;
+  // Never restore stale offsets from PageStorage when a category row is
+  // rebuilt after scrolling off screen. Each row starts with title #1.
+  final ScrollController _horizontalScrollController =
+      ScrollController(initialScrollOffset: 0, keepScrollOffset: false);
+
   @override
   void initState() {
     super.initState();
     future = _load();
+  }
+
+  @override
+  void didUpdateWidget(covariant _DiscoverGenreSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.openRequest != oldWidget.openRequest ||
+        widget.categoryResetRequest != oldWidget.categoryResetRequest) {
+      // Resets both the currently visible section and every mounted section
+      // after returning to Discover or tapping the selected category again.
+      // Off-screen sections also start at zero when created because
+      // keepScrollOffset is disabled on their individual controllers.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !_horizontalScrollController.hasClients) return;
+        final position = _horizontalScrollController.position;
+        if (position.pixels != position.minScrollExtent) {
+          _horizontalScrollController.jumpTo(position.minScrollExtent);
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _horizontalScrollController.dispose();
+    super.dispose();
   }
 
   Future<List<Map<String, dynamic>>> _load({bool force = false}) async {
@@ -752,6 +801,7 @@ class _DiscoverGenreSectionState extends State<_DiscoverGenreSection> {
                     mediaType: DiscoverCatalogService.mediaType(
                       widget.category,
                     ),
+                    controller: _horizontalScrollController,
                   );
                 }
                 return SizedBox(
@@ -759,6 +809,7 @@ class _DiscoverGenreSectionState extends State<_DiscoverGenreSection> {
                       200 +
                       (MediaQuery.textScalerOf(context).scale(12) - 12) * 4,
                   child: ListView.separated(
+                    controller: _horizontalScrollController,
                     scrollDirection: Axis.horizontal,
                     itemCount: rows.take(20).length,
                     separatorBuilder: (_, _) => const SizedBox(width: 12),
@@ -1698,10 +1749,14 @@ class _ChipluxCategorizedListsState extends State<_ChipluxCategorizedLists> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       decoration: BoxDecoration(
-                        color: tab == index
-                            ? chipluxBrightGold.withValues(alpha: .24)
-                            : chipluxSurface,
+                        color: Colors.transparent,
                         borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: chipluxGold.withValues(
+                            alpha: tab == index ? .90 : .35,
+                          ),
+                          width: tab == index ? 1.4 : 1.0,
+                        ),
                       ),
                       child: Text(
                         name,
@@ -1709,7 +1764,9 @@ class _ChipluxCategorizedListsState extends State<_ChipluxCategorizedLists> {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
-                          color: tab == index ? Colors.white : Colors.white60,
+                          color: tab == index
+                              ? chipluxGold
+                              : chipluxGold.withValues(alpha: .75),
                         ),
                       ),
                     ),
@@ -1831,10 +1888,10 @@ class _ChipluxCategorizedListsState extends State<_ChipluxCategorizedLists> {
                   child: _DiscoverRankedCard(
                     category: widget.category,
                     genre: option.genre,
-                    colorIndex: index,
                     heading: option.title,
                     decade: option.startYear,
                     misc: option.misc,
+                    accentIndex: index,
                     onTap: () => Navigator.push(
                       context,
                       MaterialPageRoute(

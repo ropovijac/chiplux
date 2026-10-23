@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'cloud_sync_service.dart';
 import 'tmdb_service.dart';
 import 'community_service.dart';
+import 'startup_library_preview_service.dart';
 
 class LibraryItem {
   final int id;
@@ -104,6 +105,16 @@ class LibraryService extends ChangeNotifier {
 
   static final LibraryService instance = LibraryService._();
 
+  // Last server-confirmed state is stored separately for every Supabase UUID.
+  // A failed write leaves it unchanged, so diffing the locally saved Library
+  // against this checkpoint works after network failure and app restart.
+  static const String _confirmedBaselinePrefix =
+      'chiplux_library_server_baseline_v1_';
+  static const String _pendingSignOutPrefix =
+      'chiplux_library_pending_signout_v1_';
+  static const String _verifiedLocalOwnerKey =
+      'chiplux_startup_preview_verified_owner_v1';
+
   static const String _libraryKey = 'chiplux_library_v2';
 
   static const String _episodesKey = 'chiplux_watched_episodes_v2';
@@ -124,6 +135,10 @@ class LibraryService extends ChangeNotifier {
   // from running at the same time.
   Future<void>? _activeCloudSync;
 
+  Timer? _cloudRetryTimer;
+  int _consecutiveCloudFailures = 0;
+  String? _adoptingGuestForNewAccount;
+
   bool _cloudSyncRequested = false;
 
   // Changes whenever the entire local
@@ -133,6 +148,25 @@ class LibraryService extends ChangeNotifier {
   // from modifying a newly signed-in
   // account's data.
   int _stateGeneration = 0;
+
+  // Prevent a slow cloud download from overwriting a newer local edit.
+  int _localRevision = 0;
+
+  @override
+  void notifyListeners() {
+    _localRevision++;
+    StartupLibraryPreviewService.instance.scheduleForLocalEdit(_startupPreviewRows);
+    super.notifyListeners();
+  }
+
+  List<Map<String, dynamic>> _startupPreviewRows() => [
+    for (final item in _items)
+      {
+        ...item.toJson(),
+        if (item.mediaType == 'tv') 'episodesWatched': watchedCountForShow(item.id),
+      },
+  ];
+
 
   // Prevent duplicate background jobs
   // for the same completed TV show.
@@ -820,6 +854,31 @@ class LibraryService extends ChangeNotifier {
     );
   }
 
+  /// The locally persisted runtime for this exact watched episode.
+  int episodeRuntimeMinutes(int showId, int seasonNumber, int episodeNumber) =>
+      _watchedEpisodeRuntimes[_episodeKey(showId, seasonNumber, episodeNumber)] ?? 0;
+
+  /// Provides a single canonical watched row for an in-progress TV rating.
+  /// Does not modify local state or mark unwatched episodes as watched.
+  Map<String, int>? firstWatchedEpisodeForShow(int showId) {
+    final prefix = '$showId:';
+    for (final key in _watchedEpisodes) {
+      if (!key.startsWith(prefix)) continue;
+      final parts = key.split(':');
+      if (parts.length != 3) continue;
+      final season = int.tryParse(parts[1]);
+      final episode = int.tryParse(parts[2]);
+      if (season == null || episode == null) continue;
+      return {
+        'showId': showId,
+        'seasonNumber': season,
+        'episodeNumber': episode,
+        'runtimeMinutes': _watchedEpisodeRuntimes[key] ?? 0,
+      };
+    }
+    return null;
+  }
+
   int _watchedRegularEpisodeCountForShow(int showId) {
     final prefix = '$showId:';
 
@@ -1320,13 +1379,20 @@ class LibraryService extends ChangeNotifier {
   // SAFE SERIALIZED CLOUD UPLOAD
   // =====================================================
 
-  Future<void> syncToCloud() {
+  Future<void> syncToCloud({bool allowGuestAdoption = false}) {
     final cloud = CloudSyncService.instance;
 
     if (!cloud.isLoggedIn) {
       return Future.value();
     }
 
+    // Guest Library adoption is permitted ONLY by the explicit verified
+    // new-account path; a normal login must not upload leftover guest data.
+    if (allowGuestAdoption) {
+      _adoptingGuestForNewAccount = cloud.user?.id;
+    }
+    _cloudRetryTimer?.cancel();
+    _cloudRetryTimer = null;
     // A sync should contain the newest
     // local state.
     _cloudSyncRequested = true;
@@ -1349,64 +1415,338 @@ class LibraryService extends ChangeNotifier {
   }
 
   Future<void> _runCloudSyncLoop() async {
+    final userId = CloudSyncService.instance.user?.id;
     try {
       while (_cloudSyncRequested) {
         _cloudSyncRequested = false;
-
         await _syncToCloudOnce();
       }
+      _consecutiveCloudFailures = 0;
+    } catch (error) {
+      // Only retry for the identical authenticated account. The baseline was
+      // not advanced after failure; every delta operation is idempotent.
+      if (userId != null && CloudSyncService.instance.user?.id == userId) {
+        _scheduleCloudRetryForAccount(userId,
+          allowGuestAdoption: _adoptingGuestForNewAccount == userId);
+      }
+      rethrow;
     } finally {
       _activeCloudSync = null;
+      _adoptingGuestForNewAccount = null;
     }
+  }
+
+  void _scheduleCloudRetryForAccount(String userId,
+      {bool allowGuestAdoption = false}) {
+    _cloudRetryTimer?.cancel();
+    if (CloudSyncService.instance.user?.id != userId) return;
+    // Bounded backoff: 10, 20, 40, 80, 160, 300 seconds.
+    final shift = _consecutiveCloudFailures > 5 ? 5 : _consecutiveCloudFailures;
+    final proposedDelay = 10 << shift;
+    final delay = proposedDelay > 300 ? 300 : proposedDelay;
+    _consecutiveCloudFailures++;
+    _cloudRetryTimer = Timer(Duration(seconds: delay), () async {
+      _cloudRetryTimer = null;
+      if (CloudSyncService.instance.user?.id != userId) return;
+      try {
+        await syncToCloud(allowGuestAdoption: allowGuestAdoption);
+      } catch (error) {
+        debugPrint('Library retry deferred again: $error');
+      }
+    });
+  }
+
+  // Durable diff helpers use stable, natural primary keys rather than list
+  // order, so a single modified row doesn't rewrite an entire collection.
+  Map<String, Map<String, dynamic>> _keyedLibrary(
+      List<Map<String, dynamic>> items) => {
+    for (final item in items) '${item['mediaType']}:${item['id']}': item,
+  };
+
+  Map<String, Map<String, int>> _keyedEpisodes(
+      List<Map<String, int>> episodes) => {
+    for (final ep in episodes)
+      '${ep['showId']}:${ep['seasonNumber']}:${ep['episodeNumber']}': ep,
+  };
+
+  List<Map<String, int>> _episodeSnapshot({
+    Set<String>? watched,
+    Map<String, int>? runtimes,
+  }) {
+    final keys = watched ?? _watchedEpisodes;
+    final lengths = runtimes ?? _watchedEpisodeRuntimes;
+    final rows = <Map<String, int>>[];
+    for (final key in keys) {
+      final parts = key.split(':');
+      if (parts.length != 3) continue;
+      final show = int.tryParse(parts[0]);
+      final season = int.tryParse(parts[1]);
+      final episode = int.tryParse(parts[2]);
+      if (show == null || season == null || episode == null) continue;
+      rows.add({
+        'showId': show,
+        'seasonNumber': season,
+        'episodeNumber': episode,
+        'runtimeMinutes': lengths[key] ?? 0,
+      });
+    }
+    return rows;
+  }
+
+  _LibraryCloudBaseline? _readCloudBaseline(String? json) {
+    if (json == null) return null;
+    try {
+      final decoded = jsonDecode(json);
+      if (decoded is! Map ||
+          decoded['items'] is! List ||
+          decoded['episodes'] is! List) {
+        return null;
+      }
+      return _LibraryCloudBaseline(
+        items: [for (final raw in decoded['items'] as List)
+          Map<String, dynamic>.from(raw as Map)],
+        episodes: [for (final raw in decoded['episodes'] as List)
+          Map<String, int>.from(raw as Map)],
+      );
+    } catch (e) {
+      debugPrint('Invalid Library sync checkpoint: $e');
+      return null;
+    }
+  }
+
+  // Preserve account-scoped pending edits before a sign-out clears the global
+  // local Library. The last confirmed checkpoint is saved alongside the
+  // snapshot; only keys changed relative to it will be replayed on login.
+  // Store it BEFORE Supabase signs out so even an offline sign-out is safe.
+  Future<void> preservePendingChangesForSignOut() async {
+    final userId = CloudSyncService.instance.user?.id;
+    if (userId == null) return;
+    // A running write may fail offline. Its checkpoint will remain unchanged.
+    try {
+      await waitForCloudSync();
+    } catch (e) {
+      debugPrint('Saving unsent Library edits for sign-out: $e');
+    }
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getString(_verifiedLocalOwnerKey) != userId) return;
+    final baseline = _readCloudBaseline(
+      prefs.getString('$_confirmedBaselinePrefix$userId'),
+    );
+    if (baseline == null) return; // Never manufacture an unverified delta.
+    final items = _items.map((item) => item.toJson()).toList();
+    final episodes = _episodeSnapshot();
+    final dirty = _hasCloudChanges(baseline, items, episodes);
+    final pendingKey = '$_pendingSignOutPrefix$userId';
+    if (dirty) {
+      await prefs.setString(pendingKey, jsonEncode({
+        'confirmedItems': baseline.items,
+        'confirmedEpisodes': baseline.episodes,
+        'items': items,
+        'episodes': episodes,
+      }));
+    } else {
+      // An earlier sign-out may have pending data; leave it intact until
+      // successfully replayed for this account.
+      if (!prefs.containsKey(pendingKey)) return;
+    }
+  }
+
+  bool _hasCloudChanges(_LibraryCloudBaseline previous,
+      List<Map<String, dynamic>> items, List<Map<String, int>> episodes) {
+    final oldItems = _keyedLibrary(previous.items);
+    final newItems = _keyedLibrary(items);
+    final oldEpisodes = _keyedEpisodes(previous.episodes);
+    final newEpisodes = _keyedEpisodes(episodes);
+    if (oldItems.length != newItems.length ||
+        oldEpisodes.length != newEpisodes.length) {
+      return true;
+    }
+    for (final entry in newItems.entries) {
+      if (!oldItems.containsKey(entry.key) ||
+          jsonEncode(oldItems[entry.key]) != jsonEncode(entry.value)) {
+        return true;
+      }
+    }
+    for (final entry in newEpisodes.entries) {
+      if (!oldEpisodes.containsKey(entry.key) ||
+          jsonEncode(oldEpisodes[entry.key]) != jsonEncode(entry.value)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  Future<void> _replayPendingSignedOutChanges(String userId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final pendingKey = '$_pendingSignOutPrefix$userId';
+    final raw = prefs.getString(pendingKey);
+    if (raw == null) return;
+    final data = jsonDecode(raw);
+    if (data is! Map) throw StateError('Corrupt pending Library changes');
+    final previous = _LibraryCloudBaseline(
+      items: [for (final value in data['confirmedItems'] as List)
+        Map<String, dynamic>.from(value as Map)],
+      episodes: [for (final value in data['confirmedEpisodes'] as List)
+        Map<String, int>.from(value as Map)],
+    );
+    final items = [for (final value in data['items'] as List)
+      Map<String, dynamic>.from(value as Map)];
+    final episodes = [for (final value in data['episodes'] as List)
+      Map<String, int>.from(value as Map)];
+    final oldItems = _keyedLibrary(previous.items);
+    final newItems = _keyedLibrary(items);
+    final oldEpisodes = _keyedEpisodes(previous.episodes);
+    final newEpisodes = _keyedEpisodes(episodes);
+    final cloud = CloudSyncService.instance;
+    if (cloud.user?.id != userId) return;
+    await cloud.uploadLibraryChanges(
+      userId: userId,
+      upserts: [for (final e in newItems.entries)
+        if (!oldItems.containsKey(e.key) ||
+            jsonEncode(oldItems[e.key]) != jsonEncode(e.value)) e.value],
+      deletes: [for (final e in oldItems.entries)
+        if (!newItems.containsKey(e.key)) e.value],
+    );
+    await cloud.uploadEpisodeChanges(
+      userId: userId,
+      upserts: [for (final e in newEpisodes.entries)
+        if (!oldEpisodes.containsKey(e.key) ||
+            jsonEncode(oldEpisodes[e.key]) != jsonEncode(e.value)) e.value],
+      deletes: [for (final e in oldEpisodes.entries)
+        if (!newEpisodes.containsKey(e.key)) e.value],
+    );
+    if (cloud.user?.id != userId) {
+      throw StateError('Account changed during pending Library replay');
+    }
+    // On partial failure the durable pending queue is retained and replayed
+    // idempotently next time. Clear only after both groups succeed.
+    await prefs.remove(pendingKey);
+  }
+
+  Future<void> clearSyncMetadataForDeletedAccount(String? userId) async {
+    if (userId == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('$_pendingSignOutPrefix$userId');
+    await prefs.remove('$_confirmedBaselinePrefix$userId');
+  }
+
+  // Flush edits that were saved to local storage while this SAME account was
+  // active on the previous run. Never upload unverified guest or other-account
+  // data. This method is safe to call repeatedly and after connection returns.
+  Future<void> resumePendingCloudSyncForCurrentAccount() async {
+    final userId = CloudSyncService.instance.user?.id;
+    if (userId == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getString(_verifiedLocalOwnerKey) != userId ||
+        _readCloudBaseline(
+          prefs.getString('$_confirmedBaselinePrefix$userId')) == null) {
+      return;
+    }
+    await syncToCloud();
   }
 
   Future<void> _syncToCloudOnce() async {
     final cloud = CloudSyncService.instance;
+    final savingUserId = cloud.user?.id;
+    if (savingUserId == null) return;
+    final revisionAtStart = _localRevision;
 
-    if (!cloud.isLoggedIn) {
-      return;
-    }
-
-    // Take complete snapshots before
-    // beginning any network requests.
+    // Take immutable copies before awaiting the network. A later edit
+    // triggers another pass; it cannot be silently acknowledged here.
     final librarySnapshot = _items.map((item) => item.toJson()).toList();
+    final episodeSnapshot = _episodeSnapshot();
+    final prefs = await SharedPreferences.getInstance();
+    final knownOwner = prefs.getString(_verifiedLocalOwnerKey);
+    if (knownOwner != null && knownOwner != savingUserId) {
+      throw StateError('Local Library belongs to a different account.');
+    }
+    if (knownOwner == null && _adoptingGuestForNewAccount != savingUserId) {
+      throw StateError('Unverified guest Library cannot be uploaded on sign-in.');
+    }
+    if (cloud.user?.id != savingUserId) {
+      throw StateError('Account changed before Library synchronization.');
+    }
+    final baselineKey = '$_confirmedBaselinePrefix$savingUserId';
+    final previous = _readCloudBaseline(prefs.getString(baselineKey));
 
-    final episodeSnapshot = <Map<String, int>>[];
-
-    for (final key in _watchedEpisodes) {
-      final parts = key.split(':');
-
-      if (parts.length != 3) {
-        continue;
+    if (previous == null) {
+      if (_adoptingGuestForNewAccount == savingUserId) {
+        // A new account may adopt guest data ONLY if both server tables are
+        // empty, never by deleting an existing user's cloud Library.
+        final serverItems = await cloud.downloadLibrary();
+        final serverEpisodes = await cloud.downloadEpisodes();
+        if (serverItems.isNotEmpty || serverEpisodes.isNotEmpty) {
+          throw StateError('Account already contains Library data; guest adoption stopped.');
+        }
       }
+      // First new-account guest upload, or migration from old full sync.
+      // An existing account will acquire a baseline through syncFromCloud.
+      debugPrint('CLOUD SYNC: first-time full reconciliation');
+      await cloud.uploadLibrary(librarySnapshot);
+      await cloud.uploadEpisodes(episodeSnapshot);
+    } else {
+      final oldItems = _keyedLibrary(previous.items);
+      final newItems = _keyedLibrary(librarySnapshot);
+      final oldEpisodes = _keyedEpisodes(previous.episodes);
+      final newEpisodes = _keyedEpisodes(episodeSnapshot);
 
-      final showId = int.tryParse(parts[0]);
+      final changedItems = <Map<String, dynamic>>[
+        for (final entry in newItems.entries)
+          if (!oldItems.containsKey(entry.key) ||
+              jsonEncode(oldItems[entry.key]) != jsonEncode(entry.value))
+            entry.value,
+      ];
+      final removedItems = <Map<String, dynamic>>[
+        for (final entry in oldItems.entries)
+          if (!newItems.containsKey(entry.key)) entry.value,
+      ];
+      final changedEpisodes = <Map<String, int>>[
+        for (final entry in newEpisodes.entries)
+          if (!oldEpisodes.containsKey(entry.key) ||
+              jsonEncode(oldEpisodes[entry.key]) != jsonEncode(entry.value))
+            entry.value,
+      ];
+      final removedEpisodes = <Map<String, int>>[
+        for (final entry in oldEpisodes.entries)
+          if (!newEpisodes.containsKey(entry.key)) entry.value,
+      ];
 
-      final seasonNumber = int.tryParse(parts[1]);
-
-      final episodeNumber = int.tryParse(parts[2]);
-
-      if (showId == null || seasonNumber == null || episodeNumber == null) {
-        continue;
-      }
-
-      episodeSnapshot.add({
-        'showId': showId,
-        'seasonNumber': seasonNumber,
-        'episodeNumber': episodeNumber,
-        'runtimeMinutes': _watchedEpisodeRuntimes[key] ?? 0,
-      });
+      debugPrint('CLOUD SYNC DELTA: '
+          '${changedItems.length} library upserts, '
+          '${removedItems.length} library deletes, '
+          '${changedEpisodes.length} episode upserts, '
+          '${removedEpisodes.length} episode deletes');
+      await cloud.uploadLibraryChanges(
+        userId: savingUserId,
+        upserts: changedItems,
+        deletes: removedItems,
+      );
+      await cloud.uploadEpisodeChanges(
+        userId: savingUserId,
+        upserts: changedEpisodes,
+        deletes: removedEpisodes,
+      );
     }
 
-    debugPrint('CLOUD SYNC START');
+    if (cloud.user?.id != savingUserId) {
+      throw StateError('Account changed during Library synchronization.');
+    }
+    // Persist only CONFIRMED rows, and never snapshot newer unsent edits.
+    await prefs.setString(
+      baselineKey,
+      jsonEncode({'items': librarySnapshot, 'episodes': episodeSnapshot}),
+    );
+    await prefs.setString(_verifiedLocalOwnerKey, savingUserId);
+    if (_localRevision != revisionAtStart) {
+      _cloudSyncRequested = true;
+    }
 
-    await cloud.uploadLibrary(librarySnapshot);
-
-    debugPrint('LIBRARY UPLOAD OK');
-
-    await cloud.uploadEpisodes(episodeSnapshot);
-
-    debugPrint('EPISODE UPLOAD OK');
+    // Keep the existing Phase 2 account-scoped startup preview.
+    if (cloud.user?.id == savingUserId) {
+      await StartupLibraryPreviewService.instance.saveAfterVerifiedCloudSync(
+        savingUserId, _startupPreviewRows(),
+      );
+    }
   }
 
   // =====================================================
@@ -1449,13 +1789,35 @@ class LibraryService extends ChangeNotifier {
       return;
     }
 
-    // Make sure pending local changes
-    // are not racing with this download.
+    final userId = cloud.user?.id;
+    if (userId == null) return;
+
+    final prefsAtLogin = await SharedPreferences.getInstance();
+    // A guest may have pending local saves; never send these into an existing
+    // account on login. Explicit new-account adoption uses a separate path.
+    if (prefsAtLogin.getString(_verifiedLocalOwnerKey) != userId) {
+      _cloudSyncTimer?.cancel();
+      _cloudSyncTimer = null;
+      _cloudSyncRequested = false;
+    }
+
+    // Replay a sign-out's durable per-account pending changes before reading
+    // the cloud snapshot. This never uploads the previous account's data.
+    await _replayPendingSignedOutChanges(userId);
+
+    // Restore any offline edits from this verified account before replacing
+    // the local state with cloud data. Fail the refresh instead of dropping
+    // unsent edits. Guest and other-account data is never uploaded here.
     await waitForCloudSync();
+    await resumePendingCloudSyncForCurrentAccount();
+    await waitForCloudSync();
+    final generationBeforeDownload = _stateGeneration;
+    final revisionBeforeDownload = _localRevision;
 
     // Download BOTH datasets completely
     // before touching current local data.
     final cloudLibrary = await cloud.downloadLibrary();
+    if (cloud.user?.id != userId) return;
 
     final cloudEpisodes = await cloud.downloadEpisodes();
 
@@ -1544,6 +1906,15 @@ class LibraryService extends ChangeNotifier {
       }
     }
 
+    // Do not overwrite edits made while the network was loading, or data
+    // belonging to an account that signed out or changed in the meantime.
+    if (cloud.user?.id != userId ||
+        generationBeforeDownload != _stateGeneration ||
+        revisionBeforeDownload != _localRevision) {
+      debugPrint('Discarding stale startup Library refresh.');
+      return;
+    }
+
     // Anything still running from the
     // previous local/account state must
     // no longer be allowed to modify us.
@@ -1569,6 +1940,25 @@ class LibraryService extends ChangeNotifier {
     await _saveEpisodes();
     await _saveEpisodeRuntimes();
 
+    // A complete, verified download also establishes an exact diff baseline.
+    // No writes to Supabase happen here.
+    if (cloud.user?.id != userId) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      '$_confirmedBaselinePrefix$userId',
+      jsonEncode({
+        'items': newItems.map((item) => item.toJson()).toList(),
+        'episodes': _episodeSnapshot(
+          watched: newEpisodes, runtimes: newEpisodeRuntimes,
+        ),
+      }),
+    );
+    await prefs.setString(_verifiedLocalOwnerKey, userId);
+
+    // Verified cloud download establishes ownership of the new local state.
+    await StartupLibraryPreviewService.instance.saveAfterVerifiedCloudSync(
+      userId, _startupPreviewRows(),
+    );
     notifyListeners();
   }
 
@@ -1585,6 +1975,9 @@ class LibraryService extends ChangeNotifier {
     _cloudSyncTimer = null;
 
     _cloudSyncRequested = false;
+    _cloudRetryTimer?.cancel();
+    _cloudRetryTimer = null;
+    _consecutiveCloudFailures = 0;
 
     // Cancel the logical ownership of
     // old background TMDB work.
@@ -1600,6 +1993,10 @@ class LibraryService extends ChangeNotifier {
     await _saveEpisodes();
     await _saveEpisodeRuntimes();
 
+    // Local data is no longer owned by the old signed-in user after logout.
+    // Keep per-user confirmed checkpoints: they are inert without ownership.
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_verifiedLocalOwnerKey);
     notifyListeners();
   }
 
@@ -1792,4 +2189,10 @@ class LibraryService extends ChangeNotifier {
       debugPrint('Could not mark all episodes watched: $e');
     }
   }
+}
+
+class _LibraryCloudBaseline {
+  const _LibraryCloudBaseline({required this.items, required this.episodes});
+  final List<Map<String, dynamic>> items;
+  final List<Map<String, int>> episodes;
 }

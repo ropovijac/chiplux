@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
 import 'theme/chiplux_palette.dart';
-import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'l10n/generated/app_localizations.dart';
 import 'l10n/ui_translations.dart';
 import 'services/locale_service.dart';
+import 'services/chiplux_frame_profiler.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'services/notification_settings_service.dart';
 import 'services/library_service.dart';
+import 'services/startup_library_preview_service.dart';
 import 'services/cloud_sync_service.dart';
 import 'comments_page.dart';
 import 'services/tmdb_service.dart';
@@ -24,6 +26,7 @@ import 'services/profile_service.dart';
 import 'services/notification_service.dart';
 
 import 'dart:typed_data';
+import 'dart:ui' show PathMetric;
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -47,15 +50,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'services/critic_service.dart';
 
 import 'dart:math' as math;
-import 'dart:ui' show PathMetric;
 
-import 'package:flutter/rendering.dart' show ScrollCacheExtent;
+import 'package:flutter/rendering.dart' show ScrollCacheExtent, ScrollDirection;
 
 import 'services/community_service.dart';
 import 'admin_moderation_page.dart';
 import 'admin_report_moderation_page.dart';
 import 'admin_movie_achievements_page.dart';
 import 'services/custom_movie_achievement_service.dart';
+import 'widgets/iconify_achievement_icon.dart';
+import 'widgets/chiplux_public_artwork.dart';
 import 'data_export_page.dart';
 import 'services/data_export_service.dart';
 import 'services/feature_suggestion_service.dart';
@@ -79,82 +83,200 @@ const String followDeveloperAchievementId = 'follow_developer_achievement';
 
 const String followDeveloperProfilePageFrameId = 'follow_developer_tier3';
 
-Future<void> _loadCurrentAccountAchievementState() async {
+// Account-scoped, Supabase-backed one-time achievement popup acknowledgements.
+// The backend atomically claims each ID so separate devices cannot replay it.
+// Initialization happens after loading cloud-backed achievement progress and
+// before recording today's daily login.
+class _AchievementPopupLedger {
+  _AchievementPopupLedger._();
+  static final _AchievementPopupLedger instance = _AchievementPopupLedger._();
+
+  static const _guestReceiptsKey = 'chiplux_guest_achievement_popup_receipts';
+  String? _initializedForUser;
+  bool _guestReady = false;
+  final Set<String> _guestReceipts = <String>{};
+
+  void reset() {
+    _initializedForUser = null;
+    _guestReady = false;
+    _guestReceipts.clear();
+  }
+
+  Future<void> initialize() async {
+    final client = Supabase.instance.client;
+    final userId = client.auth.currentUser?.id;
+    reset();
+
+    final groups = _currentAccountAchievementGroups();
+    final earned = <String>{
+      for (final group in groups)
+        for (final achievement in group.tiers)
+          if (achievement.unlocked) achievement.id,
+    };
+    final medalGroup = _medalCollectionAchievementGroupFor(
+      _unlockedAchievementCount(groups),
+    );
+    for (final achievement in medalGroup.tiers) {
+      if (achievement.unlocked) earned.add(achievement.id);
+    }
+
+    if (userId == null) {
+      // Guest accounts have no Supabase user ID. Keep their popup receipts
+      // on-device, independently of every signed-in account's receipts.
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getStringList(_guestReceiptsKey);
+      _guestReceipts.addAll(saved ?? earned);
+      if (saved == null) {
+        await prefs.setStringList(_guestReceiptsKey, _guestReceipts.toList());
+      }
+      _guestReady = true;
+      return;
+    }
+
+    try {
+      await client.rpc('chiplux_initialize_achievement_popups', params: {
+        'p_earned_ids': earned.toList(),
+      });
+      if (client.auth.currentUser?.id == userId) {
+        _initializedForUser = userId;
+      }
+    } catch (e) {
+      // A failed initialization must never trigger a backlog of old popups.
+      debugPrint('Could not initialize achievement popup history: $e');
+    }
+  }
+
+  Future<bool> claim(String achievementId) async {
+    final client = Supabase.instance.client;
+    final userId = client.auth.currentUser?.id;
+    if (userId == null) {
+      if (!_guestReady || !_guestReceipts.add(achievementId)) return false;
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.setStringList(
+        _guestReceiptsKey,
+        _guestReceipts.toList(),
+      );
+    }
+    if (_initializedForUser != userId) return false;
+    try {
+      final claimed = await client.rpc('chiplux_claim_achievement_popup',
+        params: {'p_achievement_id': achievementId});
+      return client.auth.currentUser?.id == userId && claimed == true;
+    } catch (e) {
+      // Fail closed on networking or permissions errors: never replay old IDs.
+      debugPrint('Could not claim achievement popup $achievementId: $e');
+      return false;
+    }
+  }
+}
+
+// Automatic backup is optional for the first startup pass: it must not delay
+// the first usable app screen. Explicit sign-in keeps the existing behavior.
+Future<void> _loadCurrentAccountAchievementState({
+  bool includeAutomaticBackup = true,
+  bool includePushRegistration = true,
+}) async {
   await Future.wait([
-    MusicUserDataService.instance.loadAll(),
+    _timeStartupStep('MusicUserData', MusicUserDataService.instance.loadAll),
 
-    CriticService.instance.refresh(),
+    _timeStartupStep('Critic', CriticService.instance.refresh),
 
-    DailyLoginService.instance.load(),
+    _timeStartupStep('DailyLogin', DailyLoginService.instance.load),
 
-    PublicProfileViewService.instance.load(),
+    _timeStartupStep('PublicProfileView', PublicProfileViewService.instance.load),
 
-    FollowerCountService.instance.load(),
+    _timeStartupStep('FollowerCount', FollowerCountService.instance.load),
 
-    MedalPinService.instance.init(),
+    _timeStartupStep('MedalPin', MedalPinService.instance.init),
 
-    DisplayNameFrameService.instance.load(),
+    _timeStartupStep('DisplayNameFrame', DisplayNameFrameService.instance.load),
 
-    AvatarFrameService.instance.load(),
+    _timeStartupStep('AvatarFrame', AvatarFrameService.instance.load),
 
-    _AchievementCosmeticService.instance.load(),
+    _timeStartupStep('AchievementCosmetic', _AchievementCosmeticService.instance.load),
 
-    ProfileTitleService.instance.load(),
+    _timeStartupStep('ProfileTitle', ProfileTitleService.instance.load),
 
-    ProfilePageFrameService.instance.load(),
+    _timeStartupStep('ProfilePageFrame', ProfilePageFrameService.instance.load),
 
-    PrivacySettingsService.instance.load(),
+    _timeStartupStep('PrivacySettings', PrivacySettingsService.instance.load),
 
-    NotificationService.instance.load(),
+    _timeStartupStep('Notification', NotificationService.instance.load),
 
-    PushNotificationService.instance.registerCurrentToken(),
+    if (includePushRegistration)
+      _timeStartupStep('PushNotification', PushNotificationService.instance.registerCurrentToken),
   ]);
 
-  await DiscoveryAchievementService.instance.load();
-  await CustomMovieAchievementService.instance.load();
+  await _timeStartupStep('Profile', ProfileService.instance.loadProfile);
+  await _timeStartupStep('Discovery achievements', DiscoveryAchievementService.instance.load);
+  await _timeStartupStep('Custom achievements', CustomMovieAchievementService.instance.load);
 
-  await _MedalCollectionUnlockTracker.instance.initialize();
+  await _timeStartupStep('Medal baseline', _MedalCollectionUnlockTracker.instance.initialize);
+  await _timeStartupStep('Achievement popup receipts', _AchievementPopupLedger.instance.initialize);
 
+  if (includeAutomaticBackup) {
+    await _runAutomaticBackupSafely();
+  }
+}
+
+Future<void> _runAutomaticBackupSafely() async {
   try {
-    await DataExportService.instance.maybeRunAutomaticBackup();
+    await _timeStartupStep(
+      'Optional automatic backup',
+      DataExportService.instance.maybeRunAutomaticBackup,
+    );
   } catch (e) {
     debugPrint('Automatic data backup skipped: $e');
+  }
+}
+
+// Lightweight timing instrumentation; compare release/profile runs on a
+// physical device rather than treating debug timings as performance results.
+Future<void> _timeStartupStep(
+  String name,
+  Future<void> Function() action,
+) async {
+  final watch = Stopwatch()..start();
+  try {
+    await action();
+  } finally {
+    watch.stop();
+    debugPrint('Chiplux startup [$name]: ${watch.elapsedMilliseconds} ms');
   }
 }
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await LocaleService.instance.load();
+  await _timeStartupStep('Locale', LocaleService.instance.load);
 
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await _timeStartupStep('Firebase', () async {
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  });
 
-  await _initializeForegroundNotifications();
+  await _timeStartupStep(
+    'Foreground notification routing',
+    _initializeForegroundNotifications,
+  );
 
   const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
 
   const supabasePublishableKey = String.fromEnvironment('SUPABASE_ANON_KEY');
 
-  await Supabase.initialize(
-    url: supabaseUrl,
-    publishableKey: supabasePublishableKey,
-  );
+  await _timeStartupStep('Supabase', () async {
+    await Supabase.initialize(
+      url: supabaseUrl,
+      publishableKey: supabasePublishableKey,
+    );
+  });
 
-  await PushNotificationService.instance.initialize();
+  await _timeStartupStep('Restore local library', LibraryService.instance.init);
 
-  await LibraryService.instance.init();
-
-  // Load the current account's
-  // existing achievement state first.
-  await _loadCurrentAccountAchievementState();
-
-  // Record today's login only AFTER
-  // the Medal Collection baseline
-  // has been established.
-  await DailyLoginService.instance.recordToday();
-
-  PublicStatsSyncService.instance.start();
-
+  // Render Flutter immediately after its minimum dependencies are ready.
+  // Account bootstrap is coordinated by ChipluxApp after the first frame,
+  // behind a safe loading shell; it must finish before AuthGate is shown.
+  // Opt-in, profile-build-only frame timing; never runs in a release build.
+  ChipluxFrameProfiler.start();
   runApp(const ChipluxApp());
 }
 
@@ -271,6 +393,16 @@ _AchievementGroup _movieAchievementGroupFor(int moviesWatched) {
         rarity: _AchievementRarity.legendary,
         visualTier: 9,
       ),
+      _Achievement(
+        id: 'movies_2048',
+        title: 'Golden Cinema Legend',
+        description: 'Watch 2048 movies',
+        icon: Icons.workspace_premium_rounded,
+        current: moviesWatched,
+        target: 2048,
+        rarity: _AchievementRarity.legendary,
+        visualTier: 10,
+      ),
     ],
   );
 }
@@ -282,7 +414,7 @@ _AchievementGroup _tvAchievementGroupFor(int completedTvShows) {
     title: 'TV Shows Watched',
 
     description:
-        'Complete TV shows to upgrade your TV Shows Watched stat border.',
+        'Complete TV shows to upgrade your TV Shows Watched styling.',
 
     icon: Icons.tv_rounded,
 
@@ -1018,7 +1150,7 @@ _AchievementGroup _runtimeLevelAchievementGroupFor(int runtimeLevel) {
 
     title: 'Runtime Level',
 
-    description: 'Reach higher Runtime Levels to upgrade your Runtime Level border and gradient.',
+    description: 'Reach higher Runtime Levels to upgrade your Runtime Level styling.',
 
     icon: Icons.timelapse_rounded,
 
@@ -1100,7 +1232,7 @@ _AchievementGroup _ratingsLevelAchievementGroupFor(int ratingsLevel) {
 
     title: 'Ratings Level',
 
-    description: 'Reach higher Ratings Levels to upgrade your Ratings Level border and gradient.',
+    description: 'Reach higher Ratings Levels to upgrade your Ratings Level styling.',
 
     icon: Icons.download_outlined,
 
@@ -1185,7 +1317,7 @@ _AchievementGroup _followDeveloperAchievementGroupFor(bool unlocked) {
     title: 'Follow the Developer',
 
     description:
-        'Follow the Chiplux developer to unlock a special Profile Page Frame.',
+        'Follow the Chiplux developer to unlock the exclusive Prestige Gold Profile Page Frame.',
 
     icon: Icons.code_rounded,
 
@@ -1321,32 +1453,25 @@ Future<void> _checkRatingsLevelAchievementUnlock(
       return;
     }
 
-    await Future<void>.delayed(const Duration(milliseconds: 550));
+    await Future<void>.delayed(const Duration(milliseconds: 120));
 
     if (!context.mounted) {
       return;
     }
 
-    try {
-      await CommunityService.instance.deleteActivity(
-        activityType: 'achievement_unlocked',
-        achievementId: achievement.id,
-      );
-
-      await CommunityService.instance.tryCreateActivity(
-        activityType: 'achievement_unlocked',
-        achievementId: achievement.id,
-        achievementTitle: achievement.title,
-      );
-    } catch (e) {
-      debugPrint('Could not create Ratings Level achievement activity: $e');
+    if (!await _AchievementPopupLedger.instance.claim(achievement.id)) {
+      continue;
     }
+    unawaited(_postAchievementActivitySafely(
+      achievement,
+      replaceExisting: true,
+    ));
 
     if (!context.mounted) {
       return;
     }
 
-    await _showAchievementUnlocked(context, achievement);
+    await _showAchievementUnlocked(context, achievement, alreadyClaimed: true);
   }
 }
 
@@ -1375,32 +1500,25 @@ Future<void> _checkRuntimeLevelAchievementUnlock(
       return;
     }
 
-    await Future<void>.delayed(const Duration(milliseconds: 550));
+    await Future<void>.delayed(const Duration(milliseconds: 120));
 
     if (!context.mounted) {
       return;
     }
 
-    try {
-      await CommunityService.instance.deleteActivity(
-        activityType: 'achievement_unlocked',
-        achievementId: achievement.id,
-      );
-
-      await CommunityService.instance.tryCreateActivity(
-        activityType: 'achievement_unlocked',
-        achievementId: achievement.id,
-        achievementTitle: achievement.title,
-      );
-    } catch (e) {
-      debugPrint('Could not create Runtime Level achievement activity: $e');
+    if (!await _AchievementPopupLedger.instance.claim(achievement.id)) {
+      continue;
     }
+    unawaited(_postAchievementActivitySafely(
+      achievement,
+      replaceExisting: true,
+    ));
 
     if (!context.mounted) {
       return;
     }
 
-    await _showAchievementUnlocked(context, achievement);
+    await _showAchievementUnlocked(context, achievement, alreadyClaimed: true);
   }
 }
 
@@ -1432,32 +1550,25 @@ Future<void> _checkTitleRatedAchievementUnlock(
       return;
     }
 
-    await Future<void>.delayed(const Duration(milliseconds: 550));
+    await Future<void>.delayed(const Duration(milliseconds: 120));
 
     if (!context.mounted) {
       return;
     }
 
-    try {
-      await CommunityService.instance.deleteActivity(
-        activityType: 'achievement_unlocked',
-        achievementId: achievement.id,
-      );
-
-      await CommunityService.instance.tryCreateActivity(
-        activityType: 'achievement_unlocked',
-        achievementId: achievement.id,
-        achievementTitle: achievement.title,
-      );
-    } catch (e) {
-      debugPrint('Could not create title rating achievement activity: $e');
+    if (!await _AchievementPopupLedger.instance.claim(achievement.id)) {
+      continue;
     }
+    unawaited(_postAchievementActivitySafely(
+      achievement,
+      replaceExisting: true,
+    ));
 
     if (!context.mounted) {
       return;
     }
 
-    await _showAchievementUnlocked(context, achievement);
+    await _showAchievementUnlocked(context, achievement, alreadyClaimed: true);
   }
 }
 
@@ -1482,32 +1593,25 @@ Future<void> _checkFollowerAchievementUnlock(
       return;
     }
 
-    await Future<void>.delayed(const Duration(milliseconds: 550));
+    await Future<void>.delayed(const Duration(milliseconds: 120));
 
     if (!context.mounted) {
       return;
     }
 
-    try {
-      await CommunityService.instance.deleteActivity(
-        activityType: 'achievement_unlocked',
-        achievementId: achievement.id,
-      );
-
-      await CommunityService.instance.tryCreateActivity(
-        activityType: 'achievement_unlocked',
-        achievementId: achievement.id,
-        achievementTitle: achievement.title,
-      );
-    } catch (e) {
-      debugPrint('Could not create follower achievement activity: $e');
+    if (!await _AchievementPopupLedger.instance.claim(achievement.id)) {
+      continue;
     }
+    unawaited(_postAchievementActivitySafely(
+      achievement,
+      replaceExisting: true,
+    ));
 
     if (!context.mounted) {
       return;
     }
 
-    await _showAchievementUnlocked(context, achievement);
+    await _showAchievementUnlocked(context, achievement, alreadyClaimed: true);
   }
 }
 
@@ -1536,32 +1640,25 @@ Future<void> _checkEpisodeRatedAchievementUnlock(
       return;
     }
 
-    await Future<void>.delayed(const Duration(milliseconds: 550));
+    await Future<void>.delayed(const Duration(milliseconds: 120));
 
     if (!context.mounted) {
       return;
     }
 
-    try {
-      await CommunityService.instance.deleteActivity(
-        activityType: 'achievement_unlocked',
-        achievementId: achievement.id,
-      );
-
-      await CommunityService.instance.tryCreateActivity(
-        activityType: 'achievement_unlocked',
-        achievementId: achievement.id,
-        achievementTitle: achievement.title,
-      );
-    } catch (e) {
-      debugPrint('Could not create Episodes Rated achievement activity: $e');
+    if (!await _AchievementPopupLedger.instance.claim(achievement.id)) {
+      continue;
     }
+    unawaited(_postAchievementActivitySafely(
+      achievement,
+      replaceExisting: true,
+    ));
 
     if (!context.mounted) {
       return;
     }
 
-    await _showAchievementUnlocked(context, achievement);
+    await _showAchievementUnlocked(context, achievement, alreadyClaimed: true);
   }
 }
 
@@ -1596,32 +1693,26 @@ Future<void> _checkMovieAchievementUnlock(
 
     // Let the completion animation
     // happen before showing the medal.
-    await Future<void>.delayed(const Duration(milliseconds: 550));
+    await Future<void>.delayed(const Duration(milliseconds: 120));
 
     if (!context.mounted) {
       return;
     }
 
-    try {
-      await CommunityService.instance.deleteActivity(
-        activityType: 'achievement_unlocked',
-        achievementId: achievement.id,
-      );
-
-      await CommunityService.instance.tryCreateActivity(
-        activityType: 'achievement_unlocked',
-        achievementId: achievement.id,
-        achievementTitle: achievement.title,
-      );
-    } catch (e) {
-      debugPrint('Could not create achievement activity: $e');
+    if (!await _AchievementPopupLedger.instance.claim(achievement.id)) {
+      continue;
     }
+
+    unawaited(_postAchievementActivitySafely(
+      achievement,
+      replaceExisting: true,
+    ));
 
     if (!context.mounted) {
       return;
     }
 
-    await _showAchievementUnlocked(context, achievement);
+    await _showAchievementUnlocked(context, achievement, alreadyClaimed: true);
   }
 }
 
@@ -1650,32 +1741,25 @@ Future<void> _checkTvAchievementUnlock(
       return;
     }
 
-    await Future<void>.delayed(const Duration(milliseconds: 550));
+    await Future<void>.delayed(const Duration(milliseconds: 120));
 
     if (!context.mounted) {
       return;
     }
 
-    try {
-      await CommunityService.instance.deleteActivity(
-        activityType: 'achievement_unlocked',
-        achievementId: achievement.id,
-      );
-
-      await CommunityService.instance.tryCreateActivity(
-        activityType: 'achievement_unlocked',
-        achievementId: achievement.id,
-        achievementTitle: achievement.title,
-      );
-    } catch (e) {
-      debugPrint('Could not create TV achievement activity: $e');
+    if (!await _AchievementPopupLedger.instance.claim(achievement.id)) {
+      continue;
     }
+    unawaited(_postAchievementActivitySafely(
+      achievement,
+      replaceExisting: true,
+    ));
 
     if (!context.mounted) {
       return;
     }
 
-    await _showAchievementUnlocked(context, achievement);
+    await _showAchievementUnlocked(context, achievement, alreadyClaimed: true);
   }
 }
 
@@ -1704,32 +1788,25 @@ Future<void> _checkEpisodeAchievementUnlock(
       return;
     }
 
-    await Future<void>.delayed(const Duration(milliseconds: 550));
+    await Future<void>.delayed(const Duration(milliseconds: 120));
 
     if (!context.mounted) {
       return;
     }
 
-    try {
-      await CommunityService.instance.deleteActivity(
-        activityType: 'achievement_unlocked',
-        achievementId: achievement.id,
-      );
-
-      await CommunityService.instance.tryCreateActivity(
-        activityType: 'achievement_unlocked',
-        achievementId: achievement.id,
-        achievementTitle: achievement.title,
-      );
-    } catch (e) {
-      debugPrint('Could not create episode achievement activity: $e');
+    if (!await _AchievementPopupLedger.instance.claim(achievement.id)) {
+      continue;
     }
+    unawaited(_postAchievementActivitySafely(
+      achievement,
+      replaceExisting: true,
+    ));
 
     if (!context.mounted) {
       return;
     }
 
-    await _showAchievementUnlocked(context, achievement);
+    await _showAchievementUnlocked(context, achievement, alreadyClaimed: true);
   }
 }
 
@@ -1756,32 +1833,25 @@ Future<void> _checkMusicAchievementUnlock(
       return;
     }
 
-    await Future<void>.delayed(const Duration(milliseconds: 550));
+    await Future<void>.delayed(const Duration(milliseconds: 120));
 
     if (!context.mounted) {
       return;
     }
 
-    try {
-      await CommunityService.instance.deleteActivity(
-        activityType: 'achievement_unlocked',
-        achievementId: achievement.id,
-      );
-
-      await CommunityService.instance.tryCreateActivity(
-        activityType: 'achievement_unlocked',
-        achievementId: achievement.id,
-        achievementTitle: achievement.title,
-      );
-    } catch (e) {
-      debugPrint('Could not create $debugLabel achievement activity: $e');
+    if (!await _AchievementPopupLedger.instance.claim(achievement.id)) {
+      continue;
     }
+    unawaited(_postAchievementActivitySafely(
+      achievement,
+      replaceExisting: true,
+    ));
 
     if (!context.mounted) {
       return;
     }
 
-    await _showAchievementUnlocked(context, achievement);
+    await _showAchievementUnlocked(context, achievement, alreadyClaimed: true);
   }
 }
 
@@ -1866,32 +1936,25 @@ Future<void> _checkDailyLoginAchievementUnlock(
       return;
     }
 
-    await Future<void>.delayed(const Duration(milliseconds: 550));
+    await Future<void>.delayed(const Duration(milliseconds: 120));
 
     if (!context.mounted) {
       return;
     }
 
-    try {
-      await CommunityService.instance.deleteActivity(
-        activityType: 'achievement_unlocked',
-        achievementId: achievement.id,
-      );
-
-      await CommunityService.instance.tryCreateActivity(
-        activityType: 'achievement_unlocked',
-        achievementId: achievement.id,
-        achievementTitle: achievement.title,
-      );
-    } catch (e) {
-      debugPrint('Could not create daily login achievement activity: $e');
+    if (!await _AchievementPopupLedger.instance.claim(achievement.id)) {
+      continue;
     }
+    unawaited(_postAchievementActivitySafely(
+      achievement,
+      replaceExisting: true,
+    ));
 
     if (!context.mounted) {
       return;
     }
 
-    await _showAchievementUnlocked(context, achievement);
+    await _showAchievementUnlocked(context, achievement, alreadyClaimed: true);
   }
 }
 
@@ -1920,32 +1983,25 @@ Future<void> _checkPublicProfileViewAchievementUnlock(
       return;
     }
 
-    await Future<void>.delayed(const Duration(milliseconds: 550));
+    await Future<void>.delayed(const Duration(milliseconds: 120));
 
     if (!context.mounted) {
       return;
     }
 
-    try {
-      await CommunityService.instance.deleteActivity(
-        activityType: 'achievement_unlocked',
-        achievementId: achievement.id,
-      );
-
-      await CommunityService.instance.tryCreateActivity(
-        activityType: 'achievement_unlocked',
-        achievementId: achievement.id,
-        achievementTitle: achievement.title,
-      );
-    } catch (e) {
-      debugPrint('Could not create profile view achievement activity: $e');
+    if (!await _AchievementPopupLedger.instance.claim(achievement.id)) {
+      continue;
     }
+    unawaited(_postAchievementActivitySafely(
+      achievement,
+      replaceExisting: true,
+    ));
 
     if (!context.mounted) {
       return;
     }
 
-    await _showAchievementUnlocked(context, achievement);
+    await _showAchievementUnlocked(context, achievement, alreadyClaimed: true);
   }
 }
 
@@ -1963,7 +2019,7 @@ Future<void> _autoApplyAchievementReward(_Achievement achievement) async {
 
     if (achievement.id == followDeveloperAchievementId) {
       await ProfilePageFrameService.instance.apply(
-        followDeveloperProfilePageFrameId,
+        developerProfilePageFrameId,
       );
 
       return;
@@ -2048,12 +2104,92 @@ Future<void> _autoApplyAchievementReward(_Achievement achievement) async {
   }
 }
 
+/// Activity feed writes should never hold an unlock dialog behind networking.
+/// Account and achievement ownership are still enforced by the existing RPCs.
+Future<void> _postAchievementActivitySafely(
+  _Achievement achievement, {
+  required bool replaceExisting,
+}) async {
+  try {
+    if (replaceExisting) {
+      await CommunityService.instance.deleteActivity(
+        activityType: 'achievement_unlocked',
+        achievementId: achievement.id,
+      );
+    }
+    await CommunityService.instance.tryCreateActivity(
+      activityType: 'achievement_unlocked',
+      achievementId: achievement.id,
+      achievementTitle: achievement.title,
+    );
+  } catch (error) {
+    debugPrint('Could not post ${achievement.id} achievement activity: $error');
+  }
+}
+
+/// Display an Android system notification for a freshly confirmed unlock
+/// while Chiplux is running. This is not an FCM/background push message.
+Future<void> _notifyAchievementUnlockedOnAndroid(
+  _Achievement achievement,
+) async {
+  final accountId = Supabase.instance.client.auth.currentUser?.id;
+  if (kIsWeb || defaultTargetPlatform != TargetPlatform.android ||
+      accountId == null) {
+    return;
+  }
+  try {
+    // The preferences screen may never have been opened this session. Read
+    // the current account's setting before showing an Android notification.
+    await NotificationSettingsService.instance.load();
+    if (Supabase.instance.client.auth.currentUser?.id != accountId ||
+        !NotificationSettingsService.instance.achievements) {
+      return;
+    }
+    await chipluxLocalNotifications.show(
+      id: achievement.id.hashCode & 0x7fffffff,
+      title: 'Achievement unlocked',
+      body: achievement.title,
+      notificationDetails: const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'chiplux_notifications',
+          'Chiplux Notifications',
+          channelDescription: 'Notifications from Chiplux.',
+          importance: Importance.high,
+          priority: Priority.high,
+          playSound: true,
+        ),
+      ),
+      // Reuse the existing achievement push-tap navigation handler.
+      payload: jsonEncode(<String, String>{
+        'type': 'achievement',
+        'achievement_id': achievement.id,
+      }),
+    );
+  } catch (error) {
+    // Android 13+ notification permissions, channel settings and OEM policies
+    // may prevent delivery; the in-app unlock popup still works.
+    debugPrint('Could not show Android achievement notification: $error');
+  }
+}
+
 Future<void> _showAchievementUnlocked(
   BuildContext context,
   _Achievement achievement, {
   bool checkMedalCollection = true,
+  bool alreadyClaimed = false,
 }) async {
-  await _autoApplyAchievementReward(achievement);
+  if (!alreadyClaimed &&
+      !await _AchievementPopupLedger.instance.claim(achievement.id)) {
+    return;
+  }
+  if (!context.mounted) return;
+
+  // Reward equipment remains durable, but a network round trip must never
+  // delay an already-confirmed unlock celebration.
+  final rewardApply = _autoApplyAchievementReward(achievement);
+  // Android foreground achievement notifications are local. Background/closed
+  // app push delivery remains the responsibility of the FCM backend.
+  unawaited(_notifyAchievementUnlockedOnAndroid(achievement));
 
   if (!context.mounted) {
     return;
@@ -2068,7 +2204,7 @@ Future<void> _showAchievementUnlocked(
 
     barrierColor: Colors.black.withValues(alpha: 0.78),
 
-    transitionDuration: const Duration(milliseconds: 320),
+    transitionDuration: const Duration(milliseconds: 240),
 
     transitionBuilder: (context, animation, secondaryAnimation, child) {
       final curved = CurvedAnimation(
@@ -2091,6 +2227,10 @@ Future<void> _showAchievementUnlocked(
       return _AchievementUnlockDialog(achievement: achievement);
     },
   );
+
+  // Do not forget the reward update: complete it before any follow-on
+  // Medal Collection celebration, even if the user dismissed this dialog.
+  await rewardApply;
 
   // After a normal achievement popup,
   // check whether the user's TOTAL
@@ -2279,17 +2419,17 @@ class _AchievementUnlockDialogState extends State<_AchievementUnlockDialog>
                                 letterSpacing: 1.7,
                               ),
                             ),
-                            if (achievement.visualTier == 9) ...[
+                            if (achievement.visualTier == 10) ...[
                               const SizedBox(height: 7),
                               const UiText(
-                                'MYTHIC • TIER IX',
+                                'PRESTIGE • TIER X',
                                 style: TextStyle(
-                                  color: Color(0xFFFF62AD),
+                                  color: Color(0xFFFFD84D),
                                   fontSize: 11,
                                   fontWeight: FontWeight.w900,
                                   letterSpacing: 2.3,
                                   shadows: [Shadow(
-                                    color: Color(0xFFB16BFF), blurRadius: 12,
+                                    color: Color(0xFFFFA52D), blurRadius: 12,
                                   )],
                                 ),
                               ),
@@ -2312,16 +2452,12 @@ class _AchievementUnlockDialogState extends State<_AchievementUnlockDialog>
                             // =========================
                             // TITLE
                             // =========================
-                            UiText(
+                            _prestigeCustomTitle(
                               achievement.title,
-
+                              isCustom: achievement.id.startsWith('custom_movie_title_'),
                               textAlign: TextAlign.center,
-
                               style: const TextStyle(
-                                color: Colors.white,
-
                                 fontSize: 23,
-
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -3453,7 +3589,12 @@ Future<void> _openPushMessage(RemoteMessage message) async {
   }
 }
 
+// Also gates push navigation while the initial account services are loading.
+// Unlike a fixed timeout, this waits for the successful account-ready frame.
+final Completer<void> _chipluxFirstAccountScreenReady = Completer<void>();
+
 Future<void> _openPushWhenReady(RemoteMessage message) async {
+  await _chipluxFirstAccountScreenReady.future;
   // Cold start can take a moment before
   // MaterialApp/AuthGate has a navigator.
 
@@ -3485,10 +3626,147 @@ class _ChipluxAppState extends State<ChipluxApp> {
   StreamSubscription<RemoteMessage>? _pushTapSubscription;
 
   StreamSubscription<RemoteMessage>? _foregroundPushSubscription;
+  StreamSubscription<AuthState>? _previewAuthSubscription;
+
+  bool _accountReady = false;
+  bool _loadingAccount = false;
+  Object? _startupError;
+  List<Map<String, dynamic>> _startupLibraryPreview = const [];
+  bool _startupPreviewLoaded = false;
+  String? _startupPreviewUserId;
+  String _startupPreviewFilter = 'watching';
+
+  Future<void> _restoreStartupLibraryPreview() async {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return;
+    final preview = await StartupLibraryPreviewService.instance
+        .readForSignedInUser(userId);
+    if (!mounted || Supabase.instance.client.auth.currentUser?.id != userId) return;
+    setState(() {
+      _startupPreviewUserId = userId;
+      _startupLibraryPreview = preview;
+      _startupPreviewLoaded = true;
+    });
+  }
+
+  Future<void> _seedNextLaunchPreview(String userId) async {
+    try {
+      if (Supabase.instance.client.auth.currentUser?.id != userId ||
+          await StartupLibraryPreviewService.instance.hasSnapshotForUser(userId)) {
+        return;
+      }
+      // Download for a future read-only preview. Never mutate LibraryService,
+      // merge remote rows, or upload local state in this background operation.
+      final cloud = CloudSyncService.instance;
+      final cloudRows = await cloud.downloadLibrary();
+      if (Supabase.instance.client.auth.currentUser?.id != userId) return;
+      final cloudEpisodes = await cloud.downloadEpisodes();
+      if (Supabase.instance.client.auth.currentUser?.id != userId) return;
+      final countByShow = <int, int>{};
+      for (final episode in cloudEpisodes) {
+        final id = episode['show_id'];
+        if (id is num) {
+          countByShow[id.toInt()] = (countByShow[id.toInt()] ?? 0) + 1;
+        }
+      }
+      final rows = <Map<String, dynamic>>[
+        for (final item in cloudRows)
+          if (item['tmdb_id'] is num)
+            {
+              'id': item['tmdb_id'],
+              'mediaType': item['media_type'],
+              'title': item['title'],
+              'year': item['year'],
+              'status': item['status'],
+              'totalEpisodes': item['total_episodes'],
+              'addedAt': item['added_at'],
+              'episodesWatched': countByShow[(item['tmdb_id'] as num).toInt()] ?? 0,
+            },
+      ];
+      await StartupLibraryPreviewService.instance
+          .seedReadOnlyFromCloud(userId, rows);
+    } catch (error) {
+      // First-run preview seeding is optional. A network failure must never
+      // block the actual Library or other startup features.
+      debugPrint('Optional future startup preview skipped: $error');
+    }
+  }
+
+  Future<void> _finishInitialAccountStartup() async {
+    if (_loadingAccount || _accountReady) return;
+    setState(() {
+      _loadingAccount = true;
+      _startupError = null;
+    });
+
+    try {
+      // Read a VERIFIED per-account preview before the slower Supabase loads.
+      // This view is read-only and cannot trigger achievement unlocks.
+      await _restoreStartupLibraryPreview();
+      // This intentionally preserves achievement/receipt initialization order.
+      // New daily-login achievements must only be recorded after that baseline.
+      await _timeStartupStep('Account data and achievements', () async {
+        await _loadCurrentAccountAchievementState(
+          includeAutomaticBackup: false,
+          includePushRegistration: false,
+        );
+      });
+      await _timeStartupStep(
+        'Daily login after achievement baseline',
+        DailyLoginService.instance.recordToday,
+      );
+      PublicStatsSyncService.instance.start();
+
+      if (!mounted) return;
+      setState(() {
+        _loadingAccount = false;
+        _accountReady = true;
+      });
+
+      // Wait until the actual account-aware UI has painted before background
+      // backup work, Firebase permission prompts, or opening a push route.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (!_chipluxFirstAccountScreenReady.isCompleted) {
+          _chipluxFirstAccountScreenReady.complete();
+        }
+        unawaited(_runAutomaticBackupSafely());
+        // Retry the previous run's confirmed-account local delta after the
+        // first usable frame. No account-wide cloud download is triggered.
+        unawaited(LibraryService.instance
+            .resumePendingCloudSyncForCurrentAccount().catchError((Object e) {
+          debugPrint('Deferred Library sync will retry on next edit: $e');
+        }));
+        unawaited(PushNotificationService.instance.initialize());
+        final userId = Supabase.instance.client.auth.currentUser?.id;
+        if (userId != null) unawaited(_seedNextLaunchPreview(userId));
+        // A cloud reconciliation on resume needs a separate durable dirty-write
+        // check. Do NOT overwrite possibly unsynced offline Library edits here.
+      });
+    } catch (e) {
+      debugPrint('Chiplux account startup failed: $e');
+      if (mounted) {
+        setState(() {
+          _loadingAccount = false;
+          _startupError = e;
+        });
+      }
+    }
+  }
 
   @override
   void initState() {
     super.initState();
+    _previewAuthSubscription = AuthService.instance.authChanges.listen((_) {
+      if (!mounted) return;
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (_startupPreviewUserId != null && _startupPreviewUserId != userId) {
+        setState(() {
+          _startupPreviewUserId = null;
+          _startupLibraryPreview = const [];
+        });
+      }
+    });
 
     // =========================================
     // APP IS OPEN / FOREGROUND
@@ -3514,6 +3792,7 @@ class _ChipluxAppState extends State<ChipluxApp> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(_checkInitialPush());
+      unawaited(_finishInitialAccountStartup());
     });
   }
 
@@ -3529,11 +3808,18 @@ class _ChipluxAppState extends State<ChipluxApp> {
 
   @override
   void dispose() {
+    _previewAuthSubscription?.cancel();
     _pushTapSubscription?.cancel();
 
     _foregroundPushSubscription?.cancel();
 
     super.dispose();
+  }
+
+  List<Map<String, dynamic>> _startupLibraryPreviewUserSafe() {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    return userId != null && userId == _startupPreviewUserId
+        ? _startupLibraryPreview : const [];
   }
 
   @override
@@ -3579,9 +3865,193 @@ class _ChipluxAppState extends State<ChipluxApp> {
             ),
           ),
 
-          home: const AuthGate(),
+          home: _accountReady
+              ? const AuthGate()
+              : _ChipluxStartupScreen(
+                  error: _startupError,
+                  onRetry: _finishInitialAccountStartup,
+                  preview: _startupLibraryPreviewUserSafe(),
+                  previewLoaded: _startupPreviewLoaded,
+                  previewFilter: _startupPreviewFilter,
+                  onFilterSelected: (filter) => setState(() {
+                    _startupPreviewFilter = filter;
+                  }),
+                ),
         );
       },
+    );
+  }
+}
+
+// Shown on the FIRST Flutter frame, even if account data is still loading.
+// It deliberately has no profile, library, or achievement dependencies.
+class _ChipluxStartupScreen extends StatelessWidget {
+  const _ChipluxStartupScreen({
+    required this.error,
+    required this.onRetry,
+    required this.preview,
+    required this.previewLoaded,
+    required this.previewFilter,
+    required this.onFilterSelected,
+  });
+
+  final Object? error;
+  final VoidCallback onRetry;
+  final List<Map<String, dynamic>> preview;
+  final bool previewLoaded;
+  final String previewFilter;
+  final ValueChanged<String> onFilterSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final visible = preview.where((item) {
+      if (previewFilter == 'all') return true;
+      return item['status'] == previewFilter;
+    }).toList();
+    return Scaffold(
+      backgroundColor: chipluxBackground,
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 560),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(22, 28, 22, 16),
+              child: Column(
+                children: [
+                  const ChipluxWordmark(fontSize: 40),
+                  const SizedBox(height: 18),
+                  if (error == null) ...[
+                    const SizedBox(
+                      width: 22, height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2, color: chipluxGold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text('Syncing your account...',
+                        style: TextStyle(color: Colors.white70)),
+                  ] else ...[
+                    const Icon(Icons.wifi_off_rounded,
+                        color: chipluxGold, size: 32),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Could not load your account. Check your connection and try again.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton(
+                      onPressed: onRetry,
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: chipluxGold),
+                        foregroundColor: chipluxGold,
+                      ),
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                  if (preview.isNotEmpty) ...[
+                    const SizedBox(height: 26),
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text('YOUR LIBRARY',
+                          style: TextStyle(
+                            color: chipluxGold,
+                            letterSpacing: 1.5,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          )),
+                    ),
+                    const SizedBox(height: 5),
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text('Saved on this device · read-only until sync completes',
+                          style: TextStyle(color: Colors.white54, fontSize: 11)),
+                    ),
+                    const SizedBox(height: 12),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(children: [
+                        for (final filter in const <String>['watching', 'completed', 'plan', 'all'])
+                          Padding(
+                            padding: const EdgeInsets.only(right: 7),
+                            child: OutlinedButton(
+                              onPressed: () => onFilterSelected(filter),
+                              style: OutlinedButton.styleFrom(
+                                backgroundColor: Colors.transparent,
+                                foregroundColor: chipluxGold,
+                                padding: const EdgeInsets.symmetric(horizontal: 14),
+                                side: BorderSide(
+                                  color: chipluxGold,
+                                  width: previewFilter == filter ? 2 : 1,
+                                ),
+                              ),
+                              child: Text(switch (filter) {
+                                'watching' => 'In Progress',
+                                'completed' => 'Completed',
+                                'plan' => 'Planning',
+                                _ => 'All',
+                              }, style: const TextStyle(fontSize: 12)),
+                            ),
+                          ),
+                      ]),
+                    ),
+                    const SizedBox(height: 10),
+                    Expanded(
+                      child: visible.isEmpty
+                          ? const Center(child: Text('No items in this category',
+                              style: TextStyle(color: Colors.white54)))
+                          : ListView.builder(
+                              itemCount: visible.length,
+                              itemBuilder: (context, index) {
+                                final item = visible[index];
+                                final isTv = item['mediaType'] == 'tv';
+                                final watched = (item['episodesWatched'] as num?)?.toInt() ?? 0;
+                                final total = (item['totalEpisodes'] as num?)?.toInt() ?? 0;
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                                  decoration: BoxDecoration(
+                                    color: chipluxSurface,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: chipluxGold.withValues(alpha: .25)),
+                                  ),
+                                  child: Row(children: [
+                                    Icon(isTv ? Icons.tv_rounded : Icons.movie_rounded,
+                                        color: chipluxGold, size: 23),
+                                    const SizedBox(width: 12),
+                                    Expanded(child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(item['title']?.toString() ?? 'Untitled',
+                                            maxLines: 1, overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(color: Colors.white,
+                                                fontWeight: FontWeight.w600)),
+                                        const SizedBox(height: 3),
+                                        Text([
+                                          if ((item['year']?.toString() ?? '').isNotEmpty) item['year'],
+                                          if (isTv && total > 0) '$watched / $total episodes',
+                                          if (isTv && total == 0) 'TV show',
+                                          if (!isTv) 'Movie',
+                                        ].join(' · '),
+                                          style: const TextStyle(color: Colors.white60, fontSize: 12)),
+                                      ],
+                                    )),
+                                  ]),
+                                );
+                              },
+                            ),
+                    ),
+                  ] else if (previewLoaded && error == null) ...[
+                    const SizedBox(height: 22),
+                    const Text('Preparing your library...',
+                        style: TextStyle(color: Colors.white54, fontSize: 12)),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -3622,6 +4092,8 @@ class _LoginPageState extends State<LoginPage> {
 
   final TextEditingController passwordController = TextEditingController();
 
+  final TextEditingController confirmPasswordController = TextEditingController();
+
   final TextEditingController usernameController = TextEditingController();
 
   // =====================================================
@@ -3631,6 +4103,7 @@ class _LoginPageState extends State<LoginPage> {
   bool loading = false;
   bool signupMode = false;
   bool showPassword = false;
+  bool showConfirmPassword = false;
   bool awaitingVerification = false;
   bool resendingConfirmation = false;
   String? pendingVerificationEmail;
@@ -3839,6 +4312,17 @@ class _LoginPageState extends State<LoginPage> {
     // ===================================================
 
     if (signupMode) {
+      // Check both fields locally before making any Supabase sign-up request.
+      if (confirmPasswordController.text.isEmpty) {
+        setState(() => message = 'Confirm your password to create an account.');
+        return;
+      }
+
+      if (password != confirmPasswordController.text) {
+        setState(() => message = 'Passwords do not match. Please try again.');
+        return;
+      }
+
       if (!identifier.contains('@')) {
         setState(() {
           message = 'Enter a valid email address.';
@@ -3896,7 +4380,7 @@ class _LoginPageState extends State<LoginPage> {
         if (response.session != null) {
           awaitingVerification = false;
           pendingVerificationEmail = null;
-          await LibraryService.instance.syncToCloud();
+          await LibraryService.instance.syncToCloud(allowGuestAdoption: true);
 
           await _loadCurrentAccountAchievementState();
 
@@ -3918,6 +4402,7 @@ class _LoginPageState extends State<LoginPage> {
               awaitingVerification = true;
               pendingVerificationEmail = identifier.trim();
               passwordController.clear();
+              confirmPasswordController.clear();
               message = null;
             });
           }
@@ -3984,7 +4469,7 @@ class _LoginPageState extends State<LoginPage> {
           // account that owns the guest
           // data currently on the device.
 
-          await library.syncToCloud();
+          await library.syncToCloud(allowGuestAdoption: true);
         } else {
           // Cloud already contains data.
           // Cloud wins.
@@ -4104,6 +4589,93 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   // =====================================================
+  // WHAT IS A MAKTAVISION ACCOUNT?
+  // =====================================================
+
+  void _showMaktavisionAccountInfo() {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 420),
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: chipluxSurface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: chipluxGold.withValues(alpha: 0.72),
+              width: 1.3,
+            ),
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.hub_outlined, color: chipluxGold, size: 34),
+                const SizedBox(height: 12),
+                const UiText(
+                  'Maktavision Account',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 21,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const UiText(
+                  'One account, more experience.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: chipluxGold,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const UiText(
+                  'Maktavision is an account ecosystem connecting Chiplux '
+                  'and other Maktavision experiences. Instead of creating '
+                  'a new login for each supported app, you can use one '
+                  'Maktavision account.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                const UiText(
+                  'In Chiplux, your account keeps your profile, library, '
+                  'ratings, achievements and customizations connected '
+                  'to you, even when you sign in again or change devices.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    child: const UiText('Got it'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // =====================================================
   // CHANGE MODE
   // =====================================================
 
@@ -4128,8 +4700,10 @@ class _LoginPageState extends State<LoginPage> {
       usernameSuggestions = <String>[];
 
       passwordController.clear();
+      confirmPasswordController.clear();
 
       showPassword = false;
+      showConfirmPassword = false;
     });
 
     _usernameCheckGeneration++;
@@ -4150,6 +4724,7 @@ class _LoginPageState extends State<LoginPage> {
     usernameController.dispose();
     emailController.dispose();
     passwordController.dispose();
+    confirmPasswordController.dispose();
 
     super.dispose();
   }
@@ -4194,24 +4769,19 @@ class _LoginPageState extends State<LoginPage> {
                       style: TextStyle(color: Colors.white54, letterSpacing: 2),
                     ),
 
-                    const SizedBox(height: 12),
-                    UiText(
-                      signupMode
-                          ? 'Create a Maktavision account'
-                          : 'Sign in with your Maktavision account',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
+                    const SizedBox(height: 22),
+                    if (signupMode) ...[
+                      const UiText(
+                        'Create a Maktavision account',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 7),
-                    const UiText(
-                      'One account across Maktavision applications.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 12, color: Colors.white54),
-                    ),
+                      const SizedBox(height: 7),
+                    ],
                     if (awaitingVerification) ...[
                       const SizedBox(height: 22),
                       Container(
@@ -4372,7 +4942,7 @@ class _LoginPageState extends State<LoginPage> {
 
                       decoration: InputDecoration(
                         label: UiText(
-                          signupMode ? 'Email' : 'Email or username',
+                          signupMode ? 'Email' : 'Maktavision email or username',
                         ),
 
                         prefixIcon: Icon(
@@ -4393,10 +4963,12 @@ class _LoginPageState extends State<LoginPage> {
 
                       obscureText: !showPassword,
 
-                      textInputAction: TextInputAction.done,
+                      textInputAction: signupMode
+                          ? TextInputAction.next
+                          : TextInputAction.done,
 
                       onSubmitted: (_) {
-                        if (!disableSubmit) {
+                        if (!signupMode && !disableSubmit) {
                           submit();
                         }
                       },
@@ -4428,6 +5000,41 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                     ),
+
+                    // =====================================
+                    // CONFIRM PASSWORD - CREATE ACCOUNT ONLY
+                    // =====================================
+                    if (signupMode) ...[
+                      const SizedBox(height: 15),
+                      TextField(
+                        controller: confirmPasswordController,
+                        obscureText: !showConfirmPassword,
+                        autocorrect: false,
+                        enableSuggestions: false,
+                        textInputAction: TextInputAction.done,
+                        onSubmitted: (_) {
+                          if (!disableSubmit) submit();
+                        },
+                        decoration: InputDecoration(
+                          label: const UiText('Confirm Password'),
+                          prefixIcon: const Icon(Icons.lock_outline),
+                          suffixIcon: IconButton(
+                            onPressed: () {
+                              setState(() {
+                                showConfirmPassword = !showConfirmPassword;
+                              });
+                            },
+                            icon: Icon(showConfirmPassword
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined),
+                            tooltip: trUi(
+                              context,
+                              showConfirmPassword ? 'Hide password' : 'Show password',
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
 
                     // =====================================
                     // MAKTAVISION PASSWORD RECOVERY
@@ -4575,14 +5182,9 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     const SizedBox(height: 6),
                     TextButton.icon(
-                      onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const MaktavisionSupportPage(),
-                        ),
-                      ),
-                      icon: const Icon(Icons.support_agent_outlined, size: 17),
-                      label: const UiText('Maktavision Support'),
+                      onPressed: _showMaktavisionAccountInfo,
+                      icon: const Icon(Icons.info_outline, size: 17),
+                      label: const UiText('What is Maktavision account?'),
                     ),
                   ],
                 ),
@@ -4605,6 +5207,10 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int currentIndex = 2;
 
+  // Counts visits to Discover. The horizontal carousels reset on re-entry,
+  // while each section's vertical scroll position and cached titles remain.
+  int discoverOpenRequest = 0;
+
   String libraryInitialFilter = 'watching';
 
   String libraryInitialMediaType = 'tv';
@@ -4620,6 +5226,7 @@ class _MainScreenState extends State<MainScreen> {
   late int _lastRuntimeLevel;
 
   late int _lastRatingsLevel;
+  bool _processingCustomMoviePopups = false;
 
   @override
   void initState() {
@@ -4638,9 +5245,11 @@ class _MainScreenState extends State<MainScreen> {
     MusicUserDataService.instance.addListener(_onLibraryChanged);
 
     CriticService.instance.addListener(_onCriticChanged);
+    CustomMovieAchievementService.instance.addListener(_onCustomMovieUnlocksChanged);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(_checkPendingLaunchAchievements());
+      unawaited(_processCustomMoviePopups());
     });
   }
 
@@ -4670,6 +5279,47 @@ class _MainScreenState extends State<MainScreen> {
         currentLevel: currentLevel,
       ),
     );
+  }
+
+  void _onCustomMovieUnlocksChanged() {
+    if (!mounted || _processingCustomMoviePopups) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(_processCustomMoviePopups());
+    });
+  }
+
+  Future<void> _processCustomMoviePopups() async {
+    if (_processingCustomMoviePopups || !mounted) return;
+    _processingCustomMoviePopups = true;
+    final accountId = Supabase.instance.client.auth.currentUser?.id;
+    try {
+      // A successful cloud entitlement claim is the only event shown here.
+      // Old unlocks from the first account load never enter this queue.
+      while (mounted) {
+        final ids = CustomMovieAchievementService.instance.takeNewUnlockIds();
+        if (ids.isEmpty) break;
+        for (final id in ids) {
+          if (!mounted || Supabase.instance.client.auth.currentUser?.id != accountId) return;
+          final groupId = 'custom_movie_$id';
+          final matching = _customMovieAchievementGroups()
+              .where((group) => group.id == groupId && group.hasUnlockedTier);
+          if (matching.isEmpty) continue;
+          final reward = matching.first.highestUnlockedTier!;
+          if (!await _AchievementPopupLedger.instance.claim(reward.id)) continue;
+          unawaited(_postAchievementActivitySafely(
+            reward,
+            replaceExisting: false,
+          ));
+          if (!mounted) return;
+          await _showAchievementUnlocked(context, reward, alreadyClaimed: true);
+        }
+      }
+    } finally {
+      _processingCustomMoviePopups = false;
+      if (mounted && CustomMovieAchievementService.instance.hasPendingNewUnlocks) {
+        _onCustomMovieUnlocksChanged();
+      }
+    }
   }
 
   void _onCriticChanged() {
@@ -4767,7 +5417,7 @@ class _MainScreenState extends State<MainScreen> {
       index: currentIndex,
 
       children: [
-        const HomePage(),
+        HomePage(openRequest: discoverOpenRequest),
 
         const SearchPage(),
 
@@ -4843,6 +5493,9 @@ class _MainScreenState extends State<MainScreen> {
 
             onTap: (index) {
               setState(() {
+                // Also reset when tapping Discover again while it is selected.
+                if (index == 0) discoverOpenRequest++;
+
                 if (index == 2) {
                   libraryInitialFilter = 'watching';
 
@@ -4891,6 +5544,7 @@ class _MainScreenState extends State<MainScreen> {
     MusicUserDataService.instance.removeListener(_onLibraryChanged);
 
     CriticService.instance.removeListener(_onCriticChanged);
+    CustomMovieAchievementService.instance.removeListener(_onCustomMovieUnlocksChanged);
 
     super.dispose();
   }
@@ -6004,7 +6658,7 @@ class _FeatureBoardTabState extends State<_FeatureBoardTab> {
               radius: 14,
               backgroundColor: chipluxSurfaceLight,
               backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
-                  ? NetworkImage(avatarUrl)
+                  ? chipluxSizedAvatar(context, avatarUrl, 28)
                   : null,
               child: avatarUrl == null || avatarUrl.isEmpty
                   ? const Icon(
@@ -6689,7 +7343,7 @@ class _CommunityUsersList extends StatelessWidget {
                     backgroundColor: chipluxSurfaceLight,
 
                     backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
-                        ? NetworkImage(avatarUrl)
+                        ? chipluxSizedAvatar(context, avatarUrl, 48)
                         : null,
 
                     child: avatarUrl == null || avatarUrl.isEmpty
@@ -7084,7 +7738,7 @@ class _FriendsWatchRow extends StatelessWidget {
               backgroundColor: chipluxSurfaceLight,
 
               backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
-                  ? NetworkImage(avatarUrl)
+                  ? chipluxSizedAvatar(context, avatarUrl, 46)
                   : null,
 
               child: avatarUrl == null || avatarUrl.isEmpty
@@ -7978,7 +8632,7 @@ class _PublicCompletedTvShowCard extends StatelessWidget {
                     width: double.infinity,
 
                     child: posterUrl != null
-                        ? Image.network(
+                        ? ChipluxPublicArtwork(
                             posterUrl,
                             fit: BoxFit.cover,
 
@@ -8435,7 +9089,7 @@ class _PublicWatchedMovieCard extends StatelessWidget {
                     width: double.infinity,
 
                     child: posterUrl != null
-                        ? Image.network(
+                        ? ChipluxPublicArtwork(
                             posterUrl,
                             fit: BoxFit.cover,
 
@@ -9007,29 +9661,22 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
           final achievement = _followDeveloperAchievementGroupFor(true)
               .tiers
               .first;
+          final claimed = await _AchievementPopupLedger.instance.claim(
+            achievement.id,
+          );
+          if (claimed) {
+            unawaited(_postAchievementActivitySafely(
+              achievement,
+              replaceExisting: true,
+            ));
 
-          try {
-            await CommunityService.instance.deleteActivity(
-              activityType: 'achievement_unlocked',
-              achievementId: achievement.id,
-            );
-
-            await CommunityService.instance.tryCreateActivity(
-              activityType: 'achievement_unlocked',
-              achievementId: achievement.id,
-              achievementTitle: achievement.title,
-            );
-          } catch (e) {
-            debugPrint(
-              'Could not create Follow Developer achievement activity: $e',
+            if (!mounted) return;
+            await _showAchievementUnlocked(
+              context,
+              achievement,
+              alreadyClaimed: true,
             );
           }
-
-          if (!mounted) {
-            return;
-          }
-
-          await _showAchievementUnlocked(context, achievement);
         }
       }
 
@@ -9438,10 +10085,19 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
 
     final bool publicIsDeveloper = profile!['is_developer'] == true;
 
-    final publicProfilePageFrameId = profile!['profile_page_frame_id']
+    final rawPublicPageFrameId = profile!['profile_page_frame_id']
         ?.toString()
         .trim();
-
+    final publicHasRainbowReward = publicIsDeveloper ||
+        profile!['followed_developer_achievement'] == true;
+    final publicProfilePageFrameId = !publicHasRainbowReward
+        ? null
+        : (rawPublicPageFrameId == null ||
+           rawPublicPageFrameId.isEmpty ||
+           rawPublicPageFrameId == followDeveloperProfilePageFrameId ||
+           rawPublicPageFrameId == developerProfilePageFrameId)
+            ? developerProfilePageFrameId
+            : null;
     final publicPageFrame = _profilePageFrameWidget(publicProfilePageFrameId);
 
     final bool developerPublicTitleActive =
@@ -9658,7 +10314,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
         ? ratingsLevelGroup.highestUnlockedTier
         : pinnedId == followerGroup.id
         ? followerGroup.highestUnlockedTier
-        : null;
+        : _customMoviePinnedAchievement(pinnedId);
 
     return Scaffold(
       backgroundColor: chipluxBackground,
@@ -9895,7 +10551,11 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                             avatarUrl != null &&
                                                 avatarUrl.isNotEmpty
                                             ? DecorationImage(
-                                                image: NetworkImage(avatarUrl),
+                                                image: chipluxSizedAvatar(
+                                                  context,
+                                                  avatarUrl,
+                                                  94,
+                                                ),
                                                 fit: BoxFit.cover,
                                               )
                                             : null,
@@ -9962,38 +10622,11 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                                           ),
                                         ),
 
-                                        child: Text(
-                                          name,
-
-                                          maxLines: 1,
-
-                                          overflow: TextOverflow.ellipsis,
-
-                                          style: TextStyle(
-                                            color: publicDisplayNameColor,
-
-                                            fontSize: 18,
-
-                                            fontWeight: FontWeight.bold,
-
-                                            letterSpacing: 0.3,
-
-                                            shadows:
-                                                selectedPublicNameColorAchievement !=
-                                                    null
-                                                ? [
-                                                    Shadow(
-                                                      color:
-                                                          publicDisplayNameColor
-                                                              .withValues(
-                                                                alpha: 0.25,
-                                                              ),
-
-                                                      blurRadius: 6,
-                                                    ),
-                                                  ]
-                                                : null,
-                                          ),
+                                        child: _profileDisplayNameText(
+                                          name: name,
+                                          color: publicDisplayNameColor,
+                                          hasReward: selectedPublicNameColorAchievement != null,
+                                          rewardColors: _achievementTierColors(selectedPublicNameColorAchievement),
                                         ),
                                       ),
                                     ),
@@ -10817,26 +11450,16 @@ class _RatingDistributionFilterBar extends StatelessWidget {
                 ),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(999),
-                  gradient: active
-                      ? LinearGradient(
-                          colors: [
-                            chipluxGold.withValues(alpha: 0.24),
-                            chipluxBrightGold.withValues(alpha: 0.22),
-                            chipluxAmber.withValues(alpha: 0.22),
-                          ],
-                        )
-                      : null,
-                  color: active ? null : chipluxSurfaceLight,
+                  color: Colors.transparent,
                   border: Border.all(
-                    color: active
-                        ? chipluxBrightGold.withValues(alpha: 0.38)
-                        : Colors.white.withValues(alpha: 0.06),
+                    color: active ? chipluxBrightGold : chipluxGold,
+                    width: active ? 1.6 : 1.0,
                   ),
                 ),
                 child: UiText(
                   filter.$2,
                   style: TextStyle(
-                    color: active ? Colors.white : Colors.white60,
+                    color: active ? chipluxBrightGold : chipluxGold,
                     fontSize: 12,
                     fontWeight: active ? FontWeight.w700 : FontWeight.w600,
                   ),
@@ -11176,6 +11799,7 @@ class _BottomNavAvatar extends StatelessWidget {
       child: ClipOval(
         child: Image.network(
           avatarUrl!,
+          cacheWidth: (28 * MediaQuery.devicePixelRatioOf(context)).ceil(),
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) {
             return Icon(
@@ -11356,7 +11980,9 @@ const chipluxTopLists = <ChipluxListDefinition>[
 ];
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  final int openRequest;
+
+  const HomePage({super.key, this.openRequest = 0});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -11371,6 +11997,9 @@ class _HomePageState extends State<HomePage>
   // Share the same swipe / tap navigation system used by Community.
   late final TabController _discoverTabController;
   int _lastDiscoverTabIndex = 0;
+  // Reset every horizontal Trending row when the user returns to this
+  // Discover tab, even when the bottom navigation never changed.
+  int _trendingTabOpenRequest = 0;
 
   // ====================================================
   // TRENDING CACHE
@@ -11410,14 +12039,8 @@ class _HomePageState extends State<HomePage>
 
     unawaited(DiscoverCatalogService.instance.preload());
 
-    // Preload Today in the background.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) {
-        return;
-      }
-
-      unawaited(_loadToday());
-    });
+    // Today is fetched when its tab is visited, not during Trending startup.
+    // The Today tab's Builder delays _buildTodayPage() until it is mounted.
   }
 
   // ====================================================
@@ -11436,6 +12059,11 @@ class _HomePageState extends State<HomePage>
       return;
     }
     _lastDiscoverTabIndex = index;
+    if (index == 0) {
+      // Returning from Today, 100 Lists or For You must also reset the
+      // currently mounted Trending rows for Movies, TV Shows and Albums.
+      setState(() => _trendingTabOpenRequest++);
+    }
     if (index == 2 || index == 3) {
       unawaited(_loadToday());
     }
@@ -11724,7 +12352,22 @@ class _HomePageState extends State<HomePage>
     }
   }
 
-  Future<void> _loadToday({bool forceRefresh = false}) async {
+  // Tab selection and the Today widget can request data at the same time.
+  // Share the in-flight load so one tab visit never launches duplicate calls.
+  Future<void>? _todayLoadRequest;
+  Future<void> _loadToday({bool forceRefresh = false}) {
+    final current = _todayLoadRequest;
+    if (current != null) return current;
+    final request = _loadTodayImpl(forceRefresh: forceRefresh);
+    _todayLoadRequest = request;
+    return request.whenComplete(() {
+      if (identical(_todayLoadRequest, request)) {
+        _todayLoadRequest = null;
+      }
+    });
+  }
+
+  Future<void> _loadTodayImpl({bool forceRefresh = false}) async {
     if (todayLoading) {
       return;
     }
@@ -11915,6 +12558,7 @@ class _HomePageState extends State<HomePage>
       'discover-trending-${LocaleService.instance.effectiveLanguageCode}',
     ),
     mode: DiscoverMode.trending,
+    openRequest: widget.openRequest + _trendingTabOpenRequest,
   );
 
   Widget _buildListsPage() => _DiscoverBrowsePage(
@@ -11922,6 +12566,7 @@ class _HomePageState extends State<HomePage>
       'discover-top100-${LocaleService.instance.effectiveLanguageCode}',
     ),
     mode: DiscoverMode.top100,
+    openRequest: widget.openRequest,
   );
 
   Widget _buildTodayPage() {
@@ -12085,6 +12730,7 @@ class _HomePageState extends State<HomePage>
       'discover-for-you-${LocaleService.instance.effectiveLanguageCode}',
     ),
     mode: DiscoverMode.forYou,
+    openRequest: widget.openRequest,
   );
 
   // ====================================================
@@ -12150,7 +12796,7 @@ class _HomePageState extends State<HomePage>
               children: [
                 _buildTrendingPage(),
                 _buildListsPage(),
-                _buildTodayPage(),
+                Builder(builder: (_) => _buildTodayPage()),
                 _buildForYouPage(),
               ],
             ),
@@ -12327,7 +12973,7 @@ class _InMemoriamActorCard extends StatelessWidget {
                       ]),
 
                       child: imageUrl != null
-                          ? Image.network(
+                          ? ChipluxPublicArtwork(
                               imageUrl,
 
                               width: 78,
@@ -12590,7 +13236,7 @@ class _BirthdayActorCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(15),
 
                   child: imageUrl != null
-                      ? Image.network(
+                      ? ChipluxPublicArtwork(
                           imageUrl,
 
                           width: 78,
@@ -12772,7 +13418,7 @@ class _TodayCompactMediaCard extends StatelessWidget {
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: posterUrl != null
-                    ? Image.network(
+                    ? ChipluxPublicArtwork(
                         posterUrl,
                         width: 72,
                         height: 105,
@@ -13225,7 +13871,7 @@ class _Top100Row extends StatelessWidget {
                         borderRadius: BorderRadius.circular(10),
 
                         child: posterUrl != null
-                            ? Image.network(
+                            ? ChipluxPublicArtwork(
                                 posterUrl,
                                 width: 58,
                                 height: 89,
@@ -13459,8 +14105,13 @@ class _Top100Row extends StatelessWidget {
 class _TrendingRow extends StatelessWidget {
   final List<dynamic> items;
   final String mediaType;
+  final ScrollController controller;
 
-  const _TrendingRow({required this.items, required this.mediaType});
+  const _TrendingRow({
+    required this.items,
+    required this.mediaType,
+    required this.controller,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -13471,6 +14122,7 @@ class _TrendingRow extends StatelessWidget {
     return SizedBox(
       height: 266 + extraHeight,
       child: ListView.separated(
+        controller: controller,
         padding: const EdgeInsets.symmetric(horizontal: 20),
         scrollDirection: Axis.horizontal,
         itemCount: items.length,
@@ -13524,7 +14176,7 @@ class _TrendingCard extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
               child: posterUrl != null
-                  ? Image.network(
+                  ? ChipluxPublicArtwork(
                       posterUrl,
                       width: 145,
                       height: 205,
@@ -14391,7 +15043,7 @@ class _SearchPageState extends State<SearchPage>
                             ClipRRect(
                               borderRadius: BorderRadius.circular(12),
                               child: imagePath != null
-                                  ? Image.network(
+                                  ? ChipluxPublicArtwork(
                                       'https://image.tmdb.org/t/p/w185$imagePath',
                                       width: 72,
                                       height: 92,
@@ -14522,7 +15174,7 @@ class _SearchPageState extends State<SearchPage>
                           ClipRRect(
                             borderRadius: BorderRadius.circular(12),
                             child: posterUrl != null
-                                ? Image.network(
+                                ? ChipluxPublicArtwork(
                                     posterUrl,
                                     width: 72,
                                     height: 105,
@@ -14891,7 +15543,7 @@ class _MusicSongSearchCard extends StatelessWidget {
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: coverUrl != null && coverUrl.isNotEmpty
-                    ? Image.network(
+                    ? ChipluxPublicArtwork(
                         coverUrl,
                         width: 58,
                         height: 58,
@@ -15175,6 +15827,11 @@ class _LibraryPageState extends State<LibraryPage>
       // Albums can be planned or dropped. Songs intentionally cannot.
       return const ['tv', 'movie', 'album'];
     }
+    if (filter == 'watching') {
+      // 'watching' is the legacy persisted filter key. In Progress can also
+      // contain albums with at least one listened track.
+      return const ['tv', 'album'];
+    }
 
     return const ['tv', 'movie'];
   }
@@ -15214,6 +15871,7 @@ class _LibraryPageState extends State<LibraryPage>
 
   String get _currentSortKey {
     final usesMediaType =
+        filter == 'watching' ||
         filter == 'favorites' ||
         filter == 'completed' ||
         filter == 'plan' ||
@@ -15548,7 +16206,7 @@ class _LibraryPageState extends State<LibraryPage>
                           labelFor(type),
                           maxLines: 1,
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: filter == 'watching' ? 11.5 : 13,
                             fontWeight: selectedMediaType == type
                                 ? FontWeight.bold : FontWeight.w600,
                             color: accent.withValues(
@@ -15595,7 +16253,7 @@ class _LibraryPageState extends State<LibraryPage>
               ),
             ),
             _buildAnimatedFilterBar(),
-            if (filter != 'watching') _mediaTypeSelector(),
+            _mediaTypeSelector(),
             Expanded(
               child: TabBarView(
                 controller: _libraryTabController,
@@ -15613,6 +16271,20 @@ class _LibraryPageState extends State<LibraryPage>
 
   Widget _buildLibraryFilterContent(String pageFilter) {
     final library = LibraryService.instance;
+    if (pageFilter == 'watching') {
+      if (selectedMediaType == 'album') {
+        return _buildInProgressAlbums();
+      }
+      final tvItems = library.items.where(
+        (item) => item.mediaType == 'tv' && item.status == 'watching',
+      ).toList();
+      return tvItems.isEmpty
+          ? const Center(
+              child: UiText('No TV shows in progress yet.',
+                  style: TextStyle(color: Colors.white54)),
+            )
+          : _buildWatchingContent(tvItems);
+    }
     List<LibraryItem> items = library.items.toList();
     final usesMediaType = pageFilter != 'watching';
     final musicSelected = usesMediaType && _musicMediaSelected &&
@@ -15668,9 +16340,7 @@ class _LibraryPageState extends State<LibraryPage>
           style: TextStyle(color: Colors.white54)),
       );
     }
-    return pageFilter == 'watching'
-        ? _buildWatchingContent(items)
-        : _buildNormalLibraryGrid(items);
+    return _buildNormalLibraryGrid(items);
   }
 
   Widget _buildWatchingContent(List<LibraryItem> items) {
@@ -15753,6 +16423,90 @@ class _LibraryPageState extends State<LibraryPage>
     );
   }
 
+  Widget _buildInProgressAlbums() {
+    final savedAlbums = <String, MusicLibraryEntry>{
+      for (final entry in musicUserDataService.albumEntries)
+        entry.entityId: entry,
+    };
+    final listenedByAlbum = <String, List<MusicLibraryEntry>>{};
+    for (final track in musicUserDataService.trackEntries) {
+      final albumId = track.albumId?.trim();
+      if (!track.isListened || albumId == null || albumId.isEmpty) continue;
+      listenedByAlbum.putIfAbsent(albumId, () => []).add(track);
+    }
+
+    final inProgress = <_InProgressMusicAlbum>[];
+    for (final albumGroup in listenedByAlbum.entries) {
+      final albumRow = savedAlbums[albumGroup.key];
+      // Completed albums already live under Library > Completed.
+      if (albumRow?.isListened == true) continue;
+
+      final sample = albumGroup.value.first;
+      final album = MusicAlbum(
+        id: albumGroup.key,
+        title: albumRow?.title ?? sample.albumTitle ?? 'Unknown album',
+        artistId: albumRow?.artistId ?? sample.artistId,
+        artistName: albumRow?.artistName ?? sample.artistName,
+        firstReleaseDate: albumRow?.releaseYear ?? sample.releaseYear,
+        genres: albumRow?.genres ?? sample.genres,
+        artworkUrl: albumRow?.coverUrl ?? sample.coverUrl,
+      );
+      DateTime? latestListen;
+      for (final track in albumGroup.value) {
+        final time = track.listenedAt ?? track.updatedAt;
+        if (time != null &&
+            (latestListen == null || time.isAfter(latestListen))) {
+          latestListen = time;
+        }
+      }
+      inProgress.add(_InProgressMusicAlbum(
+        album: album,
+        albumEntry: albumRow,
+        latestListen: latestListen,
+      ));
+    }
+
+    final sortMode = _sortModeByList['watching:album'];
+    inProgress.sort((a, b) {
+      if (sortMode == 'rated' || sortMode == 'notRated') {
+        final aRated = a.albumEntry?.rating != null;
+        final bRated = b.albumEntry?.rating != null;
+        if (aRated != bRated) {
+          return sortMode == 'rated'
+              ? (aRated ? -1 : 1)
+              : (aRated ? 1 : -1);
+        }
+      }
+      final aTime = a.latestListen;
+      final bTime = b.latestListen;
+      if (aTime != null && bTime != null) {
+        return bTime.compareTo(aTime);
+      }
+      if (aTime != null) return -1;
+      if (bTime != null) return 1;
+      return a.album.title.compareTo(b.album.title);
+    });
+
+    if (inProgress.isEmpty) {
+      return const Center(
+        child: UiText('Listen to a song to start an album.',
+          style: TextStyle(color: Colors.white54)),
+      );
+    }
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 30),
+      itemCount: inProgress.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        final item = inProgress[index];
+        return _InProgressAlbumCard(
+          key: ValueKey('in-progress-album-${item.album.id}'),
+          album: item.album,
+        );
+      },
+    );
+  }
+
   Widget _buildNormalLibraryGrid(List<LibraryItem> items) {
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 30),
@@ -15811,7 +16565,7 @@ class _LibraryPageState extends State<LibraryPage>
   IconData _filterIcon(String value) {
     switch (value) {
       case 'watching':
-        return Icons.visibility_outlined;
+        return Icons.timelapse_rounded;
 
       case 'favorites':
         return Icons.favorite;
@@ -15833,7 +16587,7 @@ class _LibraryPageState extends State<LibraryPage>
   String _filterLabel(String value) {
     switch (value) {
       case 'watching':
-        return 'Watching';
+        return 'In Progress';
 
       case 'favorites':
         return 'Favorites';
@@ -16049,6 +16803,216 @@ class _LibraryPageState extends State<LibraryPage>
             );
           }
         }
+      },
+    );
+  }
+}
+
+class _InProgressMusicAlbum {
+  final MusicAlbum album;
+  final MusicLibraryEntry? albumEntry;
+  final DateTime? latestListen;
+
+  const _InProgressMusicAlbum({
+    required this.album,
+    required this.albumEntry,
+    required this.latestListen,
+  });
+}
+
+class _InProgressAlbumCard extends StatefulWidget {
+  final MusicAlbum album;
+
+  const _InProgressAlbumCard({super.key, required this.album});
+
+  @override
+  State<_InProgressAlbumCard> createState() => _InProgressAlbumCardState();
+}
+
+class _InProgressAlbumCardState extends State<_InProgressAlbumCard> {
+  late Future<MusicAlbumDetails> _detailsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _detailsFuture = MusicService.instance.getAlbumDetails(widget.album);
+  }
+
+  @override
+  void didUpdateWidget(covariant _InProgressAlbumCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.album.id != widget.album.id) {
+      _detailsFuture = MusicService.instance.getAlbumDetails(widget.album);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<MusicAlbumDetails>(
+      future: _detailsFuture,
+      builder: (context, snapshot) {
+        final tracks = snapshot.data?.tracks ?? const <MusicTrack>[];
+        final userData = MusicUserDataService.instance;
+        final listenedIndices = <int>[];
+        DateTime? mostRecentListen;
+        int mostRecentIndex = -1;
+
+        for (var index = 0; index < tracks.length; index++) {
+          final state = userData.trackState(tracks[index].id);
+          if (!state.isListened) continue;
+          listenedIndices.add(index);
+          final listenedAt = state.listenedAt;
+          // Newest listened track determines where to resume; use album
+          // order as a fallback for imported records without timestamps.
+          if (mostRecentIndex == -1 ||
+              (listenedAt == null && mostRecentListen == null) ||
+              (listenedAt != null &&
+               (mostRecentListen == null ||
+                !listenedAt.isBefore(mostRecentListen)))) {
+            mostRecentIndex = index;
+            mostRecentListen = listenedAt;
+          }
+        }
+
+        MusicTrack? nextTrack;
+        if (tracks.isNotEmpty) {
+          // Continue after the most recently listened song. If it was the
+          // album's last song, wrap to the first remaining unlistened one.
+          for (var offset = 1; offset <= tracks.length; offset++) {
+            final index = (mostRecentIndex + offset) % tracks.length;
+            final candidate = tracks[index];
+            if (!userData.trackState(candidate.id).isListened) {
+              nextTrack = candidate;
+              break;
+            }
+          }
+        }
+
+        final progress = tracks.isEmpty
+            ? null
+            : (listenedIndices.length / tracks.length).clamp(0.0, 1.0).toDouble();
+        final nextLabel = nextTrack != null
+            ? 'Up next: ${nextTrack.title}'
+            : snapshot.hasError
+                ? 'Open album to continue listening'
+                : snapshot.connectionState != ConnectionState.done
+                    ? 'Finding your next track…'
+                    : 'Open album to view tracks';
+        final position = nextTrack == null ? ''
+            : 'Disc ${nextTrack.discNumber} · Track ${nextTrack.number}';
+        final artwork = widget.album.coverUrl;
+
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(18),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => MusicAlbumPage(
+                    album: widget.album,
+                    initialTrackId: nextTrack?.id,
+                  ),
+                ),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: chipluxSurface,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: Colors.white.withValues(alpha: .07)),
+              ),
+              child: Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: ChipluxPublicArtwork(
+                      artwork,
+                      height: 104,
+                      width: 104,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, error, stackTrace) => Container(
+                        width: 104,
+                        height: 104,
+                        color: chipluxSurfaceLight,
+                        child: const Icon(Icons.album_outlined,
+                          color: chipluxGold, size: 38),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          widget.album.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          widget.album.artistName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white60, fontSize: 12),
+                        ),
+                        const SizedBox(height: 9),
+                        Text(
+                          nextLabel,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: chipluxGold,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        if (position.isNotEmpty) ...[
+                          const SizedBox(height: 3),
+                          Text(position,
+                            style: const TextStyle(
+                              color: Colors.white54, fontSize: 11)),
+                        ],
+                        if (progress != null) ...[
+                          const SizedBox(height: 9),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: LinearProgressIndicator(
+                              value: progress,
+                              minHeight: 5,
+                              backgroundColor: Colors.white12,
+                              valueColor: const AlwaysStoppedAnimation<Color>(
+                                chipluxGold),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${listenedIndices.length}/${tracks.length} songs listened',
+                            style: const TextStyle(
+                              color: Colors.white54, fontSize: 11),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.chevron_right_rounded,
+                    size: 24, color: chipluxGold),
+                ],
+              ),
+            ),
+          ),
+        );
       },
     );
   }
@@ -16773,7 +17737,7 @@ class _WatchingTvCardState extends State<_WatchingTvCard> {
                 borderRadius: BorderRadius.circular(12),
 
                 child: posterUrl != null
-                    ? Image.network(
+                    ? ChipluxPublicArtwork(
                         posterUrl,
                         width: 82,
                         height: 118,
@@ -17276,7 +18240,7 @@ class _LibraryListCard extends StatelessWidget {
                       ClipRRect(
                         borderRadius: BorderRadius.circular(10),
                         child: posterUrl != null
-                            ? Image.network(
+                            ? ChipluxPublicArtwork(
                                 posterUrl,
                                 width: 54,
                                 height: 80,
@@ -17620,7 +18584,7 @@ class _LibraryPosterCard extends StatelessWidget {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(16),
                   child: posterUrl != null
-                      ? Image.network(
+                      ? ChipluxPublicArtwork(
                           posterUrl,
                           fit: BoxFit.cover,
 
@@ -17965,7 +18929,7 @@ class _BannerOptionTileState extends State<_BannerOptionTile> {
               fit: StackFit.expand,
               children: [
                 if (url != null)
-                  Image.network(
+                  ChipluxPublicArtwork(
                     url,
                     fit: BoxFit.cover,
 
@@ -18056,7 +19020,10 @@ class _ProfileBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: chipluxSurface,
         image: hasBanner
-            ? DecorationImage(image: NetworkImage(imageUrl!), fit: BoxFit.cover)
+            ? DecorationImage(
+                image: chipluxSizedAvatar(context, imageUrl!, 840),
+                fit: BoxFit.cover,
+              )
             : null,
       ),
       child: Stack(
@@ -18105,6 +19072,7 @@ class _Achievement {
   final String title;
   final String description;
   final IconData icon;
+  final String? iconifyId;
   final int current;
   final int target;
   final _AchievementRarity rarity;
@@ -18117,6 +19085,7 @@ class _Achievement {
     required this.title,
     required this.description,
     required this.icon,
+    this.iconifyId,
     required this.current,
     required this.target,
     required this.rarity,
@@ -18178,56 +19147,56 @@ List<_AchievementGroup> _discoveryTitleAchievementGroups() {
       milestoneDescription: (target) => 'Watch $target movies recommended to you.',
       name: 'For You · Movies', description: 'Complete movies discovered through For You.',
       icon: Icons.movie_filter_outlined, progress: tracker.progress('for_you_movies'),
-      targets: [1, 2, 4, 6, 8, 12, 16, 24, 32], titles: ['First Recommendation', 'Curious Viewer', 'Suggested Seeker', 'Personal Picks', 'For You Fan', 'Taste Tracker', 'Algorithm Explorer', 'Hidden Gem Hunter', 'Destiny Watcher'],
-      icons: [Icons.play_circle_outline_rounded, Icons.play_circle_outline, Icons.movie_outlined, Icons.recommend_rounded, Icons.camera_alt_outlined, Icons.explore_rounded, Icons.panorama_outlined, Icons.travel_explore_rounded, Icons.emoji_events_outlined],
+      targets: [1, 2, 4, 6, 8, 12, 16, 24, 32, 48], titles: ['First Recommendation', 'Curious Viewer', 'Suggested Seeker', 'Personal Picks', 'For You Fan', 'Taste Tracker', 'Algorithm Explorer', 'Hidden Gem Hunter', 'Destiny Watcher', 'For You Visionary'],
+      icons: [Icons.play_circle_outline_rounded, Icons.play_circle_outline, Icons.movie_outlined, Icons.recommend_rounded, Icons.camera_alt_outlined, Icons.explore_rounded, Icons.panorama_outlined, Icons.travel_explore_rounded, Icons.emoji_events_outlined, Icons.workspace_premium_rounded],
     ),
     _discoveryTitleGroup(
       id: DiscoveryAchievementService.forYouAlbums,
       milestoneDescription: (target) => 'Listen to $target albums recommended to you.',
       name: 'For You · Albums', description: 'Listen to complete albums discovered through For You.',
       icon: Icons.album, progress: tracker.progress('for_you_albums'),
-      targets: [1, 2, 4, 6, 8, 12, 16, 24, 32], titles: ['First Discovery', 'Fresh Listener', 'Taste Explorer', 'New Sound Scout', 'Recommended Ear', 'Playlist Pioneer', 'Album Adventurer', 'Discovery Curator', 'Discovery Listener'],
-      icons: [Icons.music_note_outlined, Icons.radio_button_unchecked, Icons.bar_chart_rounded, Icons.queue_music_rounded, Icons.query_stats_rounded, Icons.headphones_rounded, Icons.dynamic_feed_rounded, Icons.library_music_outlined, Icons.tune_rounded],
+      targets: [1, 2, 4, 6, 8, 12, 16, 24, 32, 48], titles: ['First Discovery', 'Fresh Listener', 'Taste Explorer', 'New Sound Scout', 'Recommended Ear', 'Playlist Pioneer', 'Album Adventurer', 'Discovery Curator', 'Discovery Listener', 'Ultimate Discovery Listener'],
+      icons: [Icons.music_note_outlined, Icons.radio_button_unchecked, Icons.bar_chart_rounded, Icons.queue_music_rounded, Icons.query_stats_rounded, Icons.headphones_rounded, Icons.dynamic_feed_rounded, Icons.library_music_outlined, Icons.tune_rounded, Icons.workspace_premium_rounded],
     ),
     _discoveryTitleGroup(
       id: DiscoveryAchievementService.birthdays,
       milestoneDescription: (target) => 'Check who has a birthday $target times.',
       name: 'Birthday Spotlights', description: 'Open unique birthday spotlights.',
       icon: Icons.cake_rounded, progress: tracker.progress('birthdays_checked'),
-      targets: [1, 2, 4, 8, 12, 16, 32, 48, 64], titles: ['First Candle', 'Birthday Visitor', 'Wish Keeper', 'Celebration Scout', 'Party Planner', 'Cake Chronicler', 'Birthday Archivist', 'Spotlight Keeper', 'Master Celebrant'],
-      icons: [Icons.celebration_outlined, Icons.cake_outlined, Icons.today_rounded, Icons.calendar_month_outlined, Icons.local_activity_rounded, Icons.notifications_active_outlined, Icons.favorite_border_rounded, Icons.stars_rounded, Icons.star_rounded],
+      targets: [1, 2, 4, 8, 12, 16, 32, 48, 64, 96], titles: ['First Candle', 'Birthday Visitor', 'Wish Keeper', 'Celebration Scout', 'Party Planner', 'Cake Chronicler', 'Birthday Archivist', 'Spotlight Keeper', 'Master Celebrant', 'Birthday Luminary'],
+      icons: [Icons.celebration_outlined, Icons.cake_outlined, Icons.today_rounded, Icons.calendar_month_outlined, Icons.local_activity_rounded, Icons.notifications_active_outlined, Icons.favorite_border_rounded, Icons.stars_rounded, Icons.star_rounded, Icons.workspace_premium_rounded],
     ),
     _discoveryTitleGroup(
       id: DiscoveryAchievementService.memorials,
       milestoneDescription: (target) => 'Pay your respects $target times.',
       name: 'In Memoriam Spotlights', description: 'Open unique in memoriam spotlights.',
       icon: Icons.local_florist_outlined, progress: tracker.progress('memorials_checked'),
-      targets: [1, 2, 4, 8, 12, 16, 32, 48, 64], titles: ['First Tribute', 'Quiet Visitor', 'Remembrance Keeper', 'Memory Walker', 'Legacy Reader', 'Legacy Watcher', 'Honor Bearer', 'Guardian of Memory', 'Eternal Remembrance'],
-      icons: [Icons.local_florist_outlined, Icons.lightbulb_outline_rounded, Icons.bookmark_border_rounded, Icons.visibility_outlined, Icons.auto_stories_outlined, Icons.diamond_outlined, Icons.verified_user_outlined, Icons.history_toggle_off_rounded, Icons.favorite_rounded],
+      targets: [1, 2, 4, 8, 12, 16, 32, 48, 64, 96], titles: ['First Tribute', 'Quiet Visitor', 'Remembrance Keeper', 'Memory Walker', 'Legacy Reader', 'Legacy Watcher', 'Honor Bearer', 'Guardian of Memory', 'Eternal Remembrance', 'Eternal Guardian'],
+      icons: [Icons.local_florist_outlined, Icons.lightbulb_outline_rounded, Icons.bookmark_border_rounded, Icons.visibility_outlined, Icons.auto_stories_outlined, Icons.diamond_outlined, Icons.verified_user_outlined, Icons.history_toggle_off_rounded, Icons.favorite_rounded, Icons.workspace_premium_rounded],
     ),
     _discoveryTitleGroup(
       id: DiscoveryAchievementService.allTimeMovies,
       milestoneDescription: (target) => 'Watch $target movies from All Time 100 Lists category.',
       name: 'All Time · Movies', description: 'Complete films discovered through the Movies All Time Top 100.',
       icon: Icons.local_movies_outlined, progress: tracker.progress('all_time_movies'),
-      targets: [1, 2, 4, 8, 12, 16, 32, 48, 64], titles: ['First Classic', 'Classic Taster', 'Top 100 Tourist', 'All-Time Watcher', 'Cinema Pathfinder', 'Cinema Climber', 'Screen Historian', 'Classic Curator', 'All-Time Legend'],
-      icons: [Icons.movie_outlined, Icons.format_list_numbered_rounded, Icons.grid_view_rounded, Icons.flag_outlined, Icons.theaters_rounded, Icons.done_all_rounded, Icons.check_circle_outline_rounded, Icons.local_movies_outlined, Icons.check_circle_rounded],
+      targets: [1, 2, 4, 8, 12, 16, 32, 48, 64, 96], titles: ['First Classic', 'Classic Taster', 'Top 100 Tourist', 'All-Time Watcher', 'Cinema Pathfinder', 'Cinema Climber', 'Screen Historian', 'Classic Curator', 'All-Time Legend', 'Golden Classics Curator'],
+      icons: [Icons.movie_outlined, Icons.format_list_numbered_rounded, Icons.grid_view_rounded, Icons.flag_outlined, Icons.theaters_rounded, Icons.done_all_rounded, Icons.check_circle_outline_rounded, Icons.local_movies_outlined, Icons.check_circle_rounded, Icons.workspace_premium_rounded],
     ),
     _discoveryTitleGroup(
       id: DiscoveryAchievementService.allTimeTv,
       milestoneDescription: (target) => 'Watch $target TV shows from All Time 100 Lists category.',
       name: 'All Time · TV Shows', description: 'Complete TV shows discovered through the TV All Time Top 100.',
       icon: Icons.video_library, progress: tracker.progress('all_time_tv'),
-      targets: [1, 2, 4, 6, 8, 12, 16, 24, 32], titles: ['First Favorite', 'Timeless Pilot', 'Channel Hopper', 'Show Sampler', 'Top Show Viewer', 'Series Historian', 'Binge Historian', 'Television Curator', 'Prime-Time Icon'],
-      icons: [Icons.tv_outlined, Icons.home_outlined, Icons.timer_outlined, Icons.live_tv_rounded, Icons.notes_rounded, Icons.video_library_outlined, Icons.quiz_outlined, Icons.workspace_premium_outlined, Icons.trending_up_rounded],
+      targets: [1, 2, 4, 6, 8, 12, 16, 24, 32, 48], titles: ['First Favorite', 'Timeless Pilot', 'Channel Hopper', 'Show Sampler', 'Top Show Viewer', 'Series Historian', 'Binge Historian', 'Television Curator', 'Prime-Time Icon', 'Television Hall of Fame'],
+      icons: [Icons.tv_outlined, Icons.home_outlined, Icons.timer_outlined, Icons.live_tv_rounded, Icons.notes_rounded, Icons.video_library_outlined, Icons.quiz_outlined, Icons.workspace_premium_outlined, Icons.trending_up_rounded, Icons.workspace_premium_rounded],
     ),
     _discoveryTitleGroup(
       id: DiscoveryAchievementService.genreAlbums,
       milestoneDescription: (target) => 'Listen to $target albums from any genre in 100 Lists.',
       name: '100 Lists · Genre Albums', description: 'Listen to complete albums discovered through any Top 100 genre list.',
       icon: Icons.category_outlined, progress: tracker.progress('genre_top_albums'),
-      targets: [1, 2, 4, 8, 12, 16, 32, 48, 64], titles: ['First Genre', 'Genre Dipper', 'Sound Wanderer', 'Genre Hunter', 'Genre Collector', 'Chart Crate Digger', 'Genre Voyager', 'Cross-Genre Curator', 'Master of Variety'],
-      icons: [Icons.music_note_rounded, Icons.badge_outlined, Icons.lightbulb_rounded, Icons.palette_outlined, Icons.headphones_rounded, Icons.gradient_rounded, Icons.swap_horiz_rounded, Icons.album_outlined, Icons.manage_search_rounded],
+      targets: [1, 2, 4, 8, 12, 16, 32, 48, 64, 96], titles: ['First Genre', 'Genre Dipper', 'Sound Wanderer', 'Genre Hunter', 'Genre Collector', 'Chart Crate Digger', 'Genre Voyager', 'Cross-Genre Curator', 'Master of Variety', 'Master of Genres'],
+      icons: [Icons.music_note_rounded, Icons.badge_outlined, Icons.lightbulb_rounded, Icons.palette_outlined, Icons.headphones_rounded, Icons.gradient_rounded, Icons.swap_horiz_rounded, Icons.album_outlined, Icons.manage_search_rounded, Icons.workspace_premium_rounded],
     ),
   ];
 }
@@ -18281,6 +19250,7 @@ List<_AchievementGroup> _customMovieAchievementGroups() {
         title: definition.name,
         description: definition.description,
         icon: _customMovieGroupIcons[definition.iconSlot],
+        iconifyId: definition.iconifyId,
         current: service.progress(definition),
         tiers: [
           _Achievement(
@@ -18288,20 +19258,61 @@ List<_AchievementGroup> _customMovieAchievementGroups() {
             title: definition.rewardTitle,
             description: 'Watch all ${definition.movieIds.length} required movies.',
             icon: _customMovieTierIcons[definition.iconSlot],
+            iconifyId: definition.iconifyId,
             current: service.progress(definition),
             target: definition.movieIds.length,
-            rarity: _AchievementRarity.rare,
+            rarity: _AchievementRarity.legendary,
             unlockedOverride: service.unlocked(definition),
-            visualTier: 1,
+            visualTier: 10,
           ),
         ],
       ),
   ];
 }
 
-// New milestones are inserted BETWEEN existing tiers where feasible, keeping
-// published IDs and previous final requirements stable. The visual ladder is
-// tied to milestone order (1..9), not the numeric target.
+// Existing interpolated milestones stay unchanged. An additional Tier X is
+// appended to each scalable achievement group's established nine tiers.
+// Additional Tier X milestones for scalable groups. Existing milestone
+// thresholds and identifiers are unchanged; only a final goal is appended.
+// Display-only reconstruction for an already pinned custom badge. Ownership is
+// checked when the user pins it; other users must not use their own watched
+// movie progress to determine what appears on a public profile.
+_Achievement? _customMoviePinnedAchievement(String? groupId) {
+  if (groupId == null) return null;
+  final definition = CustomMovieAchievementService.instance.byGroupId(groupId);
+  if (definition == null) return null;
+  return _Achievement(
+    id: 'custom_movie_title_${definition.id}',
+    title: definition.rewardTitle,
+    description: definition.description,
+    icon: _customMovieTierIcons[definition.iconSlot],
+    iconifyId: definition.iconifyId,
+    current: definition.movieIds.length,
+    target: definition.movieIds.length,
+    rarity: _AchievementRarity.legendary,
+    unlockedOverride: true,
+    visualTier: 10,
+  );
+}
+
+const _prestigeMilestones = <String, (int, String)>{
+  'tv_shows_completed': (512, 'Television Luminary'),
+  'episodes_watched': (4096, 'Episode Immortal'),
+  'episodes_rated': (1024, 'Ultimate Episode Critic'),
+  'tv_shows_rated': (512, 'Supreme TV Critic'),
+  'movies_rated': (512, 'Cinema Oracle'),
+  'albums_listened': (256, 'Master of Albums'),
+  'songs_listened': (4096, 'Sonic Legend'),
+  'albums_rated': (256, 'Master Album Critic'),
+  'songs_rated': (2048, 'Legendary Song Critic'),
+  'runtime_level': (125, 'Eternal Viewer'),
+  'ratings_level': (75, 'Grand Critic'),
+  'daily_logins': (720, 'Lifetime Regular'),
+  'followers': (512, 'Community Luminary'),
+  'public_profiles_viewed': (2048, 'Connection Legend'),
+  'medal_collection': (200, 'Golden Collector'),
+};
+
 const _extraBuiltInMilestones = <String, List<(int, String)>>{
     'tv_shows_completed': [(4, 'Pilot Collector'), (96, 'Prime-Time Regular')],
     'episodes_watched': [(32, 'Episode Explorer'), (64, 'Season Sampler'), (384, 'Serial Devotee'), (1536, 'Binge Veteran')],
@@ -18364,8 +19375,25 @@ List<_Achievement> _normalizeBuiltinAchievementTiers(
     ));
   }
   result.sort((a, b) => a.target.compareTo(b.target));
-  assert(result.length == 9,
-      'Built-in achievement group $groupId must have exactly nine milestones. Found ${result.length}.');
+  // Preserve all existing published milestone IDs and their numeric targets.
+  // Tier X is an additional, harder final milestone for each scalable group.
+  final finalMilestone = _prestigeMilestones[groupId];
+  if (finalMilestone != null && !result.any((a) => a.target == finalMilestone.$1)) {
+    assert(result.isNotEmpty && finalMilestone.$1 > result.last.target);
+    result.add(_Achievement(
+      id: '${_builtinRewardPrefixes[groupId]}_${finalMilestone.$1}',
+      title: finalMilestone.$2,
+      description: _builtinMilestoneDescriptions[groupId]!
+          .replaceAll('{n}', '${finalMilestone.$1}'),
+      icon: Icons.workspace_premium_rounded,
+      current: current,
+      target: finalMilestone.$1,
+      rarity: _AchievementRarity.legendary,
+      visualTier: 10,
+    ));
+  }
+  assert(result.length == 10,
+      'Built-in achievement group $groupId must have exactly ten milestones. Found ${result.length}.');
   return List<_Achievement>.generate(result.length, (i) {
     final tier = result[i];
     return _Achievement(
@@ -18422,6 +19450,7 @@ class _AchievementGroup {
   final String title;
   final String description;
   final IconData icon;
+  final String? iconifyId;
   final int current;
   final List<_Achievement> tiers;
 
@@ -18430,6 +19459,7 @@ class _AchievementGroup {
     required this.title,
     required this.description,
     required this.icon,
+    this.iconifyId,
     required this.current,
     required List<_Achievement> tiers,
   }) : tiers = _normalizeBuiltinAchievementTiers(id, current, tiers);
@@ -18560,7 +19590,11 @@ class _PublicAchievementsPage extends StatelessWidget {
         break;
 
       default:
-        progressText = '${group.current}';
+        // Admin-created achievements store their own descriptive text.
+        // The numeric progress is already shown in the required-movies row.
+        progressText = group.id.startsWith('custom_movie_')
+            ? group.description
+            : '${group.current}';
     }
 
     showModalBottomSheet(
@@ -18610,14 +19644,14 @@ class _PublicAchievementsPage extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
 
                 children: [
-                  Icon(achievementIcon, color: accent, size: 32),
+                  IconifyAchievementIcon(iconId: currentTier?.iconifyId ?? group.iconifyId, fallback: achievementIcon, color: accent, size: 32),
 
                   const SizedBox(height: 7),
 
-                  UiText(
+                  _prestigeCustomTitle(
                     group.title,
+                    isCustom: group.id.startsWith('custom_movie_'),
                     textAlign: TextAlign.center,
-
                     style: TextStyle(
                       color: accent,
                       fontSize: 21,
@@ -19040,7 +20074,11 @@ class _AchievementsPageState extends State<AchievementsPage> {
         break;
 
       default:
-        progressText = '${group.current}';
+        // Admin-created achievements store their own descriptive text.
+        // The numeric progress is already shown in the required-movies row.
+        progressText = group.id.startsWith('custom_movie_')
+            ? group.description
+            : '${group.current}';
     }
 
     showModalBottomSheet(
@@ -19079,10 +20117,11 @@ class _AchievementsPageState extends State<AchievementsPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(achievementIcon, color: accent, size: 32),
+                  IconifyAchievementIcon(iconId: currentTier?.iconifyId ?? group.iconifyId, fallback: achievementIcon, color: accent, size: 32),
                   const SizedBox(height: 7),
-                  UiText(
+                  _prestigeCustomTitle(
                     group.title,
+                    isCustom: group.id.startsWith('custom_movie_'),
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: accent,
@@ -19105,7 +20144,9 @@ class _AchievementsPageState extends State<AchievementsPage> {
                     const SizedBox(height: 11),
                     _achievementRewardInfo(
                       accent: accent, icon: Icons.title_rounded,
-                      text: 'Each milestone unlocks its own Profile Title only.',
+                      text: group.id.startsWith('custom_movie_')
+                          ? 'Unlocks profile title below.'
+                          : 'Each milestone unlocks its own Profile Title only.',
                     ),
                   ],
                   // =========================
@@ -19931,9 +20972,9 @@ class _AchievementTierRow extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
 
         border: Border.all(
-          color: isCurrent && unlocked
-              ? tierAccent.withValues(alpha: 0.55)
-              : Colors.white.withValues(alpha: 0.05),
+          color: isCurrent
+              ? tierAccent.withValues(alpha: 0.65)
+              : tierAccent.withValues(alpha: 0.16),
         ),
       ),
 
@@ -19945,14 +20986,10 @@ class _AchievementTierRow extends StatelessWidget {
 
             child: unlocked
                 ? _AchievementMedal(achievement: tier)
-                : Container(
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-
-                      color: Colors.white10,
-                    ),
-
-                    child: Icon(tier.icon, color: Colors.white24, size: 21),
+                : _statRewardForeground(
+                    colors: tierColors,
+                    builder: (foreground) => IconifyAchievementIcon(iconId: tier.iconifyId, fallback: tier.icon,
+                      color: foreground, size: 25),
                   ),
           ),
 
@@ -19963,15 +21000,11 @@ class _AchievementTierRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
 
               children: [
-                UiText(
-                  tier.title,
-
-                  style: TextStyle(
-                    color: unlocked ? tierAccent : Colors.white54,
-
-                    fontSize: 13,
-
-                    fontWeight: FontWeight.bold,
+                _statRewardForeground(
+                  colors: tierColors,
+                  builder: (foreground) => UiText(tier.title,
+                    style: TextStyle(color: foreground,
+                      fontSize: 13, fontWeight: FontWeight.bold),
                   ),
                 ),
 
@@ -20042,7 +21075,7 @@ class _AchievementGroupCard extends StatelessWidget {
     'display_frame' => 'REWARD · Display Frame',
     'profile_page_frame' => 'REWARD · Profile Page Frame',
     'followers' => 'REWARD · Follower Style',
-    'level' => 'REWARD · Border & Gradient',
+    'level' => 'REWARD · Tier Color & Frame',
     'collection' => 'REWARDS · Button & Name Color',
     'color' => 'REWARD · Display Name Color',
     _ => 'REWARD · Stat Border',
@@ -20051,15 +21084,17 @@ class _AchievementGroupCard extends StatelessWidget {
   Widget _rewardPreview(_Achievement milestone, Color accent) {
     final colors = _achievementTierColors(milestone);
     final primary = colors.isNotEmpty ? colors.first : accent;
-    final previewColor = milestone.unlocked ? primary : primary.withValues(alpha: 0.85);
+    final previewColor = primary;
 
     if (_rewardKind == 'title') {
-      return UiText(
-        milestone.title,
-        textAlign: TextAlign.center,
-        maxLines: 3,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(color: previewColor, fontSize: 10, fontWeight: FontWeight.w700),
+      return _statRewardForeground(
+        colors: colors,
+        builder: (foreground) => UiText(milestone.title,
+          textAlign: TextAlign.center, maxLines: 3,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(color: foreground, fontSize: 10,
+            fontWeight: FontWeight.w700),
+        ),
       );
     }
 
@@ -20105,7 +21140,7 @@ class _AchievementGroupCard extends StatelessWidget {
                 child: const Icon(Icons.person_outline_rounded, size: 20, color: Colors.white70),
               ),
             ),
-            const Positioned.fill(child: _Tier3ProfilePageFrame()),
+            const Positioned.fill(child: _DeveloperProfilePageFrame()),
           ],
         ),
       );
@@ -20139,27 +21174,40 @@ class _AchievementGroupCard extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (_rewardKind == 'followers' || _rewardKind == 'collection' || _rewardKind == 'color') ...[
-              Icon(
-                _rewardKind == 'followers' ? Icons.people_alt_rounded
-                    : _rewardKind == 'collection' ? Icons.workspace_premium_rounded : Icons.format_color_text_rounded,
-                size: 13,
-                color: previewColor,
+              _statRewardForeground(
+                colors: colors,
+                builder: (foreground) => Icon(
+                  _rewardKind == 'followers' ? Icons.people_alt_rounded
+                      : _rewardKind == 'collection' ? Icons.workspace_premium_rounded : Icons.format_color_text_rounded,
+                  size: 13, color: foreground,
+                ),
               ),
               const SizedBox(width: 4),
             ],
             Flexible(
-              child: UiText(
-                switch (_rewardKind) {
-                  'followers' => 'Followers',
-                  'collection' => 'Medal Collection',
-                  'color' => 'Display Name',
-                  _ => group.title,
-                },
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 8.5, fontWeight: FontWeight.bold, color: previewColor),
-              ),
+              child: _rewardKind == 'color'
+                  ? _statRewardForeground(
+                      colors: colors,
+                      builder: (foreground) => UiText('Display Name',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 8.5,
+                          fontWeight: FontWeight.bold, color: foreground),
+                      ),
+                    )
+                  : UiText(
+                      switch (_rewardKind) {
+                        'followers' => 'Followers',
+                        'collection' => 'Medal Collection',
+                        _ => group.title,
+                      },
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 8.5,
+                        fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
             ),
           ],
         ),
@@ -20204,11 +21252,12 @@ class _AchievementGroupCard extends StatelessWidget {
                     color: Colors.white.withValues(alpha: 0.05),
                     border: Border.all(color: Colors.white12),
                   ),
-                  child: Icon(group.icon, color: Colors.white24, size: 31),
+                  child: IconifyAchievementIcon(iconId: group.iconifyId, fallback: group.icon, color: Colors.white24, size: 31),
                 ),
               const SizedBox(height: 9),
-              UiText(
+              _prestigeCustomTitle(
                 group.title,
+                isCustom: group.id.startsWith('custom_movie_'),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
@@ -20218,8 +21267,9 @@ class _AchievementGroupCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 4),
-              UiText(
+              _prestigeCustomTitle(
                 achieved?.title ?? 'No tier unlocked',
+                isCustom: group.id.startsWith('custom_movie_') && achieved != null,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
@@ -20318,48 +21368,32 @@ Color _achievementAccent(_AchievementRarity rarity) {
 
 List<Color> _achievementTierPalette(int tier) {
   switch (tier) {
-    case 0: return const [Color(0xFF9CA3AF), Color(0xFF9CA3AF)]; // Locked / no reward
-    case 1: return const [Color(0xFF4ADE80), Color(0xFF4ADE80)]; // Green
-    case 2: return const [Color(0xFF60A5FA), Color(0xFF60A5FA)]; // Blue
-    case 3: return const [Color(0xFFFACC15), Color(0xFFFACC15)]; // Yellow
-    case 4: return const [Color(0xFFB388FF), Color(0xFFB388FF)]; // Purple
-    case 5: return const [Color(0xFFFF5252), Color(0xFFFF5252)]; // Red
-    case 6: return const [
-      Color(0xFFFFD54F), // gold
-      Color(0xFFFF7A45), // orange ember
-      Color(0xFFFF453A), // vivid red-orange
-    ];
+    case 0: return const [Color(0xFF9CA3AF), Color(0xFF9CA3AF)]; // No cosmetic equipped.
+    case 1: return const [Color(0xFFF5F7FA), Color(0xFFF5F7FA)]; // White
+    case 2: return const [Color(0xFF4ADE80), Color(0xFF4ADE80)]; // Green
+    case 3: return const [Color(0xFF60A5FA), Color(0xFF60A5FA)]; // Blue
+    case 4: return const [Color(0xFFFF60AE), Color(0xFFFF60AE)]; // Pink
+    case 5: return const [Color(0xFFB388FF), Color(0xFFB388FF)]; // Purple
+    case 6: return const [Color(0xFFFF5252), Color(0xFFFF5252)]; // Red
     case 7: return const [
-      Color(0xFF36E5C2), // aqua teal
-      Color(0xFF3B82F6), // blue
-      Color(0xFF8B5CF6), // violet
-    ];
-    // Tier VIII: the previous top-tier Runtime Level look.
-    // Pink/magenta/violet only, distinct from both Tier VII and Tier IX.
+      Color(0xFF22C55E), Color(0xFF3B82F6), Color(0xFF22D3EE),
+    ]; // Green, blue, cyan
     case 8: return const [
-      Color(0xFFFF4B8D), // luminous rose
-      Color(0xFFEE47B6), // rich magenta
-      Color(0xFFB65AF0), // orchid
-      Color(0xFF8767F5), // electric amethyst
-      Color(0xFFFF4B8D),
-    ];
-    // Tier IX: developer-rainbow prestige animation.
+      Color(0xFFEF4444), Color(0xFFFACC15), Color(0xFFFB923C),
+    ]; // Red, yellow, orange
     case 9: return const [
-      Color(0xFF00E5FF), // cyan
-      Color(0xFF875CFF), // violet
-      Color(0xFFFF4FD8), // pink
-      Color(0xFFFFD166), // gold
-      Color(0xFF00E5FF),
-    ];
-    default: return const [Color(0xFF9CA3AF)];
+      Color(0xFFEF4444), Color(0xFFEC4899), Color(0xFFA855F7),
+    ]; // Red, pink, purple
+    case 10: return const [Color(0xFFFFD84D), Color(0xFFFFB627), Color(0xFFFF8A1D), Color(0xFFFFD84D)]; // Prestige yellow-orange gradient
+    default: return const [Color(0xFF9CA3AF), Color(0xFF9CA3AF)];
   }
 }
 
 List<Color> _achievementTierColors(_Achievement? achievement) {
   if (achievement == null) return const [];
-  // Do not re-theme developer-created titles or the follow-developer prize.
+  // Admin-created titles are exclusive prestige rewards (Tier X).
   if (achievement.id.startsWith('custom_movie_title_')) {
-    return const [Color(0xFFF7F9FC), Color(0xFFBFC9D4)];
+    return _achievementTierPalette(10);
   }
   if (achievement.id == followDeveloperAchievementId) {
     return const [Color(0xFFA855F7), Color(0xFFD946EF)];
@@ -20368,20 +21402,48 @@ List<Color> _achievementTierColors(_Achievement? achievement) {
 }
 
 bool _achievementHasAnimatedPrestigeAura(_Achievement? achievement) {
-  return achievement != null && achievement.visualTier >= 8;
+  return achievement != null && achievement.visualTier == 10;
+}
+
+Widget _prestigeCustomTitle(
+  String title, {
+  required TextStyle style,
+  TextAlign? textAlign,
+  int? maxLines,
+  TextOverflow? overflow,
+  required bool isCustom,
+}) {
+  final text = UiText(
+    title,
+    textAlign: textAlign,
+    maxLines: maxLines,
+    overflow: overflow,
+    style: isCustom ? style.copyWith(color: Colors.white) : style,
+  );
+  if (!isCustom) return text;
+  return ShaderMask(
+    blendMode: BlendMode.srcIn,
+    shaderCallback: (bounds) => LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: _achievementTierPalette(10),
+    ).createShader(bounds),
+    child: text,
+  );
 }
 
 
-// A SINGLE shared Tier IX renderer for live profile items and Customize
-// Profile previews. The sweep-gradient itself rotates continuously, while a
-// clearly visible white glint follows a SECOND path just inside the border.
-// A profile entrance adds one quick extra glint lap without resetting either
-// animation or causing a jump when the entrance finishes.
+// Single Tier X prestige renderer shared by equipped profile labels and
+// Customize Profile previews. It paints a prestige yellow-orange sweep plus
+// a moving golden trail that follows the rounded corners. Lower reward tiers
+// remain static to reduce load.
 class _LegendaryTierAura extends StatefulWidget {
   final Widget child;
   final bool enabled;
   final double borderRadius;
   final bool circle;
+  // Retained for existing caller compatibility. The optional dot-based
+  // entrance lap was removed along with the travelling white glint.
   final bool playIntroShimmer;
   final List<Color> colors;
 
@@ -20399,177 +21461,125 @@ class _LegendaryTierAura extends StatefulWidget {
 }
 
 class _LegendaryTierAuraState extends State<_LegendaryTierAura>
-    with TickerProviderStateMixin {
+    with SingleTickerProviderStateMixin {
   late final AnimationController _orbit;
-  late final AnimationController _entrance;
-  bool _entranceCompleted = false;
+  ValueNotifier<bool>? _scrolling;
+
+  void _handleScrollingChanged() => _syncMotion();
 
   @override
   void initState() {
     super.initState();
-    // Faster than the old 12-second cycle so colors visibly travel around
-    // the whole border, without abrupt flashes or jumps.
-    _orbit = AnimationController(
-      vsync: this,
-      duration: _sweepDuration(),
-    );
-    _entrance = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1900),
-    );
-    _entrance.addStatusListener(_handleEntranceStatus);
-  }
-
-  void _handleEntranceStatus(AnimationStatus status) {
-    if (status == AnimationStatus.completed) {
-      _entranceCompleted = true;
-    }
+    _orbit = AnimationController(vsync: this, duration: _sweepDuration());
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final notifier = Scrollable.maybeOf(context)?.position.isScrollingNotifier;
+    if (!identical(notifier, _scrolling)) {
+      _scrolling?.removeListener(_handleScrollingChanged);
+      _scrolling = notifier;
+      _scrolling?.addListener(_handleScrollingChanged);
+    }
     _syncMotion();
   }
 
   @override
   void didUpdateWidget(covariant _LegendaryTierAura oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.enabled != widget.enabled ||
-        oldWidget.playIntroShimmer != widget.playIntroShimmer) {
-      _entranceCompleted = false;
-      _entrance.reset();
-      _orbit.reset();
-    }
     _syncMotion();
   }
 
-  Duration _sweepDuration() =>
-      widget.colors.isNotEmpty && widget.colors.first == const Color(0xFF00E5FF)
-          ? const Duration(seconds: 4) // developer-title rainbow cadence
-          : const Duration(seconds: 8); // pink Runtime Level Tier VIII
+  Duration _sweepDuration() => const Duration(seconds: 9);
 
   void _syncMotion() {
-    final targetDuration = _sweepDuration();
-    if (_orbit.duration != targetDuration) {
-      _orbit.duration = targetDuration;
-    }
-    // Preserve the colors, but stop the motion for reduced-motion users.
-    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
-    if (!widget.enabled || reduceMotion) {
+    final duration = _sweepDuration();
+    if (_orbit.duration != duration) _orbit.duration = duration;
+    final reducedMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    if (!widget.enabled || reducedMotion || (_scrolling?.value ?? false)) {
       _orbit.stop();
-      _entrance.stop();
-      return;
-    }
-    if (!_orbit.isAnimating) _orbit.repeat();
-    if (widget.playIntroShimmer && !_entranceCompleted &&
-        !_entrance.isAnimating) {
-      _entrance.forward();
+    } else if (!_orbit.isAnimating) {
+      _orbit.repeat();
     }
   }
 
   @override
   void dispose() {
-    _entrance.removeStatusListener(_handleEntranceStatus);
+    _scrolling?.removeListener(_handleScrollingChanged);
     _orbit.dispose();
-    _entrance.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     if (!widget.enabled) return widget.child;
-    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
-    // The foregroundPainter always paints AFTER the actual reward widget.
-    // This fixes the earlier second-overlay border/dot being invisible on
-    // certain compositions while preserving the child's original hit testing.
+    final reducedMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    // CustomPainter listens to the ticker directly, bypassing build/layout
+    // every animation frame. Keep the existing repaint boundary and child.
     return RepaintBoundary(
-      child: AnimatedBuilder(
-        animation: Listenable.merge([_orbit, _entrance]),
+      child: CustomPaint(
+        foregroundPainter: _LegendaryTierAuraPainter(
+          animation: _orbit,
+          reducedMotion: reducedMotion,
+          borderRadius: widget.borderRadius,
+          circle: widget.circle,
+          colors: widget.colors,
+        ),
         child: widget.child,
-        builder: (context, child) {
-          final bonusLap = _entrance.isAnimating
-              ? Curves.easeInOutCubic.transform(_entrance.value)
-              : 0.0;
-          return CustomPaint(
-            foregroundPainter: _LegendaryTierAuraPainter(
-              gradientPhase: reduceMotion ? 0.0 : _orbit.value,
-              glintPhase: reduceMotion ? 0.0 :
-                  (_orbit.value + bonusLap) % 1.0,
-              glintEnabled: !reduceMotion,
-              entranceActive: _entrance.isAnimating,
-              borderRadius: widget.borderRadius,
-              circle: widget.circle,
-              colors: widget.colors,
-            ),
-            child: child,
-          );
-        },
       ),
     );
   }
 }
 
 class _LegendaryTierAuraPainter extends CustomPainter {
-  final double gradientPhase;
-  final double glintPhase;
-  final bool glintEnabled;
-  final bool entranceActive;
+  final Animation<double> animation;
+  final bool reducedMotion;
   final double borderRadius;
   final bool circle;
   final List<Color> colors;
 
-  const _LegendaryTierAuraPainter({
-    required this.gradientPhase,
-    required this.glintPhase,
-    required this.glintEnabled,
-    required this.entranceActive,
+  _LegendaryTierAuraPainter({
+    required this.animation,
+    required this.reducedMotion,
     required this.borderRadius,
     required this.circle,
     required this.colors,
-  });
+  }) : super(repaint: animation);
 
-  Path _outline(Rect bounds, double inset) {
-    final rect = bounds.deflate(inset);
-    final path = Path();
-    if (circle) {
-      path.addOval(rect);
-    } else {
-      // Shrink the corner radius as the path moves inward, so the dot always
-      // travels inside the rounded frame rather than cutting its corners.
-      final radius = math.max(0.0, borderRadius - inset);
-      path.addRRect(RRect.fromRectAndRadius(
-        rect, Radius.circular(radius),
-      ));
-    }
-    return path;
-  }
-
-  void _drawWrappedSegment(
-      Canvas canvas, PathMetric metric, double start, double end, Paint paint) {
-    final perimeter = metric.length;
-    // Segments here are shorter than the perimeter. Wrap seamlessly across
-    // PathMetric's origin (the top-right corner for some shapes).
-    final a = (start % perimeter + perimeter) % perimeter;
-    final b = (end % perimeter + perimeter) % perimeter;
-    if (a <= b) {
-      canvas.drawPath(metric.extractPath(a, b), paint);
-    } else {
-      canvas.drawPath(metric.extractPath(a, perimeter), paint);
-      canvas.drawPath(metric.extractPath(0, b), paint);
-    }
-  }
+  // Cache size-dependent geometry while the animation only rotates its shader.
+  // This avoids recreating Paths and measuring their contours 60 times/s.
+  Size? _pathSize;
+  Path? _outline;
+  PathMetric? _outlineMetric;
 
   @override
   void paint(Canvas canvas, Size size) {
     if (size.isEmpty || size.shortestSide <= 4) return;
+    final gradientPhase = reducedMotion ? 0.0 : animation.value;
     final bounds = Offset.zero & size;
-    final outline = _outline(bounds, 1.8);
+    if (_pathSize != size || _outline == null) {
+      final rect = bounds.deflate(1.8);
+      final outline = Path();
+      if (circle) {
+        outline.addOval(rect);
+      } else {
+        outline.addRRect(RRect.fromRectAndRadius(
+          rect,
+          Radius.circular(math.max(0, borderRadius - 1.8)),
+        ));
+      }
+      _pathSize = size;
+      _outline = outline;
+      final metrics = outline.computeMetrics();
+      _outlineMetric = metrics.isNotEmpty ? metrics.first : null;
+    }
+    final outline = _outline!;
 
-    final auraColors = colors.isNotEmpty ? colors : _achievementTierPalette(9);
-    final glowBase = auraColors.length > 2 ? auraColors[2] : auraColors.first;
-
-    // Two pass chrome effect: animated prestige glow + bright sweep-gradient.
+    final auraColors = colors.isNotEmpty
+        ? colors
+        : const [Color(0xFFFFD84D), Color(0xFFFFB627), Color(0xFFFF8A1D), Color(0xFFFFD84D)];
+    const glowGold = Color(0xFFFFD063);
     final shader = SweepGradient(
       colors: auraColors,
       transform: GradientRotation(gradientPhase * math.pi * 2),
@@ -20577,81 +21587,52 @@ class _LegendaryTierAuraPainter extends CustomPainter {
 
     canvas.drawPath(outline, Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 4.8
-      ..color = glowBase.withValues(alpha: 0.30)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 7.5));
+      ..strokeWidth = 5.0
+      ..color = glowGold.withValues(alpha: 0.28)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8));
     canvas.drawPath(outline, Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.9
+      ..strokeWidth = 2.45
       ..shader = shader);
-    // A slender bright specular edge adds polish without whitening the colors.
     canvas.drawPath(outline, Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.65
-      ..color = Colors.white.withValues(alpha: 0.17));
+      ..color = const Color(0xFFFFF1B5).withValues(alpha: 0.30));
 
-    if (!glintEnabled || size.shortestSide < 14) return;
-
-    // IMPORTANT: this is an INNER path, not the frame's centerline. The
-    // hotspot therefore appears just inside the frame (including corners).
-    final inset = math.min(6.0, size.shortestSide * 0.18);
-    final innerPath = _outline(bounds, inset);
-    final metrics = innerPath.computeMetrics();
-    if (metrics.isEmpty) return;
-    final metric = metrics.first;
-    final perimeter = metric.length;
-    if (perimeter <= 0) return;
-    final head = (glintPhase % 1.0) * perimeter;
-
-    // Small luminous trailing streak (about 20-28 logical px on a profile
-    // frame). The segmented strokes follow PathMetric through every corner.
-    final tailLength = math.min(38.0, perimeter * 0.13);
-    const parts = 24;
-    for (var i = 0; i < parts; i++) {
-      final t0 = i / parts;
-      final t1 = (i + 1) / parts;
-      final strength = t1 * t1;
-      final tailPaint = Paint()
+    final metric = _outlineMetric;
+    if (metric == null) return;
+    final length = metric.length;
+    if (length <= 0) return;
+    final head = (gradientPhase % 1.0) * length;
+    final trailLength = math.min(65.0, length * 0.18);
+    // Following PathMetric keeps the streak attached to every rounded corner.
+    for (var i = 0; i < 12; i++) {
+      final from = head - trailLength + trailLength * (i / 12);
+      final to = head - trailLength + trailLength * ((i + 1) / 12);
+      final a = (from % length + length) % length;
+      final b = (to % length + length) % length;
+      final trail = Path();
+      if (a <= b) {
+        trail.addPath(metric.extractPath(a, b), Offset.zero);
+      } else {
+        trail.addPath(metric.extractPath(a, length), Offset.zero);
+        trail.addPath(metric.extractPath(0, b), Offset.zero);
+      }
+      final strength = (i + 1) / 12;
+      canvas.drawPath(trail, Paint()
         ..style = PaintingStyle.stroke
         ..strokeCap = StrokeCap.round
-        ..strokeWidth = 0.95 + 1.8 * t1
-        ..color = Colors.white.withValues(
-          alpha: 0.10 + 0.80 * strength,
-        );
-      _drawWrappedSegment(
-        canvas, metric,
-        head - tailLength + tailLength * t0,
-        head - tailLength + tailLength * t1,
-        tailPaint,
-      );
+        ..strokeWidth = 1.0 + 1.8 * strength
+        ..color = Color.lerp(const Color(0xFFFFF0A6), const Color(0xFFFFA43A), 1 - strength)!
+            .withValues(alpha: 0.12 + 0.80 * strength));
     }
-
-    // One visible, white, softly flashing dot. Its translucent glow keeps
-    // it discernible on both purple and pink sections of the frame.
-    final point = metric.getTangentForOffset(head)?.position;
-    if (point == null) return;
-    final twinkle = (math.sin(glintPhase * math.pi * 2 * 5.5) + 1) * 0.5;
-    // Large enough to be visible on a phone, but never eclipses the frame.
-    final brightness = (0.82 + 0.18 * twinkle) *
-        (entranceActive ? 1.0 : 0.98);
-    final core = (size.shortestSide * 0.052).clamp(3.0, 3.8).toDouble();
-    canvas.drawCircle(point, core + 6.5, Paint()
-      ..color = Colors.white.withValues(alpha: 0.82 * brightness)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5.5));
-    canvas.drawCircle(point, core + 2.8, Paint()
-      ..color = Colors.white.withValues(alpha: 0.23 * brightness));
-    canvas.drawCircle(point, core + 0.45, Paint()
-      ..color = Colors.white.withValues(alpha: brightness));
-    canvas.drawCircle(point, core * 0.52, Paint()
-      ..color = Colors.white);
+    // Only a soft gold trail; there is no white dot or flashing orb.
   }
 
   @override
   bool shouldRepaint(covariant _LegendaryTierAuraPainter old) =>
-      old.gradientPhase != gradientPhase ||
-      old.glintPhase != glintPhase ||
-      old.glintEnabled != glintEnabled ||
-      old.entranceActive != entranceActive ||
+      old.animation != animation ||
+      old.reducedMotion != reducedMotion ||
       old.borderRadius != borderRadius ||
       old.circle != circle ||
       old.colors != colors;
@@ -20669,6 +21650,7 @@ class _AchievementMedal extends StatefulWidget {
 class _AchievementMedalState extends State<_AchievementMedal>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
+  bool _reducedMotion = false;
 
   @override
   void initState() {
@@ -20689,9 +21671,20 @@ class _AchievementMedalState extends State<_AchievementMedal>
     _updateAnimation();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final reducedMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    if (_reducedMotion != reducedMotion) {
+      _reducedMotion = reducedMotion;
+      _updateAnimation();
+    }
+  }
+
   void _updateAnimation() {
     final shouldAnimate =
-        widget.achievement.unlocked && widget.achievement.visualTier >= 8;
+        !_reducedMotion && widget.achievement.unlocked &&
+        widget.achievement.visualTier == 10;
 
     if (shouldAnimate) {
       if (!_controller.isAnimating) {
@@ -20721,19 +21714,21 @@ class _AchievementMedalState extends State<_AchievementMedal>
   Widget build(BuildContext context) {
     final unlocked = widget.achievement.unlocked;
 
-    return AnimatedBuilder(
-      animation: _controller,
-
-      builder: (context, _) {
-        final bool rotating = widget.achievement.visualTier >= 8 && unlocked;
-
-        final bool finalTier = widget.achievement.visualTier >= 8 && unlocked;
+    return RepaintBoundary(
+      child: AnimatedBuilder(
+        animation: _controller,
+        child: IconifyAchievementIcon(
+          iconId: widget.achievement.iconifyId,
+          fallback: widget.achievement.icon,
+          color: unlocked ? Colors.white : Colors.white24,
+          size: 31,
+        ),
+        builder: (context, iconChild) {
+        final bool rotating = widget.achievement.visualTier == 10 && unlocked;
 
         final rotation = rotating ? _controller.value * math.pi * 2 : 0.0;
 
-        final pulse = finalTier
-            ? 1.0 + math.sin(_controller.value * math.pi * 2) * 0.045
-            : 1.0;
+        const pulse = 1.0;
 
         final colors = _colors();
 
@@ -20785,26 +21780,15 @@ class _AchievementMedalState extends State<_AchievementMedal>
                           ).createShader(bounds);
                         },
 
-                        child: Icon(
-                          widget.achievement.icon,
-
-                          color: Colors.white,
-
-                          size: 31,
-                        ),
+                        child: iconChild,
                       )
-                    : Icon(
-                        widget.achievement.icon,
-
-                        color: Colors.white24,
-
-                        size: 31,
-                      ),
+                    : iconChild,
               ),
             ),
           ),
         );
-      },
+        },
+      ),
     );
   }
 }
@@ -21504,28 +22488,19 @@ class _MedalCollectionUnlockTracker {
         return;
       }
 
-      await Future<void>.delayed(const Duration(milliseconds: 350));
+      await Future<void>.delayed(const Duration(milliseconds: 120));
 
       if (!context.mounted) {
         return;
       }
 
-      try {
-        await CommunityService.instance.deleteActivity(
-          activityType: 'achievement_unlocked',
-          achievementId: achievement.id,
-        );
-
-        await CommunityService.instance.tryCreateActivity(
-          activityType: 'achievement_unlocked',
-          achievementId: achievement.id,
-          achievementTitle: achievement.title,
-        );
-      } catch (e) {
-        debugPrint(
-          'Could not create Medal Collection achievement activity: $e',
-        );
+      if (!await _AchievementPopupLedger.instance.claim(achievement.id)) {
+        continue;
       }
+      unawaited(_postAchievementActivitySafely(
+        achievement,
+        replaceExisting: true,
+      ));
 
       if (!context.mounted) {
         return;
@@ -21535,6 +22510,7 @@ class _MedalCollectionUnlockTracker {
         context,
         achievement,
         checkMedalCollection: false,
+        alreadyClaimed: true,
       );
     }
   }
@@ -21740,15 +22716,35 @@ class ProfilePageFrameService extends ChangeNotifier {
     try {
       final row = await client
           .from('profiles')
-          .select('profile_page_frame_id')
+          .select('profile_page_frame_id,is_developer,followed_developer_achievement')
           .eq('id', user.id)
           .maybeSingle();
 
       final rawId = row?['profile_page_frame_id']?.toString().trim();
+      final eligible = row?['is_developer'] == true ||
+          row?['followed_developer_achievement'] == true;
+      final oldFollowFrame = rawId == followDeveloperProfilePageFrameId;
+      final missingFrame = rawId == null || rawId.isEmpty;
 
-      _frameId = rawId != null && rawId.isNotEmpty ? rawId : null;
-
+      // One canonical prestige-gold reward. Migrate previous followers' old frames
+      // and equip it by default for eligible accounts that had no frame.
+      final newId = eligible && (oldFollowFrame || missingFrame)
+          ? developerProfilePageFrameId
+          : rawId;
+      _frameId = eligible && newId == developerProfilePageFrameId ? newId : null;
       notifyListeners();
+
+      if (eligible && (oldFollowFrame || missingFrame)) {
+        try {
+          await client.from('profiles')
+              .update({'profile_page_frame_id': developerProfilePageFrameId})
+              .eq('id', user.id);
+        } catch (error) {
+          // Continue showing the entitled frame locally. A production RLS
+          // policy may need to permit eligible followers to equip the frame.
+          debugPrint('Could not persist prestige gold profile frame: $error');
+        }
+      }
     } catch (e) {
       debugPrint('Could not load profile page frame: $e');
     }
@@ -21767,21 +22763,14 @@ class ProfilePageFrameService extends ChangeNotifier {
 
     final value = cleanId == null || cleanId.isEmpty ? null : cleanId;
 
-    if (value != null &&
-        value != developerProfilePageFrameId &&
-        value != followDeveloperProfilePageFrameId) {
+    if (value != null && value != developerProfilePageFrameId) {
       throw Exception('Unknown profile page frame.');
     }
 
     if (value == developerProfilePageFrameId &&
-        !ProfileService.instance.isDeveloper) {
-      throw Exception('Developer frame is not available.');
-    }
-
-    if (value == followDeveloperProfilePageFrameId &&
         !ProfileService.instance.isDeveloper &&
         !ProfileService.instance.followedDeveloperAchievement) {
-      throw Exception('Follow Developer frame is still locked.');
+      throw Exception('Prestige Gold profile frame is still locked.');
     }
 
     await client
@@ -21909,13 +22898,23 @@ class DisplayNameFrameService extends ChangeNotifier {
       throw Exception('No signed in user.');
     }
 
-    await client
+    // Read back the update. A restricted trigger/RLS policy can otherwise
+    // make the picker look as if it succeeded while the value never persisted.
+    final saved = await client
         .from('profiles')
         .update({'display_name_frame_id': frameId})
-        .eq('id', user.id);
+        .eq('id', user.id)
+        .select('display_name_frame_id')
+        .maybeSingle();
+
+    if (saved == null || saved['display_name_frame_id']?.toString() != frameId) {
+      throw StateError(
+        'The display-name frame was not saved by Supabase. '
+        'Check the profiles UPDATE policy and any frame validation trigger.',
+      );
+    }
 
     _frameId = frameId;
-
     notifyListeners();
   }
 }
@@ -22198,12 +23197,19 @@ class _ProfileTitleLabel extends StatelessWidget {
     final colors = _achievementTierColors(achievement);
 
     final accent = colors.isNotEmpty ? colors.first : chipluxGold;
+    final hasGradient = colors.any((c) => c != colors.first);
 
     return _LegendaryTierAura(
       enabled: _achievementHasAnimatedPrestigeAura(achievement),
       colors: colors,
       borderRadius: 18,
       circle: false,
+      child: Container(
+      padding: EdgeInsets.all(hasGradient ? 1.4 : 0),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(19),
+        gradient: hasGradient ? LinearGradient(colors: colors) : null,
+      ),
       child: Container(
       constraints: const BoxConstraints(maxWidth: 220),
 
@@ -22214,132 +23220,27 @@ class _ProfileTitleLabel extends StatelessWidget {
 
         borderRadius: BorderRadius.circular(18),
 
-        border: _achievementHasAnimatedPrestigeAura(achievement)
-            ? null : Border.all(color: accent.withValues(alpha: 0.38)),
+        border: _achievementHasAnimatedPrestigeAura(achievement) || hasGradient
+            ? null : Border.all(color: accent.withValues(alpha: 0.56)),
 
         boxShadow: [
           BoxShadow(color: accent.withValues(alpha: 0.05), blurRadius: 8),
         ],
       ),
 
-      child: UiText(
+      child: _prestigeCustomTitle(
         achievement.title.toUpperCase(),
-
+        isCustom: achievement.id.startsWith('custom_movie_title_'),
         maxLines: 1,
-
         overflow: TextOverflow.ellipsis,
-
         textAlign: TextAlign.center,
-
-        style: TextStyle(
-          color: accent,
-
+        style: const TextStyle(
           fontSize: 10.5,
-
           fontWeight: FontWeight.w800,
-
           letterSpacing: 0.9,
         ),
       ),
-    ));
-  }
-}
-
-class _Tier3ProfilePageFrame extends StatelessWidget {
-  final bool edgeToEdge;
-
-  const _Tier3ProfilePageFrame({this.edgeToEdge = false});
-
-  @override
-  Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: CustomPaint(
-        painter: _Tier3ProfilePageFramePainter(edgeToEdge: edgeToEdge),
-
-        child: const SizedBox.expand(),
-      ),
-    );
-  }
-}
-
-class _Tier3ProfilePageFramePainter extends CustomPainter {
-  final bool edgeToEdge;
-
-  const _Tier3ProfilePageFramePainter({this.edgeToEdge = false});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (size.width <= 0 || size.height <= 0) {
-      return;
-    }
-
-    final rect = edgeToEdge
-        ? Rect.fromLTWH(1.05, 1.05, size.width - 2.1, size.height - 1.05)
-        : Rect.fromLTWH(5, 5, size.width - 10, size.height - 10);
-
-    final rrect = RRect.fromRectAndRadius(
-      rect,
-      edgeToEdge ? Radius.zero : const Radius.circular(24),
-    );
-
-    final shader = const LinearGradient(
-      begin: Alignment.topLeft,
-
-      end: Alignment.bottomRight,
-
-      colors: [
-        Color(0xFFA855F7),
-        Color(0xFFD946EF),
-        Color(0xFF6366F1),
-        Color(0xFFA855F7),
-      ],
-    ).createShader(rect);
-
-    final frame = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.1
-      ..shader = shader;
-
-    if (edgeToEdge) {
-      final path = Path()
-        ..moveTo(rect.left, size.height)
-        ..lineTo(rect.left, rect.top)
-        ..lineTo(rect.right, rect.top)
-        ..lineTo(rect.right, size.height);
-
-      canvas.drawPath(path, frame);
-    } else {
-      canvas.drawRRect(rrect, frame);
-    }
-
-    final innerRect = edgeToEdge
-        ? Rect.fromLTWH(3.6, 3.6, size.width - 7.2, size.height - 3.6)
-        : Rect.fromLTWH(8, 8, size.width - 16, size.height - 16);
-
-    final innerPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.7
-      ..color = Colors.white.withValues(alpha: 0.12);
-
-    if (edgeToEdge) {
-      final innerPath = Path()
-        ..moveTo(innerRect.left, size.height)
-        ..lineTo(innerRect.left, innerRect.top)
-        ..lineTo(innerRect.right, innerRect.top)
-        ..lineTo(innerRect.right, size.height);
-
-      canvas.drawPath(innerPath, innerPaint);
-    } else {
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(innerRect, const Radius.circular(21)),
-        innerPaint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _Tier3ProfilePageFramePainter oldDelegate) {
-    return false;
+    )));
   }
 }
 
@@ -22349,17 +23250,25 @@ Widget? _profilePageFrameWidget(String? frameId, {bool edgeToEdge = false}) {
       return _DeveloperProfilePageFrame(edgeToEdge: edgeToEdge);
 
     case followDeveloperProfilePageFrameId:
-      return _Tier3ProfilePageFrame(edgeToEdge: edgeToEdge);
+      // Legacy selection: render the new single shared reward.
+      return _DeveloperProfilePageFrame(edgeToEdge: edgeToEdge);
 
     default:
       return null;
   }
 }
 
-double _developerProfileFramePhase() {
-  const cycleMs = 5000;
-  return (DateTime.now().millisecondsSinceEpoch % cycleMs) / cycleMs;
-}
+// The Developer profile page frame is the shared Follow Developer reward.
+// Keep the original stored ID ('developer') so existing followers and the
+// developer's own profile do not lose their frame. The visual treatment is a
+// Chiplux-like prestige yellow-orange sweep that slowly circulates.
+const List<Color> _prestigeProfileGoldGradient = [
+  Color(0xFFFFD84D),
+  Color(0xFFFFB627),
+  Color(0xFFFF8A1D),
+  Color(0xFFFFD84D),
+];
+const Color _prestigeProfileGold = Color(0xFFFFC847);
 
 class _DeveloperProfilePageFrame extends StatefulWidget {
   final bool edgeToEdge;
@@ -22367,8 +23276,7 @@ class _DeveloperProfilePageFrame extends StatefulWidget {
   const _DeveloperProfilePageFrame({this.edgeToEdge = false});
 
   @override
-  State<_DeveloperProfilePageFrame> createState() =>
-      _DeveloperProfilePageFrameState();
+  State<_DeveloperProfilePageFrame> createState() => _DeveloperProfilePageFrameState();
 }
 
 class _DeveloperProfilePageFrameState extends State<_DeveloperProfilePageFrame>
@@ -22378,127 +23286,157 @@ class _DeveloperProfilePageFrameState extends State<_DeveloperProfilePageFrame>
   @override
   void initState() {
     super.initState();
-
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 5),
-    )..repeat();
+      duration: const Duration(seconds: 10),
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Don't waste a running ticker when accessibility reduces animation.
+    final reducedMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    if (reducedMotion) {
+      _controller.stop();
+    } else if (!_controller.isAnimating) {
+      _controller.repeat();
+    }
   }
 
   @override
   void dispose() {
     _controller.dispose();
-
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: CustomPaint(
-        painter: _DeveloperProfileFramePainter(
-          animation: _controller,
-          edgeToEdge: widget.edgeToEdge,
+    final reducedMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    return RepaintBoundary(
+      child: IgnorePointer(
+        child: CustomPaint(
+          painter: _PrestigeProfilePageFramePainter(
+            animation: _controller,
+            reducedMotion: reducedMotion,
+            edgeToEdge: widget.edgeToEdge,
+          ),
+          child: const SizedBox.expand(),
         ),
-        child: const SizedBox.expand(),
       ),
     );
   }
 }
 
-class _DeveloperProfileFramePainter extends CustomPainter {
+class _PrestigeProfilePageFramePainter extends CustomPainter {
   final Animation<double> animation;
+  final bool reducedMotion;
   final bool edgeToEdge;
-
-  _DeveloperProfileFramePainter({
+  _PrestigeProfilePageFramePainter({
     required this.animation,
+    required this.reducedMotion,
     this.edgeToEdge = false,
   }) : super(repaint: animation);
 
+  Size? _cachedSize;
+  Path? _outerPath;
+  Path? _innerPath;
+  PathMetric? _outerMetric;
+
   @override
   void paint(Canvas canvas, Size size) {
-    if (size.width <= 0 || size.height <= 0) {
-      return;
+    if (size.isEmpty || size.width < 6 || size.height < 6) return;
+    if (_cachedSize != size || _outerPath == null) {
+      final rect = edgeToEdge
+          ? Rect.fromLTWH(1.1, 1.1, size.width - 2.2, size.height - 1.1)
+          : Rect.fromLTWH(5, 5, size.width - 10, size.height - 10);
+      final outer = Path();
+      if (edgeToEdge) {
+        outer.moveTo(rect.left, size.height);
+        outer.lineTo(rect.left, rect.top);
+        outer.lineTo(rect.right, rect.top);
+        outer.lineTo(rect.right, size.height);
+      } else {
+        outer.addRRect(RRect.fromRectAndRadius(
+            rect, const Radius.circular(24)));
+      }
+      final inner = Rect.fromLTWH(
+        rect.left + 3.3, rect.top + 3.3,
+        rect.width - 6.6, rect.height - (edgeToEdge ? 3.3 : 6.6),
+      );
+      final innerPath = Path();
+      if (edgeToEdge) {
+        innerPath.moveTo(inner.left, size.height);
+        innerPath.lineTo(inner.left, inner.top);
+        innerPath.lineTo(inner.right, inner.top);
+        innerPath.lineTo(inner.right, size.height);
+      } else {
+        innerPath.addRRect(RRect.fromRectAndRadius(
+            inner, const Radius.circular(21)));
+      }
+      _cachedSize = size;
+      _outerPath = outer;
+      _innerPath = innerPath;
+      final metrics = outer.computeMetrics();
+      _outerMetric = metrics.isNotEmpty ? metrics.first : null;
     }
-
-    final rect = edgeToEdge
-        ? Rect.fromLTWH(1.1, 1.1, size.width - 2.2, size.height - 1.1)
-        : Rect.fromLTWH(5, 5, size.width - 10, size.height - 10);
-
-    final roundedRect = RRect.fromRectAndRadius(
-      rect,
-      edgeToEdge ? Radius.zero : const Radius.circular(24),
-    );
-
-    final rotation = _developerProfileFramePhase() * 6.28318530718;
-
+    final path = _outerPath!;
+    final innerPath = _innerPath!;
+    final phase = reducedMotion ? 0.0 : animation.value;
+    final bounds = Offset.zero & size;
     final shader = SweepGradient(
-      colors: const [
-        Color(0xFF00E5FF),
-        Color(0xFF875CFF),
-        Color(0xFFFF4FD8),
-        Color(0xFFFFD166),
-        Color(0xFF00E5FF),
-      ],
-      transform: GradientRotation(rotation),
-    ).createShader(rect);
-
-    // =========================
-    // MAIN DEVELOPER FRAME
-    // =========================
-
-    final framePaint = Paint()
+      colors: _prestigeProfileGoldGradient,
+      transform: GradientRotation(phase * math.pi * 2),
+    ).createShader(bounds);
+    canvas.drawPath(path, Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.2
-      ..shader = shader;
-
-    if (edgeToEdge) {
-      final path = Path()
-        ..moveTo(rect.left, size.height)
-        ..lineTo(rect.left, rect.top)
-        ..lineTo(rect.right, rect.top)
-        ..lineTo(rect.right, size.height);
-
-      canvas.drawPath(path, framePaint);
-    } else {
-      canvas.drawRRect(roundedRect, framePaint);
-    }
-
-    // =========================
-    // SUBTLE INNER LINE
-    // =========================
-
-    final innerRect = edgeToEdge
-        ? Rect.fromLTWH(3.7, 3.7, size.width - 7.4, size.height - 3.7)
-        : Rect.fromLTWH(8, 8, size.width - 16, size.height - 16);
-
-    final innerRoundedRect = RRect.fromRectAndRadius(
-      innerRect,
-      edgeToEdge ? Radius.zero : const Radius.circular(21),
-    );
-
-    final innerPaint = Paint()
+      ..strokeWidth = 5.4
+      ..color = _prestigeProfileGold.withValues(alpha: 0.14)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6));
+    canvas.drawPath(path, Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.7
-      ..color = Colors.white.withValues(alpha: 0.16);
+      ..strokeWidth = 2.35
+      ..strokeCap = StrokeCap.round
+      ..shader = shader);
+    canvas.drawPath(innerPath, Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.65
+      ..shader = shader
+      ..color = _prestigeProfileGold.withValues(alpha: 0.25));
 
-    if (edgeToEdge) {
-      final innerPath = Path()
-        ..moveTo(innerRect.left, size.height)
-        ..lineTo(innerRect.left, innerRect.top)
-        ..lineTo(innerRect.right, innerRect.top)
-        ..lineTo(innerRect.right, size.height);
-
-      canvas.drawPath(innerPath, innerPaint);
-    } else {
-      canvas.drawRRect(innerRoundedRect, innerPaint);
+    final metric = _outerMetric;
+    if (metric != null && metric.length > 0) {
+      final len = metric.length;
+      final head = (phase % 1.0) * len;
+      final trailLen = math.min(78.0, len * 0.16);
+      for (var i = 0; i < 10; i++) {
+        final from = head - trailLen + trailLen * (i / 10);
+        final to = head - trailLen + trailLen * ((i + 1) / 10);
+        final a = (from % len + len) % len;
+        final b = (to % len + len) % len;
+        final trail = Path();
+        if (a <= b) {
+          trail.addPath(metric.extractPath(a, b), Offset.zero);
+        } else {
+          trail.addPath(metric.extractPath(a, len), Offset.zero);
+          trail.addPath(metric.extractPath(0, b), Offset.zero);
+        }
+        final t = (i + 1) / 10;
+        canvas.drawPath(trail, Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round
+          ..strokeWidth = 1.0 + 1.6 * t
+          ..color = Color.lerp(const Color(0xFFFFF0A6), const Color(0xFFFFA43A), 1 - t)!
+              .withValues(alpha: 0.10 + 0.70 * t));
+      }
     }
   }
 
   @override
-  bool shouldRepaint(covariant _DeveloperProfileFramePainter oldDelegate) {
-    return false;
-  }
+  bool shouldRepaint(covariant _PrestigeProfilePageFramePainter oldDelegate) =>
+      oldDelegate.edgeToEdge != edgeToEdge ||
+      oldDelegate.animation != animation ||
+      oldDelegate.reducedMotion != reducedMotion;
 }
 
 Widget? _profileNavigationFrameWidget(String? frameId) {
@@ -22507,89 +23445,10 @@ Widget? _profileNavigationFrameWidget(String? frameId) {
       return const _DeveloperNavigationFrame();
 
     case followDeveloperProfilePageFrameId:
-      return const _Tier3NavigationFrame();
+      return const _DeveloperNavigationFrame();
 
     default:
       return null;
-  }
-}
-
-class _Tier3NavigationFrame extends StatelessWidget {
-  const _Tier3NavigationFrame();
-
-  @override
-  Widget build(BuildContext context) {
-    return const IgnorePointer(
-      child: CustomPaint(
-        painter: _Tier3NavigationFramePainter(),
-        child: SizedBox.expand(),
-      ),
-    );
-  }
-}
-
-class _Tier3NavigationFramePainter extends CustomPainter {
-  const _Tier3NavigationFramePainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (size.width <= 0 || size.height <= 0) {
-      return;
-    }
-
-    final rect = Rect.fromLTWH(1.05, 0, size.width - 2.1, size.height - 1.05);
-
-    final shader = const LinearGradient(
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-      colors: [
-        Color(0xFFA855F7),
-        Color(0xFFD946EF),
-        Color(0xFF6366F1),
-        Color(0xFFA855F7),
-      ],
-    ).createShader(rect);
-
-    final frame = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.1
-      ..strokeJoin = StrokeJoin.miter
-      ..shader = shader;
-
-    final path = Path()
-      ..moveTo(rect.left, 0)
-      ..lineTo(rect.left, rect.bottom)
-      ..lineTo(rect.right, rect.bottom)
-      ..lineTo(rect.right, 0);
-
-    canvas.drawPath(path, frame);
-
-    final innerRect = Rect.fromLTWH(
-      3.6,
-      0,
-      size.width - 7.2,
-      size.height - 3.6,
-    );
-
-    final innerPath = Path()
-      ..moveTo(innerRect.left, 0)
-      ..lineTo(innerRect.left, innerRect.bottom)
-      ..lineTo(innerRect.right, innerRect.bottom)
-      ..lineTo(innerRect.right, 0);
-
-    canvas.drawPath(
-      innerPath,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 0.7
-        ..strokeJoin = StrokeJoin.miter
-        ..color = Colors.white.withValues(alpha: 0.12),
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _Tier3NavigationFramePainter oldDelegate) {
-    return false;
   }
 }
 
@@ -22597,8 +23456,7 @@ class _DeveloperNavigationFrame extends StatefulWidget {
   const _DeveloperNavigationFrame();
 
   @override
-  State<_DeveloperNavigationFrame> createState() =>
-      _DeveloperNavigationFrameState();
+  State<_DeveloperNavigationFrame> createState() => _DeveloperNavigationFrameState();
 }
 
 class _DeveloperNavigationFrameState extends State<_DeveloperNavigationFrame>
@@ -22608,99 +23466,135 @@ class _DeveloperNavigationFrameState extends State<_DeveloperNavigationFrame>
   @override
   void initState() {
     super.initState();
-
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 5),
-    )..repeat();
+      duration: const Duration(seconds: 10),
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final reducedMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    if (reducedMotion) {
+      _controller.stop();
+    } else if (!_controller.isAnimating) {
+      _controller.repeat();
+    }
   }
 
   @override
   void dispose() {
     _controller.dispose();
-
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: CustomPaint(
-        painter: _DeveloperNavigationFramePainter(animation: _controller),
-        child: const SizedBox.expand(),
+    final reducedMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    return RepaintBoundary(
+      child: IgnorePointer(
+        child: CustomPaint(
+          painter: _PrestigeNavigationFramePainter(
+            animation: _controller,
+            reducedMotion: reducedMotion,
+          ),
+          child: const SizedBox.expand(),
+        ),
       ),
     );
   }
 }
 
-class _DeveloperNavigationFramePainter extends CustomPainter {
+class _PrestigeNavigationFramePainter extends CustomPainter {
   final Animation<double> animation;
+  final bool reducedMotion;
+  _PrestigeNavigationFramePainter({
+    required this.animation,
+    required this.reducedMotion,
+  }) : super(repaint: animation);
 
-  _DeveloperNavigationFramePainter({required this.animation})
-    : super(repaint: animation);
+  Size? _cachedSize;
+  Path? _outerPath;
+  Path? _innerPath;
+  PathMetric? _outerMetric;
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (size.width <= 0 || size.height <= 0) {
-      return;
+    if (size.isEmpty || size.width < 6 || size.height < 6) return;
+    if (_cachedSize != size || _outerPath == null) {
+      final rect = Rect.fromLTWH(1.1, 0, size.width - 2.2, size.height - 1.1);
+      final outer = Path()
+        ..moveTo(rect.left, 0)
+        ..lineTo(rect.left, rect.bottom)
+        ..lineTo(rect.right, rect.bottom)
+        ..lineTo(rect.right, 0);
+      final inner = Path()
+        ..moveTo(3.7, 0)
+        ..lineTo(3.7, size.height - 3.7)
+        ..lineTo(size.width - 3.7, size.height - 3.7)
+        ..lineTo(size.width - 3.7, 0);
+      _cachedSize = size;
+      _outerPath = outer;
+      _innerPath = inner;
+      final metrics = outer.computeMetrics();
+      _outerMetric = metrics.isNotEmpty ? metrics.first : null;
     }
-
-    final rect = Rect.fromLTWH(1.1, 0, size.width - 2.2, size.height - 1.1);
-
-    final rotation = _developerProfileFramePhase() * 6.28318530718;
-
+    final path = _outerPath!;
+    final phase = reducedMotion ? 0.0 : animation.value;
+    final bounds = Offset.zero & size;
     final shader = SweepGradient(
-      colors: const [
-        Color(0xFF00E5FF),
-        Color(0xFF875CFF),
-        Color(0xFFFF4FD8),
-        Color(0xFFFFD166),
-        Color(0xFF00E5FF),
-      ],
-      transform: GradientRotation(rotation),
-    ).createShader(rect);
-
-    final frame = Paint()
+      colors: _prestigeProfileGoldGradient,
+      transform: GradientRotation(phase * math.pi * 2),
+    ).createShader(bounds);
+    canvas.drawPath(path, Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 5
+      ..color = _prestigeProfileGold.withValues(alpha: 0.12)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5));
+    canvas.drawPath(path, Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.2
       ..strokeJoin = StrokeJoin.miter
-      ..shader = shader;
+      ..shader = shader);
+    canvas.drawPath(_innerPath!, Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.65
+      ..shader = shader
+      ..color = _prestigeProfileGold.withValues(alpha: 0.26));
 
-    final path = Path()
-      ..moveTo(rect.left, 0)
-      ..lineTo(rect.left, rect.bottom)
-      ..lineTo(rect.right, rect.bottom)
-      ..lineTo(rect.right, 0);
-
-    canvas.drawPath(path, frame);
-
-    final innerRect = Rect.fromLTWH(
-      3.7,
-      0,
-      size.width - 7.4,
-      size.height - 3.7,
-    );
-
-    final innerPath = Path()
-      ..moveTo(innerRect.left, 0)
-      ..lineTo(innerRect.left, innerRect.bottom)
-      ..lineTo(innerRect.right, innerRect.bottom)
-      ..lineTo(innerRect.right, 0);
-
-    canvas.drawPath(
-      innerPath,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 0.7
-        ..strokeJoin = StrokeJoin.miter
-        ..color = Colors.white.withValues(alpha: 0.16),
-    );
+    final metric = _outerMetric;
+    if (metric != null && metric.length > 0) {
+      final len = metric.length;
+      final head = (phase % 1.0) * len;
+      final trailLen = math.min(50.0, len * 0.20);
+      for (var i = 0; i < 8; i++) {
+        final from = head - trailLen + trailLen * (i / 8);
+        final to = head - trailLen + trailLen * ((i + 1) / 8);
+        final a = (from % len + len) % len;
+        final b = (to % len + len) % len;
+        final trail = Path();
+        if (a <= b) {
+          trail.addPath(metric.extractPath(a, b), Offset.zero);
+        } else {
+          trail.addPath(metric.extractPath(a, len), Offset.zero);
+          trail.addPath(metric.extractPath(0, b), Offset.zero);
+        }
+        final t = (i + 1) / 8;
+        canvas.drawPath(trail, Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round
+          ..strokeWidth = 0.9 + 1.4 * t
+          ..color = Color.lerp(const Color(0xFFFFF0A6), const Color(0xFFFFA43A), 1 - t)!
+              .withValues(alpha: 0.10 + 0.70 * t));
+      }
+    }
   }
 
   @override
-  bool shouldRepaint(covariant _DeveloperNavigationFramePainter oldDelegate) {
-    return false;
-  }
+  bool shouldRepaint(covariant _PrestigeNavigationFramePainter oldDelegate) =>
+      oldDelegate.animation != animation ||
+      oldDelegate.reducedMotion != reducedMotion;
 }
 
 class _DeveloperTitleLabel extends StatefulWidget {
@@ -24149,7 +25043,7 @@ class _ProfilePageState extends State<ProfilePage> {
               ? ratingsLevelGroup.highestUnlockedTier
               : pinnedId == followerGroup.id
               ? followerGroup.highestUnlockedTier
-              : null;
+              : _customMoviePinnedAchievement(pinnedId);
 
           return RefreshIndicator(
             color: chipluxGold,
@@ -24340,8 +25234,10 @@ onPressed: () async {
                                                               .avatarUrl!
                                                               .isNotEmpty
                                                       ? DecorationImage(
-                                                          image: NetworkImage(
+                                                          image: chipluxSizedAvatar(
+                                                            context,
                                                             profile.avatarUrl!,
+                                                            94,
                                                           ),
                                                           fit: BoxFit.cover,
                                                         )
@@ -24419,39 +25315,11 @@ onPressed: () async {
                                                         ),
                                                   ),
 
-                                                  child: Text(
-                                                    shownName,
-
-                                                    maxLines: 1,
-
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-
-                                                    style: TextStyle(
-                                                      color: displayNameColor,
-
-                                                      fontSize: 18,
-
-                                                      fontWeight:
-                                                          FontWeight.bold,
-
-                                                      letterSpacing: 0.3,
-
-                                                      shadows:
-                                                          selectedDisplayNameColorAchievement !=
-                                                              null
-                                                          ? [
-                                                              Shadow(
-                                                                color: displayNameColor
-                                                                    .withValues(
-                                                                      alpha:
-                                                                          0.25,
-                                                                    ),
-                                                                blurRadius: 6,
-                                                              ),
-                                                            ]
-                                                          : null,
-                                                    ),
+                                                  child: _profileDisplayNameText(
+                                                    name: shownName,
+                                                    color: displayNameColor,
+                                                    hasReward: selectedDisplayNameColorAchievement != null,
+                                                    rewardColors: _achievementTierColors(selectedDisplayNameColorAchievement),
                                                   ),
                                                 ),
                                               ),
@@ -24759,22 +25627,18 @@ class _AchievementCollectionButton extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
 
             children: [
-              Icon(
-                styleAchievement?.icon ?? Icons.workspace_premium_rounded,
-                color: accent,
-                size: 22,
+              _statRewardForeground(
+                colors: colors,
+                builder: (foreground) => Icon(
+                  styleAchievement?.icon ?? Icons.workspace_premium_rounded,
+                  color: foreground, size: 22),
               ),
 
               const SizedBox(width: 6),
 
-              UiText(
-                '$unlockedCount/$totalCount',
-
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
+              UiText('$unlockedCount/$totalCount',
+                style: const TextStyle(color: Colors.white,
+                  fontSize: 14, fontWeight: FontWeight.bold),
               ),
             ],
           ),
@@ -25003,7 +25867,11 @@ class _FollowerCountBadgeState extends State<_FollowerCountBadge> {
             mainAxisSize: MainAxisSize.min,
 
             children: [
-              Icon(Icons.people_alt_rounded, color: accent, size: 22),
+              _statRewardForeground(
+                colors: colors,
+                builder: (foreground) => Icon(Icons.people_alt_rounded,
+                  color: foreground, size: 22),
+              ),
 
               const SizedBox(width: 6),
 
@@ -25020,16 +25888,9 @@ class _FollowerCountBadgeState extends State<_FollowerCountBadge> {
                   ),
                 )
               else
-                UiText(
-                  '$followerCount',
-
-                  style: const TextStyle(
-                    color: Colors.white,
-
-                    fontSize: 14,
-
-                    fontWeight: FontWeight.bold,
-                  ),
+                UiText('$followerCount',
+                  style: const TextStyle(color: Colors.white,
+                    fontSize: 14, fontWeight: FontWeight.bold),
                 ),
             ],
           ),
@@ -25118,16 +25979,12 @@ void _showPinnedAchievementDetails(
 
                 const SizedBox(height: 18),
 
-                UiText(
+                _prestigeCustomTitle(
                   achievement.title,
-
+                  isCustom: achievement.id.startsWith('custom_movie_title_'),
                   textAlign: TextAlign.center,
-
                   style: const TextStyle(
-                    color: Colors.white,
-
                     fontSize: 21,
-
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -25252,6 +26109,7 @@ class _PinnedAchievementBadge extends StatefulWidget {
 class _PinnedAchievementBadgeState extends State<_PinnedAchievementBadge>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
+  bool _reducedMotion = false;
 
   @override
   void initState() {
@@ -25272,9 +26130,20 @@ class _PinnedAchievementBadgeState extends State<_PinnedAchievementBadge>
     _updateAnimation();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final reducedMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    if (_reducedMotion != reducedMotion) {
+      _reducedMotion = reducedMotion;
+      _updateAnimation();
+    }
+  }
+
   void _updateAnimation() {
     final shouldAnimate =
-        widget.achievement.unlocked && widget.achievement.visualTier >= 8;
+        !_reducedMotion && widget.achievement.unlocked &&
+        widget.achievement.visualTier == 10;
 
     if (shouldAnimate) {
       if (!_controller.isAnimating) {
@@ -25300,23 +26169,24 @@ class _PinnedAchievementBadgeState extends State<_PinnedAchievementBadge>
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-
-      builder: (context, _) {
+    return RepaintBoundary(
+      child: AnimatedBuilder(
+        animation: _controller,
+        child: IconifyAchievementIcon(
+          iconId: widget.achievement.iconifyId,
+          fallback: widget.achievement.icon,
+          color: Colors.white,
+          size: 17,
+        ),
+        builder: (context, iconChild) {
         final bool rotating =
-            widget.achievement.visualTier >= 8 && widget.achievement.unlocked;
-
-        final bool finalTier =
-            widget.achievement.visualTier >= 8 && widget.achievement.unlocked;
+            widget.achievement.visualTier == 10 && widget.achievement.unlocked;
 
         final double rotation = rotating
             ? _controller.value * math.pi * 2
             : 0.0;
 
-        final double pulse = finalTier
-            ? 1.0 + math.sin(_controller.value * math.pi * 2) * 0.045
-            : 1.0;
+        const double pulse = 1.0;
 
         final colors = _colors();
 
@@ -25373,20 +26243,15 @@ class _PinnedAchievementBadgeState extends State<_PinnedAchievementBadge>
                       ).createShader(bounds);
                     },
 
-                    child: Icon(
-                      widget.achievement.icon,
-
-                      color: Colors.white,
-
-                      size: 17,
-                    ),
+                    child: iconChild,
                   ),
                 ),
               ),
             ),
           ),
         );
-      },
+        },
+      ),
     );
   }
 }
@@ -25450,13 +26315,11 @@ class _LevelHexBadge extends StatelessWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const UiText(
-                          'LVL',
-                          style: TextStyle(
-                            color: Colors.white60,
-                            fontSize: 8,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 1.15,
+                        _statRewardForeground(
+                          colors: colors,
+                          builder: (foreground) => UiText('LVL',
+                            style: TextStyle(color: foreground, fontSize: 8,
+                              fontWeight: FontWeight.w800, letterSpacing: 1.15),
                           ),
                         ),
 
@@ -25629,46 +26492,18 @@ class _CriticReputationCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
 
                       children: [
-                        const UiText(
-                          'CRITIC LEVEL',
-
-                          style: TextStyle(
-                            color: Colors.white38,
-
-                            fontSize: 10,
-
-                            fontWeight: FontWeight.w700,
-
-                            letterSpacing: 1.3,
-                          ),
+                        const UiText('CRITIC LEVEL',
+                          style: TextStyle(color: Colors.white70, fontSize: 10,
+                            fontWeight: FontWeight.w700, letterSpacing: 1.3),
                         ),
 
                         const SizedBox(height: 3),
 
-                        UiText(
-                          title.toUpperCase(),
-
-                          maxLines: 1,
-
-                          overflow: TextOverflow.ellipsis,
-
-                          style: TextStyle(
-                            color: accentColor,
-
-                            fontSize: 18,
-
-                            fontWeight: FontWeight.w900,
-
-                            letterSpacing: 0.7,
-
-                            shadows: [
-                              Shadow(
-                                color: accentColor.withValues(alpha: 0.30),
-
-                                blurRadius: 7,
-                              ),
-                            ],
-                          ),
+                        UiText(title.toUpperCase(),
+                          maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: Colors.white,
+                            fontSize: 18, fontWeight: FontWeight.w900,
+                            letterSpacing: 0.7),
                         ),
 
                         const SizedBox(height: 11),
@@ -25683,31 +26518,11 @@ class _CriticReputationCard extends StatelessWidget {
 
                         Row(
                           children: [
-                            UiText(
-                              '$xp / $requiredXp XP',
-
-                              style: const TextStyle(
-                                color: Colors.white54,
-
-                                fontSize: 11,
-
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
+                            UiText('$xp / $requiredXp XP', style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600)),
 
                             const Spacer(),
 
-                            UiText(
-                              '$xpLeft XP left',
-
-                              style: const TextStyle(
-                                color: Colors.white70,
-
-                                fontSize: 11,
-
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
+                            UiText('$xpLeft XP left', style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600)),
                           ],
                         ),
                       ],
@@ -25748,7 +26563,6 @@ class _CriticReputationCard extends StatelessWidget {
 
                       label: 'Average',
 
-                      valueColor: accentColor,
                     ),
                   ),
                 ],
@@ -25779,6 +26593,35 @@ class _CriticProgressBarState extends State<_CriticProgressBar>
   late final AnimationController _flowController;
 
   late Animation<double> _progressAnimation;
+  ValueNotifier<bool>? _scrolling;
+
+  void _syncMotion() {
+    final reducedMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    if (reducedMotion) {
+      _flowController.stop();
+      _progressController.value = 1.0; // Show final value without motion.
+    } else if (_scrolling?.value ?? false) {
+      _flowController.stop();
+      _progressController.stop();
+    } else {
+      if (!_flowController.isAnimating) _flowController.repeat();
+      if (!_progressController.isCompleted && !_progressController.isAnimating) {
+        _progressController.forward();
+      }
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final notifier = Scrollable.maybeOf(context)?.position.isScrollingNotifier;
+    if (!identical(notifier, _scrolling)) {
+      _scrolling?.removeListener(_syncMotion);
+      _scrolling = notifier;
+      _scrolling?.addListener(_syncMotion);
+    }
+    _syncMotion();
+  }
 
   @override
   void initState() {
@@ -25819,9 +26662,8 @@ class _CriticProgressBarState extends State<_CriticProgressBar>
             ),
           );
 
-      _progressController
-        ..reset()
-        ..forward();
+      _progressController.reset();
+      _syncMotion();
     }
   }
 
@@ -25922,10 +26764,9 @@ class _CriticProgressBarState extends State<_CriticProgressBar>
 
   @override
   void dispose() {
+    _scrolling?.removeListener(_syncMotion);
     _progressController.dispose();
-
     _flowController.dispose();
-
     super.dispose();
   }
 }
@@ -25934,33 +26775,24 @@ class _CriticStat extends StatelessWidget {
   final String value;
   final String label;
 
-  final Color? valueColor;
 
   const _CriticStat({
     required this.value,
     required this.label,
-    this.valueColor,
   });
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        UiText(
-          value,
+        UiText(value,
           maxLines: 1,
-          style: TextStyle(
-            color: valueColor ?? Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
+          style: const TextStyle(color: Colors.white,
+            fontSize: 16, fontWeight: FontWeight.bold),
         ),
-
         const SizedBox(height: 4),
-
-        UiText(
-          label,
-          style: const TextStyle(color: Colors.white54, fontSize: 10),
+        UiText(label, style: const TextStyle(
+          color: Colors.white70, fontSize: 10),
         ),
       ],
     );
@@ -25989,6 +26821,28 @@ class _LevelCardState extends State<_LevelCard> with TickerProviderStateMixin {
   late final AnimationController _controller;
 
   late final AnimationController _flowController;
+  ValueNotifier<bool>? _scrolling;
+
+  void _syncFlow() {
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    if (reduceMotion || (_scrolling?.value ?? false)) {
+      _flowController.stop();
+    } else if (!_flowController.isAnimating) {
+      _flowController.repeat();
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final notifier = Scrollable.maybeOf(context)?.position.isScrollingNotifier;
+    if (!identical(notifier, _scrolling)) {
+      _scrolling?.removeListener(_syncFlow);
+      _scrolling = notifier;
+      _scrolling?.addListener(_syncFlow);
+    }
+    _syncFlow();
+  }
 
   late Animation<double> _progressAnimation;
 
@@ -26138,8 +26992,6 @@ class _LevelCardState extends State<_LevelCard> with TickerProviderStateMixin {
 
     final Color glowColor = activeColors.first;
 
-    final Color titleColor = activeColors.first;
-
     return _LegendaryTierAura(
       enabled: _achievementHasAnimatedPrestigeAura(widget.frameAchievement),
       colors: activeColors,
@@ -26199,46 +27051,18 @@ class _LevelCardState extends State<_LevelCard> with TickerProviderStateMixin {
                   crossAxisAlignment: CrossAxisAlignment.start,
 
                   children: [
-                    const UiText(
-                      'RUNTIME LEVEL',
-
-                      style: TextStyle(
-                        color: Colors.white38,
-
-                        fontSize: 9,
-
-                        fontWeight: FontWeight.w700,
-
-                        letterSpacing: 1.2,
-                      ),
+                    const UiText('RUNTIME LEVEL',
+                      style: TextStyle(color: Colors.white70, fontSize: 9,
+                        fontWeight: FontWeight.w700, letterSpacing: 1.2),
                     ),
 
                     const SizedBox(height: 1),
 
-                    UiText(
-                      widget.title.toUpperCase(),
-
+                    UiText(widget.title.toUpperCase(),
                       maxLines: 1,
-
                       overflow: TextOverflow.ellipsis,
-
-                      style: TextStyle(
-                        color: titleColor,
-
-                        fontSize: 16,
-
-                        fontWeight: FontWeight.w900,
-
-                        letterSpacing: 0.6,
-
-                        shadows: [
-                          Shadow(
-                            color: titleColor.withValues(alpha: 0.34),
-
-                            blurRadius: 7,
-                          ),
-                        ],
-                      ),
+                      style: const TextStyle(color: Colors.white, fontSize: 16,
+                        fontWeight: FontWeight.w900, letterSpacing: 0.6),
                     ),
 
                     const SizedBox(height: 7),
@@ -26350,51 +27174,15 @@ class _LevelCardState extends State<_LevelCard> with TickerProviderStateMixin {
 
                     const SizedBox(height: 6),
 
-                    Row(
-                      children: [
-                        UiText(
-                          '$minutesInLevel / '
-                          '$requiredMinutes min',
-
-                          style: const TextStyle(
-                            color: Colors.white54,
-
-                            fontSize: 10,
-
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-
-                        const Spacer(),
-
-                        UiText(
-                          _formatTimeLeft(minutesLeft),
-
-                          style: const TextStyle(
-                            color: Colors.white70,
-
-                            fontSize: 10,
-
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
+                    Row(children: [
+                      UiText('$minutesInLevel / $requiredMinutes min', style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w600)),
+                      const Spacer(),
+                      UiText(_formatTimeLeft(minutesLeft), style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w600)),
+                    ]),
 
                     const SizedBox(height: 2),
 
-                    UiText(
-                      'to Level '
-                      '${level + 1}',
-
-                      style: const TextStyle(
-                        color: Colors.white38,
-
-                        fontSize: 9,
-
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                    UiText('to Level ${level + 1}', style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w600)),
                   ],
                 ),
               ),
@@ -26407,12 +27195,63 @@ class _LevelCardState extends State<_LevelCard> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    _scrolling?.removeListener(_syncFlow);
     _controller.dispose();
-
     _flowController.dispose();
-
     super.dispose();
   }
+}
+
+// Shared by both your own profile and other users' public profile screens.
+// A static gradient avoids adding another continuously running animation.
+Widget _profileDisplayNameText({
+  required String name,
+  required Color color,
+  required bool hasReward,
+  List<Color> rewardColors = const [],
+}) {
+  return _statRewardForeground(
+    colors: rewardColors,
+    builder: (foreground) => Text(
+      name,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        color: hasReward ? foreground : color,
+        fontSize: 18,
+        fontWeight: FontWeight.bold,
+        letterSpacing: 0.3,
+        shadows: rewardColors.length == 1 &&
+                rewardColors.first == const Color(0xFFF1C75B)
+            ? const [Shadow(color: Color(0x88F1C75B), blurRadius: 8)]
+            : null,
+      ),
+    ),
+  );
+}
+
+// A profile statistic uses only its own selected achievement reward tier.
+// Without a selected cosmetic, elements stay neutral gray; tiers I-VI and X
+// are solid, while tiers VII-IX are multicolor gradients.
+Widget _statRewardForeground({
+  required List<Color> colors,
+  required Widget Function(Color foreground) builder,
+}) {
+  const defaultGray = Color(0xFF9CA3AF);
+  if (colors.isEmpty) return builder(defaultGray);
+
+  final usesGradient = colors.any((color) => color != colors.first);
+  if (!usesGradient) return builder(colors.first);
+
+  return ShaderMask(
+    blendMode: BlendMode.srcIn,
+    shaderCallback: (bounds) => LinearGradient(
+      begin: Alignment.centerLeft,
+      end: Alignment.centerRight,
+      colors: colors,
+    ).createShader(bounds),
+    child: builder(Colors.white),
+  );
 }
 
 class _WatchStatCard extends StatelessWidget {
@@ -26454,6 +27293,7 @@ class _WatchStatCard extends StatelessWidget {
     final cleanLabel = label.replaceAll('\n', ' ');
 
     final frameColors = _achievementTierColors(frameAchievement);
+    final hasGradientFrame = frameColors.any((c) => c != frameColors.first);
 
     final bool hasAchievement = frameColors.isNotEmpty;
 
@@ -26466,6 +27306,15 @@ class _WatchStatCard extends StatelessWidget {
       colors: frameColors,
       borderRadius: 14,
       circle: false,
+      child: Container(
+      padding: EdgeInsets.all(hasGradientFrame ? 1.4 : 0),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(15),
+        gradient: hasGradientFrame ? LinearGradient(
+          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          colors: frameColors,
+        ) : null,
+      ),
       child: Material(
       color: Colors.transparent,
 
@@ -26484,7 +27333,7 @@ class _WatchStatCard extends StatelessWidget {
 
             borderRadius: BorderRadius.circular(14),
 
-            border: _achievementHasAnimatedPrestigeAura(frameAchievement)
+            border: _achievementHasAnimatedPrestigeAura(frameAchievement) || hasGradientFrame
                 ? null
                 : Border.all(
                     color: hasAchievement
@@ -26496,22 +27345,19 @@ class _WatchStatCard extends StatelessWidget {
 
           child: Row(
             children: [
-              Container(
+              // Each icon reflects this card's OWN reward tier.
+              SizedBox(
                 width: 38,
                 height: 38,
-
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(11),
-
-                  color: achievementColor.withValues(alpha: 0.07),
-
-                  border: Border.all(
-                    color: achievementColor.withValues(alpha: 0.18),
-                  ),
-                ),
-
                 child: Center(
-                  child: Icon(icon, color: achievementColor, size: 20),
+                  child: _statRewardForeground(
+                    colors: frameColors,
+                    builder: (foreground) => Icon(
+                      icon,
+                      color: foreground,
+                      size: 25,
+                    ),
+                  ),
                 ),
               ),
 
@@ -26526,19 +27372,12 @@ class _WatchStatCard extends StatelessWidget {
                   children: [
                     UiText(
                       cleanLabel,
-
                       maxLines: 1,
-
                       overflow: TextOverflow.ellipsis,
-
-                      style: TextStyle(
-                        color: hasAchievement
-                            ? achievementColor
-                            : Colors.white70,
-
+                      style: const TextStyle(
+                        color: Colors.white,
                         fontSize: 13,
-
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
 
@@ -26547,15 +27386,11 @@ class _WatchStatCard extends StatelessWidget {
 
                       Text(
                         _formatRuntime(runtimeMinutes!),
-
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-
                         style: const TextStyle(
-                          color: Colors.white38,
-
+                          color: Colors.white70,
                           fontSize: 11,
-
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -26566,12 +27401,9 @@ class _WatchStatCard extends StatelessWidget {
 
               UiText(
                 '$value',
-
                 style: const TextStyle(
                   color: Colors.white,
-
                   fontSize: 21,
-
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -26579,19 +27411,20 @@ class _WatchStatCard extends StatelessWidget {
               if (onTap != null) ...[
                 const SizedBox(width: 7),
 
-                const Icon(
-                  Icons.chevron_right_rounded,
-
-                  color: Colors.white24,
-
-                  size: 19,
+                _statRewardForeground(
+                  colors: frameColors,
+                  builder: (foreground) => Icon(
+                    Icons.chevron_right_rounded,
+                    color: foreground,
+                    size: 19,
+                  ),
                 ),
               ],
             ],
           ),
         ),
       ),
-    ));
+    )));
   }
 }
 
@@ -26616,6 +27449,7 @@ class _RatingStatCard extends StatelessWidget {
     final cleanLabel = label.replaceAll('\n', ' ');
 
     final frameColors = _achievementTierColors(frameAchievement);
+    final hasGradientFrame = frameColors.any((c) => c != frameColors.first);
 
     final bool hasAchievement = frameColors.isNotEmpty;
 
@@ -26628,6 +27462,15 @@ class _RatingStatCard extends StatelessWidget {
       colors: frameColors,
       borderRadius: 14,
       circle: false,
+      child: Container(
+      padding: EdgeInsets.all(hasGradientFrame ? 1.4 : 0),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(15),
+        gradient: hasGradientFrame ? LinearGradient(
+          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          colors: frameColors,
+        ) : null,
+      ),
       child: Material(
       color: Colors.transparent,
 
@@ -26646,7 +27489,7 @@ class _RatingStatCard extends StatelessWidget {
 
             borderRadius: BorderRadius.circular(14),
 
-            border: _achievementHasAnimatedPrestigeAura(frameAchievement)
+            border: _achievementHasAnimatedPrestigeAura(frameAchievement) || hasGradientFrame
                 ? null
                 : Border.all(
                     color: hasAchievement
@@ -26658,22 +27501,19 @@ class _RatingStatCard extends StatelessWidget {
 
           child: Row(
             children: [
-              Container(
+              // Each icon reflects this card's OWN reward tier.
+              SizedBox(
                 width: 38,
                 height: 38,
-
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(11),
-
-                  color: achievementColor.withValues(alpha: 0.07),
-
-                  border: Border.all(
-                    color: achievementColor.withValues(alpha: 0.18),
-                  ),
-                ),
-
                 child: Center(
-                  child: Icon(icon, color: achievementColor, size: 20),
+                  child: _statRewardForeground(
+                    colors: frameColors,
+                    builder: (foreground) => Icon(
+                      icon,
+                      color: foreground,
+                      size: 25,
+                    ),
+                  ),
                 ),
               ),
 
@@ -26682,29 +27522,21 @@ class _RatingStatCard extends StatelessWidget {
               Expanded(
                 child: UiText(
                   cleanLabel,
-
                   maxLines: 1,
-
                   overflow: TextOverflow.ellipsis,
-
-                  style: TextStyle(
-                    color: hasAchievement ? achievementColor : Colors.white70,
-
+                  style: const TextStyle(
+                    color: Colors.white,
                     fontSize: 13,
-
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
 
               UiText(
                 '$value',
-
                 style: const TextStyle(
                   color: Colors.white,
-
                   fontSize: 21,
-
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -26712,19 +27544,20 @@ class _RatingStatCard extends StatelessWidget {
               if (onTap != null) ...[
                 const SizedBox(width: 7),
 
-                const Icon(
-                  Icons.chevron_right_rounded,
-
-                  color: Colors.white24,
-
-                  size: 19,
+                _statRewardForeground(
+                  colors: frameColors,
+                  builder: (foreground) => Icon(
+                    Icons.chevron_right_rounded,
+                    color: foreground,
+                    size: 19,
+                  ),
                 ),
               ],
             ],
           ),
         ),
       ),
-    ));
+    )));
   }
 }
 
@@ -29399,7 +30232,7 @@ class _BlockedUsersPageState extends State<BlockedUsersPage> {
                           backgroundColor: chipluxSurfaceLight,
                           backgroundImage:
                               avatarUrl != null && avatarUrl.isNotEmpty
-                              ? NetworkImage(avatarUrl)
+                              ? chipluxSizedAvatar(context, avatarUrl, 44)
                               : null,
                           child: avatarUrl == null || avatarUrl.isEmpty
                               ? Text(
@@ -30252,6 +31085,7 @@ class _ProfileSettingsTab extends StatelessWidget {
   }
 
   Future<void> _deleteAccount(BuildContext context) async {
+    final deletingAccountId = AuthService.instance.currentUser?.id;
     final usernameController = TextEditingController();
     final passwordController = TextEditingController();
     String? dialogError;
@@ -30376,8 +31210,11 @@ class _ProfileSettingsTab extends StatelessWidget {
     passwordController.dispose();
 
     if (confirmed == true && context.mounted) {
+      await LibraryService.instance.clearSyncMetadataForDeletedAccount(deletingAccountId);
+      await StartupLibraryPreviewService.instance.removeForDeletedAccount(deletingAccountId);
       CustomMovieAchievementService.instance.clear();
       _MedalCollectionUnlockTracker.instance.reset();
+    _AchievementPopupLedger.instance.reset();
 
       await NotificationService.instance.clear();
       await LibraryService.instance.clearLocalData();
@@ -30402,10 +31239,15 @@ class _ProfileSettingsTab extends StatelessWidget {
 
     await NotificationService.instance.clear();
 
+    // Save verified unsent Library edits before sign-out clears local rows.
+    // This also handles offline sign-out; the queue is replayed at next login
+    // for the exact same Supabase account.
+    await library.preservePendingChangesForSignOut();
     await AuthService.instance.signOut();
 
     CustomMovieAchievementService.instance.clear();
     _MedalCollectionUnlockTracker.instance.reset();
+    _AchievementPopupLedger.instance.reset();
 
     await FollowerCountService.instance.clear();
 
@@ -30434,6 +31276,9 @@ class _ProfileSettingsTab extends StatelessWidget {
     CriticService.instance.clear();
 
     ProfileService.instance.clear();
+
+    // Return to on-device guest receipt tracking after signing out.
+    await _AchievementPopupLedger.instance.initialize();
 
     if (context.mounted) {
       Navigator.of(context).popUntil((route) => route.isFirst);
@@ -31965,6 +32810,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   bool loadingFrame = true;
 
+  bool _customizationIsScrolling = false;
+
   bool loadingAvatarFrame = true;
 
   bool loadingAchievementCosmetics = true;
@@ -31973,9 +32820,16 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   bool loadingProfilePageFrame = true;
 
+  bool loadingUnlockedPins = true;
+
+  bool _savingPinnedAchievement = false;
+
   String? selectedAvatarFrameId;
 
   String? selectedFrameId;
+
+  bool _displayNameFrameWasSelected = false;
+  bool _displayNameFrameSaving = false;
 
   String? selectedTitleId;
 
@@ -32010,6 +32864,25 @@ class _EditProfilePageState extends State<EditProfilePage> {
     unawaited(_loadProfileTitle());
 
     unawaited(_loadProfilePageFrame());
+
+    unawaited(_loadUnlockedPins());
+  }
+
+  // Pins use the same server-backed selection as the Achievements page.
+  // Refresh it when Profile Customization opens; do not store a second
+  // selection or change the existing pinned_achievement_id schema.
+  Future<void> _loadUnlockedPins() async {
+    try {
+      await Future.wait<void>([
+        MedalPinService.instance.init(),
+        if (!CustomMovieAchievementService.instance.loaded)
+          CustomMovieAchievementService.instance.load(),
+      ]);
+    } catch (error) {
+      debugPrint('Could not refresh unlocked pins: $error');
+    } finally {
+      if (mounted) setState(() => loadingUnlockedPins = false);
+    }
   }
 
   void _setAutoSaveError(Object error) {
@@ -32048,16 +32921,34 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   Future<void> _selectDisplayNameFrame(String? id) async {
+    if (_displayNameFrameSaving) return;
+    // Explicit selection wins over a slower initial load.
+    final previous = selectedFrameId;
+    _displayNameFrameWasSelected = true;
+    setState(() {
+      _displayNameFrameSaving = true;
+      selectedFrameId = id;
+      errorMessage = null;
+    });
     try {
       await frameService.apply(id);
-      if (mounted) {
-        setState(() {
-          selectedFrameId = id;
-          errorMessage = null;
-        });
-      }
+      if (!mounted) return;
+      setState(() => selectedFrameId = frameService.frameId);
     } catch (e) {
-      _setAutoSaveError(e);
+      if (!mounted) return;
+      setState(() {
+        selectedFrameId = previous;
+        errorMessage = 'Could not equip display-name frame: $e';
+      });
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        SnackBar(content: Text(
+          e.toString().contains('profiles_display_name_frame_id_check')
+            ? 'Database restriction: install the Daily Login frame SQL migration.'
+            : 'Could not equip display-name frame: $e',
+        )),
+      );
+    } finally {
+      if (mounted) setState(() => _displayNameFrameSaving = false);
     }
   }
 
@@ -32413,19 +33304,14 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
     String? loadedId = profilePageFrameService.frameId;
 
-    if (loadedId == developerProfilePageFrameId && !profile.isDeveloper) {
+    if (loadedId == followDeveloperProfilePageFrameId) {
+      loadedId = developerProfilePageFrameId;
+    }
+    if (loadedId == developerProfilePageFrameId &&
+        !profile.isDeveloper && !profile.followedDeveloperAchievement) {
       loadedId = null;
     }
-
-    if (loadedId == followDeveloperProfilePageFrameId &&
-        !profile.isDeveloper &&
-        !profile.followedDeveloperAchievement) {
-      loadedId = null;
-    }
-
-    if (loadedId != null &&
-        loadedId != developerProfilePageFrameId &&
-        loadedId != followDeveloperProfilePageFrameId) {
+    if (loadedId != null && loadedId != developerProfilePageFrameId) {
       loadedId = null;
     }
 
@@ -32443,14 +33329,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
     final isDeveloperFrame = frameId == developerProfilePageFrameId;
 
-    final isFollowDeveloperFrame = frameId == followDeveloperProfilePageFrameId;
-
     Widget? previewFrame;
-
     if (isDeveloperFrame) {
       previewFrame = const _DeveloperProfilePageFrame();
-    } else if (isFollowDeveloperFrame) {
-      previewFrame = const _Tier3ProfilePageFrame();
     }
 
     return SizedBox(
@@ -32544,16 +33425,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       ),
 
                       const SizedBox(width: 4),
-                    ] else if (isFollowDeveloperFrame) ...[
-                      const Icon(
-                        Icons.workspace_premium_rounded,
-
-                        size: 11,
-
-                        color: Color(0xFFA855F7),
-                      ),
-
-                      const SizedBox(width: 4),
                     ],
 
                     Flexible(
@@ -32567,8 +33438,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         style: TextStyle(
                           color: isDeveloperFrame
                               ? const Color(0xFFFFD166)
-                              : isFollowDeveloperFrame
-                              ? const Color(0xFFD946EF)
                               : Colors.white70,
 
                           fontSize: 10,
@@ -32593,13 +33462,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
       if (profile.isDeveloper || profile.followedDeveloperAchievement)
         _profilePageFrameOption(
-          label: 'Follow Developer',
-          frameId: followDeveloperProfilePageFrameId,
-        ),
-
-      if (profile.isDeveloper)
-        _profilePageFrameOption(
-          label: 'Developer',
+          label: 'Prestige Gold',
           frameId: developerProfilePageFrameId,
         ),
     ];
@@ -32661,8 +33524,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
 
     setState(() {
-      selectedFrameId = loadedFrameId;
-
+      if (!_displayNameFrameWasSelected) selectedFrameId = loadedFrameId;
       loadingFrame = false;
     });
   }
@@ -32986,19 +33848,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
 
     if (selectedProfilePageFrameId == developerProfilePageFrameId) {
-      if (!profile.isDeveloper) {
-        setState(() {
-          errorMessage =
-              'Developer profile frame is not available for this account.';
-        });
-
-        return;
-      }
-    } else if (selectedProfilePageFrameId ==
-        followDeveloperProfilePageFrameId) {
       if (!profile.isDeveloper && !profile.followedDeveloperAchievement) {
         setState(() {
-          errorMessage = 'Follow Developer profile frame is still locked.';
+          errorMessage = 'Prestige Gold profile frame is still locked.';
         });
 
         return;
@@ -33097,7 +33949,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     if (selectedAvatarBytes != null) {
       imageProvider = MemoryImage(selectedAvatarBytes!);
     } else if (profile.avatarUrl != null && profile.avatarUrl!.isNotEmpty) {
-      imageProvider = NetworkImage(profile.avatarUrl!);
+      imageProvider = chipluxSizedAvatar(context, profile.avatarUrl!, 110);
     }
 
     final initial = profile.displayName.isNotEmpty
@@ -33166,6 +34018,243 @@ class _EditProfilePageState extends State<EditProfilePage> {
           ),
         ],
       ),
+    );
+  }
+
+  // An achievement group has one pinnable badge: its highest unlocked tier.
+  // Match the Achievements page's pin eligibility, including admin-authored
+  // custom achievements whose unlocks are verified by Supabase.
+  List<_AchievementGroup> _unlockedPinGroups() {
+    final groups = _currentAccountAchievementGroups()
+        .where((group) => group.hasUnlockedTier)
+        .toList(growable: false);
+    groups.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+    return groups;
+  }
+
+  Future<void> _choosePinnedAchievement(
+    String? groupId,
+    BuildContext sheetContext,
+    StateSetter refreshSheet,
+  ) async {
+    if (_savingPinnedAchievement) return;
+    if (MedalPinService.instance.pinnedAchievementId == groupId) {
+      Navigator.pop(sheetContext);
+      return;
+    }
+    refreshSheet(() => _savingPinnedAchievement = true);
+    var sheetClosing = false;
+    try {
+      if (groupId == null) {
+        await MedalPinService.instance.unpin();
+      } else {
+        // Validate the unlock at selection time, not only when opening.
+        if (!_unlockedPinGroups().any((group) => group.id == groupId)) {
+          throw StateError('This achievement is not unlocked.');
+        }
+        await MedalPinService.instance.pin(groupId);
+      }
+      // The existing pin service logs write errors instead of rethrowing them.
+      // Verify that it actually applied the requested selection before closing.
+      if (MedalPinService.instance.pinnedAchievementId != groupId) {
+        throw StateError('The pin was not saved. Please try again.');
+      }
+      if (sheetContext.mounted) {
+        sheetClosing = true;
+        Navigator.pop(sheetContext);
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not update pinned achievement: $error')),
+        );
+      }
+    } finally {
+      _savingPinnedAchievement = false;
+      if (!sheetClosing && sheetContext.mounted) refreshSheet(() {});
+    }
+  }
+
+  void _showUnlockedPinsGrid() {
+    String filter = '';
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: chipluxBackground,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, refreshSheet) {
+          final query = filter.trim().toLowerCase();
+          final groups = _unlockedPinGroups().where((group) {
+            final tier = group.highestUnlockedTier;
+            return group.title.toLowerCase().contains(query) ||
+                (tier?.title.toLowerCase().contains(query) ?? false);
+          }).toList(growable: false);
+          final showNone = query.isEmpty || 'none'.contains(query) ||
+              'remove pin'.contains(query);
+          final count = groups.length + (showNone ? 1 : 0);
+          final selectedId = MedalPinService.instance.pinnedAchievementId;
+
+          return SafeArea(
+            child: SizedBox(
+              height: MediaQuery.sizeOf(sheetContext).height * 0.80,
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 16, 12, 10),
+                    child: Row(children: [
+                      const Icon(Icons.push_pin_rounded, color: chipluxGold),
+                      const SizedBox(width: 10),
+                      const Expanded(child: Text('Choose Achievement Pin',
+                          style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold))),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: _savingPinnedAchievement
+                            ? null : () => Navigator.pop(sheetContext),
+                      ),
+                    ]),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                    child: TextField(
+                      onChanged: (value) => refreshSheet(() => filter = value),
+                      decoration: InputDecoration(
+                        prefixIcon: const Icon(Icons.search_rounded),
+                        hintText: 'Search unlocked pins',
+                        filled: true,
+                        fillColor: chipluxSurface,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: count == 0
+                        ? const Center(child: Text('No matching unlocked pins.'))
+                        : LayoutBuilder(
+                            builder: (context, constraints) => GridView.builder(
+                              padding: const EdgeInsets.fromLTRB(12, 4, 12, 28),
+                              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: constraints.maxWidth < 560 ? 2 : 3,
+                                mainAxisSpacing: 10,
+                                crossAxisSpacing: 10,
+                                mainAxisExtent: 125,
+                              ),
+                              itemCount: count,
+                              itemBuilder: (context, index) {
+                                final group = showNone && index == 0
+                                    ? null : groups[index - (showNone ? 1 : 0)];
+                                return _UnlockedAchievementPinOption(
+                                  group: group,
+                                  selected: group?.id == selectedId,
+                                  busy: _savingPinnedAchievement,
+                                  onTap: () => _choosePinnedAchievement(
+                                    group?.id, sheetContext, refreshSheet,
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget buildUnlockedPinsPicker() {
+    return AnimatedBuilder(
+      animation: Listenable.merge([
+        MedalPinService.instance,
+        LibraryService.instance,
+        CriticService.instance,
+        MusicUserDataService.instance,
+        DailyLoginService.instance,
+        PublicProfileViewService.instance,
+        FollowerCountService.instance,
+        DiscoveryAchievementService.instance,
+        CustomMovieAchievementService.instance,
+      ]),
+      builder: (context, _) {
+        final groups = _unlockedPinGroups();
+        final pinnedId = MedalPinService.instance.pinnedAchievementId;
+        _AchievementGroup? selected;
+        for (final group in groups) {
+          if (group.id == pinnedId) {
+            selected = group;
+            break;
+          }
+        }
+        final tier = selected?.highestUnlockedTier;
+        final tierColors = _achievementTierColors(tier);
+        final accent = tierColors.isNotEmpty ? tierColors.first : chipluxGold;
+        final label = selected == null ? 'No pin selected' : selected.title;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const UiText('Unlocked Pins',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 5),
+            const UiText('Choose an unlocked achievement to pin beside your display name.',
+                style: TextStyle(color: Colors.white54, fontSize: 12)),
+            const SizedBox(height: 12),
+            Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(15),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(15),
+                onTap: loadingUnlockedPins ? null : _showUnlockedPinsGrid,
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(15),
+                    border: Border.all(
+                      color: selected == null
+                          ? chipluxGold.withValues(alpha: 0.28)
+                          : accent.withValues(alpha: 0.65),
+                    ),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                  child: Row(children: [
+                    IconifyAchievementIcon(
+                      iconId: tier?.iconifyId ?? selected?.iconifyId,
+                      fallback: tier?.icon ?? Icons.push_pin_outlined,
+                      color: accent,
+                      size: 26,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.w700)),
+                        const SizedBox(height: 3),
+                        Text(loadingUnlockedPins
+                            ? 'Loading unlocked pins…'
+                            : 'Browse ${groups.length} unlocked pins in a grid',
+                            style: const TextStyle(fontSize: 11, color: Colors.white54)),
+                      ],
+                    )),
+                    const Icon(Icons.grid_view_rounded, color: chipluxBrightGold),
+                  ]),
+                ),
+              ),
+            ),
+            if (!loadingUnlockedPins && groups.isEmpty)
+              const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: UiText('Earn achievements to unlock pins.',
+                    style: TextStyle(color: Colors.white38, fontSize: 11)),
+              ),
+          ],
+        );
+      },
     );
   }
 
@@ -33380,176 +34469,114 @@ class _EditProfilePageState extends State<EditProfilePage> {
     );
   }
 
-  Widget buildAchievementCosmetics() {
-    final groups = _achievementCosmeticGroups();
+  // Only build the achievement picker row that is currently visible.
+  // The old eager Column constructed all 15 horizontal reward lists on every
+  // selection and every profile service notification, hurting scroll FPS.
+  static const int _cosmeticSectionCount = 15;
 
-    final medalCollectionGroup = groups['medal_collection']!;
-
-    final displayNameColorGroup = groups['display_name_color']!;
-
+  Widget _buildAchievementCosmeticSection(
+    int index, Map<String, _AchievementGroup> groups) {
     if (loadingAchievementCosmetics) {
-      return const SizedBox(
-        height: 100,
-
-        child: Center(child: CircularProgressIndicator()),
-      );
+      return const SizedBox(height: 100,
+        child: Center(child: CircularProgressIndicator()));
     }
-
-    final runtimeGroup = groups['runtime_level']!;
-
-    final ratingsGroup = groups['ratings_level']!;
-
-    final moviesWatchedGroup = groups['movies_watched']!;
-
-    final followersGroup = groups['followers']!;
-
-    final moviesRatedGroup = groups['movies_rated']!;
-
-    final tvWatchedGroup = groups['tv_shows_completed']!;
-
-    final tvRatedGroup = groups['tv_shows_rated']!;
-
-    final episodesWatchedGroup = groups['episodes_watched']!;
-
-    final episodesRatedGroup = groups['episodes_rated']!;
-
-    final albumsListenedGroup = groups['albums_listened']!;
-    final songsListenedGroup = groups['songs_listened']!;
-    final albumsRatedGroup = groups['albums_rated']!;
-    final songsRatedGroup = groups['songs_rated']!;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-
-      children: [
-        const SizedBox(height: 8),
-
-        buildAchievementCosmeticPicker(
-          title: 'Achievement Button',
-
-          description: 'Choose the unlocked Medal Collection style used for your profile achievement button.',
-
-          group: medalCollectionGroup,
+    final groupIds = <String>[
+      'medal_collection',
+      'display_name_color',
+      'runtime_level',
+      'ratings_level',
+      'movies_watched',
+      'movies_rated',
+      'tv_shows_completed',
+      'tv_shows_rated',
+      'episodes_watched',
+      'episodes_rated',
+      'albums_listened',
+      'songs_listened',
+      'albums_rated',
+      'songs_rated',
+      'followers',
+    ];
+    final group = groups[groupIds[index]];
+    if (group == null) return const SizedBox.shrink();
+    final titles = <String>[
+      "Achievement Button",
+      "Display Name Color",
+      "Runtime Level",
+      "Ratings Level",
+      "Movies Watched",
+      "Movies Rated",
+      "TV Shows Watched",
+      "TV Shows Rated",
+      "Episodes Watched",
+      "Episodes Rated",
+      "Albums Listened",
+      "Songs Listened",
+      "Albums Rated",
+      "Songs Rated",
+      "Follower Counter",
+    ];
+    final descriptions = <String>[
+      "Choose the unlocked Medal Collection style used for your profile achievement button.",
+      "Choose a color unlocked through your Medal Collection achievements.",
+      "Choose your Runtime Level achievement style.",
+      "Choose your Ratings Level achievement style.",
+      "Choose your Movies Watched achievement style.",
+      "Choose your Movies Rated achievement style.",
+      "Choose your TV Shows Watched achievement style.",
+      "Choose your TV Shows Rated achievement style.",
+      "Choose your Episodes Watched achievement style.",
+      "Choose your Episodes Rated achievement style.",
+      "Choose the border and icon color for Albums Listened. Text stays white.",
+      "Choose the border and icon color for Songs Listened. Text stays white.",
+      "Choose the border and icon color for Albums Rated. Text stays white.",
+      "Choose the border and icon color for Songs Rated. Text stays white.",
+      "Choose the unlocked Followers style used for your follower counter border and icon.",
+    ];
+    return Padding(
+      padding: const EdgeInsets.only(top: 22),
+      child: RepaintBoundary(
+        child: buildAchievementCosmeticPicker(
+          title: titles[index],
+          description: descriptions[index],
+          group: group,
         ),
-
-        const SizedBox(height: 22),
-
-        buildAchievementCosmeticPicker(
-          title: 'Display Name Color',
-
-          description: 'Choose a color unlocked through your Medal Collection achievements.',
-
-          group: displayNameColorGroup,
-        ),
-
-        const SizedBox(height: 22),
-
-        buildAchievementCosmeticPicker(
-          title: 'Runtime Level',
-          description: 'Choose your Runtime Level achievement style.',
-          group: runtimeGroup,
-        ),
-
-        const SizedBox(height: 22),
-
-        buildAchievementCosmeticPicker(
-          title: 'Ratings Level',
-          description: 'Choose your Ratings Level achievement style.',
-          group: ratingsGroup,
-        ),
-
-        const SizedBox(height: 22),
-
-        buildAchievementCosmeticPicker(
-          title: 'Movies Watched',
-          description: 'Choose your Movies Watched achievement style.',
-          group: moviesWatchedGroup,
-        ),
-
-        const SizedBox(height: 22),
-
-        buildAchievementCosmeticPicker(
-          title: 'Movies Rated',
-          description: 'Choose your Movies Rated achievement style.',
-          group: moviesRatedGroup,
-        ),
-
-        const SizedBox(height: 22),
-
-        buildAchievementCosmeticPicker(
-          title: 'TV Shows Watched',
-          description: 'Choose your TV Shows Watched achievement style.',
-          group: tvWatchedGroup,
-        ),
-
-        const SizedBox(height: 22),
-
-        buildAchievementCosmeticPicker(
-          title: 'TV Shows Rated',
-          description: 'Choose your TV Shows Rated achievement style.',
-          group: tvRatedGroup,
-        ),
-
-        const SizedBox(height: 22),
-
-        buildAchievementCosmeticPicker(
-          title: 'Episodes Watched',
-          description: 'Choose your Episodes Watched achievement style.',
-          group: episodesWatchedGroup,
-        ),
-
-        const SizedBox(height: 22),
-
-        buildAchievementCosmeticPicker(
-          title: 'Episodes Rated',
-          description: 'Choose your Episodes Rated achievement style.',
-          group: episodesRatedGroup,
-        ),
-
-        const SizedBox(height: 22),
-
-        buildAchievementCosmeticPicker(
-          title: 'Albums Listened',
-          description: 'Choose the frame and text accent for the Albums Listened profile statistic.',
-          group: albumsListenedGroup,
-        ),
-        const SizedBox(height: 22),
-
-        buildAchievementCosmeticPicker(
-          title: 'Songs Listened',
-          description: 'Choose the frame and text accent for the Songs Listened profile statistic.',
-          group: songsListenedGroup,
-        ),
-        const SizedBox(height: 22),
-
-        buildAchievementCosmeticPicker(
-          title: 'Albums Rated',
-          description: 'Choose the frame and text accent for the Albums Rated profile statistic.',
-          group: albumsRatedGroup,
-        ),
-        const SizedBox(height: 22),
-
-        buildAchievementCosmeticPicker(
-          title: 'Songs Rated',
-          description: 'Choose the frame and text accent for the Songs Rated profile statistic.',
-          group: songsRatedGroup,
-        ),
-        const SizedBox(height: 22),
-
-        buildAchievementCosmeticPicker(
-          title: 'Follower Counter',
-          description: 'Choose the unlocked Followers style used for your follower counter border and icon.',
-          group: followersGroup,
-        ),
-      ],
+      ),
     );
   }
 
   Widget _buildCustomizationContent() {
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(20),
-      children: [
+    final cosmeticGroups = loadingAchievementCosmetics
+        ? <String, _AchievementGroup>{}
+        : _achievementCosmeticGroups();
+    // SliverList / ListView.builder only builds visible sections. The header
+    // and each horizontal reward picker are individual lazy list items.
+    return NotificationListener<UserScrollNotification>(
+      onNotification: (notification) {
+        if (notification.depth != 0) return false;
+        final scrolling = notification.direction != ScrollDirection.idle;
+        if (_customizationIsScrolling != scrolling && mounted) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && _customizationIsScrolling != scrolling) {
+              setState(() => _customizationIsScrolling = scrolling);
+            }
+          });
+        }
+        return false;
+      },
+      child: ListView.builder(
+          physics: const BouncingScrollPhysics(
+            parent: AlwaysScrollableScrollPhysics(),
+          ),
+          padding: const EdgeInsets.all(20),
+          itemCount: _cosmeticSectionCount + 2,
+          itemBuilder: (context, index) {
+            if (index == 0) {
+              return TickerMode(
+                enabled: !_customizationIsScrolling,
+                child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
         const SizedBox(height: 10),
 
         Center(
@@ -33656,6 +34683,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
         const SizedBox(height: 24),
 
+        buildUnlockedPinsPicker(),
+
+        const SizedBox(height: 24),
+
         buildFramePicker(),
 
         const SizedBox(height: 24),
@@ -33668,26 +34699,34 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
         const SizedBox(height: 30),
 
-        buildAchievementCosmetics(),
-
-        if (errorMessage != null) ...[
-          const SizedBox(height: 14),
-          UiText(
-            errorMessage!,
-            style: const TextStyle(color: Colors.redAccent),
-          ),
-        ],
-
-        const SizedBox(height: 24),
-
-        if (saving || uploadingAvatar)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 8),
-            child: Center(child: CircularProgressIndicator()),
-          ),
-
-        const SizedBox(height: 12),
-      ],
+                ],
+              ),
+              );
+            }
+            if (index <= _cosmeticSectionCount) {
+              return TickerMode(
+                enabled: !_customizationIsScrolling,
+                child: _buildAchievementCosmeticSection(index - 1, cosmeticGroups),
+              );
+            }
+            return Column(
+              children: [
+                if (errorMessage != null) ...[
+                  const SizedBox(height: 14),
+                  UiText(errorMessage!,
+                    style: const TextStyle(color: Colors.redAccent)),
+                ],
+                const SizedBox(height: 24),
+                if (saving || uploadingAvatar || _displayNameFrameSaving)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                const SizedBox(height: 12),
+              ],
+            );
+          },
+      ),
     );
   }
 
@@ -33712,6 +34751,84 @@ class _EditProfilePageState extends State<EditProfilePage> {
     displayNameController.dispose();
 
     super.dispose();
+  }
+}
+
+// One tappable, non-animated tile in the lazy Unlocked Pins grid.
+// Uses the same group icon and highest unlocked achievement tier as the
+// actual pinned badge shown on user/public profiles.
+class _UnlockedAchievementPinOption extends StatelessWidget {
+  final _AchievementGroup? group;
+  final bool selected;
+  final bool busy;
+  final VoidCallback onTap;
+
+  const _UnlockedAchievementPinOption({
+    required this.group,
+    required this.selected,
+    required this.busy,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final tier = group?.highestUnlockedTier;
+    final colors = _achievementTierColors(tier);
+    final accent = group == null
+        ? chipluxGold
+        : colors.isNotEmpty ? colors.first : chipluxGold;
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: busy ? null : onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 9),
+          decoration: BoxDecoration(
+            color: chipluxSurface.withValues(alpha: 0.72),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: selected ? chipluxGold : accent.withValues(alpha: 0.35),
+              width: selected ? 2 : 1,
+            ),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconifyAchievementIcon(
+                iconId: tier?.iconifyId ?? group?.iconifyId,
+                fallback: tier?.icon ?? Icons.push_pin_outlined,
+                size: 30,
+                color: accent,
+              ),
+              const SizedBox(height: 6),
+              Text(group?.title ?? 'None',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
+                    color: selected ? chipluxGold : Colors.white),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 3),
+              Text(group == null
+                  ? 'Remove pin'
+                  : tier?.title ?? '',
+                style: const TextStyle(fontSize: 10, color: Colors.white54),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              if (selected) ...[
+                const SizedBox(height: 4),
+                const Icon(Icons.check_circle_rounded,
+                    color: chipluxGold, size: 13),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -33841,9 +34958,8 @@ class _AchievementCosmeticOption extends StatelessWidget {
 
     final accent = colors.first;
     final bool isTextColor = groupId == 'display_name_color';
-    final bool usesGradientBorder = groupId == 'medal_collection' ||
-        groupId == 'followers' || groupId == 'runtime_level' ||
-        groupId == 'ratings_level';
+    final bool usesGradientBorder = achievement != null &&
+        colors.any((color) => color != colors.first);
     final bool isPrestigeBorder = _achievementHasAnimatedPrestigeAura(achievement) && !isTextColor;
 
     // Exact reward palette + identical animated outline from the live profile.
@@ -33863,7 +34979,8 @@ class _AchievementCosmeticOption extends StatelessWidget {
             ? null
             : Border.all(color: accent.withValues(alpha: 0.58), width: 1.4),
         boxShadow: [BoxShadow(
-          color: accent.withValues(alpha: 0.09), blurRadius: 7,
+          color: accent.withValues(alpha: achievement?.visualTier == 10 ? 0.33 : 0.09),
+          blurRadius: achievement?.visualTier == 10 ? 13 : 7,
         )],
       ),
       child: DecoratedBox(
@@ -33873,11 +34990,17 @@ class _AchievementCosmeticOption extends StatelessWidget {
         ),
         child: Center(
           child: isTextColor
-              ? Text('Aa', style: TextStyle(
-                  color: achievement == null ? Colors.white : accent,
-                  fontWeight: FontWeight.bold, fontSize: 19,
-                ))
-              : Icon(icon, color: accent, size: 23),
+              ? _statRewardForeground(
+                  colors: colors,
+                  builder: (foreground) => Text('Aa',
+                    style: TextStyle(color: foreground,
+                      fontWeight: FontWeight.bold, fontSize: 19)),
+                )
+              : _statRewardForeground(
+                  colors: colors,
+                  builder: (foreground) => Icon(icon,
+                    color: foreground, size: 23),
+                ),
         ),
       ),
     );
@@ -33917,7 +35040,7 @@ class _AchievementCosmeticOption extends StatelessWidget {
 
               children: [
                 Opacity(
-                  opacity: unlocked ? 1 : 0.30,
+                  opacity: 1.0, // Preview the true reward colors while locked.
 
                   child: _LegendaryTierAura(
                     enabled: isPrestigeBorder,
@@ -33995,6 +35118,8 @@ class _EpisodeRatingCardState extends State<_EpisodeRatingCard> {
   final critic = CriticService.instance;
 
   int? rating;
+  int? _savedEpisodeRating;
+  bool _ratingSaveInFlight = false;
   int _episodeRatingPulse = 0;
   bool loading = true;
 
@@ -34014,6 +35139,7 @@ class _EpisodeRatingCardState extends State<_EpisodeRatingCard> {
 
     if (cached != null) {
       rating = cached;
+      _savedEpisodeRating = cached;
       loading = false;
 
       return;
@@ -34030,6 +35156,7 @@ class _EpisodeRatingCardState extends State<_EpisodeRatingCard> {
 
       setState(() {
         rating = result;
+        _savedEpisodeRating = result;
         loading = false;
       });
     } catch (e) {
@@ -34062,6 +35189,7 @@ class _EpisodeRatingCardState extends State<_EpisodeRatingCard> {
   }
 
   Future<void> _save() async {
+    if (_ratingSaveInFlight) return;
     final currentRating = rating;
 
     if (currentRating == null) {
@@ -34073,9 +35201,12 @@ class _EpisodeRatingCardState extends State<_EpisodeRatingCard> {
     final show = LibraryService.instance.getItem(widget.showId, 'tv');
 
     final String showTitle = show?.title ?? 'Unknown TV Show';
+    _ratingSaveInFlight = true;
+    bool persisted = false;
 
     try {
       final int previousEpisodeRatingCount = critic.episodeRatingCount;
+      final int previousTvRatingCount = critic.tvRatingCount;
 
       await critic.saveEpisodeRating(
         showId: widget.showId,
@@ -34084,6 +35215,8 @@ class _EpisodeRatingCardState extends State<_EpisodeRatingCard> {
         rating: currentRating,
       );
 
+      persisted = true;
+      _savedEpisodeRating = currentRating;
       _refreshChipluxAverageRatings();
 
       final int currentEpisodeRatingCount = critic.episodeRatingCount;
@@ -34094,6 +35227,31 @@ class _EpisodeRatingCardState extends State<_EpisodeRatingCard> {
           previousCount: previousEpisodeRatingCount,
           currentCount: currentEpisodeRatingCount,
         );
+      }
+
+      if (mounted && critic.tvRatingCount > previousTvRatingCount) {
+        await _checkTitleRatedAchievementUnlock(context, mediaType: 'tv',
+            previousCount: previousTvRatingCount,
+            currentCount: critic.tvRatingCount);
+      }
+
+      // A rated whole-show activity is also automatic. Update it when the
+      // aggregate changes; individual episode activities remain independent.
+      final derivedShowRating = critic.tvShowAverageStars(widget.showId);
+      if (derivedShowRating != null) {
+        unawaited(() async {
+          try {
+            await CommunityService.instance.deleteActivity(
+              activityType: 'rated', mediaType: 'tv',
+              tmdbId: widget.showId, titleLevelOnly: true);
+            await CommunityService.instance.tryCreateActivity(
+              activityType: 'rated', mediaType: 'tv',
+              tmdbId: widget.showId, mediaTitle: showTitle,
+              ratingStars: derivedShowRating.round());
+          } catch (e) {
+            debugPrint('Could not update automatic TV rating activity: $e');
+          }
+        }());
       }
 
       // Keep only the newest rating
@@ -34124,8 +35282,15 @@ class _EpisodeRatingCardState extends State<_EpisodeRatingCard> {
         return;
       }
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: UiText('Could not save rating: $e')));
+      if (!persisted) {
+        setState(() => rating = _savedEpisodeRating);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: UiText('Rating was not saved. Please try again.')),
+        );
+      }
+      debugPrint('Episode rating save or post-save update failed: $e');
+    } finally {
+      _ratingSaveInFlight = false;
     }
   }
 
@@ -34149,6 +35314,14 @@ class _EpisodeRatingCardState extends State<_EpisodeRatingCard> {
       );
 
       _refreshChipluxAverageRatings();
+
+      if (critic.tvShowAverageStars(widget.showId) == null) {
+        unawaited(CommunityService.instance.deleteActivity(
+          activityType: 'rated', mediaType: 'tv', tmdbId: widget.showId,
+          titleLevelOnly: true).catchError((Object e) {
+          debugPrint('Could not remove old whole-show rating activity: $e');
+        }));
+      }
 
       try {
         await CommunityService.instance.deleteActivity(
@@ -34314,7 +35487,7 @@ class _EpisodeRatingCardState extends State<_EpisodeRatingCard> {
           if (rating != null)
             Center(
               child: UiText(
-                '${(rating! / 2).round()} / 5',
+                '${(rating! / 2).toStringAsFixed(1)} / 5',
                 style: const TextStyle(
                   color: Color(0xFFFFC857),
                   fontWeight: FontWeight.bold,
@@ -34404,6 +35577,58 @@ Future<_ChipluxAverageRatingData> _loadChipluxAverageRating({
         ? rawCount.toInt()
         : int.tryParse(rawCount?.toString() ?? '') ?? 0,
   );
+}
+
+// Read-only auto rating: use the same full-width five-star footprint as
+// manual movie/episode ratings, including partial stars for real averages.
+// Only the child ratings are editable; this never writes a parent score.
+class _AutomaticAverageRatingStars extends StatelessWidget {
+  final double average;
+
+  const _AutomaticAverageRatingStars({required this.average});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: Row(
+        children: List.generate(5, (index) {
+          final fill = (average - index).clamp(0.0, 1.0).toDouble();
+          return Expanded(
+            child: Center(
+              child: SizedBox(
+                height: 38,
+                width: 38,
+                child: Stack(
+                  alignment: Alignment.centerLeft,
+                  children: [
+                    const Icon(
+                      Icons.star_border_rounded,
+                      size: 38,
+                      color: chipluxGold,
+                    ),
+                    if (fill > 0)
+                      ClipRect(
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          widthFactor: fill,
+                          child: const Icon(
+                            Icons.star_rounded,
+                            size: 38,
+                            color: chipluxGold,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
 }
 
 class _ChipluxAverageRating extends StatefulWidget {
@@ -34845,6 +36070,20 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
 
         mediaUserDataLoading = false;
       });
+      if (widget.mediaType == 'tv') {
+        unawaited(() async {
+          try {
+            final critic = CriticService.instance;
+            await critic.refresh();
+            await critic.reconcileTvRating(widget.id);
+            await critic.refresh();
+            final current = await mediaUserDataService.load(widget.id, 'tv');
+            if (mounted) setState(() => mediaUserData = current);
+          } catch (e) {
+            debugPrint('Automatic TV rating refresh failed: $e');
+          }
+        }());
+      }
     } catch (e) {
       if (!mounted) return;
 
@@ -35134,6 +36373,8 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
     }
 
     Future<void> saveRatingNow() async {
+      final previousSaved = mediaUserDataService.getCached(widget.id, widget.mediaType);
+      bool persisted = false;
       final rating = mediaUserData.rating;
 
       if (rating == null) {
@@ -35163,6 +36404,7 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
           rating: rating,
           review: mediaUserData.review,
         );
+        persisted = true;
 
         _refreshChipluxAverageRatings();
 
@@ -35200,7 +36442,19 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
           debugPrint('Could not update rating activity: $e');
         }
       } catch (e) {
-        debugPrint('Could not save rating: $e');
+        if (mounted && !persisted) {
+          setState(() {
+            mediaUserData = MediaUserData(
+              isFavorite: mediaUserData.isFavorite,
+              rating: previousSaved.rating,
+              review: mediaUserData.review,
+            );
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: UiText('Rating was not saved. Please try again.')),
+          );
+        }
+        debugPrint('Title rating save or post-save update failed: $e');
       }
     }
 
@@ -35259,6 +36513,38 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
 
           const SizedBox(height: 18),
 
+          if (widget.mediaType == 'tv')
+            AnimatedBuilder(
+              animation: CriticService.instance,
+              builder: (context, _) {
+                final critic = CriticService.instance;
+                final average = critic.tvShowAverageStars(widget.id);
+                final total = library.getItem(widget.id, 'tv')?.totalEpisodes ??
+                    ((details?['number_of_episodes'] as num?)?.toInt() ?? 0);
+                final rated = critic.ratedEpisodeCountForShow(widget.id);
+                if (average == null) {
+                  return UiText(
+                    'Automatic show rating unlocks after all regular episodes are rated '
+                    '($rated/$total).',
+                    style: const TextStyle(color: Colors.white54, fontSize: 12),
+                  );
+                }
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const UiText('Automatic Show Rating',
+                      style: TextStyle(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                    _AutomaticAverageRatingStars(average: average),
+                    const SizedBox(height: 5),
+                    UiText('${average.toStringAsFixed(1)} / 5 · $rated/$total episodes',
+                      style: const TextStyle(color: chipluxGold,
+                        fontWeight: FontWeight.bold)),
+                  ],
+                );
+              },
+            )
+          else ...[
           const UiText(
             'Your Rating',
             style: TextStyle(fontWeight: FontWeight.w600),
@@ -35376,13 +36662,14 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
 
             Center(
               child: UiText(
-                '${(mediaUserData.rating! / 2).round()} / 5',
+                '${(mediaUserData.rating! / 2).toStringAsFixed(1)} / 5',
                 style: const TextStyle(
                   color: chipluxGold,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ),
+          ],
           ],
         ],
       ),
@@ -35562,7 +36849,7 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
                   ? Stack(
                       fit: StackFit.expand,
                       children: [
-                        Image.network(
+                        ChipluxPublicArtwork(
                           backdropUrl,
                           fit: BoxFit.cover,
 
@@ -35606,7 +36893,7 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
 
                             children: [
                               if (posterUrl != null)
-                                Image.network(
+                                ChipluxPublicArtwork(
                                   posterUrl,
 
                                   fit: BoxFit.cover,
@@ -36427,7 +37714,7 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
                               leading: ClipRRect(
                                 borderRadius: BorderRadius.circular(8),
                                 child: seasonPosterUrl != null
-                                    ? Image.network(
+                                    ? ChipluxPublicArtwork(
                                         seasonPosterUrl,
                                         width: 44,
                                         height: 66,
@@ -36747,7 +38034,7 @@ class _TopCastCard extends StatelessWidget {
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(14),
                   child: profileUrl != null
-                      ? Image.network(
+                      ? ChipluxPublicArtwork(
                           profileUrl,
                           width: 115,
                           height: 150,
@@ -36936,7 +38223,7 @@ class FullCastPage extends StatelessWidget {
                       ClipRRect(
                         borderRadius: BorderRadius.circular(12),
                         child: profileUrl != null
-                            ? Image.network(
+                            ? ChipluxPublicArtwork(
                                 profileUrl,
                                 width: 58,
                                 height: 76,
@@ -37098,7 +38385,7 @@ class _CreatorChip extends StatelessWidget {
                   ),
                   child: ClipOval(
                     child: profileUrl != null
-                        ? Image.network(
+                        ? ChipluxPublicArtwork(
                             profileUrl,
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) {
@@ -37760,8 +39047,6 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
   String? error;
   String? trackingError;
 
-  int _albumRatingPulse = 0;
-  int? _albumDraftRatingStars;
   final ScrollController _trackScrollController = ScrollController();
   bool _didScrollToInitialTrack = false;
 
@@ -37804,7 +39089,14 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
 
     String? loadedTrackingError;
     try {
+      final beforeAlbumRatingCount = CriticService.instance.albumRatingCount;
       await userData.loadAlbum(widget.album, loaded.tracks);
+      await CriticService.instance.refresh();
+      if (mounted && CriticService.instance.albumRatingCount > beforeAlbumRatingCount) {
+        await _checkAlbumsRatedAchievementUnlock(context,
+            previousCount: beforeAlbumRatingCount,
+            currentCount: CriticService.instance.albumRatingCount);
+      }
     } catch (e) {
       debugPrint('Could not load music tracking: $e');
       loadedTrackingError = 'Could not load music tracking.';
@@ -37935,28 +39227,6 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
     );
   }
 
-  void _setAlbumRatingFromPosition(double x, double width) {
-    if (width <= 0) {
-      return;
-    }
-
-    int stars = ((x / width) * 5).ceil();
-    stars = stars.clamp(1, 5).toInt();
-
-    final currentStars =
-        _albumDraftRatingStars ??
-        userData.albumState(widget.album.id).ratingStars ??
-        0;
-
-    setState(() {
-      if (stars != currentStars) {
-        _albumRatingPulse++;
-      }
-
-      _albumDraftRatingStars = stars;
-    });
-  }
-
   Future<void> _deleteMusicActivity({
     required String activityType,
     required String mediaType,
@@ -38054,106 +39324,51 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
     );
   }
 
-  Future<void> _saveAlbumRating() async {
-    final loaded = details;
-    final stars = _albumDraftRatingStars;
+  // Rating/favoriting an unlistened song automatically counts as listening.
+  // Mirror the same achievement and Friends activity updates as the explicit
+  // Listened action, without announcing the same song twice.
+  Future<void> _recordAutoListenedTrack({
+    required MusicTrack track,
+    required bool previouslyListened,
+    required MusicUserDataState previousAlbum,
+    required int previousSongCount,
+    required int previousAlbumCount,
+  }) async {
+    if (previouslyListened || !userData.trackState(track.id).isListened) return;
 
-    if (loaded == null || stars == null) {
-      return;
+    if (previousAlbum.libraryStatus != null) {
+      await _deleteAlbumStatusActivities();
     }
+    await _replaceMusicActivity(
+      activityType: 'episode_watched',
+      mediaType: 'music_track',
+      externalId: track.id,
+      parentExternalId: widget.album.id,
+      parentTitle: widget.album.title,
+      mediaTitle: track.title,
+    );
 
-    if (!userData.albumState(widget.album.id).isListened) {
-      if (mounted) {
-        setState(() {
-          _albumDraftRatingStars = null;
-        });
-      }
-      return;
-    }
-
-    final critic = CriticService.instance;
-    final previousCount = critic.albumRatingCount;
-
-    try {
-      await userData.setAlbumRating(
-        album: widget.album,
-        tracks: loaded.tracks,
-        stars: stars,
-      );
-
-      await critic.refresh();
-
-      if (mounted) {
-        await _checkAlbumsRatedAchievementUnlock(
-          context,
-          previousCount: previousCount,
-          currentCount: critic.albumRatingCount,
-        );
-      }
-
+    final afterAlbum = userData.albumState(widget.album.id);
+    if (!previousAlbum.isListened && afterAlbum.isListened) {
       await _replaceMusicActivity(
-        activityType: 'rated',
+        activityType: 'movie_watched',
         mediaType: 'music_album',
         externalId: widget.album.id,
         mediaTitle: widget.album.title,
-        ratingStars: stars,
-      );
-
-      if (mounted) {
-        setState(() {
-          _albumDraftRatingStars = null;
-        });
-      }
-    } catch (e) {
-      debugPrint('Could not save album rating: $e');
-
-      if (!mounted) {
-        return;
-      }
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: UiText('Could not save rating.')));
-    }
-  }
-
-  Future<void> _removeAlbumRating() async {
-    final loaded = details;
-    if (loaded == null) {
-      return;
-    }
-
-    try {
-      await userData.setAlbumRating(
-        album: widget.album,
-        tracks: loaded.tracks,
-        stars: null,
-      );
-
-      await CriticService.instance.refresh();
-
-      await _deleteMusicActivity(
-        activityType: 'rated',
-        mediaType: 'music_album',
-        externalId: widget.album.id,
-      );
-
-      if (mounted) {
-        setState(() {
-          _albumDraftRatingStars = null;
-        });
-      }
-    } catch (e) {
-      debugPrint('Could not remove album rating: $e');
-
-      if (!mounted) {
-        return;
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: UiText('Could not remove rating.')),
       );
     }
+    if (!mounted) return;
+    await _checkSongsListenedAchievementUnlock(
+      context,
+      previousCount: previousSongCount,
+      currentCount: userData.listenedTrackCount,
+    );
+    if (!mounted) return;
+    await _checkAlbumsListenedAchievementUnlock(
+      context,
+      previousCount: previousAlbumCount,
+      currentCount: userData.listenedAlbumCount,
+    );
   }
 
   Future<void> _rateTrack(MusicTrack track) async {
@@ -38164,22 +39379,40 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
       return;
     }
 
+    final loaded = details;
+    if (loaded == null) return;
+    final beforeTrack = userData.trackState(track.id);
+    final beforeAlbum = userData.albumState(widget.album.id);
+    final previousSongCount = userData.listenedTrackCount;
+    final previousAlbumCount = userData.listenedAlbumCount;
     final critic = CriticService.instance;
     final previousCount = critic.songRatingCount;
+    final previousAlbumRatedCount = critic.albumRatingCount;
 
     final success = await _runTrackingAction(() {
       return userData.setTrackRating(
         album: widget.album,
+        allTracks: loaded.tracks,
         track: track,
         stars: selected == 0 ? null : selected,
       );
     });
 
-    if (!success) {
-      return;
-    }
+    if (!success) return;
 
     await critic.refresh();
+    if (mounted && critic.albumRatingCount > previousAlbumRatedCount) {
+      await _checkAlbumsRatedAchievementUnlock(context,
+        previousCount: previousAlbumRatedCount,
+        currentCount: critic.albumRatingCount);
+    }
+    await _recordAutoListenedTrack(
+      track: track,
+      previouslyListened: beforeTrack.isListened,
+      previousAlbum: beforeAlbum,
+      previousSongCount: previousSongCount,
+      previousAlbumCount: previousAlbumCount,
+    );
 
     if (mounted) {
       await _checkSongsRatedAchievementUnlock(
@@ -38187,6 +39420,17 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
         previousCount: previousCount,
         currentCount: critic.songRatingCount,
       );
+    }
+    // The parent album rating is derived, never user-editable. Keep the
+    // existing community rating activity in sync with that derived value.
+    final albumAverage = userData.albumAverageStars(loaded.tracks);
+    if (albumAverage == null) {
+      await _deleteMusicActivity(activityType: 'rated',
+          mediaType: 'music_album', externalId: widget.album.id);
+    } else {
+      await _replaceMusicActivity(activityType: 'rated',
+          mediaType: 'music_album', externalId: widget.album.id,
+          mediaTitle: widget.album.title, ratingStars: albumAverage.round());
     }
 
     if (selected == 0) {
@@ -38356,9 +39600,6 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
       return;
     }
 
-    setState(() {
-      _albumDraftRatingStars = null;
-    });
   }
 
   Future<void> _toggleTrackListened(
@@ -38454,9 +39695,6 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
       return;
     }
 
-    setState(() {
-      _albumDraftRatingStars = null;
-    });
   }
 
   Future<void> _toggleAlbumFavorite(List<MusicTrack> tracks) async {
@@ -38488,16 +39726,31 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
   }
 
   Future<void> _toggleTrackFavorite(MusicTrack track) async {
+    final loaded = details;
+    if (loaded == null) return;
     final before = userData.trackState(track.id);
+    final beforeAlbum = userData.albumState(widget.album.id);
+    final previousSongCount = userData.listenedTrackCount;
+    final previousAlbumCount = userData.listenedAlbumCount;
     final nextFavorite = !before.isFavorite;
 
     final success = await _runTrackingAction(() {
-      return userData.toggleTrackFavorite(album: widget.album, track: track);
+      return userData.toggleTrackFavorite(
+        album: widget.album,
+        allTracks: loaded.tracks,
+        track: track,
+      );
     });
 
-    if (!success) {
-      return;
-    }
+    if (!success) return;
+
+    await _recordAutoListenedTrack(
+      track: track,
+      previouslyListened: before.isListened,
+      previousAlbum: beforeAlbum,
+      previousSongCount: previousSongCount,
+      previousAlbumCount: previousAlbumCount,
+    );
 
     if (nextFavorite) {
       await _replaceMusicActivity(
@@ -38619,12 +39872,11 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
                 width: 34,
                 height: 34,
                 decoration: BoxDecoration(
+                  color: Colors.transparent,
                   borderRadius: BorderRadius.circular(10),
-                  gradient: const LinearGradient(
-                    colors: [chipluxGold, chipluxBrightGold, chipluxAmber],
-                  ),
+                  border: Border.all(color: chipluxGold, width: 1.3),
                 ),
-                child: Icon(icon, size: 19, color: Colors.white),
+                child: Icon(icon, size: 19, color: chipluxGold),
               ),
               const SizedBox(width: 10),
               ShaderMask(
@@ -38665,13 +39917,13 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
                     background: Stack(
                       fit: StackFit.expand,
                       children: [
-                        Image.network(
+                        ChipluxPublicArtwork(
                           widget.album.coverUrl.replaceAll(
                             'front-250',
                             'front-1200',
                           ),
                           fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => Container(
+                          errorBuilder: (_, error, stackTrace) => Container(
                             color: chipluxSurface,
                             child: const Icon(
                               Icons.album_rounded,
@@ -38714,7 +39966,7 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
                             children: [
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(14),
-                                child: Image.network(
+                                child: ChipluxPublicArtwork(
                                   widget.album.coverUrl,
                                   width: 88,
                                   height: 88,
@@ -38973,131 +40225,32 @@ class _MusicAlbumPageState extends State<MusicAlbumPage> {
                                   ),
                                 ),
                                 const SizedBox(height: 18),
-                                const UiText(
-                                  'Your Rating',
-                                  style: TextStyle(fontWeight: FontWeight.w700),
-                                ),
-                                if (!albumState.isListened) ...[
-                                  const SizedBox(height: 5),
-                                  const UiText(
-                                    'Listen to the full album to rate it.',
-                                    style: TextStyle(
-                                      color: Colors.white38,
-                                      fontSize: 11,
-                                    ),
-                                  ),
-                                ],
-                                const SizedBox(height: 9),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: LayoutBuilder(
-                                        builder: (context, constraints) {
-                                          final currentStars =
-                                              _albumDraftRatingStars ??
-                                              albumState.ratingStars ??
-                                              0;
-                                          final canRate =
-                                              trackingEnabled &&
-                                              albumState.isListened;
-
-                                          return GestureDetector(
-                                            behavior: HitTestBehavior.opaque,
-                                            onTapDown: canRate
-                                                ? (details) {
-                                                    _setAlbumRatingFromPosition(
-                                                      details.localPosition.dx,
-                                                      constraints.maxWidth,
-                                                    );
-                                                  }
-                                                : null,
-                                            onTapUp: canRate
-                                                ? (_) {
-                                                    unawaited(
-                                                      _saveAlbumRating(),
-                                                    );
-                                                  }
-                                                : null,
-                                            onHorizontalDragStart: canRate
-                                                ? (details) {
-                                                    _setAlbumRatingFromPosition(
-                                                      details.localPosition.dx,
-                                                      constraints.maxWidth,
-                                                    );
-                                                  }
-                                                : null,
-                                            onHorizontalDragUpdate: canRate
-                                                ? (details) {
-                                                    _setAlbumRatingFromPosition(
-                                                      details.localPosition.dx,
-                                                      constraints.maxWidth,
-                                                    );
-                                                  }
-                                                : null,
-                                            onHorizontalDragEnd: canRate
-                                                ? (_) {
-                                                    unawaited(
-                                                      _saveAlbumRating(),
-                                                    );
-                                                  }
-                                                : null,
-                                            child: SizedBox(
-                                              height: 52,
-                                              child: Row(
-                                                children: List.generate(5, (
-                                                  index,
-                                                ) {
-                                                  final starNumber = index + 1;
-                                                  return Expanded(
-                                                    child: Center(
-                                                      child: _RatingEffectStar(
-                                                        filled:
-                                                            currentStars >=
-                                                            starNumber,
-                                                        pulseToken:
-                                                            _albumRatingPulse,
-                                                        size: 38,
-                                                        enabled: canRate,
-                                                      ),
-                                                    ),
-                                                  );
-                                                }),
-                                              ),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                    if (albumState.ratingStars != null) ...[
-                                      const SizedBox(width: 4),
-                                      IconButton(
-                                        tooltip: trUi(context, 'Remove rating'),
-                                        onPressed: albumState.isListened
-                                            ? () {
-                                                unawaited(_removeAlbumRating());
-                                              }
-                                            : null,
-                                        icon: const Icon(
-                                          Icons.delete_outline_rounded,
-                                          color: Colors.redAccent,
-                                          size: 23,
-                                        ),
-                                      ),
+                                Builder(builder: (context) {
+                                  final average = userData.albumAverageStars(tracks);
+                                  final ratedTracks = tracks.where((track) =>
+                                    userData.trackState(track.id).rating != null).length;
+                                  if (average == null || !trackingEnabled) {
+                                    return UiText(
+                                      'Automatic album rating unlocks when all songs are rated '
+                                      '($ratedTracks/${tracks.length}).',
+                                      style: const TextStyle(color: Colors.white54, fontSize: 12),
+                                    );
+                                  }
+                                  return Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const UiText('Automatic Album Rating',
+                                        style: TextStyle(fontWeight: FontWeight.w700)),
+                                      const SizedBox(height: 8),
+                                      _AutomaticAverageRatingStars(average: average),
+                                      const SizedBox(height: 5),
+                                      UiText('${average.toStringAsFixed(1)} / 5 · '
+                                        '$ratedTracks/${tracks.length} songs',
+                                        style: const TextStyle(color: chipluxGold,
+                                          fontWeight: FontWeight.bold)),
                                     ],
-                                  ],
-                                ),
-                                if ((_albumDraftRatingStars ??
-                                        albumState.ratingStars) !=
-                                    null)
-                                  Center(
-                                    child: UiText(
-                                      '${_albumDraftRatingStars ?? albumState.ratingStars} / 5',
-                                      style: const TextStyle(
-                                        color: Color(0xFFFFC857),
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
+                                  );
+                                }),
                               ],
                             ),
                           ),
@@ -39460,7 +40613,7 @@ class _PersonProjectsPageState extends State<PersonProjectsPage> {
                 children: [
                   ClipOval(
                     child: profileUrl != null
-                        ? Image.network(
+                        ? ChipluxPublicArtwork(
                             profileUrl,
                             width: 58,
                             height: 58,
@@ -39620,7 +40773,7 @@ class _PersonProjectCard extends StatelessWidget {
               ClipRRect(
                 borderRadius: BorderRadius.circular(10),
                 child: posterUrl != null
-                    ? Image.network(
+                    ? ChipluxPublicArtwork(
                         posterUrl,
                         width: 56,
                         height: 84,
@@ -39833,7 +40986,7 @@ class _EpisodeTile extends StatelessWidget {
                       borderRadius: BorderRadius.circular(10),
 
                       child: stillUrl != null
-                          ? Image.network(
+                          ? ChipluxPublicArtwork(
                               stillUrl,
                               width: 88,
                               height: 58,
@@ -40620,7 +41773,7 @@ class EpisodeInfoPage extends StatelessWidget {
                 child: AspectRatio(
                   aspectRatio: 16 / 9,
                   child: stillUrl != null
-                      ? Image.network(
+                      ? ChipluxPublicArtwork(
                           stillUrl,
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) {

@@ -58,6 +58,9 @@ dependencies:
   path_provider: ^2.1.6
   share_plus: ^13.3.1
   url_launcher: ^6.3.3
+  flutter_svg: ^2.3.0
+  cached_network_image: ^3.4.1
+  flutter_cache_manager: ^3.4.5
 
 dev_dependencies:
   flutter_test:
@@ -81,7 +84,7 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/app_icons/
+    - assets/app_icons/chiplux_rating.png
 
 flutter_launcher_icons:
   android: true

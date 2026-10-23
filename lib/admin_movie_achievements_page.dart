@@ -4,6 +4,8 @@ import 'theme/chiplux_palette.dart';
 import 'services/custom_movie_achievement_service.dart';
 import 'services/profile_service.dart';
 import 'services/tmdb_service.dart';
+import 'widgets/iconify_achievement_icon.dart';
+import 'widgets/chiplux_public_artwork.dart';
 
 const _bg = chipluxBackground;
 const _surface = chipluxSurface;
@@ -170,7 +172,17 @@ class _AdminMovieAchievementsPageState extends State<AdminMovieAchievementsPage>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(achievement.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                        Row(children: [
+                          IconifyAchievementIcon(
+                            iconId: achievement.iconifyId,
+                            fallback: Icons.workspace_premium_outlined,
+                            color: _cyan,
+                            size: 27,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(child: Text(achievement.name,
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18))),
+                        ]),
                         const SizedBox(height: 5),
                         Text(achievement.description, style: const TextStyle(color: Colors.white70)),
                         const SizedBox(height: 5),
@@ -237,6 +249,15 @@ class _MovieAchievementEditorPageState extends State<_MovieAchievementEditorPage
   bool _searching = false;
   bool _saving = false;
   String? _error;
+  String? _selectedIconifyId;
+
+  Future<void> _pickIcon() async {
+    final result = await showAchievementIconPicker(
+      context, selectedIcon: _selectedIconifyId,
+    );
+    if (!mounted || result == null) return;
+    setState(() => _selectedIconifyId = result.isEmpty ? null : result);
+  }
 
   @override
   void initState() {
@@ -246,6 +267,7 @@ class _MovieAchievementEditorPageState extends State<_MovieAchievementEditorPage
       _name.text = original.name;
       _description.text = original.description;
       _reward.text = original.rewardTitle;
+      _selectedIconifyId = original.iconifyId;
       for (final id in original.movieIds) {
         _required[id] = original.movieTitles[id] ?? 'TMDB #$id';
       }
@@ -315,12 +337,14 @@ class _MovieAchievementEditorPageState extends State<_MovieAchievementEditorPage
         await CustomMovieAchievementService.instance.create(
           name: _name.text, description: _description.text,
           rewardTitle: _reward.text, requiredMovies: _required,
+          iconifyId: _selectedIconifyId,
         );
       } else {
         await CustomMovieAchievementService.instance.updateAchievement(
           achievement: original,
           name: _name.text, description: _description.text,
           rewardTitle: _reward.text, requiredMovies: _required,
+          iconifyId: _selectedIconifyId,
         );
       }
       if (mounted) Navigator.pop(context, true);
@@ -364,7 +388,46 @@ class _MovieAchievementEditorPageState extends State<_MovieAchievementEditorPage
             decoration: const InputDecoration(labelText: 'Profile Title reward',
               hintText: 'Your Friendly Neighbourhood', border: OutlineInputBorder()),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 14),
+          const Text('Achievement icon', style: TextStyle(
+            fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: _surface,
+              border: Border.all(color: _cyan.withValues(alpha: .7)),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(children: [
+              IconifyAchievementIcon(
+                iconId: _selectedIconifyId,
+                fallback: Icons.workspace_premium_outlined,
+                color: _cyan, size: 36,
+              ),
+              const SizedBox(width: 12),
+              Expanded(child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(_selectedIconifyId ?? 'Default achievement icon',
+                    maxLines: 2, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white,
+                        fontWeight: FontWeight.w700)),
+                  const Text('Shown on achievement medals and pinned badges',
+                    style: TextStyle(fontSize: 11, color: Colors.white60)),
+                ],
+              )),
+              const SizedBox(width: 8),
+              OutlinedButton(
+                onPressed: _saving ? null : _pickIcon,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: _cyan,
+                  side: const BorderSide(color: _cyan)),
+                child: const Text('Browse'),
+              ),
+            ]),
+          ),
+          const SizedBox(height: 18),
           const Text('Required movies', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           const Text('Search TMDB and select movies. Every selected movie becomes required immediately. A movie counts when marked Watched / Completed in the Library.',
@@ -402,7 +465,7 @@ class _MovieAchievementEditorPageState extends State<_MovieAchievementEditorPage
                   return ListTile(
                     leading: poster.isEmpty
                         ? const Icon(Icons.movie_outlined)
-                        : Image.network('https://image.tmdb.org/t/p/w92$poster',
+                        : ChipluxPublicArtwork('https://image.tmdb.org/t/p/w92$poster',
                             width: 36, height: 54, fit: BoxFit.cover,
                             errorBuilder: (_, _, _) => const Icon(Icons.movie_outlined)),
                     title: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis),

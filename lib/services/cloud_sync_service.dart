@@ -165,6 +165,131 @@ class CloudSyncService {
   }
 
   // =====================================================
+  // INCREMENTAL LIBRARY / EPISODE WRITES
+  // =====================================================
+
+  // These methods never list the whole server collection or delete records
+  // other than the explicit keys supplied by LibraryService's per-user diff.
+  // The caller retries the same idempotent operations after a partial failure.
+  // RLS still protects each row; an account switch fails closed.
+  void _assertAccount(String expectedUserId) {
+    if (user?.id != expectedUserId) {
+      throw StateError('Account changed during Library synchronization.');
+    }
+  }
+
+  Future<void> uploadLibraryChanges({
+    required String userId,
+    required List<Map<String, dynamic>> upserts,
+    required List<Map<String, dynamic>> deletes,
+  }) async {
+    _assertAccount(userId);
+    const batchSize = 250;
+    final rows = [
+      for (final item in upserts)
+        {
+          'user_id': userId,
+          'tmdb_id': item['id'],
+          'media_type': item['mediaType'],
+          'title': item['title'],
+          'poster_path': item['posterPath'],
+          'year': item['year'],
+          'status': item['status'],
+          'total_episodes': item['totalEpisodes'],
+          'runtime_minutes': item['runtimeMinutes'] ?? 0,
+          'genre_ids': item['genreIds'] ?? [],
+          'added_at': item['addedAt'],
+        },
+    ];
+
+    for (var i = 0; i < rows.length; i += batchSize) {
+      _assertAccount(userId);
+      final end = i + batchSize < rows.length ? i + batchSize : rows.length;
+      await client.from('library_items').upsert(
+        rows.sublist(i, end),
+        onConflict: 'user_id,tmdb_id,media_type',
+      );
+    }
+    for (final item in deletes) {
+      _assertAccount(userId);
+      await client.from('library_items').delete()
+          .eq('user_id', userId)
+          .eq('tmdb_id', item['id'])
+          .eq('media_type', item['mediaType']);
+    }
+    _assertAccount(userId);
+  }
+
+  /// Make one locally watched episode visible to database rating triggers.
+  /// Existing cloud runtime/progress are preserved if the row already exists.
+  /// This is idempotent and does not mark any untracked episode as watched.
+  Future<void> ensureWatchedEpisode({
+    required String userId,
+    required int showId,
+    required int seasonNumber,
+    required int episodeNumber,
+    required int runtimeMinutes,
+  }) async {
+    _assertAccount(userId);
+    await client.from('watched_episodes').upsert(
+      {
+        'user_id': userId,
+        'show_id': showId,
+        'season_number': seasonNumber,
+        'episode_number': episodeNumber,
+        'runtime_minutes': runtimeMinutes,
+      },
+      onConflict: 'user_id,show_id,season_number,episode_number',
+      ignoreDuplicates: true,
+    );
+    _assertAccount(userId);
+  }
+
+  Future<void> uploadEpisodeChanges({
+    required String userId,
+    required List<Map<String, int>> upserts,
+    required List<Map<String, int>> deletes,
+  }) async {
+    _assertAccount(userId);
+    const batchSize = 250;
+    final rows = [
+      for (final episode in upserts)
+        {
+          'user_id': userId,
+          'show_id': episode['showId'],
+          'season_number': episode['seasonNumber'],
+          'episode_number': episode['episodeNumber'],
+          'runtime_minutes': episode['runtimeMinutes'] ?? 0,
+        },
+    ];
+    for (var i = 0; i < rows.length; i += batchSize) {
+      _assertAccount(userId);
+      final end = i + batchSize < rows.length ? i + batchSize : rows.length;
+      await client.from('watched_episodes').upsert(
+        rows.sublist(i, end),
+        onConflict: 'user_id,show_id,season_number,episode_number',
+      );
+    }
+    for (final episode in deletes) {
+      _assertAccount(userId);
+      // Supabase filters require non-null identifiers. Fail safely rather
+      // than silently deleting the wrong episode when metadata is malformed.
+      final showId = episode['showId'];
+      final seasonNumber = episode['seasonNumber'];
+      final episodeNumber = episode['episodeNumber'];
+      if (showId == null || seasonNumber == null || episodeNumber == null) {
+        throw StateError('Cannot delete an episode without its identifying fields.');
+      }
+      await client.from('watched_episodes').delete()
+          .eq('user_id', userId)
+          .eq('show_id', showId)
+          .eq('season_number', seasonNumber)
+          .eq('episode_number', episodeNumber);
+    }
+    _assertAccount(userId);
+  }
+
+  // =====================================================
   // LIBRARY DOWNLOAD
   // =====================================================
 

@@ -122,7 +122,12 @@ class CommentService {
       }
     }
 
-    await Future.wait(comments.map(_enrichComment));
+    // One batched lookup per metadata type, rather than one profile and one
+    // likes query per comment. This includes replies in the same request.
+    await _enrichCommentsInBatches(
+      comments,
+      likesTable: 'comment_likes',
+    );
 
     final byId = <String, Map<String, dynamic>>{};
 
@@ -216,6 +221,202 @@ class CommentService {
     comment['liked_by_me'] =
         currentUserId != null &&
         likes.any((row) => row['user_id']?.toString() == currentUserId);
+  }
+
+  // =====================================================
+
+  // BATCHED COMMENT METADATA
+  //
+  // Preserve the existing safe-profile RPC and per-table RLS rules. We batch
+  // only rows that a user could already read through the original queries.
+  // Pagination matters: PostgREST often limits a query to 1,000 rows, and
+  // truncating likes would silently display incorrect counts.
+  // =====================================================
+
+  static const int _metadataIdChunkSize = 80;
+  static const int _metadataPageSize = 500;
+
+  Future<Map<String, Map<String, dynamic>>> _loadSafeProfilesForComments(
+    Set<String> userIds,
+  ) async {
+    final result = <String, Map<String, dynamic>>{};
+    final ids = userIds.toList();
+    for (var start = 0; start < ids.length; start += _metadataIdChunkSize) {
+      final end = start + _metadataIdChunkSize < ids.length
+          ? start + _metadataIdChunkSize
+          : ids.length;
+      final raw = await client.rpc(
+        'get_safe_profile_cards',
+        params: {'p_user_ids': ids.sublist(start, end)},
+      );
+      if (raw is! List) continue;
+      for (final item in raw) {
+        if (item is! Map) continue;
+        final profile = Map<String, dynamic>.from(item);
+        final id = profile['id']?.toString();
+        if (id != null && userIds.contains(id)) result[id] = profile;
+      }
+    }
+    return result;
+  }
+
+  Future<List<Map<String, dynamic>>> _loadCommentLikesInBatches({
+    required String table,
+    required Set<String> commentIds,
+  }) async {
+    final allLikes = <Map<String, dynamic>>[];
+    final ids = commentIds.toList();
+    for (var start = 0; start < ids.length; start += _metadataIdChunkSize) {
+      final end = start + _metadataIdChunkSize < ids.length
+          ? start + _metadataIdChunkSize
+          : ids.length;
+      final chunkIds = ids.sublist(start, end);
+      for (var offset = 0; ; offset += _metadataPageSize) {
+        // Stable ordering across pages prevents duplicates and omissions.
+        // These columns were already readable by the old per-comment query.
+        final page = await client
+            .from(table)
+            .select('comment_id, user_id')
+            .inFilter('comment_id', chunkIds)
+            .order('comment_id')
+            .order('user_id')
+            .range(offset, offset + _metadataPageSize - 1);
+        allLikes.addAll(page.map((row) => Map<String, dynamic>.from(row)));
+        if (page.length < _metadataPageSize) break;
+      }
+    }
+    return allLikes;
+  }
+
+  Future<void> _enrichCommentsInBatches(
+    List<Map<String, dynamic>> comments, {
+    required String likesTable,
+  }) async {
+    if (comments.isEmpty) return;
+
+    final userIds = <String>{};
+    final commentIds = <String>{};
+    for (final comment in comments) {
+      final commentId = comment['id']?.toString();
+      final userId = comment['user_id']?.toString();
+      if (commentId == null || userId == null) continue;
+      commentIds.add(commentId);
+      userIds.add(userId);
+    }
+    if (commentIds.isEmpty) return;
+
+    // Both fetches are independent, and neither writes to user data.
+    final results = await Future.wait<Object?>([
+      _loadSafeProfilesForComments(userIds),
+      _loadCommentLikesInBatches(table: likesTable, commentIds: commentIds),
+    ]);
+    final profiles = results[0] as Map<String, Map<String, dynamic>>;
+    final likes = results[1] as List<Map<String, dynamic>>;
+    final likeCounts = <String, int>{};
+    final myLikes = <String>{};
+    final currentUserId = client.auth.currentUser?.id;
+
+    for (final like in likes) {
+      final id = like['comment_id']?.toString();
+      if (id == null || !commentIds.contains(id)) continue;
+      likeCounts[id] = (likeCounts[id] ?? 0) + 1;
+      if (currentUserId != null && like['user_id']?.toString() == currentUserId) {
+        myLikes.add(id);
+      }
+    }
+
+    for (final comment in comments) {
+      final id = comment['id']?.toString();
+      final userId = comment['user_id']?.toString();
+      if (id == null || userId == null) continue;
+      comment['profile'] = profiles[userId];
+      comment['like_count'] = likeCounts[id] ?? 0;
+      comment['liked_by_me'] = myLikes.contains(id);
+    }
+  }
+
+  // The phase-5C RPC wraps the exact existing per-comment moderation
+  // function: it performs the same permission check and 3-report threshold,
+  // but sends up to 80 comment IDs in one network request. If the migration
+  // has not been applied, the old authorized RPC remains the fallback.
+  static const int _spoilerIdChunkSize = 80;
+
+  Future<void> _loadAlbumSpoilerFlagsFallback(
+    List<Map<String, dynamic>> comments,
+  ) async {
+    const concurrency = 8;
+    for (var start = 0; start < comments.length; start += concurrency) {
+      final end = start + concurrency < comments.length
+          ? start + concurrency
+          : comments.length;
+      await Future.wait(comments.sublist(start, end).map((comment) async {
+        final commentId = comment['id']?.toString();
+        if (commentId == null) return;
+        final count = await client.rpc(
+          'count_music_album_comment_reports',
+          params: {'p_comment_id': commentId, 'p_report_type': 'spoiler'},
+        );
+        comment['spoiler_hidden'] = count is num && count >= 3;
+      }));
+    }
+  }
+
+  Future<void> _loadAlbumSpoilerFlags(
+    List<Map<String, dynamic>> comments,
+  ) async {
+    final byId = <String, List<Map<String, dynamic>>>{};
+    for (final comment in comments) {
+      final id = comment['id']?.toString();
+      if (id == null || id.isEmpty) continue;
+      byId.putIfAbsent(id, () => <Map<String, dynamic>>[]).add(comment);
+    }
+    if (byId.isEmpty) return;
+
+    final ids = byId.keys.toList(growable: false);
+    for (var start = 0; start < ids.length; start += _spoilerIdChunkSize) {
+      final end = start + _spoilerIdChunkSize < ids.length
+          ? start + _spoilerIdChunkSize
+          : ids.length;
+      final chunkIds = ids.sublist(start, end);
+      final unresolved = chunkIds.toSet();
+
+      try {
+        final raw = await client.rpc(
+          'chiplux_album_spoiler_flags',
+          params: {'p_comment_ids': chunkIds},
+        );
+        if (raw is! List) {
+          throw const FormatException('Invalid album spoiler response.');
+        }
+        for (final item in raw) {
+          if (item is! Map) continue;
+          final id = item['comment_id']?.toString();
+          final hidden = item['spoiler_hidden'];
+          if (id == null || !unresolved.contains(id) || hidden is! bool) {
+            continue;
+          }
+          for (final comment in byId[id]!) {
+            comment['spoiler_hidden'] = hidden;
+          }
+          unresolved.remove(id);
+        }
+      } on PostgrestException catch (error) {
+        // Upgrade-safe for apps installed before the SQL migration. A genuine
+        // permission or server failure should still surface, not silently
+        // reveal comments that should be hidden by the spoiler threshold.
+        if (error.code != 'PGRST202' && error.code != '42883') rethrow;
+      }
+
+      // Unexpected missing rows are checked against the authoritative old
+      // function instead of defaulting to visible/unhidden.
+      if (unresolved.isNotEmpty) {
+        final missing = <Map<String, dynamic>>[];
+        for (final id in unresolved) {
+          missing.addAll(byId[id]!);
+        }
+        await _loadAlbumSpoilerFlagsFallback(missing);
+      }
+    }
   }
 
   // =====================================================
@@ -461,12 +662,12 @@ class CommentService {
       return 0;
     }
 
-    final rows = await client
+    // HEAD/count avoids downloading every comment ID, and remains accurate
+    // for albums with more than Supabase's default 1,000-row response cap.
+    return await client
         .from('music_album_comments')
-        .select('id')
+        .count(CountOption.exact)
         .eq('album_id', albumId);
-
-    return rows.length;
   }
 
   Future<List<Map<String, dynamic>>> loadMusicAlbumComments({
@@ -487,7 +688,15 @@ class CommentService {
       comments.add(Map<String, dynamic>.from(item));
     }
 
-    await Future.wait(comments.map(_enrichMusicAlbumComment));
+    // Album comment profiles and likes share the same batch enrichment path.
+    // Spoiler decisions still use the existing authorized Supabase RPC.
+    await Future.wait<void>([
+      _enrichCommentsInBatches(
+        comments,
+        likesTable: 'music_album_comment_likes',
+      ),
+      _loadAlbumSpoilerFlags(comments),
+    ]);
 
     final byId = <String, Map<String, dynamic>>{};
 

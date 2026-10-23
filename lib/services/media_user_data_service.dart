@@ -1,6 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'library_service.dart';
+import 'cloud_sync_service.dart';
+
 class MediaUserData {
   final bool isFavorite;
   final int? rating;
@@ -108,6 +111,42 @@ class MediaUserDataService extends ChangeNotifier {
 
     if (user == null) {
       throw Exception('You must be signed in.');
+    }
+
+    if (rating != null) {
+      // The server trigger only accepts title ratings for a completed movie
+      // or TV series. Ensure the current completed row has reached Supabase
+      // before sending the rating (Library sync is normally debounced).
+      final item = LibraryService.instance.getItem(tmdbId, mediaType);
+      final completed = item?.status == 'completed';
+      final inProgressTv = mediaType == 'tv' && item?.status == 'watching';
+      if (item == null || (!completed && !inProgressTv)) {
+        throw StateError('Watch this title before rating it.');
+      }
+      // An in-progress show may be rated once an actual episode is watched.
+      // Its local episode state can also be ahead of the debounced cloud sync.
+      if (inProgressTv) {
+        final firstWatched = LibraryService.instance.firstWatchedEpisodeForShow(tmdbId);
+        if (firstWatched == null) {
+          throw StateError('Watch at least one episode before rating this show.');
+        }
+        await CloudSyncService.instance.ensureWatchedEpisode(
+          userId: user.id,
+          showId: firstWatched['showId']!,
+          seasonNumber: firstWatched['seasonNumber']!,
+          episodeNumber: firstWatched['episodeNumber']!,
+          runtimeMinutes: firstWatched['runtimeMinutes'] ?? 0,
+        );
+      }
+      await CloudSyncService.instance.uploadLibraryChanges(
+        userId: user.id,
+        upserts: [item.toJson()],
+        deletes: const [],
+      );
+      if (client.auth.currentUser?.id != user.id ||
+          LibraryService.instance.getItem(tmdbId, mediaType)?.status != item.status) {
+        throw StateError('Account or watched state changed before rating.');
+      }
     }
 
     await client.from('media_user_data').upsert({

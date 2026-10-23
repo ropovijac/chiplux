@@ -184,10 +184,68 @@ class MusicUserDataService extends ChangeNotifier {
   final Map<String, MusicUserDataState> _cache = {};
   final Map<String, Map<String, dynamic>> _allRows = {};
 
-  // Changes whenever the visible account state is reset/reloaded. Async music
-  // requests capture this value so a response from an old account can never
-  // repopulate the cache after logout/account switching.
+  // Account and request revisions prevent slow network reads from replacing
+  // newly saved music state, or data from a previous signed-in user.
   int _stateGeneration = 0;
+  String? _cachedUserId;
+  int _requestSequence = 0;
+  final Map<String, int> _lastAppliedRequest = {};
+  int _saveSequence = 0;
+  final Map<String, int> _lastSavedRevision = {};
+  Future<void>? _pendingLoadAll;
+  String? _pendingLoadUserId;
+
+  // Serialize mutations so two rapid taps cannot both write a snapshot of
+  // the same old album/track state and cause a lost update.
+  Future<void> _pendingSave = Future<void>.value();
+
+  Future<void> _serializeSave(Future<void> Function() action) {
+    final result = _pendingSave.then((_) => action());
+    _pendingSave = result.then<void>((_) {}, onError: (Object _, StackTrace _) {});
+    return result;
+  }
+
+  void _rememberCommittedRow(Map<String, dynamic> row) {
+    final key = _key(row['entity_type']?.toString() ?? '',
+        row['entity_id']?.toString() ?? '');
+    _lastSavedRevision[key] = ++_saveSequence;
+    _lastAppliedRequest[key] = ++_requestSequence;
+    _rememberRow(row);
+  }
+
+  bool _canApplyRead(String key, int request, int saveRevision) =>
+      (_lastSavedRevision[key] ?? 0) <= saveRevision &&
+      (_lastAppliedRequest[key] ?? 0) <= request;
+
+  void _acceptReadRow(Map<String, dynamic> row, int request, int saveRevision) {
+    final entityType = row['entity_type']?.toString() ?? '';
+    final entityId = row['entity_id']?.toString() ?? '';
+    if (entityType.isEmpty || entityId.isEmpty) return;
+    final key = _key(entityType, entityId);
+    if (!_canApplyRead(key, request, saveRevision)) return;
+    _lastAppliedRequest[key] = request;
+    _rememberRow(row);
+  }
+
+  void _removeMissingReadRow(String key, int request, int saveRevision) {
+    if (!_canApplyRead(key, request, saveRevision)) return;
+    _lastAppliedRequest[key] = request;
+    _cache.remove(key);
+    _allRows.remove(key);
+  }
+
+  void _prepareAccount(String? userId) {
+    if (_cachedUserId == userId) return;
+    _cachedUserId = userId;
+    _stateGeneration++;
+    _cache.clear();
+    _allRows.clear();
+    _lastAppliedRequest.clear();
+    _lastSavedRevision.clear();
+    _pendingLoadAll = null;
+    _pendingLoadUserId = null;
+    notifyListeners();
+  }
 
   String _key(String entityType, String entityId) => '$entityType:$entityId';
 
@@ -359,35 +417,64 @@ class MusicUserDataService extends ChangeNotifier {
     }
   }
 
-  Future<void> loadAll() async {
-    final generation = ++_stateGeneration;
+  Future<void> loadAll() {
     final user = client.auth.currentUser;
+    _prepareAccount(user?.id);
+    if (user == null) return Future<void>.value();
 
-    // Clear synchronously so a newly signed-in account never sees the previous
-    // account's music state while its own rows are downloading.
-    _cache.clear();
-    _allRows.clear();
-    notifyListeners();
+    // Profile and Library can request this simultaneously. Share the same
+    // read, and do not clear visible ratings while the request is pending.
+    final pending = _pendingLoadAll;
+    if (pending != null && _pendingLoadUserId == user.id) return pending;
 
-    if (user == null) {
-      return;
-    }
-
+    final generation = _stateGeneration;
     final userId = user.id;
-    final rows = await client
-        .from('music_user_data')
-        .select()
-        .eq('user_id', userId);
+    final request = ++_requestSequence;
+    final saveRevision = _saveSequence;
 
-    if (!_sessionStillCurrent(generation, userId)) {
-      return;
+    Future<void> fetch() async {
+      // Supabase's Data API can cap a SELECT at 1,000 rows. A music library
+      // with more than that many tracks must be paged, or later ratings appear
+      // missing after sign-in despite still existing in the database.
+      const pageSize = 500;
+      final rows = <Map<String, dynamic>>[];
+      for (var offset = 0; ; offset += pageSize) {
+        final page = await client.from('music_user_data').select()
+            .eq('user_id', userId)
+            .order('entity_type')
+            .order('entity_id')
+            .range(offset, offset + pageSize - 1);
+        if (!_sessionStillCurrent(generation, userId)) return;
+        rows.addAll(page.map((row) => Map<String, dynamic>.from(row)));
+        if (page.length < pageSize) break;
+      }
+
+      final received = <String>{};
+      for (final raw in rows) {
+        final row = Map<String, dynamic>.from(raw);
+        final key = _key(row['entity_type']?.toString() ?? '',
+            row['entity_id']?.toString() ?? '');
+        received.add(key);
+        _acceptReadRow(row, request, saveRevision);
+      }
+      for (final key in <String>{..._allRows.keys, ..._cache.keys}) {
+        if (!received.contains(key)) {
+          _removeMissingReadRow(key, request, saveRevision);
+        }
+      }
+      notifyListeners();
     }
 
-    for (final raw in rows) {
-      _rememberRow(Map<String, dynamic>.from(raw));
-    }
-
-    notifyListeners();
+    late final Future<void> task;
+    task = fetch().whenComplete(() {
+      if (identical(_pendingLoadAll, task)) {
+        _pendingLoadAll = null;
+        _pendingLoadUserId = null;
+      }
+    });
+    _pendingLoadAll = task;
+    _pendingLoadUserId = userId;
+    return task;
   }
 
   MusicUserDataState albumState(String albumId) {
@@ -400,7 +487,10 @@ class MusicUserDataService extends ChangeNotifier {
 
   Future<void> loadAlbum(MusicAlbum album, List<MusicTrack> tracks) async {
     final user = client.auth.currentUser;
+    _prepareAccount(user?.id);
     final generation = _stateGeneration;
+    final request = ++_requestSequence;
+    final saveRevision = _saveSequence;
 
     if (user == null) {
       _clearAlbumCache(album.id, tracks);
@@ -408,7 +498,7 @@ class MusicUserDataService extends ChangeNotifier {
       return;
     }
 
-    final Future<dynamic> albumFuture = client
+    final albumFuture = client
         .from('music_user_data')
         .select()
         .eq('user_id', user.id)
@@ -417,118 +507,61 @@ class MusicUserDataService extends ChangeNotifier {
         .maybeSingle();
 
     final trackIds = tracks.map((track) => track.id).toSet().toList();
-
-    late final Future<dynamic> trackFuture;
-    if (trackIds.isEmpty) {
-      trackFuture = Future<dynamic>.value(const <dynamic>[]);
-    } else {
-      trackFuture = client
-          .from('music_user_data')
-          .select()
-          .eq('user_id', user.id)
-          .eq('entity_type', 'track')
-          .inFilter('entity_id', trackIds);
-    }
+    final Future<List<dynamic>> trackFuture = trackIds.isEmpty
+        ? Future<List<dynamic>>.value(<dynamic>[])
+        : client.from('music_user_data').select()
+            .eq('user_id', user.id)
+            .eq('entity_type', 'track')
+            .inFilter('entity_id', trackIds).then((rows) => List<dynamic>.from(rows));
 
     final results = await Future.wait<dynamic>([albumFuture, trackFuture]);
-
-    if (!_sessionStillCurrent(generation, user.id)) {
-      return;
-    }
+    if (!_sessionStillCurrent(generation, user.id)) return;
 
     final rawAlbum = results[0];
-    final rawTracks = List<dynamic>.from(results[1] as List? ?? const []);
-
+    final albumKey = _key('album', album.id);
     if (rawAlbum is Map) {
-      final row = Map<String, dynamic>.from(rawAlbum);
-      _cache[_key('album', album.id)] = _stateFromRow(row);
-      _rememberRow(row);
+      _acceptReadRow(Map<String, dynamic>.from(rawAlbum), request, saveRevision);
     } else {
-      _cache[_key('album', album.id)] = const MusicUserDataState.empty();
-      _allRows.remove(_key('album', album.id));
+      _removeMissingReadRow(albumKey, request, saveRevision);
     }
 
-    // Reset every requested track before applying the server response. This
-    // also removes stale rows if a track was deleted/cleared on another device.
-    for (final track in tracks) {
-      _cache[_key('track', track.id)] = const MusicUserDataState.empty();
-      _allRows.remove(_key('track', track.id));
-    }
-
-    for (final raw in rawTracks) {
-      if (raw is! Map) {
-        continue;
-      }
-
+    final receivedTrackIds = <String>{};
+    for (final raw in List<dynamic>.from(results[1] as List? ?? const [])) {
+      if (raw is! Map) continue;
       final row = Map<String, dynamic>.from(raw);
       final id = row['entity_id']?.toString();
-      if (id == null || id.isEmpty) {
-        continue;
-      }
-
-      _cache[_key('track', id)] = _stateFromRow(row);
-      _rememberRow(row);
+      if (id == null || id.isEmpty) continue;
+      receivedTrackIds.add(id);
+      _acceptReadRow(row, request, saveRevision);
     }
-
-    // Track state is the source of truth for album completion. This repairs
-    // any stale album flag and also handles an album becoming complete after
-    // its final individual song was listened to.
-    if (tracks.isNotEmpty) {
-      final allListened =
-          tracks.every((track) => trackState(track.id).isListened);
-      final anyListened =
-          tracks.any((track) => trackState(track.id).isListened);
-      final currentAlbum = albumState(album.id);
-      final reconciledStatus =
-          anyListened ? null : currentAlbum.libraryStatus;
-
-      if (currentAlbum.isListened != allListened ||
-          currentAlbum.libraryStatus != reconciledStatus) {
-        final now = DateTime.now().toUtc();
-        final reconciled = currentAlbum.copyWith(
-          isListened: allListened,
-          listenedAt: allListened ? (currentAlbum.listenedAt ?? now) : null,
-          rating: allListened ? currentAlbum.rating : null,
-          ratedAt: allListened ? currentAlbum.ratedAt : null,
-          libraryStatus: reconciledStatus,
-        );
-
-        await _upsertAlbum(
-          album,
-          tracks,
-          reconciled,
-          expectedGeneration: generation,
-          expectedUserId: user.id,
-        );
-
-        if (!_sessionStillCurrent(generation, user.id)) {
-          return;
-        }
-
-        _cache[_key('album', album.id)] = reconciled;
+    for (final id in trackIds) {
+      if (!receivedTrackIds.contains(id)) {
+        _removeMissingReadRow(_key('track', id), request, saveRevision);
       }
     }
 
+    // Keep album completion read-only. Reconcile ONLY its derived rating,
+    // after the full remote track-rating set is available.
     notifyListeners();
+    await reconcileAlbumRating(album, tracks,
+        expectedUserId: user.id, expectedGeneration: generation);
   }
 
   Future<void> setAlbumListened({
     required MusicAlbum album,
     required List<MusicTrack> tracks,
     required bool listened,
-  }) async {
+  }) => _serializeSave(() async {
     final user = _requireUser();
     final generation = _stateGeneration;
 
     final now = DateTime.now().toUtc();
     final albumCurrent = albumState(album.id);
-    final albumNext = albumCurrent.copyWith(
+    final albumNext = _derivedAlbumRating(albumCurrent.copyWith(
       isListened: listened,
       listenedAt: listened ? (albumCurrent.listenedAt ?? now) : null,
-      rating: listened ? albumCurrent.rating : null,
-      ratedAt: listened ? albumCurrent.ratedAt : null,
       libraryStatus: listened ? null : albumCurrent.libraryStatus,
-    );
+    ), tracks);
 
     final rows = <Map<String, dynamic>>[
       _albumRow(album, tracks, albumNext),
@@ -561,7 +594,7 @@ class MusicUserDataService extends ChangeNotifier {
     }
 
     for (final row in rows) {
-      _rememberRow(row);
+      _rememberCommittedRow(row);
     }
 
     _cache[_key('album', album.id)] = albumNext;
@@ -570,14 +603,14 @@ class MusicUserDataService extends ChangeNotifier {
     }
 
     notifyListeners();
-  }
+  });
 
   Future<void> setTrackListened({
     required MusicAlbum album,
     required List<MusicTrack> allTracks,
     required MusicTrack track,
     required bool listened,
-  }) async {
+  }) => _serializeSave(() async {
     final user = _requireUser();
     final generation = _stateGeneration;
 
@@ -588,21 +621,19 @@ class MusicUserDataService extends ChangeNotifier {
       listenedAt: listened ? (currentTrack.listenedAt ?? now) : null,
     );
 
-    // Update the local value before computing whether every song is listened.
-    _cache[_key('track', track.id)] = nextTrack;
-
+    // Derive completion from the proposed track value, without mutating the
+    // visible cache until the database confirms the save.
     final allListened = allTracks.isNotEmpty &&
-        allTracks.every((item) => trackState(item.id).isListened);
+        allTracks.every((item) => item.id == track.id
+            ? nextTrack.isListened : trackState(item.id).isListened);
 
     final currentAlbum = albumState(album.id);
-    final nextAlbum = currentAlbum.copyWith(
+    final nextAlbum = _derivedAlbumRating(currentAlbum.copyWith(
       isListened: allListened,
       listenedAt: allListened ? (currentAlbum.listenedAt ?? now) : null,
-      rating: allListened ? currentAlbum.rating : null,
-      ratedAt: allListened ? currentAlbum.ratedAt : null,
       // Starting or resuming any song removes the album from Plan/Dropped.
       libraryStatus: listened ? null : currentAlbum.libraryStatus,
-    );
+    ), allTracks, changedTrackId: track.id, changedState: nextTrack);
 
     final rows = [
       _trackRow(album, track, nextTrack),
@@ -627,18 +658,18 @@ class MusicUserDataService extends ChangeNotifier {
     }
 
     for (final row in rows) {
-      _rememberRow(row);
+      _rememberCommittedRow(row);
     }
 
     _cache[_key('album', album.id)] = nextAlbum;
     notifyListeners();
-  }
+  });
 
   Future<void> setAlbumLibraryStatus({
     required MusicAlbum album,
     required List<MusicTrack> tracks,
     required String? status,
-  }) async {
+  }) => _serializeSave(() async {
     final user = _requireUser();
     final generation = _stateGeneration;
 
@@ -674,12 +705,12 @@ class MusicUserDataService extends ChangeNotifier {
 
     _cache[_key('album', album.id)] = next;
     notifyListeners();
-  }
+  });
 
   Future<void> toggleAlbumFavorite({
     required MusicAlbum album,
     required List<MusicTrack> tracks,
-  }) async {
+  }) => _serializeSave(() async {
     final user = _requireUser();
     final generation = _stateGeneration;
 
@@ -700,79 +731,105 @@ class MusicUserDataService extends ChangeNotifier {
 
     _cache[_key('album', album.id)] = next;
     notifyListeners();
-  }
+  });
 
   Future<void> toggleTrackFavorite({
     required MusicAlbum album,
+    required List<MusicTrack> allTracks,
     required MusicTrack track,
-  }) async {
+  }) => _serializeSave(() async {
     final user = _requireUser();
     final generation = _stateGeneration;
-
     final current = trackState(track.id);
-    final next = current.copyWith(isFavorite: !current.isFavorite);
-
-    await _upsertTrack(
-      album,
-      track,
-      next,
-      expectedGeneration: generation,
-      expectedUserId: user.id,
-    );
-
-    if (!_sessionStillCurrent(generation, user.id)) {
-      return;
-    }
-
-    _cache[_key('track', track.id)] = next;
-    notifyListeners();
-  }
-
-  Future<void> setAlbumRating({
-    required MusicAlbum album,
-    required List<MusicTrack> tracks,
-    required int? stars,
-  }) async {
-    final user = _requireUser();
-    final generation = _stateGeneration;
-
-    if (stars != null && (stars < 1 || stars > 5)) {
-      throw ArgumentError.value(stars, 'stars', 'Rating must be 1–5.');
-    }
-
-    final current = albumState(album.id);
-
-    if (stars != null && !current.isListened) {
-      throw StateError('Listen to the full album before rating it.');
-    }
-
+    final favoriting = !current.isFavorite;
+    final autoListen = favoriting && !current.isListened;
     final now = DateTime.now().toUtc();
     final next = current.copyWith(
-      rating: stars == null ? null : stars * 2,
-      ratedAt: stars == null ? null : now,
+      isFavorite: favoriting,
+      isListened: autoListen ? true : current.isListened,
+      listenedAt: autoListen ? (current.listenedAt ?? now) : current.listenedAt,
     );
 
-    await _upsertAlbum(
-      album,
-      tracks,
-      next,
+    await _persistTrackInteraction(
+      album: album,
+      allTracks: allTracks,
+      track: track,
+      next: next,
+      autoListen: autoListen,
       expectedGeneration: generation,
       expectedUserId: user.id,
     );
+  });
 
-    if (!_sessionStillCurrent(generation, user.id)) {
+  // Exact 5-star album average; unavailable until every track is rated.
+  double? albumAverageStars(List<MusicTrack> tracks, {String? changedTrackId,
+      MusicUserDataState? changedState}) {
+    if (tracks.isEmpty) return null;
+    var total = 0;
+    final ids = <String>{};
+    for (final track in tracks) {
+      if (!ids.add(track.id)) continue;
+      final state = track.id == changedTrackId && changedState != null
+          ? changedState : trackState(track.id);
+      if (state.rating == null) return null;
+      total += state.rating!;
+    }
+    if (ids.isEmpty) return null;
+    return total / (2.0 * ids.length);
+  }
+
+  MusicUserDataState _derivedAlbumRating(MusicUserDataState current,
+      List<MusicTrack> tracks, {String? changedTrackId,
+      MusicUserDataState? changedState}) {
+    // The existing server constraint requires a rated album to be listened.
+    final average = current.isListened
+        ? albumAverageStars(tracks,
+            changedTrackId: changedTrackId, changedState: changedState)
+        : null;
+    final now = DateTime.now().toUtc();
+    return current.copyWith(
+      rating: average == null ? null : (average * 2).round().clamp(1, 10).toInt(),
+      ratedAt: average == null ? null : (current.ratedAt ?? now),
+    );
+  }
+
+  // Reconcile legacy manually rated albums after ALL track rows have loaded.
+  // Do not base this calculation on an incomplete album-detail request.
+  Future<void> reconcileAlbumRating(MusicAlbum album,
+      List<MusicTrack> tracks, {String? expectedUserId,
+      int? expectedGeneration}) => _serializeSave(() async {
+    final user = client.auth.currentUser;
+    if (user == null ||
+        (expectedUserId != null && user.id != expectedUserId) ||
+        (expectedGeneration != null && expectedGeneration != _stateGeneration)) {
       return;
     }
-
+    final generation = _stateGeneration;
+    final current = albumState(album.id);
+    final allRated = albumAverageStars(tracks) != null;
+    final allListened = tracks.isNotEmpty && tracks.every(
+      (track) => trackState(track.id).isListened);
+    final normalized = allRated && allListened && !current.isListened
+        ? current.copyWith(isListened: true,
+            listenedAt: current.listenedAt ?? DateTime.now().toUtc(),
+            libraryStatus: null)
+        : current;
+    final next = _derivedAlbumRating(normalized, tracks);
+    if (current.rating == next.rating &&
+        current.isListened == next.isListened){ return;}
+    await _upsertAlbum(album, tracks, next,
+        expectedGeneration: generation, expectedUserId: user.id);
+    if (!_sessionStillCurrent(generation, user.id)) return;
     _cache[_key('album', album.id)] = next;
     notifyListeners();
-  }
+  });
 
   Future<void> setTrackRating({
     required MusicAlbum album,
+    required List<MusicTrack> allTracks,
     required MusicTrack track,
     required int? stars,
-  }) async {
+  }) => _serializeSave(() async {
     final user = _requireUser();
     final generation = _stateGeneration;
 
@@ -782,24 +839,96 @@ class MusicUserDataService extends ChangeNotifier {
 
     final current = trackState(track.id);
     final now = DateTime.now().toUtc();
+    final autoListen = stars != null && !current.isListened;
     final next = current.copyWith(
       rating: stars == null ? null : stars * 2,
       ratedAt: stars == null ? null : now,
+      isListened: autoListen ? true : current.isListened,
+      listenedAt: autoListen ? (current.listenedAt ?? now) : current.listenedAt,
     );
 
-    await _upsertTrack(
-      album,
-      track,
-      next,
+    await _persistTrackInteraction(
+      album: album,
+      allTracks: allTracks,
+      track: track,
+      next: next,
+      autoListen: autoListen,
       expectedGeneration: generation,
       expectedUserId: user.id,
     );
+  });
 
-    if (!_sessionStillCurrent(generation, user.id)) {
+  // One write keeps the auto-listened song and (when relevant) its completed
+  // album in sync. An action failing in Supabase leaves both records untouched.
+  Future<void> _persistTrackInteraction({
+    required MusicAlbum album,
+    required List<MusicTrack> allTracks,
+    required MusicTrack track,
+    required MusicUserDataState next,
+    required bool autoListen,
+    required int expectedGeneration,
+    required String expectedUserId,
+  }) async {
+    if (!autoListen) {
+      final ratingChanged = trackState(track.id).rating != next.rating;
+      if (ratingChanged) {
+        final currentAlbum = albumState(album.id);
+        final complete = allTracks.isNotEmpty && allTracks.every(
+          (item) => item.id == track.id ? next.isListened
+              : trackState(item.id).isListened);
+        final nextAlbum = _derivedAlbumRating(currentAlbum.copyWith(
+          isListened: complete,
+          listenedAt: complete
+              ? (currentAlbum.listenedAt ?? DateTime.now().toUtc()) : null,
+          libraryStatus: complete ? null : currentAlbum.libraryStatus,
+        ), allTracks, changedTrackId: track.id, changedState: next);
+        final rows = <Map<String, dynamic>>[
+          _trackRow(album, track, next),
+          _albumRow(album, allTracks, nextAlbum),
+        ];
+        await client.from('music_user_data').upsert(rows,
+            onConflict: 'user_id,entity_type,entity_id');
+        if (!_sessionStillCurrent(expectedGeneration, expectedUserId)) return;
+        for (final row in rows) { _rememberCommittedRow(row); }
+        _cache[_key('track', track.id)] = next;
+        _cache[_key('album', album.id)] = nextAlbum;
+      } else {
+        await _upsertTrack(album, track, next,
+            expectedGeneration: expectedGeneration,
+            expectedUserId: expectedUserId);
+        if (!_sessionStillCurrent(expectedGeneration, expectedUserId)) return;
+        _cache[_key('track', track.id)] = next;
+      }
+      notifyListeners();
       return;
     }
 
+    final currentAlbum = albumState(album.id);
+    final allListened = allTracks.isNotEmpty && allTracks.every(
+      (item) => item.id == track.id || trackState(item.id).isListened,
+    );
+    final now = DateTime.now().toUtc();
+    final nextAlbum = _derivedAlbumRating(
+      currentAlbum.copyWith(
+        isListened: allListened,
+        listenedAt: allListened ? (currentAlbum.listenedAt ?? now) : null,
+        libraryStatus: null,
+      ), allTracks, changedTrackId: track.id, changedState: next,
+    );
+    final rows = <Map<String, dynamic>>[
+      _trackRow(album, track, next),
+      _albumRow(album, allTracks, nextAlbum),
+    ];
+    await client.from('music_user_data').upsert(
+      rows,
+      onConflict: 'user_id,entity_type,entity_id',
+    );
+    if (!_sessionStillCurrent(expectedGeneration, expectedUserId)) return;
+    for (final row in rows) {
+      _rememberCommittedRow(row);
+    }
     _cache[_key('track', track.id)] = next;
+    _cache[_key('album', album.id)] = nextAlbum;
     notifyListeners();
   }
 
@@ -821,7 +950,7 @@ class MusicUserDataService extends ChangeNotifier {
       return;
     }
 
-    _rememberRow(row);
+    _rememberCommittedRow(row);
   }
 
   Future<void> _upsertTrack(
@@ -842,7 +971,7 @@ class MusicUserDataService extends ChangeNotifier {
       return;
     }
 
-    _rememberRow(row);
+    _rememberCommittedRow(row);
   }
 
   Map<String, dynamic> _albumRow(
@@ -921,7 +1050,9 @@ class MusicUserDataService extends ChangeNotifier {
     final entityId = row['entity_id']?.toString() ?? '';
     if (entityType.isEmpty || entityId.isEmpty) return;
 
-    _allRows[_key(entityType, entityId)] = Map<String, dynamic>.from(row);
+    final key = _key(entityType, entityId);
+    _allRows[key] = Map<String, dynamic>.from(row);
+    _cache[key] = _stateFromRow(row);
   }
 
   MusicUserDataState _stateFromRow(Map<String, dynamic> row) {
@@ -960,9 +1091,14 @@ class MusicUserDataService extends ChangeNotifier {
   }
 
   void clearCache() {
+    _cachedUserId = null;
     _stateGeneration++;
     _cache.clear();
     _allRows.clear();
+    _lastAppliedRequest.clear();
+    _lastSavedRevision.clear();
+    _pendingLoadAll = null;
+    _pendingLoadUserId = null;
     notifyListeners();
   }
 }

@@ -540,12 +540,21 @@ class MusicService {
   Future<List<Map<String, dynamic>>> prepareChartSongs(
     List<Map<String, dynamic>> items,
   ) async {
+    // Resolve independent chart entries in small batches while preserving
+    // the exact input order. This overlaps cached lookups and avoids queuing
+    // the whole chart in memory at once. _songPool still permits at most two
+    // remote resolution requests simultaneously (provider protection).
+    const batchSize = 4;
     final rows = <Map<String, dynamic>>[];
-    for (final item in items) {
-      final resolved = await resolveChartSong(item);
-      if (resolved != null) {
-        rows.add(resolved);
-      }
+    for (var start = 0; start < items.length; start += batchSize) {
+      final end = start + batchSize < items.length
+          ? start + batchSize
+          : items.length;
+      final results = await Future.wait([
+        for (var index = start; index < end; index++)
+          resolveChartSong(items[index]),
+      ]);
+      rows.addAll(results.whereType<Map<String, dynamic>>());
     }
     return rows;
   }
@@ -884,12 +893,25 @@ class MusicService {
     return List<MusicAlbumSearchResult>.unmodifiable(results);
   }
 
-  Future<List<MusicSongSearchResult>> searchSongs(String query) async {
+  // Deduplicate concurrent searches for the same text. This path is used by
+  // the live music search UI, so repeated queries should share one request.
+  final _songSearchRequests = <String, Future<List<MusicSongSearchResult>>>{};
+  Future<List<MusicSongSearchResult>> searchSongs(String query) {
     final clean = query.trim();
     if (clean.length < 2) {
-      return const [];
+      return Future.value(const []);
     }
+    final key = clean.toLowerCase();
+    return _songSearchRequests.putIfAbsent(
+      key,
+      () => _searchSongsUncached(clean).whenComplete(() {
+        _songSearchRequests.remove(key);
+      }),
+    );
+  }
 
+  Future<List<MusicSongSearchResult>> _searchSongsUncached(String query) async {
+    final clean = query.trim();
     final cacheKey = clean.toLowerCase();
     final cached = _songSearchCache[cacheKey];
     if (cached != null) {

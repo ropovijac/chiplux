@@ -134,15 +134,12 @@ class _CollectionCard extends StatelessWidget {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(11),
                   child: coverUrl != null && coverUrl!.isNotEmpty
-                      ? Image.network(
+                      ? ChipluxPublicArtwork(
                           coverUrl!,
                           width: 68,
                           height: 68,
                           fit: BoxFit.cover,
-                          cacheWidth: 180,
-                          filterQuality: FilterQuality.medium,
-                          loadingBuilder: (_, child, progress) =>
-                              progress == null ? child : _artFallback(),
+                          placeholderBuilder: (_) => _artFallback(),
                           errorBuilder: (_, _, _) => _artFallback(),
                         )
                       : _artFallback(),
@@ -227,6 +224,45 @@ class _CollectionCard extends StatelessWidget {
   );
 }
 
+// Draw the status outline without filling the song row: especially important
+// on the album page where the surrounding page background is not a solid card.
+class _AlbumTrackOutlinePainter extends CustomPainter {
+  final List<Color> colors;
+
+  const _AlbumTrackOutlinePainter(this.colors);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (colors.isEmpty || size.isEmpty) return;
+    final rect = (Offset.zero & size).deflate(0.8);
+    final path = Path()..addRRect(
+      RRect.fromRectAndRadius(rect, const Radius.circular(15)),
+    );
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.6;
+    if (colors.length == 1) {
+      paint.color = colors.first;
+    } else {
+      paint.shader = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: colors,
+      ).createShader(rect);
+    }
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _AlbumTrackOutlinePainter oldDelegate) {
+    if (oldDelegate.colors.length != colors.length) return true;
+    for (var i = 0; i < colors.length; i++) {
+      if (oldDelegate.colors[i] != colors[i]) return true;
+    }
+    return false;
+  }
+}
+
 class _AlbumTrackCard extends StatelessWidget {
   final int number;
   final MusicTrack track;
@@ -242,153 +278,150 @@ class _AlbumTrackCard extends StatelessWidget {
     this.onFavorite,
     this.onRate,
   });
+
   @override
   Widget build(BuildContext context) {
-    const gold = Color(0xFFFFC857),
-        red = Color(0xFFFF5C72),
-        green = Color(0xFF7BE8A8);
-    final accent = selected
-        ? chipluxGold
-        : state.rating != null
-        ? gold
-        : state.isListened
-        ? green
-        : chipluxBrightGold;
-    return Container(
-      padding: const EdgeInsets.all(1.2),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        gradient: LinearGradient(
-          colors: [
-            accent.withValues(alpha: .65),
-            state.isFavorite ? red : accent.withValues(alpha: .20),
-          ],
-        ),
-      ),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(10, 11, 8, 7),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(15),
-          gradient: LinearGradient(
-            colors: [accent.withValues(alpha: .10), chipluxSurface],
+    const gold = Color(0xFFFFC857);
+    const red = Color(0xFFFF5C72);
+    const green = Color(0xFF7BE8A8);
+    final rated = state.rating != null;
+    // Favorite + rated > favorite > rated > listened > untouched.
+    final outline = state.isFavorite && rated
+        ? const <Color>[red, gold]
+        : state.isFavorite
+            ? const <Color>[red]
+            : rated
+                ? const <Color>[gold]
+                : state.isListened
+                    ? const <Color>[green]
+                    : const <Color>[];
+
+    return Semantics(
+      selected: selected,
+      child: CustomPaint(
+        foregroundPainter: _AlbumTrackOutlinePainter(outline),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(12, 11, 10, 8),
+          decoration: BoxDecoration(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(15),
           ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 34,
-              height: 34,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: accent.withValues(alpha: .14),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                '$number',
-                style: TextStyle(
-                  color: accent,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
+          child: Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: chipluxGold, width: 1.2),
+                ),
+                child: Text(
+                  '$number',
+                  style: const TextStyle(
+                    color: chipluxGold,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    track.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      track.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      if (track.durationLabel.isNotEmpty)
-                        Text(
-                          track.durationLabel,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Colors.white54,
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        if (track.durationLabel.isNotEmpty)
+                          Text(
+                            track.durationLabel,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.white54,
+                            ),
+                          ),
+                        const Spacer(),
+                        IconButton(
+                          tooltip: trUi(context, 'Listened'),
+                          onPressed: onListened,
+                          constraints: const BoxConstraints(
+                            minWidth: 36, minHeight: 36,
+                          ),
+                          padding: EdgeInsets.zero,
+                          icon: Icon(
+                            state.isListened
+                                ? Icons.check_circle_rounded
+                                : Icons.radio_button_unchecked_rounded,
+                            color: state.isListened ? green : Colors.white38,
+                            size: 22,
                           ),
                         ),
-                      const Spacer(),
-                      IconButton(
-                        tooltip: trUi(context, 'Listened'),
-                        onPressed: onListened,
-                        constraints: const BoxConstraints(
-                          minWidth: 36,
-                          minHeight: 36,
-                        ),
-                        padding: EdgeInsets.zero,
-                        icon: Icon(
-                          state.isListened
-                              ? Icons.check_circle_rounded
-                              : Icons.radio_button_unchecked_rounded,
-                          color: state.isListened ? green : Colors.white38,
-                          size: 22,
-                        ),
-                      ),
-                      IconButton(
-                        tooltip: trUi(context, 'Favorite'),
-                        onPressed: onFavorite,
-                        constraints: const BoxConstraints(
-                          minWidth: 36,
-                          minHeight: 36,
-                        ),
-                        padding: EdgeInsets.zero,
-                        icon: Icon(
-                          state.isFavorite
-                              ? Icons.favorite_rounded
-                              : Icons.favorite_border_rounded,
-                          color: state.isFavorite ? red : Colors.white38,
-                          size: 22,
-                        ),
-                      ),
-                      InkWell(
-                        borderRadius: BorderRadius.circular(10),
-                        onTap: onRate,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 9,
+                        IconButton(
+                          tooltip: trUi(context, 'Favorite'),
+                          onPressed: onFavorite,
+                          constraints: const BoxConstraints(
+                            minWidth: 36, minHeight: 36,
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                state.ratingStars != null
-                                    ? Icons.star_rounded
-                                    : Icons.star_border_rounded,
-                                color: state.ratingStars != null
-                                    ? gold
-                                    : Colors.white38,
-                                size: 22,
-                              ),
-                              if (state.ratingStars != null)
-                                Text(
-                                  '${state.ratingStars}',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: gold,
-                                    fontWeight: FontWeight.w800,
-                                  ),
+                          padding: EdgeInsets.zero,
+                          icon: Icon(
+                            state.isFavorite
+                                ? Icons.favorite_rounded
+                                : Icons.favorite_border_rounded,
+                            color: state.isFavorite ? red : Colors.white38,
+                            size: 22,
+                          ),
+                        ),
+                        InkWell(
+                          borderRadius: BorderRadius.circular(10),
+                          onTap: onRate,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 9,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  state.ratingStars != null
+                                      ? Icons.star_rounded
+                                      : Icons.star_border_rounded,
+                                  color: state.ratingStars != null
+                                      ? gold
+                                      : Colors.white38,
+                                  size: 22,
                                 ),
-                            ],
+                                if (state.ratingStars != null)
+                                  Text(
+                                    '${state.ratingStars}',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: gold,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -722,26 +755,21 @@ class _TrendingAlbumCoverCard extends StatelessWidget {
                                 color: Colors.white30,
                               ),
                             )
-                          : Image.network(
+                          : ChipluxPublicArtwork(
                               cover,
                               width: 140,
                               height: 140,
                               fit: BoxFit.cover,
-                              cacheWidth: 300,
-                              filterQuality: FilterQuality.medium,
-                              loadingBuilder: (_, child, progress) =>
-                                  progress == null
-                                  ? child
-                                  : Container(
-                                      width: 140,
-                                      height: 140,
-                                      color: chipluxSurfaceLight,
-                                      child: const Icon(
-                                        Icons.album_rounded,
-                                        size: 40,
-                                        color: Colors.white30,
-                                      ),
-                                    ),
+                              placeholderBuilder: (_) => Container(
+                                width: 140,
+                                height: 140,
+                                color: chipluxSurfaceLight,
+                                child: const Icon(
+                                  Icons.album_rounded,
+                                  size: 40,
+                                  color: Colors.white30,
+                                ),
+                              ),
                               errorBuilder: (_, _, _) => Container(
                                 width: 140,
                                 height: 140,
@@ -927,7 +955,7 @@ class _MusicLibraryFramedCardState extends State<_MusicLibraryFramedCard> {
                       ClipRRect(
                         borderRadius: BorderRadius.circular(10),
                         child: cover != null && cover.isNotEmpty
-                            ? Image.network(
+                            ? ChipluxPublicArtwork(
                                 cover,
                                 width: size,
                                 height: size,

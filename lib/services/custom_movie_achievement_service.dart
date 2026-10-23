@@ -16,6 +16,7 @@ class CustomMovieAchievement {
   final List<int> movieIds;
   final Map<int, String> movieTitles;
   final int iconSlot;
+  final String? iconifyId;
   final bool isActive;
 
   const CustomMovieAchievement({
@@ -26,6 +27,7 @@ class CustomMovieAchievement {
     required this.movieIds,
     required this.movieTitles,
     required this.iconSlot,
+    this.iconifyId,
     required this.isActive,
   });
 
@@ -46,6 +48,7 @@ class CustomMovieAchievement {
           .map((value) => (value as num).toInt()).toList(growable: false),
       movieTitles: names,
       iconSlot: (row['icon_slot'] as num).toInt(),
+      iconifyId: row['iconify_id']?.toString(),
       isActive: row['is_active'] == true,
     );
   }
@@ -73,6 +76,22 @@ class CustomMovieAchievementService extends ChangeNotifier with WidgetsBindingOb
   Set<String> _claimed = {};
   Set<int> _completedMovieIds = {};
   final Set<String> _pendingClaims = {};
+  // UI consumption queue. Popups are still deduplicated cross-device by the
+  // separate, authoritative achievement-popup receipt RPC in main.dart.
+  final List<String> _newlyClaimedIds = <String>[];
+  bool get hasPendingNewUnlocks => _newlyClaimedIds.isNotEmpty;
+  List<String> takeNewUnlockIds() {
+    final result = List<String>.from(_newlyClaimedIds);
+    _newlyClaimedIds.clear();
+    return result;
+  }
+
+  void _queueNewUnlock(String achievementId) {
+    if (!_newlyClaimedIds.contains(achievementId)) {
+      _newlyClaimedIds.add(achievementId);
+    }
+  }
+
   String? _userId;
   bool _loaded = false;
   bool get loaded => _loaded;
@@ -112,10 +131,15 @@ class CustomMovieAchievementService extends ChangeNotifier with WidgetsBindingOb
   Future<void> load() async {
     final user = Supabase.instance.client.auth.currentUser;
     final accountId = user?.id;
+    final sameLoadedAccount = _loaded && accountId != null && _userId == accountId;
+    final priorClaims = sameLoadedAccount ? Set<String>.from(_claimed) : <String>{};
+    if (_userId != accountId) {
+      _newlyClaimedIds.clear();
+      _claimed = {};
+      _definitions = const [];
+    }
     _userId = accountId;
     _loaded = false;
-    _claimed = {};
-    _definitions = const [];
     _onLibraryChanged();
     if (accountId == null) {
       _loaded = true;
@@ -129,7 +153,7 @@ class CustomMovieAchievementService extends ChangeNotifier with WidgetsBindingOb
       final responses = await Future.wait<dynamic>([
         // RLS exposes drafts only to allowlisted administrators.
         Supabase.instance.client.from('chiplux_custom_movie_achievements')
-            .select('id,name,description,reward_title,movie_ids,movie_titles,icon_slot,is_active')
+            .select('id,name,description,reward_title,movie_ids,movie_titles,icon_slot,iconify_id,is_active')
             .order('created_at', ascending: true),
         Supabase.instance.client.from('chiplux_custom_movie_unlocks')
             .select('achievement_id').eq('user_id', accountId),
@@ -144,6 +168,14 @@ class CustomMovieAchievementService extends ChangeNotifier with WidgetsBindingOb
           .whereType<Map>()
           .map((value) => value['achievement_id'].toString()).toSet();
       _loaded = true;
+      if (sameLoadedAccount) {
+        for (final def in activeDefinitions) {
+          if (_claimed.contains(def.id) && !priorClaims.contains(def.id) &&
+              def.movieIds.every(_completedMovieIds.contains)) {
+            _queueNewUnlock(def.id);
+          }
+        }
+      }
       notifyListeners();
       _claimCompleted();
     } catch (error) {
@@ -185,7 +217,9 @@ class CustomMovieAchievementService extends ChangeNotifier with WidgetsBindingOb
           if (_userId == accountId &&
               activeDefinitions.any((def) => def.id == achievementId &&
                   def.movieIds.every(_completedMovieIds.contains))) {
-            _claimed.add(achievementId);
+            if (_claimed.add(achievementId)) {
+              _queueNewUnlock(achievementId);
+            }
             notifyListeners();
           }
           break;
@@ -203,7 +237,9 @@ class CustomMovieAchievementService extends ChangeNotifier with WidgetsBindingOb
     required String description,
     required String rewardTitle,
     required Map<int, String> requiredMovies,
+    String? iconifyId,
   }) async {
+    _validateIcon(iconifyId);
     _validateFields(name, description, rewardTitle, requiredMovies);
     // Unique icon slot for each admin achievement. Concurrent inserts are
     // protected by a database UNIQUE index; refresh if the slot was taken.
@@ -222,6 +258,7 @@ class CustomMovieAchievementService extends ChangeNotifier with WidgetsBindingOb
       'movie_ids': requiredMovies.keys.toList(growable: false),
       'movie_titles': {for (final entry in requiredMovies.entries) '${entry.key}': entry.value},
       'icon_slot': available.first,
+      'iconify_id': iconifyId,
       'created_by': userId,
     });
     await load();
@@ -235,7 +272,9 @@ class CustomMovieAchievementService extends ChangeNotifier with WidgetsBindingOb
     required String description,
     required String rewardTitle,
     required Map<int, String> requiredMovies,
+    String? iconifyId,
   }) async {
+    _validateIcon(iconifyId);
     _validateFields(name, description, rewardTitle, requiredMovies);
     await Supabase.instance.client
         .from('chiplux_custom_movie_achievements')
@@ -243,6 +282,7 @@ class CustomMovieAchievementService extends ChangeNotifier with WidgetsBindingOb
           'name': name.trim(),
           'description': description.trim(),
           'reward_title': rewardTitle.trim(),
+          'iconify_id': iconifyId,
           'movie_ids': requiredMovies.keys.toList(growable: false),
           'movie_titles': {
             for (final entry in requiredMovies.entries) '${entry.key}': entry.value,
@@ -270,6 +310,15 @@ class CustomMovieAchievementService extends ChangeNotifier with WidgetsBindingOb
         .delete()
         .eq('id', achievement.id);
     await load();
+  }
+
+  // Only the audited open-license icon sets offered by the picker can be saved.
+  void _validateIcon(String? iconifyId) {
+    if (iconifyId == null) return;
+    if (!RegExp(r'^(lucide|tabler|mdi):[a-z0-9]+(?:-[a-z0-9]+)*$')
+            .hasMatch(iconifyId) || iconifyId.length > 120) {
+      throw ArgumentError('Select a supported icon from the library.');
+    }
   }
 
   void _validateFields(

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'theme/chiplux_palette.dart';
+import 'widgets/chiplux_public_artwork.dart';
 
 import 'l10n/generated/app_localizations.dart';
 import 'l10n/ui_translations.dart';
@@ -1402,7 +1403,7 @@ class _CommentsPageState extends State<CommentsPage> {
 
         backgroundColor: _commentsSurfaceLight,
 
-        backgroundImage: NetworkImage(avatarUrl),
+        backgroundImage: chipluxSizedAvatar(context, avatarUrl, isReply ? 30 : 34),
       );
     } else {
       avatar = CircleAvatar(
@@ -1972,7 +1973,7 @@ class _CommentsPageState extends State<CommentsPage> {
             aspectRatio: 16 / 9,
 
             child: imageUrl != null
-                ? Image.network(
+                ? ChipluxPublicArtwork(
                     imageUrl,
 
                     fit: BoxFit.cover,

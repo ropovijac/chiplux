@@ -2,6 +2,70 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'library_service.dart';
+import 'cloud_sync_service.dart';
+
+// The compact server snapshot contains all the rated movie/episode IDs needed
+// by Library badges, but only aggregate buckets for music. This avoids
+// downloading the entire music_user_data table to calculate Critic statistics.
+class _CriticRatingSnapshot {
+  const _CriticRatingSnapshot({
+    required this.mediaRows,
+    required this.episodeRows,
+    required this.albumHistogram,
+    required this.songHistogram,
+    required this.listenedAlbumCount,
+  });
+
+  final List<Map<String, dynamic>> mediaRows;
+  final List<Map<String, dynamic>> episodeRows;
+  // Index 0 = 1 star, index 4 = 5 stars.
+  final List<int> albumHistogram;
+  final List<int> songHistogram;
+  final int listenedAlbumCount;
+
+  static List<Map<String, dynamic>> _rows(Object? value) {
+    if (value is! List) {
+      throw const FormatException('Expected Critic rating detail rows.');
+    }
+    return value.map((row) {
+      if (row is! Map) {
+        throw const FormatException('Invalid Critic rating detail row.');
+      }
+      return Map<String, dynamic>.from(row);
+    }).toList(growable: false);
+  }
+
+  static List<int> _histogram(Object? value) {
+    if (value is! List || value.length != 5 ||
+        value.any((entry) => entry is! num)) {
+      throw const FormatException('Invalid Critic rating distribution.');
+    }
+    return value.map((entry) => (entry as num).toInt())
+        .toList(growable: false);
+  }
+
+  factory _CriticRatingSnapshot.fromRpc(Object? raw) {
+    if (raw is! Map) {
+      throw const FormatException('Invalid Critic snapshot response.');
+    }
+    final data = Map<String, dynamic>.from(raw);
+    if (data['version'] != 1 || data['music'] is! Map) {
+      throw const FormatException('Unsupported Critic snapshot version.');
+    }
+    final music = Map<String, dynamic>.from(data['music'] as Map);
+    final listened = music['listened_albums'];
+    if (listened is! num || listened < 0) {
+      throw const FormatException('Invalid listened album count.');
+    }
+    return _CriticRatingSnapshot(
+      mediaRows: _rows(data['media_ratings']),
+      episodeRows: _rows(data['episode_ratings']),
+      albumHistogram: _histogram(music['album_histogram']),
+      songHistogram: _histogram(music['song_histogram']),
+      listenedAlbumCount: listened.toInt(),
+    );
+  }
+}
 
 class CriticService extends ChangeNotifier {
   CriticService._();
@@ -64,6 +128,8 @@ class CriticService extends ChangeNotifier {
     }
 
     await refresh();
+    await reconcileTvRating(showId);
+    await refresh();
   }
 
   Future<void> clearSeasonAfterUnwatch({
@@ -92,6 +158,8 @@ class CriticService extends ChangeNotifier {
           .eq('media_type', 'tv');
     }
 
+    await refresh();
+    await reconcileTvRating(showId);
     await refresh();
   }
 
@@ -125,11 +193,138 @@ class CriticService extends ChangeNotifier {
     await refresh();
   }
 
+  // A series has one derived rating only after every regular episode has a
+  // saved rating. Season 0 specials never count toward completion.
+  double? tvShowAverageStars(int showId) {
+    final total = LibraryService.instance.getItem(showId, 'tv')?.totalEpisodes ?? 0;
+    if (total <= 0) return null;
+    final prefix = '$showId:';
+    final ratings = <int>[];
+    for (final entry in _episodeRatings.entries) {
+      if (!entry.key.startsWith(prefix)) continue;
+      final components = entry.key.split(':');
+      if (components.length == 3 && int.tryParse(components[1]) != null &&
+          int.parse(components[1]) > 0) {
+        ratings.add(entry.value);
+      }
+    }
+    if (ratings.length != total) return null;
+    return ratings.reduce((a, b) => a + b) / (ratings.length * 2.0);
+  }
+
+  // Keep the existing title-rating row (used by stats, achievements and
+  // profiles) synchronized with the computed episode average. Never change
+  // favorite/review data. One stored 10-point unit represents half a star.
+  Future<void> reconcileTvRating(int showId) async {
+    final userId = client.auth.currentUser?.id;
+    if (userId == null) return;
+    final average = tvShowAverageStars(showId);
+    final int? stored = average == null ? null : (average * 2).round().clamp(1, 10).toInt();
+    final existing = await client.from('media_user_data')
+        .select('rating,is_favorite,review')
+        .eq('user_id', userId).eq('tmdb_id', showId)
+        .eq('media_type', 'tv').maybeSingle();
+    if (client.auth.currentUser?.id != userId) return;
+    final old = existing?['rating'];
+    if ((old is num ? old.toInt() : null) == stored) return;
+    if (existing == null && stored == null) return;
+    final now = DateTime.now().toUtc().toIso8601String();
+    // Update JUST the aggregate rating so a concurrent favorite or review
+    // edit cannot be accidentally reverted by a stale aggregate read.
+    if (existing != null) {
+      await client.from('media_user_data')
+          .update({'rating': stored, 'updated_at': now})
+          .eq('user_id', userId).eq('tmdb_id', showId)
+          .eq('media_type', 'tv');
+    } else {
+      await client.from('media_user_data').upsert({
+        'user_id': userId, 'tmdb_id': showId, 'media_type': 'tv',
+        'rating': stored, 'is_favorite': false, 'review': '',
+        'updated_at': now,
+      }, onConflict: 'user_id,tmdb_id,media_type');
+    }
+  }
+
   int ratedEpisodeCountForShow(int showId) {
     return _ratedEpisodeCountsByShow[showId] ?? 0;
   }
 
   bool isLoading = false;
+  int _refreshRequest = 0;
+
+  // Fallback for projects that have not installed the Phase 5B SQL yet, or
+  // when the RPC is temporarily unavailable. Keep the original correctness
+  // behavior (including pagination and account-change safety).
+  Future<List<Map<String, dynamic>>> _loadMusicRatingRows(String userId) async {
+    const pageSize = 500;
+    final rows = <Map<String, dynamic>>[];
+    for (var offset = 0; ; offset += pageSize) {
+      final page = await client.from('music_user_data')
+          .select('entity_type, entity_id, rating, is_listened')
+          .eq('user_id', userId)
+          .order('entity_type')
+          .order('entity_id')
+          .range(offset, offset + pageSize - 1);
+      if (client.auth.currentUser?.id != userId) return [];
+      rows.addAll(page.map((row) => Map<String, dynamic>.from(row)));
+      if (page.length < pageSize) break;
+    }
+    return rows;
+  }
+
+  Future<_CriticRatingSnapshot> _legacyRatingSnapshot(String userId) async {
+    final results = await Future.wait([
+      client.from('media_user_data')
+          .select('tmdb_id, rating, media_type').eq('user_id', userId),
+      client.from('episode_ratings')
+          .select('show_id, season_number, episode_number, rating')
+          .eq('user_id', userId),
+      _loadMusicRatingRows(userId),
+    ]);
+    final albumHistogram = List<int>.filled(5, 0);
+    final songHistogram = List<int>.filled(5, 0);
+    var listenedAlbumCount = 0;
+    for (final row in results[2]) {
+      final type = row['entity_type']?.toString();
+      if (type == 'album' && row['is_listened'] == true) {
+        listenedAlbumCount++;
+      }
+      final rating = row['rating'];
+      if (rating is! num) continue;
+      final stars = _storedRatingToStars(rating.toInt());
+      if (type == 'album') {
+        albumHistogram[stars - 1]++;
+      } else if (type == 'track') {
+        songHistogram[stars - 1]++;
+      }
+    }
+    return _CriticRatingSnapshot(
+      mediaRows: (results[0] as List).map((row) =>
+          Map<String, dynamic>.from(row as Map)).toList(),
+      episodeRows: (results[1] as List).map((row) =>
+          Map<String, dynamic>.from(row as Map)).toList(),
+      albumHistogram: albumHistogram,
+      songHistogram: songHistogram,
+      listenedAlbumCount: listenedAlbumCount,
+    );
+  }
+
+  Future<_CriticRatingSnapshot> _loadRatingSnapshot(String userId) async {
+    try {
+      // Aggregated music statistics never cross the network as individual
+      // rating rows. A single RPC also returns the compact movie/episode
+      // rating keys needed by Discover, Library, and episode screens.
+      final raw = await client.rpc('chiplux_critic_snapshot');
+      if (client.auth.currentUser?.id != userId) {
+        throw StateError('Critic account changed during refresh.');
+      }
+      return _CriticRatingSnapshot.fromRpc(raw);
+    } catch (error) {
+      if (client.auth.currentUser?.id != userId) rethrow;
+      debugPrint('Critic snapshot unavailable; using existing queries: $error');
+      return _legacyRatingSnapshot(userId);
+    }
+  }
 
   int totalXp = 0;
 
@@ -259,10 +454,26 @@ class CriticService extends ChangeNotifier {
       throw Exception('Mark this episode as watched before rating it.');
     }
 
-    _episodeRatings[_episodeKey(showId, seasonNumber, episodeNumber)] = rating;
+    // The database trigger checks the canonical watched_episodes table, not
+    // the local SharedPreferences cache. Debounced Library sync can lag behind
+    // a tap, so commit this specific watched row before the rating.
+    await CloudSyncService.instance.ensureWatchedEpisode(
+      userId: user.id,
+      showId: showId,
+      seasonNumber: seasonNumber,
+      episodeNumber: episodeNumber,
+      runtimeMinutes: LibraryService.instance.episodeRuntimeMinutes(
+        showId, seasonNumber, episodeNumber,
+      ),
+    );
+    if (client.auth.currentUser?.id != user.id ||
+        !LibraryService.instance.isEpisodeWatched(
+          showId, seasonNumber, episodeNumber,
+        )) {
+      throw StateError('Account or watched state changed before rating.');
+    }
 
-    notifyListeners();
-
+    // Only update the in-memory rating after the server accepted the write.
     await client.from('episode_ratings').upsert({
       'user_id': user.id,
       'show_id': showId,
@@ -272,7 +483,16 @@ class CriticService extends ChangeNotifier {
       'updated_at': DateTime.now().toIso8601String(),
     });
 
-    await refresh();
+    _episodeRatings[_episodeKey(showId, seasonNumber, episodeNumber)] = rating;
+    notifyListeners();
+    try {
+      await refresh();
+      await reconcileTvRating(showId);
+      await refresh();
+    } catch (error) {
+      // The episode rating was saved; aggregate failure must not undo it.
+      debugPrint('Critic statistics refresh failed after saved rating: $error');
+    }
   }
 
   Future<void> removeEpisodeRating({
@@ -304,8 +524,8 @@ class CriticService extends ChangeNotifier {
           .eq('season_number', seasonNumber)
           .eq('episode_number', episodeNumber);
 
-      // Recalculate counts, XP,
-      // coverage, rated episodes, etc.
+      await refresh();
+      await reconcileTvRating(showId);
       await refresh();
     } catch (e) {
       // Restore it if deletion failed.
@@ -327,36 +547,19 @@ class CriticService extends ChangeNotifier {
       return;
     }
 
+    final request = ++_refreshRequest;
     isLoading = true;
 
     try {
-      final results = await Future.wait([
-        client
-            .from('media_user_data')
-            .select('tmdb_id, rating, media_type')
-            .eq('user_id', user.id),
+      final snapshot = await _loadRatingSnapshot(user.id);
+      final movieRows = snapshot.mediaRows;
+      final episodeRows = snapshot.episodeRows;
 
-        client
-            .from('episode_ratings')
-            .select(
-              'show_id, '
-              'season_number, '
-              'episode_number, '
-              'rating',
-            )
-            .eq('user_id', user.id),
-
-        client
-            .from('music_user_data')
-            .select('entity_type, rating, is_listened')
-            .eq('user_id', user.id),
-      ]);
-
-      final movieRows = results[0];
-
-      final episodeRows = results[1];
-
-      final musicRows = results[2];
+      // Ignore an older refresh if another one began after a music save,
+      // or if the signed-in account changed while this request was pending.
+      if (request != _refreshRequest || client.auth.currentUser?.id != user.id) {
+        return;
+      }
 
       final movieRatings = <int>[];
 
@@ -364,43 +567,11 @@ class CriticService extends ChangeNotifier {
 
       final episodeRatings = <int>[];
 
-      final albumRatings = <int>[];
-
-      final songRatings = <int>[];
-
       _ratedMovieIds.clear();
 
       _titleRatings.clear();
 
       _ratedEpisodeCountsByShow.clear();
-
-      for (final row in movieRows) {
-        final rawRating = row['rating'];
-
-        final rawTmdbId = row['tmdb_id'];
-
-        final mediaType = row['media_type']?.toString();
-
-        if (rawRating is! num) {
-          continue;
-        }
-
-        final rating = rawRating.toInt();
-
-        if (rawTmdbId is num && (mediaType == 'movie' || mediaType == 'tv')) {
-          _titleRatings['$mediaType:${rawTmdbId.toInt()}'] = rating;
-        }
-
-        if (mediaType == 'movie') {
-          movieRatings.add(rating);
-
-          if (rawTmdbId is num) {
-            _ratedMovieIds.add(rawTmdbId.toInt());
-          }
-        } else if (mediaType == 'tv') {
-          tvRatings.add(rating);
-        }
-      }
 
       _episodeRatings.clear();
 
@@ -442,28 +613,33 @@ class CriticService extends ChangeNotifier {
         }
       }
 
-      int listenedAlbumCount = 0;
-
-      for (final row in musicRows) {
-        final entityType = row['entity_type']?.toString();
-
-        if (entityType == 'album' && row['is_listened'] == true) {
-          listenedAlbumCount++;
-        }
-
+      for (final row in movieRows) {
         final rawRating = row['rating'];
-        if (rawRating is! num) {
-          continue;
-        }
-
+        final rawTmdbId = row['tmdb_id'];
+        final mediaType = row['media_type']?.toString();
+        if (mediaType != 'movie' || rawRating is! num) continue;
         final rating = rawRating.toInt();
-
-        if (entityType == 'album') {
-          albumRatings.add(rating);
-        } else if (entityType == 'track') {
-          songRatings.add(rating);
+        movieRatings.add(rating);
+        if (rawTmdbId is num) {
+          final id = rawTmdbId.toInt();
+          _ratedMovieIds.add(id);
+          _titleRatings['movie:$id'] = rating;
         }
       }
+
+      // TV parent ratings are derived from episode rows, not trusted from
+      // legacy manually entered media_user_data ratings. This also updates
+      // Critic XP and rated-show achievements without needing to visit a
+      // specific show page first.
+      for (final showId in _ratedEpisodeCountsByShow.keys) {
+        final average = tvShowAverageStars(showId);
+        if (average == null) continue;
+        final rating = (average * 2).round().clamp(1, 10).toInt();
+        tvRatings.add(rating);
+        _titleRatings['tv:$showId'] = rating;
+      }
+
+      final listenedAlbumCount = snapshot.listenedAlbumCount;
 
       movieRatingCount = movieRatings.length;
 
@@ -471,19 +647,13 @@ class CriticService extends ChangeNotifier {
 
       episodeRatingCount = episodeRatings.length;
 
-      albumRatingCount = albumRatings.length;
+      albumRatingCount = snapshot.albumHistogram.fold<int>(
+          0, (sum, count) => sum + count);
+      songRatingCount = snapshot.songHistogram.fold<int>(
+          0, (sum, count) => sum + count);
 
-      songRatingCount = songRatings.length;
-
-      final allRatings = [
-        ...movieRatings,
-        ...tvRatings,
-        ...episodeRatings,
-        ...albumRatings,
-        ...songRatings,
-      ];
-
-      totalRatings = allRatings.length;
+      totalRatings = movieRatingCount + tvRatingCount + episodeRatingCount +
+          albumRatingCount + songRatingCount;
 
       // Keep the existing Chiplux weighting:
       // short-form items (episodes / songs) = 5 XP
@@ -514,21 +684,30 @@ class CriticService extends ChangeNotifier {
         }
       }
 
-      addRatingsToDistribution(allRatings, ratingDistribution);
       addRatingsToDistribution(movieRatings, movieRatingDistribution);
       addRatingsToDistribution(tvRatings, tvRatingDistribution);
       addRatingsToDistribution(episodeRatings, episodeRatingDistribution);
-      addRatingsToDistribution(albumRatings, albumRatingDistribution);
-      addRatingsToDistribution(songRatings, songRatingDistribution);
 
-      if (allRatings.isEmpty) {
+      // The server computes music histograms, but the resulting five buckets
+      // are identical to the existing client-side rounded-star mapping.
+      for (var i = 1; i <= 5; i++) {
+        albumRatingDistribution[i] = snapshot.albumHistogram[i - 1];
+        songRatingDistribution[i] = snapshot.songHistogram[i - 1];
+        ratingDistribution[i] = (movieRatingDistribution[i] ?? 0) +
+            (tvRatingDistribution[i] ?? 0) +
+            (episodeRatingDistribution[i] ?? 0) +
+            snapshot.albumHistogram[i - 1] +
+            snapshot.songHistogram[i - 1];
+      }
+
+      if (totalRatings == 0) {
         averageStars = 0;
       } else {
-        final int totalStars = allRatings.fold<int>(0, (sum, rating) {
-          return sum + _storedRatingToStars(rating);
-        });
-
-        averageStars = totalStars / allRatings.length;
+        var totalStars = 0;
+        for (var i = 1; i <= 5; i++) {
+          totalStars += i * (ratingDistribution[i] ?? 0);
+        }
+        averageStars = totalStars / totalRatings;
       }
 
       _calculateLevel();
@@ -537,9 +716,10 @@ class CriticService extends ChangeNotifier {
     } catch (e) {
       debugPrint('Could not refresh critic stats: $e');
     } finally {
-      isLoading = false;
-
-      notifyListeners();
+      if (request == _refreshRequest && client.auth.currentUser?.id == user.id) {
+        isLoading = false;
+        notifyListeners();
+      }
     }
   }
 
@@ -638,6 +818,7 @@ class CriticService extends ChangeNotifier {
   }
 
   void clear() {
+    _refreshRequest++;
     _episodeRatings.clear();
     _ratedMovieIds.clear();
     _titleRatings.clear();
